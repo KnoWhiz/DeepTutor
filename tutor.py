@@ -1,12 +1,12 @@
-import pandas as pd
-import streamlit as st
 import os
 import fitz
 import tempfile
-from langchain.chains import RetrievalQA
 import io
-from streamlit_pdf_viewer import pdf_viewer
 import json
+import pandas as pd
+import streamlit as st
+from streamlit_pdf_viewer import pdf_viewer
+from langchain.chains import RetrievalQA
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import Qdrant
 from langchain_core.prompts import PromptTemplate
@@ -60,7 +60,7 @@ def find_pages_with_excerpts(doc, excerpts):
 @st.cache_resource
 def get_llm():
     llm = ChatOpenAI(
-        model="gpt-3.5-turbo", temperature=0, openai_api_key=os.getenv("OPENAI_API_KEY")
+        model="gpt-4o-mini", temperature=0, openai_api_key=os.getenv("OPENAI_API_KEY")
     )
     return llm
 
@@ -184,8 +184,14 @@ if uploaded_file is not None:
                     sources = parsed_result['sources']
 
                     # answer = "test"
-                    # sources = "Our findings indicate that the importance of science and critical thinking skills are strongly negatively associated with exposure, suggesting that occupations requiring these skills are less likely to be impacted by current LLMs. Conversely, programming and writing skills show a strong positive association with exposure, implying that occupations involving these skills are more susceptible to being influenced by LLMs."
-                    sources = sources.split(". ") if pd.notna(sources) else []
+                    # sources = "Our findings indicate that the importance of science and critical thinking skills are strongly negatively associated with exposure, 
+                    # suggesting that occupations requiring these skills are less likely to be impacted by current LLMs. 
+                    # Conversely, programming and writing skills show a strong positive association with exposure, 
+                    # implying that occupations involving these skills are more susceptible to being influenced by LLMs."
+                    try:
+                        sources = sources.split(". ") if pd.notna(sources) else []
+                    except:
+                        sources = []
 
                     st.session_state.chat_history.append(
                         {"role": "assistant", "content": answer}

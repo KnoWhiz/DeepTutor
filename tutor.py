@@ -60,7 +60,7 @@ def find_pages_with_excerpts(doc, excerpts):
 @st.cache_resource
 def get_llm():
     llm = ChatOpenAI(
-        model="gpt-3.5-turbo", temperature=0, openai_api_key=os.getenv("OPEN_AI_KEY")
+        model="gpt-3.5-turbo", temperature=0, openai_api_key=os.getenv("OPENAI_API_KEY")
     )
     return llm
 
@@ -68,7 +68,7 @@ def get_llm():
 @st.cache_resource
 def get_embeddings():
     embeddings = OpenAIEmbeddings(
-        model="text-embedding-ada-002", openai_api_key=os.getenv("OPEN_AI_KEY")
+        model="text-embedding-ada-002", openai_api_key=os.getenv("OPENAI_API_KEY")
     )
     return embeddings
 

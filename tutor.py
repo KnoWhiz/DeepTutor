@@ -1,4 +1,5 @@
 import os
+import base64
 import fitz
 import tempfile
 import io
@@ -14,11 +15,26 @@ from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_text_splitters import CharacterTextSplitter
 
 # Set page config
-st.set_page_config(page_title="📚 KnoWhiz Tutor")
+# st.set_page_config(page_title="📚 KnoWhiz Tutor")
+st.set_page_config(
+    page_title="KnoWhiz Tutor",
+    page_icon="frontend/images/logo_short.ico"  # Replace with the actual path to your .ico file
+)
 
 # Main content
+# st.markdown(
+#     "<h1 style='text-align: center;'>📚 KnoWhiz Tutor</h1>", unsafe_allow_html=True
+# )
+with open("frontend/images/logo_short.png", "rb") as image_file:
+    encoded_image = base64.b64encode(image_file.read()).decode()
 st.markdown(
-    "<h1 style='text-align: center;'>📚 KnoWhiz Tutor</h1>", unsafe_allow_html=True
+    f"""
+    <h1 style='text-align: center;'>
+        <img src="data:image/png;base64,{encoded_image}" alt='icon' style='width:50px; height:50px; vertical-align: middle; margin-right: 10px;'>
+        KnoWhiz Tutor
+    </h1>
+    """,
+    unsafe_allow_html=True
 )
 st.subheader("Upload a document to get started.")
 

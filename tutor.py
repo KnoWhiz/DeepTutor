@@ -1,12 +1,13 @@
-import pandas as pd
-import streamlit as st
 import os
+import base64
 import fitz
 import tempfile
-from langchain.chains import RetrievalQA
 import io
-from streamlit_pdf_viewer import pdf_viewer
 import json
+import pandas as pd
+import streamlit as st
+from streamlit_pdf_viewer import pdf_viewer
+from langchain.chains import RetrievalQA
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import Qdrant
 from langchain_core.prompts import PromptTemplate
@@ -14,11 +15,26 @@ from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_text_splitters import CharacterTextSplitter
 
 # Set page config
-st.set_page_config(page_title="📚 KnoWhiz Tutor")
+# st.set_page_config(page_title="📚 KnoWhiz Tutor")
+st.set_page_config(
+    page_title="KnoWhiz Tutor",
+    page_icon="frontend/images/logo_short.ico"  # Replace with the actual path to your .ico file
+)
 
 # Main content
+# st.markdown(
+#     "<h1 style='text-align: center;'>📚 KnoWhiz Tutor</h1>", unsafe_allow_html=True
+# )
+with open("frontend/images/logo_short.png", "rb") as image_file:
+    encoded_image = base64.b64encode(image_file.read()).decode()
 st.markdown(
-    "<h1 style='text-align: center;'>📚 KnoWhiz Tutor</h1>", unsafe_allow_html=True
+    f"""
+    <h1 style='text-align: center;'>
+        <img src="data:image/png;base64,{encoded_image}" alt='icon' style='width:50px; height:50px; vertical-align: middle; margin-right: 10px;'>
+        KnoWhiz Tutor
+    </h1>
+    """,
+    unsafe_allow_html=True
 )
 st.subheader("Upload a document to get started.")
 
@@ -60,7 +76,7 @@ def find_pages_with_excerpts(doc, excerpts):
 @st.cache_resource
 def get_llm():
     llm = ChatOpenAI(
-        model="gpt-3.5-turbo", temperature=0, openai_api_key=os.getenv("OPEN_AI_KEY")
+        model="gpt-4o-mini", temperature=0, openai_api_key=os.getenv("OPENAI_API_KEY")
     )
     return llm
 
@@ -68,7 +84,7 @@ def get_llm():
 @st.cache_resource
 def get_embeddings():
     embeddings = OpenAIEmbeddings(
-        model="text-embedding-ada-002", openai_api_key=os.getenv("OPEN_AI_KEY")
+        model="text-embedding-ada-002", openai_api_key=os.getenv("OPENAI_API_KEY")
     )
     return embeddings
 
@@ -184,8 +200,14 @@ if uploaded_file is not None:
                     sources = parsed_result['sources']
 
                     # answer = "test"
-                    # sources = "Our findings indicate that the importance of science and critical thinking skills are strongly negatively associated with exposure, suggesting that occupations requiring these skills are less likely to be impacted by current LLMs. Conversely, programming and writing skills show a strong positive association with exposure, implying that occupations involving these skills are more susceptible to being influenced by LLMs."
-                    sources = sources.split(". ") if pd.notna(sources) else []
+                    # sources = "Our findings indicate that the importance of science and critical thinking skills are strongly negatively associated with exposure, 
+                    # suggesting that occupations requiring these skills are less likely to be impacted by current LLMs. 
+                    # Conversely, programming and writing skills show a strong positive association with exposure, 
+                    # implying that occupations involving these skills are more susceptible to being influenced by LLMs."
+                    try:
+                        sources = sources.split(". ") if pd.notna(sources) else []
+                    except:
+                        sources = []
 
                     st.session_state.chat_history.append(
                         {"role": "assistant", "content": answer}

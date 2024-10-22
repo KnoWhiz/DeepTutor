@@ -11,8 +11,10 @@ from langchain.chains import RetrievalQA
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import Qdrant
 from langchain_core.prompts import PromptTemplate
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+from langchain_openai import OpenAIEmbeddings, ChatOpenAI, AzureOpenAIEmbeddings
 from langchain_text_splitters import CharacterTextSplitter
+
+from pipeline.api_handler import ApiHandler
 
 # Set page config
 # st.set_page_config(page_title="📚 KnoWhiz Tutor")
@@ -75,17 +77,39 @@ def find_pages_with_excerpts(doc, excerpts):
 
 @st.cache_resource
 def get_llm():
-    llm = ChatOpenAI(
-        model="gpt-4o-mini", temperature=0, openai_api_key=os.getenv("OPENAI_API_KEY")
-    )
-    return llm
+    # llm = ChatOpenAI(
+    #     model="gpt-4o-mini", temperature=0, openai_api_key=os.getenv("OPENAI_API_KEY")
+    # )
+    # load LLMs
+    para = {
+        'llm_source': 'openai', # 'llm_source': 'anthropic',
+        'temperature': 0,
+        "creative_temperature": 0.5,
+        "openai_key_dir": ".env",
+        "anthropic_key_dir": ".env",
+    }
+    api = ApiHandler(para)
+    llm_advance = api.models['advance']['instance']
+    llm_basic = api.models['basic']['instance']
+    llm_stable = api.models['stable']['instance']
+    llm_creative = api.models['creative']['instance']
+    llm_basic_backup_1 = api.models['basic_backup_1']['instance']
+    llm_basic_backup_2 = api.models['basic_backup_2']['instance']
+
+    llm_basic_context_window = api.models['basic']['context_window']
+    return llm_basic
 
 
 @st.cache_resource
 def get_embeddings():
-    embeddings = OpenAIEmbeddings(
-        model="text-embedding-ada-002", openai_api_key=os.getenv("OPENAI_API_KEY")
-    )
+    # embeddings = OpenAIEmbeddings(
+    #     model="text-embedding-ada-002", openai_api_key=os.getenv("OPENAI_API_KEY")
+    # )
+    embeddings = AzureOpenAIEmbeddings(deployment="text-embedding-3-large",
+                                        model="text-embedding-3-large",
+                                        azure_endpoint=os.getenv('AZURE_OPENAI_ENDPOINT'),
+                                        openai_api_type="azure",
+                                        chunk_size=1)
     return embeddings
 
 
@@ -208,6 +232,8 @@ if uploaded_file is not None:
                         sources = sources.split(". ") if pd.notna(sources) else []
                     except:
                         sources = []
+
+                    print("The content is from: ", sources)
 
                     st.session_state.chat_history.append(
                         {"role": "assistant", "content": answer}

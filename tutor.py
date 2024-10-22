@@ -8,10 +8,15 @@ import pandas as pd
 import streamlit as st
 from streamlit_pdf_viewer import pdf_viewer
 from langchain.chains import RetrievalQA
-from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.document_loaders import PyPDFLoader, PyMuPDFLoader
 from langchain_community.vectorstores import Qdrant
 from langchain_core.prompts import PromptTemplate
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI, AzureOpenAIEmbeddings
+from langchain_core.prompts import ChatPromptTemplate
+from langchain.chains import create_retrieval_chain
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
+from langchain.output_parsers import OutputFixingParser
+from langchain_openai import OpenAIEmbeddings, AzureOpenAIEmbeddings
 from langchain_text_splitters import CharacterTextSplitter
 
 from pipeline.api_handler import ApiHandler
@@ -54,7 +59,7 @@ def extract_documents_from_file(file):
     temp_file.write(file)
     temp_file.close()
 
-    loader = PyPDFLoader(temp_file.name)
+    loader = PyMuPDFLoader(temp_file.name)
 
     # Load the document
     documents = loader.load()
@@ -77,10 +82,10 @@ def find_pages_with_excerpts(doc, excerpts):
 
 @st.cache_resource
 def get_llm():
+    ##  load LLMs
     # llm = ChatOpenAI(
     #     model="gpt-4o-mini", temperature=0, openai_api_key=os.getenv("OPENAI_API_KEY")
     # )
-    # load LLMs
     para = {
         'llm_source': 'openai', # 'llm_source': 'anthropic',
         'temperature': 0,
@@ -91,11 +96,7 @@ def get_llm():
     api = ApiHandler(para)
     llm_advance = api.models['advance']['instance']
     llm_basic = api.models['basic']['instance']
-    llm_stable = api.models['stable']['instance']
     llm_creative = api.models['creative']['instance']
-    llm_basic_backup_1 = api.models['basic_backup_1']['instance']
-    llm_basic_backup_2 = api.models['basic_backup_2']['instance']
-
     llm_basic_context_window = api.models['basic']['context_window']
     return llm_basic
 
@@ -114,7 +115,11 @@ def get_embeddings():
 
 
 @st.cache_resource
-def get_qa(_documents):
+def get_reponse(_documents):
+    llm = get_llm()
+    parser = JsonOutputParser()
+    error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
+
     # Split the documents into chunks
     text_splitter = CharacterTextSplitter(chunk_size=512, chunk_overlap=0)
     texts = text_splitter.split_documents(_documents)
@@ -132,15 +137,34 @@ def get_qa(_documents):
         search_type="mmr", search_kwargs={"k": 2, "lambda_mult": 0.8}
     )
 
-    # Create the RetrievalQA
-    qa = RetrievalQA.from_chain_type(
-        get_llm(),
-        chain_type="stuff",
-        retriever=retriever,
-        return_source_documents=True,
-        chain_type_kwargs={"prompt": CUSTOM_PROMPT},
+    # Create the RetrievalQA chain
+    system_prompt = (
+        """
+        You are a patient and honest professor helping a student reading a paper.
+        Use the given context to answer the question.
+        If you don't know the answer, say you don't know.
+        Context: {context}
+        Please provide your answer in the following JSON format: 
+        {{
+            "answer": "Your detailed answer here",
+            "sources": "Direct sentences or paragraphs from the context that support 
+                your answers. ONLY RELEVANT TEXT DIRECTLY FROM THE DOCUMENTS. DO NOT 
+                ADD ANYTHING EXTRA. DO NOT INVENT ANYTHING."
+        }}
+        
+        The JSON must be a valid json format and can be read with json.loads() in Python.
+        Do not include "```json" in response.
+        """
     )
-    return qa
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", system_prompt),
+            ("human", "{input}"),
+        ]
+    )
+    question_answer_chain = create_stuff_documents_chain(llm, prompt)
+    chain = create_retrieval_chain(retriever, question_answer_chain)
+    return chain
 
 
 def get_highlight_info(doc, excerpts):
@@ -164,31 +188,6 @@ def get_highlight_info(doc, excerpts):
     return annotations
 
 
-custom_template = """
-    Use the following pieces of context to answer the user question. If you
-    don't know the answer, just say that you don't know, don't try to make up an
-    answer.
-
-    {context}
-
-    Question: {question}
-
-    Please provide your answer in the following JSON format: 
-    {{
-        "answer": "Your detailed answer here",
-        "sources": "Direct sentences or paragraphs from the context that support 
-            your answers. ONLY RELEVANT TEXT DIRECTLY FROM THE DOCUMENTS. DO NOT 
-            ADD ANYTHING EXTRA. DO NOT INVENT ANYTHING."
-    }}
-    
-    The JSON must be a valid json format and can be read with json.loads() in
-    Python. Answer:
-"""
-
-CUSTOM_PROMPT = PromptTemplate(
-    template=custom_template, input_variables=["context", "question"]
-)
-
 uploaded_file = st.file_uploader("Choose a PDF file", type="pdf")
 
 
@@ -200,7 +199,7 @@ if uploaded_file is not None:
         st.session_state.doc = fitz.open(stream=io.BytesIO(file), filetype="pdf")
 
     if documents:
-        qa = get_qa(documents)
+        qa_chain = get_reponse(documents)
         if "chat_history" not in st.session_state:
             st.session_state.chat_history = [
                 {"role": "assistant", "content": "Hello! How can I assist you today? "}
@@ -217,8 +216,10 @@ if uploaded_file is not None:
 
             with st.spinner("Generating response..."):
                 try:
-                    result = qa.invoke({"query": user_input})
-                    parsed_result = json.loads(result['result'])
+                    result = qa_chain.invoke({"input": user_input})
+                    # TEST
+                    print("Result: ", result)
+                    parsed_result = json.loads(result['answer'])
 
                     answer = parsed_result['answer']
                     sources = parsed_result['sources']
@@ -269,7 +270,7 @@ if uploaded_file is not None:
                 st.session_state.pages_with_excerpts = pages_with_excerpts
 
                 # PDF display section
-                st.markdown("### PDF Preview with Highlighted Excerpts")
+                st.markdown("### PDF Preview")
 
                 # Navigation
                 col1, col2, col3 = st.columns([1, 3, 1])

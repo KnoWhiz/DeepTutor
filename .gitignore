@@ -2,3 +2,5 @@
 .env
 *.whl
 .DS_Store
+*.pyc
+pipeline/__pycache__/api_handler.cpython-312.pyc

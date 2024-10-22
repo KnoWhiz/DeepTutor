@@ -2,3 +2,4 @@
 .env
 *.whl
 .DS_Store
+*.pyc

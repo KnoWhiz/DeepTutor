@@ -8,7 +8,7 @@ import pandas as pd
 import streamlit as st
 from streamlit_pdf_viewer import pdf_viewer
 from langchain.chains import RetrievalQA
-from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.document_loaders import PyPDFLoader, PyMuPDFLoader
 from langchain_community.vectorstores import Qdrant
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import OpenAIEmbeddings, AzureOpenAIEmbeddings
@@ -54,7 +54,7 @@ def extract_documents_from_file(file):
     temp_file.write(file)
     temp_file.close()
 
-    loader = PyPDFLoader(temp_file.name)
+    loader = PyMuPDFLoader(temp_file.name)
 
     # Load the document
     documents = loader.load()
@@ -77,10 +77,10 @@ def find_pages_with_excerpts(doc, excerpts):
 
 @st.cache_resource
 def get_llm():
+    ##  load LLMs
     # llm = ChatOpenAI(
     #     model="gpt-4o-mini", temperature=0, openai_api_key=os.getenv("OPENAI_API_KEY")
     # )
-    # load LLMs
     para = {
         'llm_source': 'openai', # 'llm_source': 'anthropic',
         'temperature': 0,
@@ -91,11 +91,7 @@ def get_llm():
     api = ApiHandler(para)
     llm_advance = api.models['advance']['instance']
     llm_basic = api.models['basic']['instance']
-    llm_stable = api.models['stable']['instance']
     llm_creative = api.models['creative']['instance']
-    llm_basic_backup_1 = api.models['basic_backup_1']['instance']
-    llm_basic_backup_2 = api.models['basic_backup_2']['instance']
-
     llm_basic_context_window = api.models['basic']['context_window']
     return llm_basic
 
@@ -182,7 +178,7 @@ custom_template = """
     }}
     
     The JSON must be a valid json format and can be read with json.loads() in
-    Python. Answer:
+    Python. Do not include "```json" in response. Answer:
 """
 
 CUSTOM_PROMPT = PromptTemplate(

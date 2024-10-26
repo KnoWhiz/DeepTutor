@@ -151,14 +151,27 @@ def get_response(_documents, collection_name, embedding_folder):
         You are a patient and honest professor helping a student reading a paper.
         Use the given context to answer the question.
         If you don't know the answer, say you don't know.
-        Context: {context}
-        Please provide your answer in the following JSON format: 
+
+        Context: ```{context}```
+        
+        For answer part, provide your detailed answer;
+        For sources part, provide the
+            "Direct sentences or paragraphs from the context that support 
+            your answers. ONLY RELEVANT TEXT DIRECTLY FROM THE DOCUMENTS. DO NOT 
+            ADD ANYTHING EXTRA. DO NOT INVENT ANYTHING."
+        Organize final response in the following JSON format:
+
+        -------------------------------
         {{
             "answer": "Your detailed answer here",
-            "sources": "Direct sentences or paragraphs from the context that support 
-                your answers. ONLY RELEVANT TEXT DIRECTLY FROM THE DOCUMENTS. DO NOT 
-                ADD ANYTHING EXTRA. DO NOT INVENT ANYTHING."
+            "sources": [
+                <source_1>,
+                <source_2>,
+                ...
+                <source_n>,
+            ]
         }}
+        -------------------------------
         
         The JSON must be a valid json format and can be read with json.loads() in Python.
         Do not include "```json" in response.
@@ -268,7 +281,10 @@ if uploaded_file is not None:
                     sources = parsed_result['sources']
 
                     try:
-                        sources = sources.split(". ") if pd.notna(sources) else []
+                        # Check whether sources is a list of strings
+                        if not all(isinstance(source, str) for source in sources):
+                            raise ValueError("Sources must be a list of strings.")
+                        sources = list(sources)
                     except:
                         sources = []
 

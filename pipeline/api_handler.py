@@ -9,7 +9,7 @@ class ApiHandler:
         self.para = para
         self.api_key = str(os.getenv("AZURE_OPENAI_API_KEY"))
         self.azure_endpoint = str(os.getenv("AZURE_OPENAI_ENDPOINT"))
-        self.openai_api_key = str(os.getenv("OPENAI_API_KEY"))
+        # self.openai_api_key = str(os.getenv("OPENAI_API_KEY"))
         self.models = self.load_models()
 
     def get_models(self, api_key, endpoint, api_version, deployment_name, temperature, host='azure'):

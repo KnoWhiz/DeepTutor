@@ -65,7 +65,7 @@ def extract_documents_from_file(file):
     documents = loader.load()
     return documents
 
-
+# Starts from Page 0
 def find_pages_with_excerpts(doc, excerpts):
     pages_with_excerpts = []
     for page_num in range(len(doc)):
@@ -108,14 +108,15 @@ def get_embeddings():
     # )
     embeddings = AzureOpenAIEmbeddings(deployment="text-embedding-3-large",
                                         model="text-embedding-3-large",
-                                        azure_endpoint=os.getenv('AZURE_OPENAI_ENDPOINT'),
+                                        azure_endpoint=os.getenv('AZURE_OPENAI_ENDPOINT_EMBEDDINGS'),
+                                        openai_api_key =os.getenv('OPENAI_API_KEY_EMBEDDINGS'),
                                         openai_api_type="azure",
                                         chunk_size=1)
     return embeddings
 
 
 @st.cache_resource
-def get_reponse(_documents):
+def get_response(_documents):
     llm = get_llm()
     parser = JsonOutputParser()
     error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
@@ -187,8 +188,25 @@ def get_highlight_info(doc, excerpts):
                     )
     return annotations
 
+def previous_page():
+    if st.session_state.current_page > 1:
+        st.session_state.current_page -=1
 
-uploaded_file = st.file_uploader("Choose a PDF file", type="pdf")
+def next_page():
+    if st.session_state.current_page < st.session_state.total_pages:
+        st.session_state.current_page += 1
+
+def close_pdf():
+    st.session_state.show_pdf = False
+
+# Reset all states
+def file_changed():
+    for key in st.session_state.keys():
+        del st.session_state[key]
+
+#-----------------------------------------------------------------------------------------------#
+# st file uploader
+uploaded_file = st.file_uploader("Choose a PDF file", type="pdf", on_change=file_changed)
 
 
 if uploaded_file is not None:
@@ -199,16 +217,21 @@ if uploaded_file is not None:
         st.session_state.doc = fitz.open(stream=io.BytesIO(file), filetype="pdf")
 
     if documents:
-        qa_chain = get_reponse(documents)
-        if "chat_history" not in st.session_state:
+        qa_chain = get_response(documents)
+        # First run
+        if "chat_history" not in st.session_state: 
             st.session_state.chat_history = [
                 {"role": "assistant", "content": "Hello! How can I assist you today? "}
             ]
+            st.session_state.show_pdf = False
 
+        # After every rerun, display chat history (assistant and client)
         for msg in st.session_state.chat_history:
             st.chat_message(msg["role"]).write(msg["content"])
 
+        # If there has been a user input, update chat_history, invoke model and get response
         if user_input := st.chat_input("Your message"):
+            st.session_state.show_pdf = False
             st.session_state.chat_history.append(
                 {"role": "user", "content": user_input}
             )
@@ -256,53 +279,45 @@ if uploaded_file is not None:
             if file and st.session_state.get("chat_occurred", False):
                 doc = st.session_state.doc
                 st.session_state.total_pages = len(doc)
-                if "current_page" not in st.session_state:
-                    st.session_state.current_page = 0
 
                 # Find the page numbers containing the excerpts
                 pages_with_excerpts = find_pages_with_excerpts(doc, sources)
 
                 if "current_page" not in st.session_state:
-                    st.session_state.current_page = pages_with_excerpts[0]
+                    st.session_state.current_page = pages_with_excerpts[0]+1
 
-                # Save the current document state in session
-                st.session_state.cleaned_sources = sources
-                st.session_state.pages_with_excerpts = pages_with_excerpts
-
-                # PDF display section
-                st.markdown("### PDF Preview")
-
-                # Navigation
-                col1, col2, col3 = st.columns([1, 3, 1])
-                with col1:
-                    if st.button("Previous Page") and st.session_state.current_page > 0:
-                        st.session_state.current_page -= 1
-                with col2:
-                    st.write(
-                        f"Page {st.session_state.current_page + 1} of {st.session_state.total_pages}"
-                    )
-                with col3:
-                    if (
-                        st.button("Next Page")
-                        and st.session_state.current_page
-                        < st.session_state.total_pages - 1
-                    ):
-                        st.session_state.current_page += 1
+                if 'pages_with_exerpts' not in st.session_state:
+                    st.session_state.pages_with_excerpts = pages_with_excerpts
 
                 # Get annotations with correct coordinates
-                annotations = get_highlight_info(doc, st.session_state.sources)
-
+                st.session_state.annotations = get_highlight_info(doc, st.session_state.sources)
+                
                 # Find the first page with excerpts
-                if annotations:
-                    first_page_with_excerpts = min(ann["page"] for ann in annotations)
-                else:
-                    first_page_with_excerpts = st.session_state.current_page + 1
-
-                # Display the PDF viewer
-                pdf_viewer(
-                    file,
-                    width=700,
-                    height=800,
-                    annotations=annotations,
-                    pages_to_render=[first_page_with_excerpts],
+                if st.session_state.annotations:
+                    st.session_state.current_page = min(annotation["page"] for annotation in st.session_state.annotations)
+                
+                st.session_state.show_pdf = True
+                
+        if st.session_state.show_pdf: 
+            # PDF display section
+            st.markdown("### PDF Preview")
+            # Navigation
+            col1, col2, col3, col4 = st.columns([8, 4, 3, 3],vertical_alignment='center')
+            with col1:
+                st.button("Previous Page", on_click=previous_page)
+            with col2:
+                st.write(
+                    f"Page {st.session_state.current_page} of {st.session_state.total_pages}"
                 )
+            with col3:
+                st.button("Next Page", on_click=next_page,use_container_width=True)
+            with col4:
+                st.button("Close File", on_click=close_pdf,use_container_width=True)       
+            # Display the PDF viewer
+            pdf_viewer(
+                file,
+                width=700,
+                height=800,
+                annotations=st.session_state.annotations,
+                pages_to_render=[st.session_state.current_page],
+            )

@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_openai import AzureChatOpenAI
+from langchain_openai import OpenAIEmbeddings, AzureOpenAIEmbeddings
 
 class ApiHandler:
     def __init__(self, para):
@@ -11,6 +12,8 @@ class ApiHandler:
         self.azure_endpoint = str(os.getenv("AZURE_OPENAI_ENDPOINT"))
         # self.openai_api_key = str(os.getenv("OPENAI_API_KEY"))
         self.models = self.load_models()
+        self.embedding_models = self.load_embedding_models()
+
 
     def get_models(self, api_key, endpoint, api_version, deployment_name, temperature, host='azure'):
         if host == 'openai':
@@ -35,6 +38,7 @@ class ApiHandler:
                 base_url=endpoint,
                 streaming=False,
             )
+        
 
     def load_models(self):
         llm_basic = self.get_models(api_key=self.api_key, endpoint=self.azure_endpoint, api_version='2024-07-01-preview', deployment_name='gpt-4o-mini', temperature=self.para['temperature'], host='azure')
@@ -45,5 +49,20 @@ class ApiHandler:
             'basic': {'instance': llm_basic, 'context_window': 128000},
             'advance': {'instance': llm_advance, 'context_window': 128000},
             'creative': {'instance': llm_creative, 'context_window': 128000},
+        }
+        return models
+
+
+    def load_embedding_models(self):
+        embedding_model = AzureOpenAIEmbeddings(
+            deployment="text-embedding-3-large",
+            model="text-embedding-3-large",
+            azure_endpoint=os.getenv('AZURE_OPENAI_ENDPOINT_EMBEDDINGS'),
+            openai_api_key =os.getenv('OPENAI_API_KEY_EMBEDDINGS'),
+            openai_api_type="azure",
+            chunk_size=1)
+        
+        models = {
+            'default': {'instance': embedding_model},
         }
         return models

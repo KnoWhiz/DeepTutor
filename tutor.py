@@ -17,7 +17,6 @@ from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
 from langchain.output_parsers import OutputFixingParser
-from langchain_openai import OpenAIEmbeddings, AzureOpenAIEmbeddings
 from langchain_text_splitters import CharacterTextSplitter
 
 from pipeline.api_handler import ApiHandler
@@ -27,6 +26,7 @@ st.set_page_config(
     page_title="KnoWhiz Tutor",
     page_icon="frontend/images/logo_short.ico"  # Replace with the actual path to your .ico file
 )
+
 
 # Main content
 with open("frontend/images/logo_short.png", "rb") as image_file:
@@ -78,9 +78,33 @@ def find_pages_with_excerpts(doc, excerpts):
 
 
 @st.cache_resource
-def get_llm():
-    ##  load LLMs
-    # Adjust this function according to your LLM setup
+def get_llm(llm_type, para):
+    para = para
+    api = ApiHandler(para)
+    llm_basic = api.models['basic']['instance']
+    llm_advance = api.models['advance']['instance']
+    llm_creative = api.models['creative']['instance']
+    if llm_type == 'basic':
+        return llm_basic
+    elif llm_type == 'advance':
+        return llm_advance
+    elif llm_type == 'creative':
+        return llm_creative
+    return llm_basic
+
+
+@st.cache_resource
+def get_embedding_models(embedding_model_type, para):
+    para = para
+    api = ApiHandler(para)
+    embedding_model_default = api.embedding_models['default']['instance']
+    if embedding_model_type == 'default':
+        return embedding_model_default
+    else:
+        return embedding_model_default
+
+
+def get_response(_documents, collection_name, embedding_folder):
     para = {
         'llm_source': 'openai',  # or 'anthropic'
         'temperature': 0,
@@ -88,31 +112,11 @@ def get_llm():
         "openai_key_dir": ".env",
         "anthropic_key_dir": ".env",
     }
-    api = ApiHandler(para)
-    llm_basic = api.models['basic']['instance']
-    return llm_basic
-
-
-@st.cache_resource
-def get_embeddings():
-    # embeddings = OpenAIEmbeddings(
-    #     model="text-embedding-ada-002", openai_api_key=os.getenv("OPENAI_API_KEY")
-    # )
-    embeddings = AzureOpenAIEmbeddings(deployment="text-embedding-3-large",
-                                        model="text-embedding-3-large",
-                                        azure_endpoint=os.getenv('AZURE_OPENAI_ENDPOINT_EMBEDDINGS'),
-                                        openai_api_key =os.getenv('OPENAI_API_KEY_EMBEDDINGS'),
-                                        openai_api_type="azure",
-                                        chunk_size=1)
-    return embeddings
-
-
-def get_response(_documents, collection_name, embedding_folder):
-    llm = get_llm()
+    llm = get_llm('basic', para)
     parser = JsonOutputParser()
     error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
 
-    embeddings = get_embeddings()
+    embeddings = get_embedding_models('default', para)
 
     # Define the default filenames used by FAISS when saving
     faiss_path = os.path.join(embedding_folder, "index.faiss")
@@ -191,21 +195,26 @@ def get_highlight_info(doc, excerpts):
                     )
     return annotations
 
+
 def previous_page():
     if st.session_state.current_page > 1:
         st.session_state.current_page -=1
+
 
 def next_page():
     if st.session_state.current_page < st.session_state.total_pages:
         st.session_state.current_page += 1
 
+
 def close_pdf():
     st.session_state.show_pdf = False
+
 
 # Reset all states
 def file_changed():
     for key in st.session_state.keys():
         del st.session_state[key]
+
 
 #-----------------------------------------------------------------------------------------------#
 # Streamlit file uploader

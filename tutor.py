@@ -2,14 +2,15 @@ import os
 import base64
 import fitz
 import tempfile
+import hashlib
 import io
 import json
 import pandas as pd
 import streamlit as st
 from streamlit_pdf_viewer import pdf_viewer
+from langchain_community.vectorstores import FAISS
 from langchain.chains import RetrievalQA
 from langchain_community.document_loaders import PyPDFLoader, PyMuPDFLoader
-from langchain_community.vectorstores import Qdrant
 from langchain_core.prompts import PromptTemplate
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.chains import create_retrieval_chain
@@ -22,16 +23,12 @@ from langchain_text_splitters import CharacterTextSplitter
 from pipeline.api_handler import ApiHandler
 
 # Set page config
-# st.set_page_config(page_title="📚 KnoWhiz Tutor")
 st.set_page_config(
     page_title="KnoWhiz Tutor",
     page_icon="frontend/images/logo_short.ico"  # Replace with the actual path to your .ico file
 )
 
 # Main content
-# st.markdown(
-#     "<h1 style='text-align: center;'>📚 KnoWhiz Tutor</h1>", unsafe_allow_html=True
-# )
 with open("frontend/images/logo_short.png", "rb") as image_file:
     encoded_image = base64.b64encode(image_file.read()).decode()
 st.markdown(
@@ -83,21 +80,16 @@ def find_pages_with_excerpts(doc, excerpts):
 @st.cache_resource
 def get_llm():
     ##  load LLMs
-    # llm = ChatOpenAI(
-    #     model="gpt-4o-mini", temperature=0, openai_api_key=os.getenv("OPENAI_API_KEY")
-    # )
+    # Adjust this function according to your LLM setup
     para = {
-        'llm_source': 'openai', # 'llm_source': 'anthropic',
+        'llm_source': 'openai',  # or 'anthropic'
         'temperature': 0,
         "creative_temperature": 0.5,
         "openai_key_dir": ".env",
         "anthropic_key_dir": ".env",
     }
     api = ApiHandler(para)
-    llm_advance = api.models['advance']['instance']
     llm_basic = api.models['basic']['instance']
-    llm_creative = api.models['creative']['instance']
-    llm_basic_context_window = api.models['basic']['context_window']
     return llm_basic
 
 
@@ -115,23 +107,34 @@ def get_embeddings():
     return embeddings
 
 
-@st.cache_resource
-def get_response(_documents):
+def get_response(_documents, collection_name, embedding_folder):
     llm = get_llm()
     parser = JsonOutputParser()
     error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
 
-    # Split the documents into chunks
-    text_splitter = CharacterTextSplitter(chunk_size=512, chunk_overlap=0)
-    texts = text_splitter.split_documents(_documents)
+    embeddings = get_embeddings()
 
-    # Create the vector store to use as the index
-    db = Qdrant.from_documents(
-        documents=texts,
-        embedding=get_embeddings(),
-        collection_name="my_documents",
-        location=":memory:",
-    )
+    # Define the default filenames used by FAISS when saving
+    faiss_path = os.path.join(embedding_folder, "index.faiss")
+    pkl_path = os.path.join(embedding_folder, "index.pkl")
+
+    # Check if all necessary files exist to load the embeddings
+    if os.path.exists(faiss_path) and os.path.exists(pkl_path):
+        # Load existing embeddings
+        print("Loading existing embeddings...")
+        db = FAISS.load_local(
+            embedding_folder, embeddings, allow_dangerous_deserialization=True
+        )
+    else:
+        # Split the documents into chunks
+        print("Creating new embeddings...")
+        text_splitter = CharacterTextSplitter(chunk_size=512, chunk_overlap=0)
+        texts = text_splitter.split_documents(_documents)
+
+        # Create the vector store to use as the index
+        db = FAISS.from_documents(texts, embeddings)
+        # Save the embeddings to the specified folder
+        db.save_local(embedding_folder)
 
     # Expose this index in a retriever interface
     retriever = db.as_retriever(
@@ -205,19 +208,27 @@ def file_changed():
         del st.session_state[key]
 
 #-----------------------------------------------------------------------------------------------#
-# st file uploader
+# Streamlit file uploader
 uploaded_file = st.file_uploader("Choose a PDF file", type="pdf", on_change=file_changed)
 
 
 if uploaded_file is not None:
     file = uploaded_file.read()
+    # Compute a hashed ID based on the PDF content
+    file_hash = hashlib.md5(file).hexdigest()
+    course_id = file_hash
+    embedding_folder = os.path.join('embedded_content', course_id)
+    if not os.path.exists('embedded_content'):
+        os.makedirs('embedded_content')
+    if not os.path.exists(embedding_folder):
+        os.makedirs(embedding_folder)
 
     with st.spinner("Processing file..."):
         documents = extract_documents_from_file(file)
         st.session_state.doc = fitz.open(stream=io.BytesIO(file), filetype="pdf")
 
     if documents:
-        qa_chain = get_response(documents)
+        qa_chain = get_response(documents, collection_name=course_id, embedding_folder=embedding_folder)
         # First run
         if "chat_history" not in st.session_state: 
             st.session_state.chat_history = [
@@ -240,18 +251,13 @@ if uploaded_file is not None:
             with st.spinner("Generating response..."):
                 try:
                     result = qa_chain.invoke({"input": user_input})
-                    # TEST
+                    # For debugging purposes
                     print("Result: ", result)
                     parsed_result = json.loads(result['answer'])
 
                     answer = parsed_result['answer']
                     sources = parsed_result['sources']
 
-                    # answer = "test"
-                    # sources = "Our findings indicate that the importance of science and critical thinking skills are strongly negatively associated with exposure, 
-                    # suggesting that occupations requiring these skills are less likely to be impacted by current LLMs. 
-                    # Conversely, programming and writing skills show a strong positive association with exposure, 
-                    # implying that occupations involving these skills are more susceptible to being influenced by LLMs."
                     try:
                         sources = sources.split(". ") if pd.notna(sources) else []
                     except:
@@ -302,7 +308,7 @@ if uploaded_file is not None:
             # PDF display section
             st.markdown("### PDF Preview")
             # Navigation
-            col1, col2, col3, col4 = st.columns([8, 4, 3, 3],vertical_alignment='center')
+            col1, col2, col3, col4 = st.columns([8, 4, 3, 3], vertical_alignment='center')
             with col1:
                 st.button("Previous Page", on_click=previous_page)
             with col2:
@@ -310,9 +316,9 @@ if uploaded_file is not None:
                     f"Page {st.session_state.current_page} of {st.session_state.total_pages}"
                 )
             with col3:
-                st.button("Next Page", on_click=next_page,use_container_width=True)
+                st.button("Next Page", on_click=next_page, use_container_width=True)
             with col4:
-                st.button("Close File", on_click=close_pdf,use_container_width=True)       
+                st.button("Close File", on_click=close_pdf, use_container_width=True)       
             # Display the PDF viewer
             pdf_viewer(
                 file,

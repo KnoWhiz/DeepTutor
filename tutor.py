@@ -9,6 +9,7 @@ import pandas as pd
 import streamlit as st
 from streamlit_pdf_viewer import pdf_viewer
 from langchain_community.vectorstores import FAISS
+from langchain_core.runnables import RunnablePassthrough
 from langchain.chains import RetrievalQA
 from langchain_community.document_loaders import PyPDFLoader, PyMuPDFLoader
 from langchain_core.prompts import PromptTemplate
@@ -161,7 +162,7 @@ def get_response(_documents, collection_name, embedding_folder):
             ADD ANYTHING EXTRA. DO NOT INVENT ANYTHING."
         Organize final response in the following JSON format:
 
-        -------------------------------
+        ```json
         {{
             "answer": "Your detailed answer here",
             "sources": [
@@ -171,7 +172,7 @@ def get_response(_documents, collection_name, embedding_folder):
                 <source_n>,
             ]
         }}
-        -------------------------------
+        ```
         
         The JSON must be a valid json format and can be read with json.loads() in Python.
         Do not include "```json" in response.
@@ -183,8 +184,23 @@ def get_response(_documents, collection_name, embedding_folder):
             ("human", "{input}"),
         ]
     )
-    question_answer_chain = create_stuff_documents_chain(llm, prompt)
-    chain = create_retrieval_chain(retriever, question_answer_chain)
+
+    def format_docs(docs):
+        return "\n\n".join(doc.page_content for doc in docs)
+    rag_chain_from_docs = (
+        {
+            "input": lambda x: x["input"],  # input query
+            "context": lambda x: format_docs(x["context"]),  # context
+        }
+        | prompt  # format query and context into prompt
+        | llm  # generate response
+        | error_parser  # parse response
+    )
+    # Pass input query to retriever
+    retrieve_docs = (lambda x: x["input"]) | retriever
+    chain = RunnablePassthrough.assign(context=retrieve_docs).assign(
+        answer=rag_chain_from_docs
+    )
     return chain
 
 
@@ -272,13 +288,11 @@ if uploaded_file is not None:
 
             with st.spinner("Generating response..."):
                 try:
-                    result = qa_chain.invoke({"input": user_input})
-                    # For debugging purposes
-                    print("Result: ", result)
-                    parsed_result = json.loads(result['answer'])
-
-                    answer = parsed_result['answer']
-                    sources = parsed_result['sources']
+                    parsed_result = qa_chain.invoke({"input": user_input})
+                    print("Result: ", parsed_result)
+                    result = parsed_result['answer']
+                    answer = result['answer']
+                    sources = result['sources']
 
                     try:
                         # Check whether sources is a list of strings

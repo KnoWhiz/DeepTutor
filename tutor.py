@@ -8,6 +8,7 @@ import json
 import pandas as pd
 import streamlit as st
 from streamlit_pdf_viewer import pdf_viewer
+
 from langchain_community.vectorstores import FAISS
 from langchain_core.runnables import RunnablePassthrough
 from langchain.chains import RetrievalQA
@@ -44,10 +45,10 @@ st.markdown(
 st.subheader("Upload a document to get started.")
 
 
-# Function to load PDF from file-like object
-@st.cache_data
-def load_pdf(file):
-    return fitz.open(stream=file, filetype="pdf")
+# # Function to load PDF from file-like object
+# @st.cache_data
+# def load_pdf(file):
+#     return fitz.open(stream=file, filetype="pdf")
 
 
 # Custom function to extract document objects from uploaded file
@@ -62,6 +63,7 @@ def extract_documents_from_file(file):
     # Load the document
     documents = loader.load()
     return documents
+
 
 # Starts from Page 0
 def find_pages_with_excerpts(doc, excerpts):
@@ -164,7 +166,7 @@ def get_response(_documents, collection_name, embedding_folder):
 
         ```json
         {{
-            "answer": "Your detailed answer here",
+            "answer": "Your a concise answer and directly answer the question in easy to understand language here. In Markdown format.",
             "sources": [
                 <source_1>,
                 <source_2>,
@@ -173,15 +175,20 @@ def get_response(_documents, collection_name, embedding_folder):
             ]
         }}
         ```
-        
-        The JSON must be a valid json format and can be read with json.loads() in Python.
-        Do not include "```json" in response.
+        """
+    )
+    human_prompt = (
+        """
+        My question is: {input}
+        Answer the question based on the context provided.
+        Since I am a student with no related knowledge backgroud, 
+        please provide a concise answer and directly answer the question in easy to understand language.
         """
     )
     prompt = ChatPromptTemplate.from_messages(
         [
             ("system", system_prompt),
-            ("human", "{input}"),
+            ("human", human_prompt),
         ]
     )
 

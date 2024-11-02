@@ -312,21 +312,17 @@ if uploaded_file is not None:
             if user_input := st.session_state.user_input:  
                 with st.spinner("Generating response..."):
                     try:
-                        result = qa_chain.invoke({"input": user_input})
-                        # TEST
-                        print("Result: ", result)
-                        parsed_result = json.loads(result['answer'])
+                        parsed_result = qa_chain.invoke({"input": user_input})
+                        print("Result: ", parsed_result)
+                        result = parsed_result['answer']
+                        answer = result['answer']
+                        sources = result['sources']
 
-                        answer = parsed_result['answer']
-                        sources = parsed_result['sources']
-
-                        # answer = "test"
-                        # sources = "Our findings indicate that the importance of science and critical thinking skills are strongly negatively associated with exposure, 
-                        # suggesting that occupations requiring these skills are less likely to be impacted by current LLMs. 
-                        # Conversely, programming and writing skills show a strong positive association with exposure, 
-                        # implying that occupations involving these skills are more susceptible to being influenced by LLMs."
                         try:
-                            sources = sources.split(". ") if pd.notna(sources) else []
+                            # Check whether sources is a list of strings
+                            if not all(isinstance(source, str) for source in sources):
+                                raise ValueError("Sources must be a list of strings.")
+                            sources = list(sources)
                         except:
                             sources = []
 

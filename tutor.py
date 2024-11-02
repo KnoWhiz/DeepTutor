@@ -21,12 +21,18 @@ from langchain_text_splitters import CharacterTextSplitter
 
 from pipeline.api_handler import ApiHandler
 
+import streamlit_nested_layout
+from streamlit_float import *
+
+
 # Set page config
 # st.set_page_config(page_title="📚 KnoWhiz Tutor")
 st.set_page_config(
     page_title="KnoWhiz Tutor",
-    page_icon="frontend/images/logo_short.ico"  # Replace with the actual path to your .ico file
+    page_icon="frontend/images/logo_short.ico",  # Replace with the actual path to your .ico file
+    layout="wide"
 )
+
 
 # Main content
 # st.markdown(
@@ -45,6 +51,8 @@ st.markdown(
 )
 st.subheader("Upload a document to get started.")
 
+# Init float function for chat_input textbox
+float_init(theme=True, include_unstable_primary=False)
 
 # Function to load PDF from file-like object
 @st.cache_data
@@ -204,17 +212,20 @@ def file_changed():
     for key in st.session_state.keys():
         del st.session_state[key]
 
+def chat_content():
+    st.session_state.chat_history.append(
+        {"role": "user", "content": st.session_state.user_input}
+    )
 #-----------------------------------------------------------------------------------------------#
 # st file uploader
 uploaded_file = st.file_uploader("Choose a PDF file", type="pdf", on_change=file_changed)
 
-
 if uploaded_file is not None:
     file = uploaded_file.read()
-
     with st.spinner("Processing file..."):
         documents = extract_documents_from_file(file)
         st.session_state.doc = fitz.open(stream=io.BytesIO(file), filetype="pdf")
+        st.session_state.total_pages = len(st.session_state.doc)
 
     if documents:
         qa_chain = get_response(documents)
@@ -223,101 +234,109 @@ if uploaded_file is not None:
             st.session_state.chat_history = [
                 {"role": "assistant", "content": "Hello! How can I assist you today? "}
             ]
-            st.session_state.show_pdf = False
+            st.session_state.show_chat_border = False
+        else:
+            st.session_state.show_chat_border = True
 
-        # After every rerun, display chat history (assistant and client)
-        for msg in st.session_state.chat_history:
-            st.chat_message(msg["role"]).write(msg["content"])
+    outer_columns = st.columns([1,1])
 
-        # If there has been a user input, update chat_history, invoke model and get response
-        if user_input := st.chat_input("Your message"):
-            st.session_state.show_pdf = False
-            st.session_state.chat_history.append(
-                {"role": "user", "content": user_input}
-            )
-            st.chat_message("user").write(user_input)
-
-            with st.spinner("Generating response..."):
-                try:
-                    result = qa_chain.invoke({"input": user_input})
-                    # TEST
-                    print("Result: ", result)
-                    parsed_result = json.loads(result['answer'])
-
-                    answer = parsed_result['answer']
-                    sources = parsed_result['sources']
-
-                    # answer = "test"
-                    # sources = "Our findings indicate that the importance of science and critical thinking skills are strongly negatively associated with exposure, 
-                    # suggesting that occupations requiring these skills are less likely to be impacted by current LLMs. 
-                    # Conversely, programming and writing skills show a strong positive association with exposure, 
-                    # implying that occupations involving these skills are more susceptible to being influenced by LLMs."
+   
+    with outer_columns[1]:            
+        with st.container(border=st.session_state.show_chat_border, height=800):
+            with st.container():
+                st.chat_input(key='user_input', on_submit=chat_content) 
+                button_b_pos = "2.2rem"
+                button_css = float_css_helper(width="2.2rem", bottom=button_b_pos, transition=0)
+                float_parent(css=button_css)
+            # After every rerun, display chat history (assistant and client)
+            for msg in st.session_state.chat_history:
+                st.chat_message(msg["role"]).write(msg["content"])
+            # If there has been a user input, update chat_history, invoke model and get response
+            if user_input := st.session_state.user_input:  
+                with st.spinner("Generating response..."):
                     try:
-                        sources = sources.split(". ") if pd.notna(sources) else []
-                    except:
-                        sources = []
+                        result = qa_chain.invoke({"input": user_input})
+                        # TEST
+                        print("Result: ", result)
+                        parsed_result = json.loads(result['answer'])
 
-                    print("The content is from: ", sources)
+                        answer = parsed_result['answer']
+                        sources = parsed_result['sources']
 
-                    st.session_state.chat_history.append(
-                        {"role": "assistant", "content": answer}
-                    )
-                    st.chat_message("assistant").write(answer)
+                        # answer = "test"
+                        # sources = "Our findings indicate that the importance of science and critical thinking skills are strongly negatively associated with exposure, 
+                        # suggesting that occupations requiring these skills are less likely to be impacted by current LLMs. 
+                        # Conversely, programming and writing skills show a strong positive association with exposure, 
+                        # implying that occupations involving these skills are more susceptible to being influenced by LLMs."
+                        try:
+                            sources = sources.split(". ") if pd.notna(sources) else []
+                        except:
+                            sources = []
 
-                    # Update the session state with new sources
-                    st.session_state.sources = sources
+                        print("The content is from: ", sources)
 
-                    # Set a flag to indicate chat interaction has occurred
-                    st.session_state.chat_occurred = True
+                        st.session_state.chat_history.append(
+                            {"role": "assistant", "content": answer}
+                        )
+                        st.chat_message("assistant").write(answer)
 
-                except json.JSONDecodeError:
-                    st.error(
-                        "There was an error parsing the response. Please try again."
-                    )
+                        # Update the session state with new sources
+                        st.session_state.sources = sources
 
-            # Highlight PDF excerpts
-            if file and st.session_state.get("chat_occurred", False):
-                doc = st.session_state.doc
-                st.session_state.total_pages = len(doc)
+                        # Set a flag to indicate chat interaction has occurred
+                        st.session_state.chat_occurred = True
 
-                # Find the page numbers containing the excerpts
-                pages_with_excerpts = find_pages_with_excerpts(doc, sources)
+                    except json.JSONDecodeError:
+                        st.error(
+                            "There was an error parsing the response. Please try again."
+                        )
 
-                if "current_page" not in st.session_state:
-                    st.session_state.current_page = pages_with_excerpts[0]+1
+                # Highlight PDF excerpts
+                if file and st.session_state.get("chat_occurred", False):
+                    doc = st.session_state.doc
+                    
+                    # Find the page numbers containing the excerpts
+                    pages_with_excerpts = find_pages_with_excerpts(doc, sources)
 
-                if 'pages_with_exerpts' not in st.session_state:
-                    st.session_state.pages_with_excerpts = pages_with_excerpts
+                    if "current_page" not in st.session_state:
+                        st.session_state.current_page = pages_with_excerpts[0]+1
 
-                # Get annotations with correct coordinates
-                st.session_state.annotations = get_highlight_info(doc, st.session_state.sources)
-                
-                # Find the first page with excerpts
-                if st.session_state.annotations:
-                    st.session_state.current_page = min(annotation["page"] for annotation in st.session_state.annotations)
-                
-                st.session_state.show_pdf = True
-                
-        if st.session_state.show_pdf: 
-            # PDF display section
-            st.markdown("### PDF Preview")
-            # Navigation
-            col1, col2, col3, col4 = st.columns([8, 4, 3, 3],vertical_alignment='center')
-            with col1:
-                st.button("Previous Page", on_click=previous_page)
-            with col2:
-                st.write(
-                    f"Page {st.session_state.current_page} of {st.session_state.total_pages}"
-                )
-            with col3:
-                st.button("Next Page", on_click=next_page,use_container_width=True)
-            with col4:
-                st.button("Close File", on_click=close_pdf,use_container_width=True)       
-            # Display the PDF viewer
-            pdf_viewer(
-                file,
-                width=700,
-                height=800,
-                annotations=st.session_state.annotations,
-                pages_to_render=[st.session_state.current_page],
+                    if 'pages_with_exerpts' not in st.session_state:
+                        st.session_state.pages_with_excerpts = pages_with_excerpts
+
+                    # Get annotations with correct coordinates
+                    st.session_state.annotations = get_highlight_info(doc, st.session_state.sources)
+                    
+                    # Find the first page with excerpts
+                    if st.session_state.annotations:
+                        st.session_state.current_page = min(annotation["page"] for annotation in st.session_state.annotations)
+                    
+    with outer_columns[0]:
+        if "current_page" not in st.session_state:
+            st.session_state.current_page = 1
+        if "annotations" not in st.session_state:
+            st.session_state.annotations = []
+        # PDF display section
+        # st.markdown("### PDF Preview")
+        
+        # Display the PDF viewer
+        pdf_viewer(
+            file,
+            width=700,
+            height=800,
+            annotations=st.session_state.annotations,
+            pages_to_render=[st.session_state.current_page],
+        )
+        # Navigation
+        col1, col2, col3, col4 = st.columns([8, 4, 3, 3],vertical_alignment='center')
+        with col1:
+            st.button("Previous Page", on_click=previous_page)
+        with col2:
+            st.write(
+                f"Page {st.session_state.current_page} of {st.session_state.total_pages}"
             )
+        # with col3:
+        #     st.button("Next Page", on_click=next_page,use_container_width=True)
+        with col4:
+            # st.button("Close File", on_click=close_pdf,use_container_width=True)     
+            st.button("Next Page", on_click=next_page,use_container_width=True)

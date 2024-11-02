@@ -2,21 +2,23 @@ import os
 import base64
 import fitz
 import tempfile
+import hashlib
 import io
 import json
 import pandas as pd
 import streamlit as st
 from streamlit_pdf_viewer import pdf_viewer
+
+from langchain_community.vectorstores import FAISS
+from langchain_core.runnables import RunnablePassthrough
 from langchain.chains import RetrievalQA
 from langchain_community.document_loaders import PyPDFLoader, PyMuPDFLoader
-from langchain_community.vectorstores import Qdrant
 from langchain_core.prompts import PromptTemplate
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
 from langchain.output_parsers import OutputFixingParser
-from langchain_openai import OpenAIEmbeddings, AzureOpenAIEmbeddings
 from langchain_text_splitters import CharacterTextSplitter
 
 from pipeline.api_handler import ApiHandler
@@ -26,7 +28,6 @@ from streamlit_float import *
 
 
 # Set page config
-# st.set_page_config(page_title="📚 KnoWhiz Tutor")
 st.set_page_config(
     page_title="KnoWhiz Tutor",
     page_icon="frontend/images/logo_short.ico",  # Replace with the actual path to your .ico file
@@ -35,9 +36,6 @@ st.set_page_config(
 
 
 # Main content
-# st.markdown(
-#     "<h1 style='text-align: center;'>📚 KnoWhiz Tutor</h1>", unsafe_allow_html=True
-# )
 with open("frontend/images/logo_short.png", "rb") as image_file:
     encoded_image = base64.b64encode(image_file.read()).decode()
 st.markdown(
@@ -54,10 +52,10 @@ st.subheader("Upload a document to get started.")
 # Init float function for chat_input textbox
 float_init(theme=True, include_unstable_primary=False)
 
-# Function to load PDF from file-like object
-@st.cache_data
-def load_pdf(file):
-    return fitz.open(stream=file, filetype="pdf")
+# # Function to load PDF from file-like object
+# @st.cache_data
+# def load_pdf(file):
+#     return fitz.open(stream=file, filetype="pdf")
 
 
 # Custom function to extract document objects from uploaded file
@@ -72,6 +70,7 @@ def extract_documents_from_file(file):
     # Load the document
     documents = loader.load()
     return documents
+
 
 # Starts from Page 0
 def find_pages_with_excerpts(doc, excerpts):
@@ -89,57 +88,67 @@ def find_pages_with_excerpts(doc, excerpts):
 
 
 @st.cache_resource
-def get_llm():
-    ##  load LLMs
-    # llm = ChatOpenAI(
-    #     model="gpt-4o-mini", temperature=0, openai_api_key=os.getenv("OPENAI_API_KEY")
-    # )
+def get_llm(llm_type, para):
+    para = para
+    api = ApiHandler(para)
+    llm_basic = api.models['basic']['instance']
+    llm_advance = api.models['advance']['instance']
+    llm_creative = api.models['creative']['instance']
+    if llm_type == 'basic':
+        return llm_basic
+    elif llm_type == 'advance':
+        return llm_advance
+    elif llm_type == 'creative':
+        return llm_creative
+    return llm_basic
+
+
+@st.cache_resource
+def get_embedding_models(embedding_model_type, para):
+    para = para
+    api = ApiHandler(para)
+    embedding_model_default = api.embedding_models['default']['instance']
+    if embedding_model_type == 'default':
+        return embedding_model_default
+    else:
+        return embedding_model_default
+
+
+def get_response(_documents, collection_name, embedding_folder):
     para = {
-        'llm_source': 'openai', # 'llm_source': 'anthropic',
+        'llm_source': 'openai',  # or 'anthropic'
         'temperature': 0,
         "creative_temperature": 0.5,
         "openai_key_dir": ".env",
         "anthropic_key_dir": ".env",
     }
-    api = ApiHandler(para)
-    llm_advance = api.models['advance']['instance']
-    llm_basic = api.models['basic']['instance']
-    llm_creative = api.models['creative']['instance']
-    llm_basic_context_window = api.models['basic']['context_window']
-    return llm_basic
-
-
-@st.cache_resource
-def get_embeddings():
-    # embeddings = OpenAIEmbeddings(
-    #     model="text-embedding-ada-002", openai_api_key=os.getenv("OPENAI_API_KEY")
-    # )
-    embeddings = AzureOpenAIEmbeddings(deployment="text-embedding-3-large",
-                                        model="text-embedding-3-large",
-                                        azure_endpoint=os.getenv('AZURE_OPENAI_ENDPOINT_EMBEDDINGS'),
-                                        openai_api_key =os.getenv('OPENAI_API_KEY_EMBEDDINGS'),
-                                        openai_api_type="azure",
-                                        chunk_size=1)
-    return embeddings
-
-
-@st.cache_resource
-def get_response(_documents):
-    llm = get_llm()
+    llm = get_llm('basic', para)
     parser = JsonOutputParser()
     error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
 
-    # Split the documents into chunks
-    text_splitter = CharacterTextSplitter(chunk_size=512, chunk_overlap=0)
-    texts = text_splitter.split_documents(_documents)
+    embeddings = get_embedding_models('default', para)
 
-    # Create the vector store to use as the index
-    db = Qdrant.from_documents(
-        documents=texts,
-        embedding=get_embeddings(),
-        collection_name="my_documents",
-        location=":memory:",
-    )
+    # Define the default filenames used by FAISS when saving
+    faiss_path = os.path.join(embedding_folder, "index.faiss")
+    pkl_path = os.path.join(embedding_folder, "index.pkl")
+
+    # Check if all necessary files exist to load the embeddings
+    if os.path.exists(faiss_path) and os.path.exists(pkl_path):
+        # Load existing embeddings
+        print("Loading existing embeddings...")
+        db = FAISS.load_local(
+            embedding_folder, embeddings, allow_dangerous_deserialization=True
+        )
+    else:
+        # Split the documents into chunks
+        print("Creating new embeddings...")
+        text_splitter = CharacterTextSplitter(chunk_size=512, chunk_overlap=0)
+        texts = text_splitter.split_documents(_documents)
+
+        # Create the vector store to use as the index
+        db = FAISS.from_documents(texts, embeddings)
+        # Save the embeddings to the specified folder
+        db.save_local(embedding_folder)
 
     # Expose this index in a retriever interface
     retriever = db.as_retriever(
@@ -152,27 +161,60 @@ def get_response(_documents):
         You are a patient and honest professor helping a student reading a paper.
         Use the given context to answer the question.
         If you don't know the answer, say you don't know.
-        Context: {context}
-        Please provide your answer in the following JSON format: 
-        {{
-            "answer": "Your detailed answer here",
-            "sources": "Direct sentences or paragraphs from the context that support 
-                your answers. ONLY RELEVANT TEXT DIRECTLY FROM THE DOCUMENTS. DO NOT 
-                ADD ANYTHING EXTRA. DO NOT INVENT ANYTHING."
-        }}
+
+        Context: ```{context}```
         
-        The JSON must be a valid json format and can be read with json.loads() in Python.
-        Do not include "```json" in response.
+        For answer part, provide your detailed answer;
+        For sources part, provide the
+            "Direct sentences or paragraphs from the context that support 
+            your answers. ONLY RELEVANT TEXT DIRECTLY FROM THE DOCUMENTS. DO NOT 
+            ADD ANYTHING EXTRA. DO NOT INVENT ANYTHING."
+        Organize final response in the following JSON format:
+
+        ```json
+        {{
+            "answer": "Your a concise answer and directly answer the question in easy to understand language here. In Markdown format.",
+            "sources": [
+                <source_1>,
+                <source_2>,
+                ...
+                <source_n>,
+            ]
+        }}
+        ```
+        """
+    )
+    human_prompt = (
+        """
+        My question is: {input}
+        Answer the question based on the context provided.
+        Since I am a student with no related knowledge backgroud, 
+        please provide a concise answer and directly answer the question in easy to understand language.
         """
     )
     prompt = ChatPromptTemplate.from_messages(
         [
             ("system", system_prompt),
-            ("human", "{input}"),
+            ("human", human_prompt),
         ]
     )
-    question_answer_chain = create_stuff_documents_chain(llm, prompt)
-    chain = create_retrieval_chain(retriever, question_answer_chain)
+
+    def format_docs(docs):
+        return "\n\n".join(doc.page_content for doc in docs)
+    rag_chain_from_docs = (
+        {
+            "input": lambda x: x["input"],  # input query
+            "context": lambda x: format_docs(x["context"]),  # context
+        }
+        | prompt  # format query and context into prompt
+        | llm  # generate response
+        | error_parser  # parse response
+    )
+    # Pass input query to retriever
+    retrieve_docs = (lambda x: x["input"]) | retriever
+    chain = RunnablePassthrough.assign(context=retrieve_docs).assign(
+        answer=rag_chain_from_docs
+    )
     return chain
 
 
@@ -196,16 +238,20 @@ def get_highlight_info(doc, excerpts):
                     )
     return annotations
 
+
 def previous_page():
     if st.session_state.current_page > 1:
         st.session_state.current_page -=1
+
 
 def next_page():
     if st.session_state.current_page < st.session_state.total_pages:
         st.session_state.current_page += 1
 
+
 def close_pdf():
     st.session_state.show_pdf = False
+
 
 # Reset all states
 def file_changed():
@@ -216,19 +262,30 @@ def chat_content():
     st.session_state.chat_history.append(
         {"role": "user", "content": st.session_state.user_input}
     )
+
 #-----------------------------------------------------------------------------------------------#
-# st file uploader
+# Streamlit file uploader
 uploaded_file = st.file_uploader("Choose a PDF file", type="pdf", on_change=file_changed)
 
 if uploaded_file is not None:
     file = uploaded_file.read()
+
+    # Compute a hashed ID based on the PDF content
+    file_hash = hashlib.md5(file).hexdigest()
+    course_id = file_hash
+    embedding_folder = os.path.join('embedded_content', course_id)
+    if not os.path.exists('embedded_content'):
+        os.makedirs('embedded_content')
+    if not os.path.exists(embedding_folder):
+        os.makedirs(embedding_folder)
+
     with st.spinner("Processing file..."):
         documents = extract_documents_from_file(file)
         st.session_state.doc = fitz.open(stream=io.BytesIO(file), filetype="pdf")
         st.session_state.total_pages = len(st.session_state.doc)
 
     if documents:
-        qa_chain = get_response(documents)
+        qa_chain = get_response(documents, collection_name=course_id, embedding_folder=embedding_folder)
         # First run
         if "chat_history" not in st.session_state: 
             st.session_state.chat_history = [

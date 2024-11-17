@@ -27,10 +27,10 @@ with open("frontend/images/logo_short.png", "rb") as image_file:
     encoded_image = base64.b64encode(image_file.read()).decode()
 st.markdown(
     f"""
-    <h1 style='text-align: center;'>
+    <h2 style='text-align: center;'>
         <img src="data:image/png;base64,{encoded_image}" alt='icon' style='width:50px; height:50px; vertical-align: middle; margin-right: 10px;'>
         KnoWhiz Tutor
-    </h1>
+    </h2>
     """,
     unsafe_allow_html=True
 )

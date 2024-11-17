@@ -13,6 +13,7 @@ from streamlit_float import *
 
 from pipeline.api_handler import ApiHandler
 
+
 @st.cache_resource
 def get_llm(llm_type, para):
     para = para
@@ -28,6 +29,7 @@ def get_llm(llm_type, para):
         return llm_creative
     return llm_basic
 
+
 @st.cache_resource
 def get_embedding_models(embedding_model_type, para):
     para = para
@@ -37,6 +39,7 @@ def get_embedding_models(embedding_model_type, para):
         return embedding_model_default
     else:
         return embedding_model_default
+    
 
 def get_response(_documents, collection_name, embedding_folder):
     para = {
@@ -46,7 +49,7 @@ def get_response(_documents, collection_name, embedding_folder):
         "openai_key_dir": ".env",
         "anthropic_key_dir": ".env",
     }
-    llm = get_llm('basic', para)
+    llm = get_llm('advance', para)
     parser = JsonOutputParser()
     error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
 

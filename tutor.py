@@ -7,15 +7,11 @@ import io
 import json
 import streamlit as st
 from streamlit_pdf_viewer import pdf_viewer
-
-from langchain_community.vectorstores import FAISS
 from langchain_community.document_loaders import PyPDFLoader, PyMuPDFLoader
-
-from pipeline.api_handler import ApiHandler
-from pipeline.get_response import get_response
-
 import streamlit_nested_layout
 from streamlit_float import *
+
+from pipeline.get_response import get_response
 
 
 # Set page config
@@ -113,6 +109,7 @@ def close_pdf():
 def file_changed():
     for key in st.session_state.keys():
         del st.session_state[key]
+        
 
 def chat_content():
     st.session_state.chat_history.append(
@@ -125,129 +122,134 @@ def chat_content():
 uploaded_file = st.file_uploader("Choose a PDF file", type="pdf", on_change=file_changed)
 
 
-if uploaded_file is not None:
-    file = uploaded_file.read()
+if __name__ == "__main__" and uploaded_file is not None:
+    file_size = uploaded_file.size
+    max_file_size = 10 * 1024 * 1024  # 10 MB
 
-    # Compute a hashed ID based on the PDF content
-    file_hash = hashlib.md5(file).hexdigest()
-    course_id = file_hash
-    embedding_folder = os.path.join('embedded_content', course_id)
-    if not os.path.exists('embedded_content'):
-        os.makedirs('embedded_content')
-    if not os.path.exists(embedding_folder):
-        os.makedirs(embedding_folder)
+    if file_size > max_file_size:
+        st.error("File size exceeds the 10 MB limit. Please upload a smaller file.")
+    else:
+        file = uploaded_file.read()
 
-    with st.spinner("Processing file..."):
-        documents = extract_documents_from_file(file)
-        st.session_state.doc = fitz.open(stream=io.BytesIO(file), filetype="pdf")
-        st.session_state.total_pages = len(st.session_state.doc)
+        # Compute a hashed ID based on the PDF content
+        file_hash = hashlib.md5(file).hexdigest()
+        course_id = file_hash
+        embedding_folder = os.path.join('embedded_content', course_id)
+        if not os.path.exists('embedded_content'):
+            os.makedirs('embedded_content')
+        if not os.path.exists(embedding_folder):
+            os.makedirs(embedding_folder)
 
-    if documents:
-        qa_chain = get_response(documents, collection_name=course_id, embedding_folder=embedding_folder)
-        # First run
-        if "chat_history" not in st.session_state: 
-            st.session_state.chat_history = [
-                {"role": "assistant", "content": "Hello! How can I assist you today? "}
-            ]
-            st.session_state.show_chat_border = False
-        else:
-            st.session_state.show_chat_border = True
+        with st.spinner("Processing file..."):
+            documents = extract_documents_from_file(file)
+            st.session_state.doc = fitz.open(stream=io.BytesIO(file), filetype="pdf")
+            st.session_state.total_pages = len(st.session_state.doc)
 
-    outer_columns = st.columns([1,1])
+        if documents:
+            qa_chain = get_response(documents, collection_name=course_id, embedding_folder=embedding_folder)
+            # First run
+            if "chat_history" not in st.session_state: 
+                st.session_state.chat_history = [
+                    {"role": "assistant", "content": "Hello! How can I assist you today? "}
+                ]
+                st.session_state.show_chat_border = False
+            else:
+                st.session_state.show_chat_border = True
 
-   
-    with outer_columns[1]:            
-        with st.container(border=st.session_state.show_chat_border, height=800):
-            with st.container():
-                st.chat_input(key='user_input', on_submit=chat_content) 
-                button_b_pos = "2.2rem"
-                button_css = float_css_helper(width="2.2rem", bottom=button_b_pos, transition=0)
-                float_parent(css=button_css)
-            # After every rerun, display chat history (assistant and client)
-            for msg in st.session_state.chat_history:
-                st.chat_message(msg["role"]).write(msg["content"])
-            # If there has been a user input, update chat_history, invoke model and get response
-            if user_input := st.session_state.user_input:  
-                with st.spinner("Generating response..."):
-                    try:
-                        parsed_result = qa_chain.invoke({"input": user_input})
-                        print("Result: ", parsed_result)
-                        result = parsed_result['answer']
-                        answer = result['answer']
-                        sources = result['sources']
-
+        outer_columns = st.columns([1,1])
+    
+        with outer_columns[1]:            
+            with st.container(border=st.session_state.show_chat_border, height=800):
+                with st.container():
+                    st.chat_input(key='user_input', on_submit=chat_content) 
+                    button_b_pos = "2.2rem"
+                    button_css = float_css_helper(width="2.2rem", bottom=button_b_pos, transition=0)
+                    float_parent(css=button_css)
+                # After every rerun, display chat history (assistant and client)
+                for msg in st.session_state.chat_history:
+                    st.chat_message(msg["role"]).write(msg["content"])
+                # If there has been a user input, update chat_history, invoke model and get response
+                if user_input := st.session_state.user_input:  
+                    with st.spinner("Generating response..."):
                         try:
-                            # Check whether sources is a list of strings
-                            if not all(isinstance(source, str) for source in sources):
-                                raise ValueError("Sources must be a list of strings.")
-                            sources = list(sources)
-                        except:
-                            sources = []
+                            parsed_result = qa_chain.invoke({"input": user_input})
+                            print("Result: ", parsed_result)
+                            result = parsed_result['answer']
+                            answer = result['answer']
+                            sources = result['sources']
 
-                        print("The content is from: ", sources)
+                            try:
+                                # Check whether sources is a list of strings
+                                if not all(isinstance(source, str) for source in sources):
+                                    raise ValueError("Sources must be a list of strings.")
+                                sources = list(sources)
+                            except:
+                                sources = []
 
-                        st.session_state.chat_history.append(
-                            {"role": "assistant", "content": answer}
-                        )
-                        st.chat_message("assistant").write(answer)
+                            print("The content is from: ", sources)
 
-                        # Update the session state with new sources
-                        st.session_state.sources = sources
+                            st.session_state.chat_history.append(
+                                {"role": "assistant", "content": answer}
+                            )
+                            st.chat_message("assistant").write(answer)
 
-                        # Set a flag to indicate chat interaction has occurred
-                        st.session_state.chat_occurred = True
+                            # Update the session state with new sources
+                            st.session_state.sources = sources
 
-                    except json.JSONDecodeError:
-                        st.error(
-                            "There was an error parsing the response. Please try again."
-                        )
+                            # Set a flag to indicate chat interaction has occurred
+                            st.session_state.chat_occurred = True
 
-                # Highlight PDF excerpts
-                if file and st.session_state.get("chat_occurred", False):
-                    doc = st.session_state.doc
-                    
-                    # Find the page numbers containing the excerpts
-                    pages_with_excerpts = find_pages_with_excerpts(doc, sources)
+                        except json.JSONDecodeError:
+                            st.error(
+                                "There was an error parsing the response. Please try again."
+                            )
 
-                    if "current_page" not in st.session_state:
-                        st.session_state.current_page = pages_with_excerpts[0]+1
+                    # Highlight PDF excerpts
+                    if file and st.session_state.get("chat_occurred", False):
+                        doc = st.session_state.doc
+                        
+                        # Find the page numbers containing the excerpts
+                        pages_with_excerpts = find_pages_with_excerpts(doc, sources)
 
-                    if 'pages_with_exerpts' not in st.session_state:
-                        st.session_state.pages_with_excerpts = pages_with_excerpts
+                        if "current_page" not in st.session_state:
+                            st.session_state.current_page = pages_with_excerpts[0]+1
 
-                    # Get annotations with correct coordinates
-                    st.session_state.annotations = get_highlight_info(doc, st.session_state.sources)
-                    
-                    # Find the first page with excerpts
-                    if st.session_state.annotations:
-                        st.session_state.current_page = min(annotation["page"] for annotation in st.session_state.annotations)
-                    
-    with outer_columns[0]:
-        if "current_page" not in st.session_state:
-            st.session_state.current_page = 1
-        if "annotations" not in st.session_state:
-            st.session_state.annotations = []
-        # PDF display section
-        # st.markdown("### PDF Preview")
-        
-        # Display the PDF viewer
-        pdf_viewer(
-            file,
-            width=700,
-            height=800,
-            annotations=st.session_state.annotations,
-            pages_to_render=[st.session_state.current_page],
-        )
-        # Navigation
-        col1, col2, col3, col4 = st.columns([8, 4, 3, 3],vertical_alignment='center')
-        with col1:
-            st.button("Previous Page", on_click=previous_page)
-        with col2:
-            st.write(
-                f"Page {st.session_state.current_page} of {st.session_state.total_pages}"
+                        if 'pages_with_exerpts' not in st.session_state:
+                            st.session_state.pages_with_excerpts = pages_with_excerpts
+
+                        # Get annotations with correct coordinates
+                        st.session_state.annotations = get_highlight_info(doc, st.session_state.sources)
+                        
+                        # Find the first page with excerpts
+                        if st.session_state.annotations:
+                            st.session_state.current_page = min(annotation["page"] for annotation in st.session_state.annotations)
+                        
+        with outer_columns[0]:
+            if "current_page" not in st.session_state:
+                st.session_state.current_page = 1
+            if "annotations" not in st.session_state:
+                st.session_state.annotations = []
+            # PDF display section
+            # st.markdown("### PDF Preview")
+            
+            # Display the PDF viewer
+            pdf_viewer(
+                file,
+                width=700,
+                height=800,
+                annotations=st.session_state.annotations,
+                pages_to_render=[st.session_state.current_page],
             )
-        # with col3:
-        #     st.button("Next Page", on_click=next_page,use_container_width=True)
-        with col4:
-            # st.button("Close File", on_click=close_pdf,use_container_width=True)     
-            st.button("Next Page", on_click=next_page,use_container_width=True)
+            # Navigation
+            col1, col2, col3, col4 = st.columns([8, 4, 3, 3],vertical_alignment='center')
+            with col1:
+                st.button("Previous Page", on_click=previous_page)
+            with col2:
+                st.write(
+                    f"Page {st.session_state.current_page} of {st.session_state.total_pages}"
+                )
+            # with col3:
+            #     st.button("Next Page", on_click=next_page,use_container_width=True)
+            with col4:
+                # st.button("Close File", on_click=close_pdf,use_container_width=True)     
+                st.button("Next Page", on_click=next_page,use_container_width=True)

@@ -147,10 +147,6 @@ if __name__ == "__main__" and uploaded_file is not None:
             st.session_state.doc = fitz.open(stream=io.BytesIO(file), filetype="pdf")
             st.session_state.total_pages = len(st.session_state.doc)
 
-            # **Image extraction**
-            st.session_state.images_with_context = extract_images_with_context(io.BytesIO(file))
-            st.session_state.temp_images = save_images_temp(st.session_state.images_with_context)
-
         if documents:
             qa_chain = get_response(documents, embedding_folder=embedding_folder)
             qa_source_chain = get_response_source(documents, embedding_folder=embedding_folder)
@@ -203,9 +199,6 @@ if __name__ == "__main__" and uploaded_file is not None:
                                 {"role": "assistant", "content": answer}
                             )
                             st.chat_message("assistant").write(answer)
-
-                            # Display relevant images for the user's query
-                            display_relevant_images(user_input)
 
                             # Update the session state with new sources
                             st.session_state.sources = sources

@@ -12,6 +12,7 @@ import streamlit_nested_layout
 from streamlit_float import *
 
 from pipeline.get_response import get_response
+from pipeline.get_response import get_response_source
 
 
 # Set page config
@@ -244,6 +245,7 @@ if __name__ == "__main__" and uploaded_file is not None:
 
         if documents:
             qa_chain = get_response(documents, embedding_folder=embedding_folder)
+            qa_source_chain = get_response_source(documents, embedding_folder=embedding_folder)
             # First run
             if "chat_history" not in st.session_state: 
                 st.session_state.chat_history = [
@@ -269,11 +271,15 @@ if __name__ == "__main__" and uploaded_file is not None:
                 if user_input := st.session_state.user_input:  
                     with st.spinner("Generating response..."):
                         try:
+                            # Get the response from the model
                             parsed_result = qa_chain.invoke({"input": user_input})
-                            print("Result: ", parsed_result)
-                            result = parsed_result['answer']
-                            answer = result['answer']
-                            sources = result['sources']
+                            print("qa_chain: ", parsed_result)
+                            answer = parsed_result['answer']
+                            
+                            # Get sources
+                            parsed_result = qa_source_chain.invoke({"input": user_input})
+                            print("qa_source_chain: ", parsed_result)
+                            sources = parsed_result['answer']['sources']
 
                             try:
                                 # Check whether sources is a list of strings

@@ -50,7 +50,7 @@ def get_response(_documents, embedding_folder):
         "anthropic_key_dir": ".env",
     }
     llm = get_llm('advance', para)
-    parser = JsonOutputParser()
+    parser = StrOutputParser()
     error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
 
     embeddings = get_embedding_models('default', para)
@@ -88,19 +88,101 @@ def get_response(_documents, embedding_folder):
         You are a patient and honest professor helping a student reading a paper.
         Use the given context to answer the question.
         If you don't know the answer, say you don't know.
+        Context: ```{context}```
+        """
+    )
+    human_prompt = (
+        """
+        My question is: {input}
+        Answer the question based on the context provided.
+        Since I am a student with no related knowledge backgroud, 
+        please provide a concise answer and directly answer the question in easy to understand language.
+        """
+    )
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", system_prompt),
+            ("human", human_prompt),
+        ]
+    )
+
+    def format_docs(docs):
+        return "\n\n".join(doc.page_content for doc in docs)
+    rag_chain_from_docs = (
+        {
+            "input": lambda x: x["input"],  # input query
+            "context": lambda x: format_docs(x["context"]),  # context
+        }
+        | prompt  # format query and context into prompt
+        | llm  # generate response
+        | error_parser  # parse response
+    )
+    # Pass input query to retriever
+    retrieve_docs = (lambda x: x["input"]) | retriever
+    chain = RunnablePassthrough.assign(context=retrieve_docs).assign(
+        answer=rag_chain_from_docs
+    )
+    return chain
+
+
+def get_response_source(_documents, embedding_folder):
+    para = {
+        'llm_source': 'openai',  # or 'anthropic'
+        'temperature': 0,
+        "creative_temperature": 0.5,
+        "openai_key_dir": ".env",
+        "anthropic_key_dir": ".env",
+    }
+    llm = get_llm('advance', para)
+    parser = JsonOutputParser()
+    error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
+
+    embeddings = get_embedding_models('default', para)
+
+    # Define the default filenames used by FAISS when saving
+    faiss_path = os.path.join(embedding_folder, "index.faiss")
+    pkl_path = os.path.join(embedding_folder, "index.pkl")
+
+    # Check if all necessary files exist to load the embeddings
+    if os.path.exists(faiss_path) and os.path.exists(pkl_path):
+        # Load existing embeddings
+        print("Loading existing embeddings...")
+        db = FAISS.load_local(
+            embedding_folder, embeddings, allow_dangerous_deserialization=True
+        )
+    else:
+        # Split the documents into chunks
+        print("Creating new embeddings...")
+        text_splitter = CharacterTextSplitter(chunk_size=512, chunk_overlap=0)
+        texts = text_splitter.split_documents(_documents)
+
+        # Create the vector store to use as the index
+        db = FAISS.from_documents(texts, embeddings)
+        # Save the embeddings to the specified folder
+        db.save_local(embedding_folder)
+
+    # Expose this index in a retriever interface
+    retriever = db.as_retriever(
+        search_type="mmr", search_kwargs={"k": 2, "lambda_mult": 0.8}
+    )
+
+    # Create the RetrievalQA chain
+    system_prompt = (
+        """
+        You are a honest professor helping a student reading a paper.
+        For the given question about the context,
+        find and provide sources that are helpful for answering the question.
+        Use direct sentences or paragraphs from the context that are related to the question.
+        ONLY RELEVANT TEXT DIRECTLY FROM THE DOCUMENTS. 
+        DO NOT ADD ANYTHING EXTRA. DO NOT INVENT ANYTHING.
+        Make as comprehensive a list of all the things that might be helpful
 
         Context: ```{context}```
-        
-        For answer part, provide your detailed answer;
-        For sources part, provide the
-            "Direct sentences or paragraphs from the context that support 
-            your answers. ONLY RELEVANT TEXT DIRECTLY FROM THE DOCUMENTS. DO NOT 
-            ADD ANYTHING EXTRA. DO NOT INVENT ANYTHING."
+
         Organize final response in the following JSON format:
 
         ```json
         {{
-            "answer": "Your a concise answer and directly answer the question in easy to understand language here. In Markdown format.",
             "sources": [
                 <source_1>,
                 <source_2>,
@@ -113,10 +195,7 @@ def get_response(_documents, embedding_folder):
     )
     human_prompt = (
         """
-        My question is: {input}
-        Answer the question based on the context provided.
-        Since I am a student with no related knowledge backgroud, 
-        please provide a concise answer and directly answer the question in easy to understand language.
+        My question is: {input}. I want to find the sources sentences that are helpful for answering the question.
         """
     )
     prompt = ChatPromptTemplate.from_messages(

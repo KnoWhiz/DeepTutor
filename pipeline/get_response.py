@@ -39,9 +39,9 @@ def get_embedding_models(embedding_model_type, para):
         return embedding_model_default
     else:
         return embedding_model_default
-    
 
-def get_response(_documents, collection_name, embedding_folder):
+
+def get_response(_documents, embedding_folder):
     para = {
         'llm_source': 'openai',  # or 'anthropic'
         'temperature': 0,

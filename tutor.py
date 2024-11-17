@@ -146,7 +146,7 @@ if __name__ == "__main__" and uploaded_file is not None:
             st.session_state.total_pages = len(st.session_state.doc)
 
         if documents:
-            qa_chain = get_response(documents, collection_name=course_id, embedding_folder=embedding_folder)
+            qa_chain = get_response(documents, embedding_folder=embedding_folder)
             # First run
             if "chat_history" not in st.session_state: 
                 st.session_state.chat_history = [
@@ -239,11 +239,12 @@ if __name__ == "__main__" and uploaded_file is not None:
                 height=800,
                 annotations=st.session_state.annotations,
                 pages_to_render=[st.session_state.current_page],
+                render_text=True,
             )
             # Navigation
             col1, col2, col3, col4 = st.columns([8, 4, 3, 3],vertical_alignment='center')
             with col1:
-                st.button("Previous Page", on_click=previous_page)
+                st.button("←", on_click=previous_page)
             with col2:
                 st.write(
                     f"Page {st.session_state.current_page} of {st.session_state.total_pages}"
@@ -252,4 +253,4 @@ if __name__ == "__main__" and uploaded_file is not None:
             #     st.button("Next Page", on_click=next_page,use_container_width=True)
             with col4:
                 # st.button("Close File", on_click=close_pdf,use_container_width=True)     
-                st.button("Next Page", on_click=next_page,use_container_width=True)
+                st.button("→", on_click=next_page)

@@ -4,4 +4,11 @@
 .DS_Store
 *.pyc
 pipeline/__pycache__/api_handler.cpython-312.pyc
-/embedded_content
+*.faiss
+*.pkl
+*.jpg
+*.png
+*.pdf
+*.txt
+*.csv
+*.log

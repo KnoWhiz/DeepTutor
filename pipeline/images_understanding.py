@@ -5,7 +5,6 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sentence_transformers import SentenceTransformer
 import streamlit as st
 
-
 def extract_images_with_context(pdf_file):
     """
     Extract images from a PDF along with their surrounding text for context.

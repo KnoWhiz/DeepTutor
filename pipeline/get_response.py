@@ -9,6 +9,7 @@ from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
 from langchain.output_parsers import OutputFixingParser
 from langchain_text_splitters import CharacterTextSplitter
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from streamlit_float import *
 
 from pipeline.api_handler import ApiHandler
@@ -69,8 +70,10 @@ def get_response(_documents, embedding_folder):
     else:
         # Split the documents into chunks
         print("Creating new embeddings...")
-        text_splitter = CharacterTextSplitter(chunk_size=512, chunk_overlap=0)
+        # text_splitter = CharacterTextSplitter(chunk_size=512, chunk_overlap=0)
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=512, chunk_overlap=0)
         texts = text_splitter.split_documents(_documents)
+        print(f"length of document chunks generated for get_response_source:{len(texts)}")
 
         # Create the vector store to use as the index
         db = FAISS.from_documents(texts, embeddings)
@@ -78,9 +81,10 @@ def get_response(_documents, embedding_folder):
         db.save_local(embedding_folder)
 
     # Expose this index in a retriever interface
-    retriever = db.as_retriever(
-        search_type="mmr", search_kwargs={"k": 4, "lambda_mult": 0.7}
-    )
+    # retriever = db.as_retriever(
+    #     search_type="mmr", search_kwargs={"k": 2, "lambda_mult": 0.8}
+    # )
+    retriever = db.as_retriever(search_kwargs={"k":2})
 
     # Create the RetrievalQA chain
     system_prompt = (
@@ -159,8 +163,10 @@ def get_response_source(_documents, embedding_folder):
     else:
         # Split the documents into chunks
         print("Creating new embeddings...")
-        text_splitter = CharacterTextSplitter(chunk_size=512, chunk_overlap=0)
+        # text_splitter = CharacterTextSplitter(chunk_size=512, chunk_overlap=0)
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=512, chunk_overlap=0)
         texts = text_splitter.split_documents(_documents)
+        print(f"length of document chunks generated for get_response_source:{len(texts)}")
 
         # Create the vector store to use as the index
         db = FAISS.from_documents(texts, embeddings)
@@ -168,9 +174,10 @@ def get_response_source(_documents, embedding_folder):
         db.save_local(embedding_folder)
 
     # Expose this index in a retriever interface
-    retriever = db.as_retriever(
-        search_type="mmr", search_kwargs={"k": 2, "lambda_mult": 0.8}
-    )
+    # retriever = db.as_retriever(
+    #     search_type="mmr", search_kwargs={"k": 2, "lambda_mult": 0.8}
+    # )
+    retriever = db.as_retriever(search_kwargs={"k":2})
 
     # Create the RetrievalQA chain
     system_prompt = (

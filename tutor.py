@@ -5,6 +5,7 @@ import tempfile
 import hashlib
 import io
 import json
+import pprint
 import streamlit as st
 from streamlit_pdf_viewer import pdf_viewer
 from langchain_community.document_loaders import PyPDFLoader, PyMuPDFLoader
@@ -176,13 +177,18 @@ if __name__ == "__main__" and uploaded_file is not None:
                     with st.spinner("Generating response..."):
                         try:
                             # Get the response from the model
+                            import pprint
+
+                            # Assuming this is inside your function where you get the response
                             parsed_result = qa_chain.invoke({"input": user_input})
-                            print("qa_chain: ", parsed_result)
+                            print("qa_chain: ")
+                            pprint.pprint(parsed_result)
                             answer = parsed_result['answer']
-                            
+
                             # Get sources
                             parsed_result = qa_source_chain.invoke({"input": user_input})
-                            print("qa_source_chain: ", parsed_result)
+                            print("qa_source_chain: ")
+                            pprint.pprint(parsed_result)
                             sources = parsed_result['answer']['sources']
 
                             try:

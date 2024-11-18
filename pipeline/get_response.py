@@ -79,7 +79,7 @@ def get_response(_documents, embedding_folder):
 
     # Expose this index in a retriever interface
     retriever = db.as_retriever(
-        search_type="mmr", search_kwargs={"k": 2, "lambda_mult": 0.8}
+        search_type="mmr", search_kwargs={"k": 4, "lambda_mult": 0.7}
     )
 
     # Create the RetrievalQA chain
@@ -89,6 +89,12 @@ def get_response(_documents, embedding_folder):
         Use the given context to answer the question.
         If you don't know the answer, say you don't know.
         Context: ```{context}```
+        If the concept can be better explained by formulas, use LaTeX syntax in markdown
+        For inline formulas, use single dollar sign: $a/b = c/d$
+        FOr block formulas, use double dollar sign:
+        $$
+        \frac{{a}}{{b}} = \frac{{c}}{{d}}
+        $$
         """
     )
     human_prompt = (

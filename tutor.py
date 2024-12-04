@@ -5,6 +5,7 @@ import tempfile
 import hashlib
 import io
 import json
+import pprint
 import streamlit as st
 from streamlit_pdf_viewer import pdf_viewer
 from langchain_community.document_loaders import PyPDFLoader, PyMuPDFLoader
@@ -120,6 +121,10 @@ def chat_content():
 
 
 #-----------------------------------------------------------------------------------------------#
+learner_avatar = "frontend/images/learner.svg"
+tutor_avatar = "frontend/images/tutor.svg"
+
+
 # Streamlit file uploader
 uploaded_file = st.file_uploader("Choose a PDF file", type="pdf", on_change=file_changed)
 
@@ -170,19 +175,26 @@ if __name__ == "__main__" and uploaded_file is not None:
                     float_parent(css=button_css)
                 # After every rerun, display chat history (assistant and client)
                 for msg in st.session_state.chat_history:
-                    st.chat_message(msg["role"]).write(msg["content"])
+                    avatar = learner_avatar if msg["role"] == "user" else tutor_avatar
+                    with st.chat_message(msg["role"], avatar=avatar):
+                        st.write(msg["content"])
                 # If there has been a user input, update chat_history, invoke model and get response
                 if user_input := st.session_state.user_input:  
                     with st.spinner("Generating response..."):
                         try:
                             # Get the response from the model
+                            import pprint
+
+                            # Assuming this is inside your function where you get the response
                             parsed_result = qa_chain.invoke({"input": user_input})
-                            print("qa_chain: ", parsed_result)
+                            print("qa_chain: ")
+                            pprint.pprint(parsed_result)
                             answer = parsed_result['answer']
-                            
+
                             # Get sources
                             parsed_result = qa_source_chain.invoke({"input": user_input})
-                            print("qa_source_chain: ", parsed_result)
+                            print("qa_source_chain: ")
+                            pprint.pprint(parsed_result)
                             sources = parsed_result['answer']['sources']
 
                             try:
@@ -198,7 +210,9 @@ if __name__ == "__main__" and uploaded_file is not None:
                             st.session_state.chat_history.append(
                                 {"role": "assistant", "content": answer}
                             )
-                            st.chat_message("assistant").write(answer)
+                            # st.chat_message("assistant").write(answer)
+                            with st.chat_message("assistant", avatar=tutor_avatar):
+                                st.write(answer)
 
                             # Update the session state with new sources
                             st.session_state.sources = sources

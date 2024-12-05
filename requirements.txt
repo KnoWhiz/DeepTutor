@@ -1,5 +1,6 @@
 faiss-cpu==1.8.0.post1
 fastembed==0.4.2
+graphrag==0.5.0
 langchain
 langchain_community
 langchain_core

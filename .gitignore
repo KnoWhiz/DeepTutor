@@ -12,3 +12,5 @@ pipeline/__pycache__/api_handler.cpython-312.pyc
 *.txt
 *.csv
 *.log
+/ragtest/cache
+/ragtest/output

@@ -16,6 +16,18 @@ from pipeline.api_handler import ApiHandler
 
 
 @st.cache_resource
+def regen_with_graphrag():
+    # Implement the logic to regenerate the response using GraphRAG here.
+    st.warning("Regen with GraphRAG is not implemented yet.")
+
+
+@st.cache_resource
+def regen_with_longer_context():
+    # Implement the logic to regenerate the response using a longer context here.
+    st.warning("Regen with longer context is not implemented yet.")
+
+
+@st.cache_resource
 def get_llm(llm_type, para):
     para = para
     api = ApiHandler(para)

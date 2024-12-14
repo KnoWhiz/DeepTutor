@@ -96,7 +96,7 @@ summarize_descriptions:
   max_length: 500
 
 claim_extraction:
-  enabled: false
+  enabled: true
   prompt: "prompts/claim_extraction.txt"
   description: "Any claims or facts that could be relevant to information discovery."
   max_gleanings: 1

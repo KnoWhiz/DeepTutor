@@ -12,6 +12,7 @@ from langchain_community.document_loaders import PyPDFLoader, PyMuPDFLoader
 import streamlit_nested_layout
 from streamlit_float import *
 
+from pipeline.get_response import generate_embedding
 from pipeline.get_response import get_response
 from pipeline.get_response import get_response_source
 from pipeline.get_response import regen_with_graphrag
@@ -116,7 +117,10 @@ with file_col:
 with option_col:
     if "mode" not in st.session_state:
         st.session_state.mode = "Normal"
-    st.session_state.mode = st.radio("Mode", options=["Normal", "GraphRAG", "Long context"], index=0)
+    if uploaded_file is None:
+        st.session_state.mode = st.radio("Response mode", options=["Normal", "GraphRAG", "Long context"], index=0, disabled=False)
+    else:
+        st.radio("Mode", options=["Normal", "GraphRAG", "Long context"], index=0, disabled=True, key="mode")
 
 if __name__ == "__main__" and uploaded_file is not None:
     file_size = uploaded_file.size
@@ -140,6 +144,7 @@ if __name__ == "__main__" and uploaded_file is not None:
             documents = extract_documents_from_file(file)
             st.session_state.doc = fitz.open(stream=io.BytesIO(file), filetype="pdf")
             st.session_state.total_pages = len(st.session_state.doc)
+            generate_embedding(documents, embedding_folder=embedding_folder)
 
         if documents:
             qa_chain = get_response(documents, embedding_folder=embedding_folder)

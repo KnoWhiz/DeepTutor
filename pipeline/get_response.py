@@ -54,6 +54,83 @@ def get_embedding_models(embedding_model_type, para):
         return embedding_model_default
 
 
+@st.cache_resource
+def generate_embedding(_documents, embedding_folder):
+    para = {
+        'llm_source': 'openai',  # or 'anthropic'
+        'temperature': 0,
+        "creative_temperature": 0.5,
+        "openai_key_dir": ".env",
+        "anthropic_key_dir": ".env",
+    }
+    embeddings = get_embedding_models('default', para)
+
+    # Define the default filenames used by FAISS when saving
+    faiss_path = os.path.join(embedding_folder, "index.faiss")
+    pkl_path = os.path.join(embedding_folder, "index.pkl")
+
+    # Check if all necessary files exist to load the embeddings
+    if os.path.exists(faiss_path) and os.path.exists(pkl_path):
+        # Load existing embeddings
+        print("Loading existing embeddings...")
+        db = FAISS.load_local(
+            embedding_folder, embeddings, allow_dangerous_deserialization=True
+        )
+    else:
+        # Split the documents into chunks
+        print("Creating new embeddings...")
+        # text_splitter = CharacterTextSplitter(chunk_size=512, chunk_overlap=0)
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=512, chunk_overlap=20)
+        texts = text_splitter.split_documents(_documents)
+        print(f"length of document chunks generated for get_response_source:{len(texts)}")
+
+        # Create the vector store to use as the index
+        db = FAISS.from_documents(texts, embeddings)
+        # Save the embeddings to the specified folder
+        db.save_local(embedding_folder)
+
+    return
+
+
+@st.cache_resource
+def generate_GraphRAG_embedding(_documents, embedding_folder):
+    para = {
+        'llm_source': 'openai',  # or 'anthropic'
+        'temperature': 0,
+        "creative_temperature": 0.5,
+        "openai_key_dir": ".env",
+        "anthropic_key_dir": ".env",
+    }
+    embeddings = get_embedding_models('default', para)
+
+    # Define the default filenames used by FAISS when saving
+    faiss_path = os.path.join(embedding_folder, "index.faiss")
+    pkl_path = os.path.join(embedding_folder, "index.pkl")
+
+    # Check if all necessary files exist to load the embeddings
+    if os.path.exists(faiss_path) and os.path.exists(pkl_path):
+        # Load existing embeddings
+        print("Loading existing embeddings...")
+        db = FAISS.load_local(
+            embedding_folder, embeddings, allow_dangerous_deserialization=True
+        )
+    else:
+        # Split the documents into chunks
+        print("Creating new embeddings...")
+        # text_splitter = CharacterTextSplitter(chunk_size=512, chunk_overlap=0)
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=512, chunk_overlap=0)
+        texts = text_splitter.split_documents(_documents)
+        print(f"length of document chunks generated for get_response_source:{len(texts)}")
+
+        # Create the vector store to use as the index
+        db = FAISS.from_documents(texts, embeddings)
+        # Save the embeddings to the specified folder
+        db.save_local(embedding_folder)
+
+    return
+
+
+@st.cache_resource
 def get_response(_documents, embedding_folder):
     para = {
         'llm_source': 'openai',  # or 'anthropic'
@@ -83,7 +160,7 @@ def get_response(_documents, embedding_folder):
         # Split the documents into chunks
         print("Creating new embeddings...")
         # text_splitter = CharacterTextSplitter(chunk_size=512, chunk_overlap=0)
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=512, chunk_overlap=0)
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=512, chunk_overlap=20)
         texts = text_splitter.split_documents(_documents)
         print(f"length of document chunks generated for get_response_source:{len(texts)}")
 
@@ -147,6 +224,7 @@ def get_response(_documents, embedding_folder):
     return chain
 
 
+@st.cache_resource
 def get_response_source(_documents, embedding_folder):
     para = {
         'llm_source': 'openai',  # or 'anthropic'
@@ -176,7 +254,7 @@ def get_response_source(_documents, embedding_folder):
         # Split the documents into chunks
         print("Creating new embeddings...")
         # text_splitter = CharacterTextSplitter(chunk_size=512, chunk_overlap=0)
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=512, chunk_overlap=0)
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=512, chunk_overlap=20)
         texts = text_splitter.split_documents(_documents)
         print(f"length of document chunks generated for get_response_source:{len(texts)}")
 

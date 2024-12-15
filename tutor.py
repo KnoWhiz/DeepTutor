@@ -13,6 +13,7 @@ import streamlit_nested_layout
 from streamlit_float import *
 
 from pipeline.get_response import generate_embedding
+from pipeline.get_response import generate_GraphRAG_embedding
 from pipeline.get_response import get_response
 from pipeline.get_response import get_response_source
 from pipeline.get_response import regen_with_graphrag
@@ -130,6 +131,15 @@ if __name__ == "__main__" and uploaded_file is not None:
         st.error("File size exceeds the 10 MB limit. Please upload a smaller file.")
     else:
         file = uploaded_file.read()
+        # Clear the temp file folder and save the new upload file to the folder
+        temp_folder = './input_files/'
+        for f in os.listdir(temp_folder):
+            file_path = os.path.join(temp_folder, f)
+            try:
+                if os.path.isfile(file_path):
+                    os.unlink(file_path)
+            except Exception as e:
+                print(e)
 
         # Compute a hashed ID based on the PDF content
         file_hash = hashlib.md5(file).hexdigest()
@@ -145,6 +155,7 @@ if __name__ == "__main__" and uploaded_file is not None:
             st.session_state.doc = fitz.open(stream=io.BytesIO(file), filetype="pdf")
             st.session_state.total_pages = len(st.session_state.doc)
             generate_embedding(documents, embedding_folder=embedding_folder)
+            generate_GraphRAG_embedding(documents, embedding_folder=embedding_folder)
 
         if documents:
             qa_chain = get_response(documents, embedding_folder=embedding_folder)

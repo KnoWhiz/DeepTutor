@@ -14,3 +14,4 @@ pipeline/__pycache__/api_handler.cpython-312.pyc
 *.log
 /ragtest/cache
 /ragtest/output
+/embedded_content

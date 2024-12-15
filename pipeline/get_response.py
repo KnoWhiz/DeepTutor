@@ -1,4 +1,10 @@
 import os
+import yaml
+import asyncio
+import tiktoken
+import pandas as pd
+
+from pathlib import Path
 from langchain_community.vectorstores import FAISS
 from langchain_core.runnables import RunnablePassthrough
 from langchain.chains import RetrievalQA
@@ -10,9 +16,42 @@ from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
 from langchain.output_parsers import OutputFixingParser
 from langchain_text_splitters import CharacterTextSplitter
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+from graphrag.cli.initialize import initialize_project_at
+import graphrag.api as api
+from graphrag.index.typing import PipelineRunResult
+from graphrag.config.create_graphrag_config import create_graphrag_config
+from graphrag.query.llm.oai.chat_openai import ChatOpenAI
+from graphrag.query.llm.oai.typing import OpenaiApiType
+from graphrag.query.indexer_adapters import (
+    read_indexer_communities,
+    read_indexer_entities,
+    read_indexer_reports,
+)
+from graphrag.query.structured_search.global_search.community_context import (
+    GlobalCommunityContext,
+)
+from graphrag.query.structured_search.global_search.search import GlobalSearch
+
+from graphrag.query.context_builder.entity_extraction import EntityVectorStoreKey
+from graphrag.query.indexer_adapters import (
+    read_indexer_covariates,
+    read_indexer_relationships,
+    read_indexer_text_units,
+)
+from graphrag.query.llm.oai.embedding import OpenAIEmbedding
+from graphrag.query.question_gen.local_gen import LocalQuestionGen
+from graphrag.query.structured_search.local_search.mixed_context import (
+    LocalSearchMixedContext,
+)
+from graphrag.query.structured_search.local_search.search import LocalSearch
+from graphrag.vector_stores.lancedb import LanceDBVectorStore
+
+
 from streamlit_float import *
 
 from pipeline.api_handler import ApiHandler
+from pipeline.api_handler import create_env_file
 
 
 @st.cache_resource
@@ -101,31 +140,56 @@ def generate_GraphRAG_embedding(_documents, embedding_folder):
         "openai_key_dir": ".env",
         "anthropic_key_dir": ".env",
     }
+    llm = get_llm('advance', para)
     embeddings = get_embedding_models('default', para)
 
-    # Define the default filenames used by FAISS when saving
-    faiss_path = os.path.join(embedding_folder, "index.faiss")
-    pkl_path = os.path.join(embedding_folder, "index.pkl")
+    GraphRAG_embedding_folder = os.path.join(embedding_folder, "GraphRAG/")
+    create_final_community_reports_path = GraphRAG_embedding_folder + "output/create_final_community_reports.parquet"
+    create_final_covariates_path = GraphRAG_embedding_folder + "output/create_final_covariates.parquet"
+    create_final_documents_path = GraphRAG_embedding_folder + "output/create_final_documents.parquet"
+    create_final_entities_path = GraphRAG_embedding_folder + "output/create_final_entities.parquet"
+    create_final_nodes_path = GraphRAG_embedding_folder + "output/create_final_nodes.parquet"
+    create_final_relationships_path = GraphRAG_embedding_folder + "output/create_final_relationships.parquet"
+    create_final_text_units_path = GraphRAG_embedding_folder + "output/create_final_text_units.parquet"
+    create_final_communities_path = GraphRAG_embedding_folder + "output/create_final_communities.parquet"
+    lancedb_path = GraphRAG_embedding_folder + "output/lancedb/"
+    path_list = [
+        create_final_community_reports_path,
+        create_final_covariates_path,
+        create_final_documents_path,
+        create_final_entities_path,
+        create_final_nodes_path,
+        create_final_relationships_path,
+        create_final_text_units_path,
+        create_final_communities_path,
+        lancedb_path
+    ]
 
-    # Check if all necessary files exist to load the embeddings
-    if os.path.exists(faiss_path) and os.path.exists(pkl_path):
+    # Check if all necessary paths in path_list exist
+    if all([os.path.exists(path) for path in path_list]):
         # Load existing embeddings
-        print("Loading existing embeddings...")
-        db = FAISS.load_local(
-            embedding_folder, embeddings, allow_dangerous_deserialization=True
-        )
+        print("All necessary index files exist. Loading existing embeddings...")
     else:
-        # Split the documents into chunks
-        print("Creating new embeddings...")
-        # text_splitter = CharacterTextSplitter(chunk_size=512, chunk_overlap=0)
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=512, chunk_overlap=0)
-        texts = text_splitter.split_documents(_documents)
-        print(f"length of document chunks generated for get_response_source:{len(texts)}")
+        # Create the GraphRAG embedding
+        print("Creating new GraphRAG embeddings...")
 
-        # Create the vector store to use as the index
-        db = FAISS.from_documents(texts, embeddings)
-        # Save the embeddings to the specified folder
-        db.save_local(embedding_folder)
+        # Initialize the project
+        create_env_file(GraphRAG_embedding_folder)
+        try:
+            # Ensure an event loop is available
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            # Call the function with the desired path
+            initialize_project_at(Path(GraphRAG_embedding_folder))
+        except Exception as e:
+            print("Initialization error:", e)
+        settings = yaml.safe_load(open("./pipeline/graphrag_settings.yaml"))
+        graphrag_config = create_graphrag_config(
+            values=settings, root_dir=GraphRAG_embedding_folder
+        )
 
     return
 

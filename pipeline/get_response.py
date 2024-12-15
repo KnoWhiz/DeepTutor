@@ -1,5 +1,6 @@
 import os
 import yaml
+import fitz
 import asyncio
 import tiktoken
 import pandas as pd
@@ -168,7 +169,7 @@ def generate_GraphRAG_embedding(_documents, embedding_folder):
     # Check if all necessary paths in path_list exist
     if all([os.path.exists(path) for path in path_list]):
         # Load existing embeddings
-        print("All necessary index files exist. Loading existing embeddings...")
+        print("All necessary index files exist. Loading existing GraphRAG embeddings...")
     else:
         # Create the GraphRAG embedding
         print("Creating new GraphRAG embeddings...")
@@ -190,6 +191,42 @@ def generate_GraphRAG_embedding(_documents, embedding_folder):
         graphrag_config = create_graphrag_config(
             values=settings, root_dir=GraphRAG_embedding_folder
         )
+        # Create output directory if it doesn't exist
+        os.makedirs(GraphRAG_embedding_folder+'input', exist_ok=True)
+
+        # Get all PDF files in the input_files directory
+        pdf_files = [f for f in os.listdir('./input_files') if f.endswith('.pdf')]
+
+        # Convert each PDF to a text file called 'texxt i.txt'
+        for i, pdf_file in enumerate(pdf_files, start=1):
+            pdf_path = os.path.join('./input_files', pdf_file)
+            txt_path = os.path.join(GraphRAG_embedding_folder+'input', f'text {i}.txt')
+
+            # Open the PDF file
+            with fitz.open(pdf_path) as pdf_document:
+                text = ""
+                for page in pdf_document:
+                    text += page.get_text()
+            
+            # Save the text to a file
+            with open(txt_path, 'w', encoding='utf-8') as txt_file:
+                txt_file.write(text)
+
+        # Create the GraphRAG embedding
+        async def build_index_async(api, graphrag_config):
+            index_result: list[PipelineRunResult] = await api.build_index(config=graphrag_config)
+            return index_result
+
+        # Call the async function using an event loop
+        import asyncio
+
+        # Assuming api and graphrag_config are already defined
+        index_result = asyncio.run(build_index_async(api, graphrag_config))
+
+        # index_result is a list of workflows that make up the indexing pipeline that was run
+        for workflow_result in index_result:
+            status = f"error\n{workflow_result.errors}" if workflow_result.errors else "success"
+            print(f"Workflow Name: {workflow_result.workflow}\tStatus: {status}")
 
     return
 

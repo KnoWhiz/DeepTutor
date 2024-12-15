@@ -1,6 +1,7 @@
 import os
 import base64
 import fitz
+import shutil
 import tempfile
 import hashlib
 import io
@@ -46,13 +47,28 @@ st.subheader("Upload a document to get started.")
 float_init(theme=True, include_unstable_primary=False)
 
 # Custom function to extract document objects from uploaded file
-def extract_documents_from_file(file):
-    # Create a temporary file
-    temp_file = tempfile.NamedTemporaryFile(delete=False)
-    temp_file.write(file)
-    temp_file.close()
+def extract_documents_from_file(file, filename):
+    input_dir = './input_files/'
 
-    loader = PyMuPDFLoader(temp_file.name)
+    # Create the input_files directory if it doesn't exist
+    if not os.path.exists(input_dir):
+        os.makedirs(input_dir)
+
+    # Clean up the input_files directory
+    for existing_file in os.listdir(input_dir):
+        file_path = os.path.join(input_dir, existing_file)
+        if os.path.isfile(file_path) or os.path.islink(file_path):
+            os.unlink(file_path)
+        elif os.path.isdir(file_path):
+            shutil.rmtree(file_path)
+
+    # Save the file to the input_files directory with the original filename
+    file_path = os.path.join(input_dir, filename)
+    with open(file_path, 'wb') as f:
+        f.write(file)
+
+    # Load the document
+    loader = PyMuPDFLoader(file_path)
     documents = loader.load()
     return documents
 
@@ -151,7 +167,7 @@ if __name__ == "__main__" and uploaded_file is not None:
             os.makedirs(embedding_folder)
 
         with st.spinner("Processing file..."):
-            documents = extract_documents_from_file(file)
+            documents = extract_documents_from_file(file, uploaded_file.name)
             st.session_state.doc = fitz.open(stream=io.BytesIO(file), filetype="pdf")
             st.session_state.total_pages = len(st.session_state.doc)
             generate_embedding(documents, embedding_folder=embedding_folder)

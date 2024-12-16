@@ -132,19 +132,17 @@ file_col, option_col = st.columns([3, 1])
 with file_col:
     uploaded_file = st.file_uploader("Choose a PDF file", type="pdf", on_change=file_changed)
 with option_col:
-    if "mode" not in st.session_state:
-        st.session_state.mode = "Normal"
     if uploaded_file is None:
         st.session_state.mode = st.radio("Response mode", options=["Normal", "GraphRAG", "Long context"], index=0, disabled=False)
     else:
-        st.radio("Mode", options=["Normal", "GraphRAG", "Long context"], index=0, disabled=True, key="mode")
+        st.session_state.mode = st.radio("Response mode", options=["Normal", "GraphRAG", "Long context"], index=0, disabled=True)
 
 if __name__ == "__main__" and uploaded_file is not None:
     file_size = uploaded_file.size
-    max_file_size = 10 * 1024 * 1024  # 10 MB
+    max_file_size = 5 * 1024 * 1024  # 5 MB
 
     if file_size > max_file_size:
-        st.error("File size exceeds the 10 MB limit. Please upload a smaller file.")
+        st.error("File size exceeds the 5 MB limit. Please upload a smaller file.")
     else:
         file = uploaded_file.read()
         # Clear the temp file folder and save the new upload file to the folder

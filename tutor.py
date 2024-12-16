@@ -169,7 +169,8 @@ if __name__ == "__main__" and uploaded_file is not None:
             st.session_state.doc = fitz.open(stream=io.BytesIO(file), filetype="pdf")
             st.session_state.total_pages = len(st.session_state.doc)
             generate_embedding(documents, embedding_folder=embedding_folder)
-            generate_GraphRAG_embedding(documents, embedding_folder=embedding_folder)
+            if st.session_state.mode == "GraphRAG":
+                generate_GraphRAG_embedding(documents, embedding_folder=embedding_folder)
 
         if documents:
             qa_chain = get_response(documents, embedding_folder=embedding_folder)

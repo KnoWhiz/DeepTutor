@@ -167,13 +167,26 @@ if __name__ == "__main__" and uploaded_file is not None:
         if not os.path.exists(embedding_folder):
             os.makedirs(embedding_folder)
 
-        with st.spinner("Processing file..."):
-            documents = extract_documents_from_file(file, uploaded_file.name)
-            st.session_state.doc = fitz.open(stream=io.BytesIO(file), filetype="pdf")
-            st.session_state.total_pages = len(st.session_state.doc)
-            generate_embedding(documents, embedding_folder=embedding_folder)
-            if st.session_state.mode == "GraphRAG":
+
+        if st.session_state.mode == "GraphRAG":
+            with st.spinner("Processing file, may take 3 - 5 mins..."):
+                documents = extract_documents_from_file(file, uploaded_file.name)
+                st.session_state.doc = fitz.open(stream=io.BytesIO(file), filetype="pdf")
+                st.session_state.total_pages = len(st.session_state.doc)
+
+                # Generate embeddings
+                generate_embedding(documents, embedding_folder=embedding_folder)
+
+                # Generate GraphRAG embeddings if the mode is GraphRAG
                 generate_GraphRAG_embedding(documents, embedding_folder=embedding_folder)
+        else:
+            with st.spinner("Processing file..."):
+                documents = extract_documents_from_file(file, uploaded_file.name)
+                st.session_state.doc = fitz.open(stream=io.BytesIO(file), filetype="pdf")
+                st.session_state.total_pages = len(st.session_state.doc)
+
+                # Generate embeddings
+                generate_embedding(documents, embedding_folder=embedding_folder)
 
         if documents:
             qa_chain = get_response(documents, embedding_folder=embedding_folder)

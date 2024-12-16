@@ -189,8 +189,8 @@ if __name__ == "__main__" and uploaded_file is not None:
                 generate_embedding(documents, embedding_folder=embedding_folder)
 
         if documents:
-            qa_chain = get_response(documents, embedding_folder=embedding_folder)
-            qa_source_chain = get_response_source(documents, embedding_folder=embedding_folder)
+            # qa_chain = get_response(documents, embedding_folder=embedding_folder)
+            # qa_source_chain = get_response_source(documents, embedding_folder=embedding_folder)
             if "chat_history" not in st.session_state:
                 st.session_state.chat_history = [
                     {"role": "assistant", "content": "Hello! How can I assist you today? "}
@@ -198,6 +198,8 @@ if __name__ == "__main__" and uploaded_file is not None:
                 st.session_state.show_chat_border = False
             else:
                 st.session_state.show_chat_border = True
+
+            # print("Current chat history: ", st.session_state.chat_history)
 
         outer_columns = st.columns([1,1])
 
@@ -234,12 +236,14 @@ if __name__ == "__main__" and uploaded_file is not None:
                 if user_input := st.session_state.get('user_input', None):
                     with st.spinner("Generating response..."):
                         try:
-                            parsed_result = qa_chain.invoke({"input": user_input})
-                            answer = parsed_result['answer']
+                            # parsed_result = qa_chain.invoke({"input": user_input})
+                            # answer = parsed_result['answer']
+                            answer = get_response(documents, user_input, chat_history=st.session_state.chat_history, embedding_folder=embedding_folder)
 
                             # Get sources
-                            parsed_result = qa_source_chain.invoke({"input": user_input})
-                            sources = parsed_result['answer']['sources']
+                            # parsed_result = qa_source_chain.invoke({"input": user_input})
+                            # sources = parsed_result['answer']['sources']
+                            sources = get_response_source(documents, user_input, chat_history=st.session_state.chat_history, embedding_folder=embedding_folder)
                             try:
                                 if not all(isinstance(source, str) for source in sources):
                                     raise ValueError("Sources must be a list of strings.")

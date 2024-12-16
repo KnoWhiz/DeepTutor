@@ -56,6 +56,26 @@ from pipeline.api_handler import create_env_file
 
 
 @st.cache_resource
+def count_tokens(text, model_name='gpt-4o'):
+    encoding = tiktoken.encoding_for_model(model_name)
+    return len(encoding.encode(text))
+
+
+@st.cache_resource
+def truncate_chat_history(chat_history, max_tokens=2000, model_name='gpt-4o'):
+    total_tokens = 0
+    truncated_history = []
+    for message in reversed(chat_history):
+        message = str(message)
+        message_tokens = count_tokens(message, model_name)
+        if total_tokens + message_tokens > max_tokens:
+            break
+        truncated_history.insert(0, message)
+        total_tokens += message_tokens
+    return truncated_history
+
+
+@st.cache_resource
 def regen_with_graphrag():
     # Implement the logic to regenerate the response using GraphRAG here.
     st.warning("Regen with GraphRAG is not implemented yet.")
@@ -229,7 +249,7 @@ def generate_GraphRAG_embedding(_documents, embedding_folder):
 
 
 @st.cache_resource
-def get_response(_documents, embedding_folder):
+def get_response(_documents, user_input, chat_history, embedding_folder):
     para = {
         'llm_source': 'openai',  # or 'anthropic'
         'temperature': 0,
@@ -290,7 +310,8 @@ def get_response(_documents, embedding_folder):
     )
     human_prompt = (
         """
-        My question is: {input}
+        Our previous conversation is: {chat_history}
+        This time my query is: {input}
         Answer the question based on the context provided.
         Since I am a student with no related knowledge backgroud, 
         please provide a concise answer and directly answer the question in easy to understand language.
@@ -308,6 +329,7 @@ def get_response(_documents, embedding_folder):
     rag_chain_from_docs = (
         {
             "input": lambda x: x["input"],  # input query
+            "chat_history": lambda x: x["chat_history"],  # chat history
             "context": lambda x: format_docs(x["context"]),  # context
         }
         | prompt  # format query and context into prompt
@@ -319,11 +341,13 @@ def get_response(_documents, embedding_folder):
     chain = RunnablePassthrough.assign(context=retrieve_docs).assign(
         answer=rag_chain_from_docs
     )
-    return chain
+    parsed_result = chain.invoke({"input": user_input, "chat_history": truncate_chat_history(chat_history)})
+    answer = parsed_result['answer']
+    return answer
 
 
 @st.cache_resource
-def get_response_source(_documents, embedding_folder):
+def get_response_source(_documents, user_input, chat_history, embedding_folder):
     para = {
         'llm_source': 'openai',  # or 'anthropic'
         'temperature': 0,
@@ -422,4 +446,6 @@ def get_response_source(_documents, embedding_folder):
     chain = RunnablePassthrough.assign(context=retrieve_docs).assign(
         answer=rag_chain_from_docs
     )
-    return chain
+    parsed_result = chain.invoke({"input": user_input})
+    sources = parsed_result['answer']['sources']
+    return sources

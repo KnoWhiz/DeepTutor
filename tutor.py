@@ -238,12 +238,18 @@ if __name__ == "__main__" and uploaded_file is not None:
                         try:
                             # parsed_result = qa_chain.invoke({"input": user_input})
                             # answer = parsed_result['answer']
-                            answer = get_response(documents, user_input, chat_history=st.session_state.chat_history, embedding_folder=embedding_folder)
+                            answer = asyncio.run(get_response(st.session_state.mode, 
+                                                documents, user_input, 
+                                                chat_history=[str(x) for x in st.session_state.chat_history], 
+                                                embedding_folder=embedding_folder))
 
                             # Get sources
                             # parsed_result = qa_source_chain.invoke({"input": user_input})
                             # sources = parsed_result['answer']['sources']
-                            sources = get_response_source(documents, user_input, chat_history=st.session_state.chat_history, embedding_folder=embedding_folder)
+                            sources = get_response_source(documents, 
+                                                          user_input, 
+                                                          chat_history=[str(x) for x in st.session_state.chat_history], 
+                                                          embedding_folder=embedding_folder)
                             try:
                                 if not all(isinstance(source, str) for source in sources):
                                     raise ValueError("Sources must be a list of strings.")

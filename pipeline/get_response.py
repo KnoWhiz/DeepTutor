@@ -18,8 +18,8 @@ from langchain.output_parsers import OutputFixingParser
 from langchain_text_splitters import CharacterTextSplitter
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
-from graphrag.cli.initialize import initialize_project_at
 import graphrag.api as api
+from graphrag.cli.initialize import initialize_project_at
 from graphrag.index.typing import PipelineRunResult
 from graphrag.config.create_graphrag_config import create_graphrag_config
 from graphrag.query.llm.oai.chat_openai import ChatOpenAI
@@ -216,9 +216,6 @@ def generate_GraphRAG_embedding(_documents, embedding_folder):
         async def build_index_async(api, graphrag_config):
             index_result: list[PipelineRunResult] = await api.build_index(config=graphrag_config)
             return index_result
-
-        # Call the async function using an event loop
-        import asyncio
 
         # Assuming api and graphrag_config are already defined
         index_result = asyncio.run(build_index_async(api, graphrag_config))

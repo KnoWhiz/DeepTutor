@@ -2,6 +2,7 @@ import os
 import base64
 import fitz
 import shutil
+import asyncio
 import tempfile
 import hashlib
 import io
@@ -139,14 +140,16 @@ with option_col:
 
 if __name__ == "__main__" and uploaded_file is not None:
     file_size = uploaded_file.size
-    max_file_size = 5 * 1024 * 1024  # 5 MB
+    max_file_size = 10 * 1024 * 1024  # 10 MB
 
     if file_size > max_file_size:
-        st.error("File size exceeds the 5 MB limit. Please upload a smaller file.")
+        st.error("File size exceeds the 10 MB limit. Please upload a smaller file.")
     else:
         file = uploaded_file.read()
         # Clear the temp file folder and save the new upload file to the folder
         temp_folder = './input_files/'
+        if not os.path.exists(temp_folder):
+            os.makedirs(temp_folder)
         for f in os.listdir(temp_folder):
             file_path = os.path.join(temp_folder, f)
             try:

@@ -46,11 +46,11 @@ def show_mode_option(uploaded_file):
     with st.sidebar:
         disabled = uploaded_file is not None
         mode_index = 0
-        st.session_state.mode = st.radio("Response mode", options=["Normal", "GraphRAG", "Long context"], index=mode_index, disabled=disabled)
+        st.session_state.mode = st.radio("Response mode", options=["Basic model", "GraphRAG", "Advanced model"], index=mode_index, disabled=disabled)
 
 
 # Function to display the chat interface
-def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_source_fn, regen_with_graphrag, regen_with_longer_context):
+def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_source_fn, regen_response):
     # Init float function for chat_input textbox
     float_init(theme=True, include_unstable_primary=False)
     learner_avatar = "frontend/images/learner.svg"
@@ -65,9 +65,6 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
     else:
         st.session_state.show_chat_border = True
 
-    # outer_columns = st.columns([1,1])
-
-    # with outer_columns[1]:
     with st.container(border=st.session_state.show_chat_border, height=800):
         with st.container():
             st.chat_input(key='user_input', on_submit=chat_content)
@@ -83,15 +80,15 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
                 if msg["role"] == "assistant":
                     if st.session_state.mode == "GraphRAG":
                         st.button(
-                            "Regen with GraphRAG",
-                            key=f"regen_graphrag_{idx}",
-                            on_click=regen_with_graphrag
+                            "Re-generate",
+                            key=f"regen_response_{idx}",
+                            on_click=regen_response
                         )
-                    elif st.session_state.mode == "Long context":
+                    elif st.session_state.mode == "Advanced model":
                         st.button(
-                            "Regen with longer context",
-                            key=f"regen_longer_context_{idx}",
-                            on_click=regen_with_longer_context
+                            "Re-generate",
+                            key=f"regen_response_{idx}",
+                            on_click=regen_response
                         )
 
         # If new user input exists
@@ -126,15 +123,15 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
                         st.write(answer)
                         if st.session_state.mode == "GraphRAG":
                             st.button(
-                                "Regen with GraphRAG",
-                                key=f"regen_graphrag_new_{len(st.session_state.chat_history)}",
-                                on_click=regen_with_graphrag
+                                "Re-generate",
+                                key=f"regen_response_{idx}",
+                                on_click=regen_response
                             )
-                        elif st.session_state.mode == "Long context":
+                        elif st.session_state.mode == "Advanced model":
                             st.button(
-                                "Regen with longer context",
-                                key=f"regen_longer_context_new_{len(st.session_state.chat_history)}",
-                                on_click=regen_with_longer_context
+                                "Re-generate",
+                                key=f"regen_response_{idx}",
+                                on_click=regen_response
                             )
 
                     st.session_state.sources = sources
@@ -159,8 +156,6 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
 
 # Function to display the pdf viewer
 def show_pdf_viewer(file):
-    # left_col = st.columns([1,1])[0]
-    # with left_col:
     if "current_page" not in st.session_state:
         st.session_state.current_page = 1
     if "annotations" not in st.session_state:
@@ -168,7 +163,7 @@ def show_pdf_viewer(file):
     pdf_viewer(
         file,
         width=700,
-        height=800,
+        # height=900,
         annotations=st.session_state.annotations,
         pages_to_render=[st.session_state.current_page],
         render_text=True,

@@ -164,7 +164,7 @@ def show_pdf_viewer(file):
     pdf_viewer(
         file,
         width=1000,
-        height=640,
+        height=630,
         annotations=st.session_state.annotations,
         pages_to_render=[st.session_state.current_page],
         render_text=True,

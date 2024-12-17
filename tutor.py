@@ -1,17 +1,11 @@
 import os
 import base64
 import fitz
-import shutil
 import asyncio
-import tempfile
-import hashlib
 import io
 import json
-import pprint
 import streamlit as st
 from streamlit_pdf_viewer import pdf_viewer
-from langchain_community.document_loaders import PyPDFLoader, PyMuPDFLoader
-import streamlit_nested_layout
 from streamlit_float import *
 
 from pipeline.get_response import generate_embedding
@@ -20,17 +14,19 @@ from pipeline.get_response import get_response
 from pipeline.get_response import get_response_source
 from pipeline.get_response import regen_with_graphrag
 from pipeline.get_response import regen_with_longer_context
-from pipeline.utils import generate_course_id
+from pipeline.utils import generate_course_id, extract_documents_from_file, find_pages_with_excerpts, get_highlight_info
+from frontend.utils import previous_page, next_page, close_pdf, file_changed, chat_content
 
 
-# Set page config
+# UIUX: Set page config
 st.set_page_config(
     page_title="KnoWhiz Tutor",
     page_icon="frontend/images/logo_short.ico",  # Replace with the actual path to your .ico file
     layout="wide"
 )
 
-# Main content
+
+# UIUX: Set up the header
 with open("frontend/images/logo_short.png", "rb") as image_file:
     encoded_image = base64.b64encode(image_file.read()).decode()
 st.markdown(
@@ -44,91 +40,14 @@ st.markdown(
 )
 st.subheader("Upload a document to get started.")
 
-# Init float function for chat_input textbox
+
+# UIUX: Init float function for chat_input textbox
 float_init(theme=True, include_unstable_primary=False)
-
-# Custom function to extract document objects from uploaded file
-def extract_documents_from_file(file, filename):
-    input_dir = './input_files/'
-
-    # Create the input_files directory if it doesn't exist
-    if not os.path.exists(input_dir):
-        os.makedirs(input_dir)
-
-    # Clean up the input_files directory
-    for existing_file in os.listdir(input_dir):
-        file_path = os.path.join(input_dir, existing_file)
-        if os.path.isfile(file_path) or os.path.islink(file_path):
-            os.unlink(file_path)
-        elif os.path.isdir(file_path):
-            shutil.rmtree(file_path)
-
-    # Save the file to the input_files directory with the original filename
-    file_path = os.path.join(input_dir, filename)
-    with open(file_path, 'wb') as f:
-        f.write(file)
-
-    # Load the document
-    loader = PyMuPDFLoader(file_path)
-    documents = loader.load()
-    return documents
-
-def find_pages_with_excerpts(doc, excerpts):
-    pages_with_excerpts = []
-    for page_num in range(len(doc)):
-        page = doc.load_page(page_num)
-        for excerpt in excerpts:
-            text_instances = page.search_for(excerpt)
-            if text_instances:
-                pages_with_excerpts.append(page_num)
-                break
-    return pages_with_excerpts if pages_with_excerpts else [0]
-
-def get_highlight_info(doc, excerpts):
-    annotations = []
-    for page_num in range(len(doc)):
-        page = doc[page_num]
-        for excerpt in excerpts:
-            text_instances = page.search_for(excerpt)
-            if text_instances:
-                for inst in text_instances:
-                    annotations.append(
-                        {
-                            "page": page_num + 1,
-                            "x": inst.x0,
-                            "y": inst.y0,
-                            "width": inst.x1 - inst.x0,
-                            "height": inst.y1 - inst.y0,
-                            "color": "red",
-                        }
-                    )
-    return annotations
-
-def previous_page():
-    if st.session_state.current_page > 1:
-        st.session_state.current_page -= 1
-
-def next_page():
-    if st.session_state.current_page < st.session_state.total_pages:
-        st.session_state.current_page += 1
-
-def close_pdf():
-    st.session_state.show_pdf = False
-
-# Reset all states
-def file_changed():
-    for key in list(st.session_state.keys()):
-        del st.session_state[key]
-
-def chat_content():
-    st.session_state.chat_history.append(
-        {"role": "user", "content": st.session_state.user_input}
-    )
-
 learner_avatar = "frontend/images/learner.svg"
 tutor_avatar = "frontend/images/tutor.svg"
 
-# Layout for file uploader and mode option
+
+# UIUX: Layout for file uploader and mode option
 file_col, option_col = st.columns([3, 1])
 with file_col:
     uploaded_file = st.file_uploader("Choose a PDF file", type="pdf", on_change=file_changed)
@@ -138,6 +57,8 @@ with option_col:
     else:
         st.session_state.mode = st.radio("Response mode", options=["Normal", "GraphRAG", "Long context"], index=0, disabled=True)
 
+
+# UIUX: Main content
 if __name__ == "__main__" and uploaded_file is not None:
     file_size = uploaded_file.size
     max_file_size = 10 * 1024 * 1024  # 10 MB
@@ -166,7 +87,6 @@ if __name__ == "__main__" and uploaded_file is not None:
             os.makedirs('embedded_content')
         if not os.path.exists(embedding_folder):
             os.makedirs(embedding_folder)
-
 
         if st.session_state.mode == "GraphRAG":
             with st.spinner("Processing file, may take 3 - 5 mins..."):
@@ -198,8 +118,6 @@ if __name__ == "__main__" and uploaded_file is not None:
                 st.session_state.show_chat_border = False
             else:
                 st.session_state.show_chat_border = True
-
-            # print("Current chat history: ", st.session_state.chat_history)
 
         outer_columns = st.columns([1,1])
 
@@ -236,16 +154,13 @@ if __name__ == "__main__" and uploaded_file is not None:
                 if user_input := st.session_state.get('user_input', None):
                     with st.spinner("Generating response..."):
                         try:
-                            # parsed_result = qa_chain.invoke({"input": user_input})
-                            # answer = parsed_result['answer']
+                            # Get response
                             answer = asyncio.run(get_response(st.session_state.mode, 
                                                 documents, user_input, 
                                                 chat_history=[str(x) for x in st.session_state.chat_history], 
                                                 embedding_folder=embedding_folder))
 
                             # Get sources
-                            # parsed_result = qa_source_chain.invoke({"input": user_input})
-                            # sources = parsed_result['answer']['sources']
                             sources = get_response_source(documents, 
                                                           user_input, 
                                                           chat_history=[str(x) for x in st.session_state.chat_history], 

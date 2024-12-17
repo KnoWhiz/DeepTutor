@@ -25,13 +25,14 @@ def show_header():
             encoded_image = base64.b64encode(image_file.read()).decode()
         st.markdown(
             f"""
-            <h2 style='text-align: center;'>
-                <img src="data:image/png;base64,{encoded_image}" alt='icon' style='width:50px; height:50px; vertical-align: middle; margin-right: 10px;'>
+            <h2 style='text-align: left;'>
+                <img src="data:image/png;base64,{encoded_image}" alt='icon' style='width:50px; height:50px; vertical-align: left; margin-right: 10px;'>
                 KnoWhiz Tutor
             </h2>
             """,
             unsafe_allow_html=True
         )
+        st.subheader("")
         st.subheader("Upload a document to get started.")
 
 
@@ -65,7 +66,7 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
     else:
         st.session_state.show_chat_border = True
 
-    with st.container(border=st.session_state.show_chat_border, height=800):
+    with st.container(border=st.session_state.show_chat_border, height=700):
         with st.container():
             st.chat_input(key='user_input', on_submit=chat_content)
             button_b_pos = "2.2rem"
@@ -162,8 +163,8 @@ def show_pdf_viewer(file):
         st.session_state.annotations = []
     pdf_viewer(
         file,
-        width=700,
-        # height=900,
+        width=1000,
+        height=640,
         annotations=st.session_state.annotations,
         pages_to_render=[st.session_state.current_page],
         render_text=True,

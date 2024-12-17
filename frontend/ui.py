@@ -20,18 +20,19 @@ def setup_page_config():
 
 # Function to display the header
 def show_header():
-    with open("frontend/images/logo_short.png", "rb") as image_file:
-        encoded_image = base64.b64encode(image_file.read()).decode()
-    st.markdown(
-        f"""
-        <h2 style='text-align: center;'>
-            <img src="data:image/png;base64,{encoded_image}" alt='icon' style='width:50px; height:50px; vertical-align: middle; margin-right: 10px;'>
-            KnoWhiz Tutor
-        </h2>
-        """,
-        unsafe_allow_html=True
-    )
-    st.subheader("Upload a document to get started.")
+    with st.sidebar:
+        with open("frontend/images/logo_short.png", "rb") as image_file:
+            encoded_image = base64.b64encode(image_file.read()).decode()
+        st.markdown(
+            f"""
+            <h2 style='text-align: center;'>
+                <img src="data:image/png;base64,{encoded_image}" alt='icon' style='width:50px; height:50px; vertical-align: middle; margin-right: 10px;'>
+                KnoWhiz Tutor
+            </h2>
+            """,
+            unsafe_allow_html=True
+        )
+        st.subheader("Upload a document to get started.")
 
 
 # Function to display the file uploader

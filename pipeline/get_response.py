@@ -77,15 +77,9 @@ def truncate_chat_history(chat_history, max_tokens=2000, model_name='gpt-4o'):
 
 
 @st.cache_resource
-def regen_with_graphrag():
-    # Implement the logic to regenerate the response using GraphRAG here.
-    st.warning("Regen with GraphRAG is not implemented yet.")
-
-
-@st.cache_resource
-def regen_with_longer_context():
-    # Implement the logic to regenerate the response using a longer context here.
-    st.warning("Regen with longer context is not implemented yet.")
+def regen_response():
+    # Implement the logic to regenerate the response.
+    st.warning("regen_response is not implemented yet.")
 
 
 @st.cache_resource

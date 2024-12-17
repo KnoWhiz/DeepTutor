@@ -20,7 +20,7 @@ from pipeline.get_response import get_response
 from pipeline.get_response import get_response_source
 from pipeline.get_response import regen_with_graphrag
 from pipeline.get_response import regen_with_longer_context
-from pipeline.images_understanding import get_relevant_images, display_relevant_images, extract_images_with_context, save_images_temp
+from pipeline.utils import generate_course_id
 
 
 # Set page config
@@ -159,7 +159,7 @@ if __name__ == "__main__" and uploaded_file is not None:
                 print(e)
 
         # Compute a hashed ID based on the PDF content
-        file_hash = hashlib.md5(file).hexdigest()
+        file_hash = generate_course_id(file)
         course_id = file_hash
         embedding_folder = os.path.join('embedded_content', course_id)
         if not os.path.exists('embedded_content'):

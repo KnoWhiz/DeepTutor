@@ -5,60 +5,56 @@ import asyncio
 import io
 import json
 import streamlit as st
-from streamlit_pdf_viewer import pdf_viewer
-from streamlit_float import *
 
-from pipeline.get_response import generate_embedding
-from pipeline.get_response import generate_GraphRAG_embedding
-from pipeline.get_response import get_response
-from pipeline.get_response import get_response_source
-from pipeline.get_response import regen_with_graphrag
-from pipeline.get_response import regen_with_longer_context
-from pipeline.utils import generate_course_id, extract_documents_from_file, find_pages_with_excerpts, get_highlight_info
-from frontend.utils import previous_page, next_page, close_pdf, file_changed, chat_content
-
-
-# UIUX: Set page config
-st.set_page_config(
-    page_title="KnoWhiz Tutor",
-    page_icon="frontend/images/logo_short.ico",  # Replace with the actual path to your .ico file
-    layout="wide"
+from pipeline.get_response import (
+    generate_embedding,
+    generate_GraphRAG_embedding,
+    get_response,
+    get_response_source,
+    regen_with_graphrag,
+    regen_with_longer_context
 )
 
 
-# UIUX: Set up the header
-with open("frontend/images/logo_short.png", "rb") as image_file:
-    encoded_image = base64.b64encode(image_file.read()).decode()
-st.markdown(
-    f"""
-    <h2 style='text-align: center;'>
-        <img src="data:image/png;base64,{encoded_image}" alt='icon' style='width:50px; height:50px; vertical-align: middle; margin-right: 10px;'>
-        KnoWhiz Tutor
-    </h2>
-    """,
-    unsafe_allow_html=True
+from pipeline.utils import (
+    generate_course_id,
+    extract_documents_from_file
 )
-st.subheader("Upload a document to get started.")
 
 
-# UIUX: Init float function for chat_input textbox
-float_init(theme=True, include_unstable_primary=False)
-learner_avatar = "frontend/images/learner.svg"
-tutor_avatar = "frontend/images/tutor.svg"
+from frontend.ui import (
+    setup_page_config,
+    show_header,
+    show_file_upload,
+    show_mode_option,
+    show_chat_interface,
+    show_pdf_viewer
+)
 
 
-# UIUX: Layout for file uploader and mode option
-file_col, option_col = st.columns([3, 1])
-with file_col:
-    uploaded_file = st.file_uploader("Choose a PDF file", type="pdf", on_change=file_changed)
-with option_col:
-    if uploaded_file is None:
-        st.session_state.mode = st.radio("Response mode", options=["Normal", "GraphRAG", "Long context"], index=0, disabled=False)
-    else:
-        st.session_state.mode = st.radio("Response mode", options=["Normal", "GraphRAG", "Long context"], index=0, disabled=True)
+from frontend.state import (
+    initialize_session_state,
+    handle_file_change,
+    set_response_mode,
+    process_pdf_file,
+    save_file_locally
+)
 
 
-# UIUX: Main content
+# Set up basic page configuration and header
+setup_page_config()
+show_header()
+
+
+# Initialize state
+initialize_session_state()
+
+
+# Show file uploader and response mode options in the sidebar
+uploaded_file = show_file_upload(on_change=handle_file_change)
+show_mode_option(uploaded_file)
+
+
 if __name__ == "__main__" and uploaded_file is not None:
     file_size = uploaded_file.size
     max_file_size = 10 * 1024 * 1024  # 10 MB
@@ -67,19 +63,9 @@ if __name__ == "__main__" and uploaded_file is not None:
         st.error("File size exceeds the 10 MB limit. Please upload a smaller file.")
     else:
         file = uploaded_file.read()
-        # Clear the temp file folder and save the new upload file to the folder
-        temp_folder = './input_files/'
-        if not os.path.exists(temp_folder):
-            os.makedirs(temp_folder)
-        for f in os.listdir(temp_folder):
-            file_path = os.path.join(temp_folder, f)
-            try:
-                if os.path.isfile(file_path):
-                    os.unlink(file_path)
-            except Exception as e:
-                print(e)
+        save_file_locally(file)
 
-        # Compute a hashed ID based on the PDF content
+        # Compute hashed ID and prepare embedding folder
         file_hash = generate_course_id(file)
         course_id = file_hash
         embedding_folder = os.path.join('embedded_content', course_id)
@@ -88,152 +74,32 @@ if __name__ == "__main__" and uploaded_file is not None:
         if not os.path.exists(embedding_folder):
             os.makedirs(embedding_folder)
 
+        # Process file and create session states for documents and PDF object
+        documents, doc = process_pdf_file(file, uploaded_file.name)
+
+        # Generate embeddings based on the selected mode
         if st.session_state.mode == "GraphRAG":
             with st.spinner("Processing file, may take 3 - 5 mins..."):
-                documents = extract_documents_from_file(file, uploaded_file.name)
-                st.session_state.doc = fitz.open(stream=io.BytesIO(file), filetype="pdf")
-                st.session_state.total_pages = len(st.session_state.doc)
-
-                # Generate embeddings
                 generate_embedding(documents, embedding_folder=embedding_folder)
-
-                # Generate GraphRAG embeddings if the mode is GraphRAG
                 generate_GraphRAG_embedding(documents, embedding_folder=embedding_folder)
         else:
             with st.spinner("Processing file..."):
-                documents = extract_documents_from_file(file, uploaded_file.name)
-                st.session_state.doc = fitz.open(stream=io.BytesIO(file), filetype="pdf")
-                st.session_state.total_pages = len(st.session_state.doc)
-
-                # Generate embeddings
                 generate_embedding(documents, embedding_folder=embedding_folder)
 
+        # If documents are found, proceed to show chat interface and PDF viewer
         if documents:
-            # qa_chain = get_response(documents, embedding_folder=embedding_folder)
-            # qa_source_chain = get_response_source(documents, embedding_folder=embedding_folder)
-            if "chat_history" not in st.session_state:
-                st.session_state.chat_history = [
-                    {"role": "assistant", "content": "Hello! How can I assist you today? "}
-                ]
-                st.session_state.show_chat_border = False
-            else:
-                st.session_state.show_chat_border = True
+            outer_columns = st.columns([1, 1])
 
-        outer_columns = st.columns([1,1])
-
-        with outer_columns[1]:
-            with st.container(border=st.session_state.show_chat_border, height=800):
-                with st.container():
-                    st.chat_input(key='user_input', on_submit=chat_content)
-                    button_b_pos = "2.2rem"
-                    button_css = float_css_helper(width="2.2rem", bottom=button_b_pos, transition=0)
-                    float_parent(css=button_css)
-
-                # Display chat history
-                for idx, msg in enumerate(st.session_state.chat_history):
-                    avatar = learner_avatar if msg["role"] == "user" else tutor_avatar
-                    with st.chat_message(msg["role"], avatar=avatar):
-                        st.write(msg["content"])
-                        # If this message is from the assistant
-                        if msg["role"] == "assistant":
-                            # Show appropriate button based on mode
-                            if st.session_state.mode == "GraphRAG":
-                                st.button(
-                                    "Regen with GraphRAG",
-                                    key=f"regen_graphrag_{idx}",
-                                    on_click=regen_with_graphrag
-                                )
-                            elif st.session_state.mode == "Long context":
-                                st.button(
-                                    "Regen with longer context",
-                                    key=f"regen_longer_context_{idx}",
-                                    on_click=regen_with_longer_context
-                                )
-
-                # If new user input
-                if user_input := st.session_state.get('user_input', None):
-                    with st.spinner("Generating response..."):
-                        try:
-                            # Get response
-                            answer = asyncio.run(get_response(st.session_state.mode, 
-                                                documents, user_input, 
-                                                chat_history=[str(x) for x in st.session_state.chat_history], 
-                                                embedding_folder=embedding_folder))
-
-                            # Get sources
-                            sources = get_response_source(documents, 
-                                                          user_input, 
-                                                          chat_history=[str(x) for x in st.session_state.chat_history], 
-                                                          embedding_folder=embedding_folder)
-                            try:
-                                if not all(isinstance(source, str) for source in sources):
-                                    raise ValueError("Sources must be a list of strings.")
-                                sources = list(sources)
-                            except:
-                                sources = []
-
-                            print("The content is from: ", sources)
-
-                            st.session_state.chat_history.append(
-                                {"role": "assistant", "content": answer}
-                            )
-                            with st.chat_message("assistant", avatar=tutor_avatar):
-                                st.write(answer)
-                                # Show button based on mode for the newly generated response
-                                if st.session_state.mode == "GraphRAG":
-                                    st.button(
-                                        "Regen with GraphRAG",
-                                        key=f"regen_graphrag_new_{len(st.session_state.chat_history)}",
-                                        on_click=regen_with_graphrag
-                                    )
-                                elif st.session_state.mode == "Long context":
-                                    st.button(
-                                        "Regen with longer context",
-                                        key=f"regen_longer_context_new_{len(st.session_state.chat_history)}",
-                                        on_click=regen_with_longer_context
-                                    )
-
-                            st.session_state.sources = sources
-                            st.session_state.chat_occurred = True
-
-                        except json.JSONDecodeError:
-                            st.error(
-                                "There was an error parsing the response. Please try again."
-                            )
-
-                    # Highlight PDF excerpts
-                    if file and st.session_state.get("chat_occurred", False):
-                        doc = st.session_state.doc
-                        pages_with_excerpts = find_pages_with_excerpts(doc, st.session_state.sources)
-                        if "current_page" not in st.session_state:
-                            st.session_state.current_page = pages_with_excerpts[0] + 1
-                        if 'pages_with_exerpts' not in st.session_state:
-                            st.session_state.pages_with_excerpts = pages_with_excerpts
-                        st.session_state.annotations = get_highlight_info(doc, st.session_state.sources)
-                        if st.session_state.annotations:
-                            st.session_state.current_page = min(
-                                annotation["page"] for annotation in st.session_state.annotations
-                            )
-
-        with outer_columns[0]:
-            if "current_page" not in st.session_state:
-                st.session_state.current_page = 1
-            if "annotations" not in st.session_state:
-                st.session_state.annotations = []
-            pdf_viewer(
-                file,
-                width=700,
-                height=800,
-                annotations=st.session_state.annotations,
-                pages_to_render=[st.session_state.current_page],
-                render_text=True,
-            )
-            col1, col2, col3, col4 = st.columns([8, 4, 3, 3],vertical_alignment='center')
-            with col1:
-                st.button("←", on_click=previous_page)
-            with col2:
-                st.write(
-                    f"Page {st.session_state.current_page} of {st.session_state.total_pages}"
+            with outer_columns[1]:
+                show_chat_interface(
+                    doc=doc,
+                    documents=documents,
+                    embedding_folder=embedding_folder,
+                    get_response_fn=get_response,
+                    get_source_fn=get_response_source,
+                    regen_with_graphrag=regen_with_graphrag,
+                    regen_with_longer_context=regen_with_longer_context
                 )
-            with col4:
-                st.button("→", on_click=next_page)
+
+            with outer_columns[0]:
+                show_pdf_viewer(file)

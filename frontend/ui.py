@@ -169,7 +169,7 @@ def show_pdf_viewer(file):
         pages_to_render=[st.session_state.current_page],
         render_text=True,
     )
-    col1, col2, col3, col4 = st.columns([8, 4, 3, 3], vertical_alignment='center')
+    col1, col2, col3, col4 = st.columns([8, 6, 3, 3], vertical_alignment='center')
     with col1:
         st.button("←", on_click=previous_page)
     with col2:

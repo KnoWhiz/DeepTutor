@@ -59,7 +59,7 @@ def show_page_option():
 
 
 # Function to display the chat interface
-def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_source_fn, regen_response):
+def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_source_fn):
     # Init float function for chat_input textbox
     float_init(theme=True, include_unstable_primary=False)
     learner_avatar = "frontend/images/learner.svg"

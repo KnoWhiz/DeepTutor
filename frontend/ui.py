@@ -12,7 +12,7 @@ from pipeline.utils import find_pages_with_excerpts, get_highlight_info
 # Function to set up the page configuration
 def setup_page_config():
     st.set_page_config(
-        page_title="KnoWhiz Tutor",
+        page_title="KnoWhiz Office Hours",
         page_icon="frontend/images/logo_short.ico",
         layout="wide"
     )
@@ -27,19 +27,19 @@ def show_header():
             f"""
             <h2 style='text-align: left;'>
                 <img src="data:image/png;base64,{encoded_image}" alt='icon' style='width:50px; height:50px; vertical-align: left; margin-right: 10px;'>
-                KnoWhiz Tutor
+                KnoWhiz Office Hours
             </h2>
             """,
             unsafe_allow_html=True
         )
-        st.subheader("")
+        st.subheader(" ")
         st.subheader("Upload a document to get started.")
 
 
 # Function to display the file uploader
 def show_file_upload(on_change=None):
     with st.sidebar:
-        return st.file_uploader("Choose a PDF file", type="pdf", on_change=on_change)
+        return st.file_uploader(" ", type="pdf", on_change=on_change)
 
 
 # Function to display the response mode options
@@ -47,7 +47,15 @@ def show_mode_option(uploaded_file):
     with st.sidebar:
         disabled = uploaded_file is not None
         mode_index = 0
-        st.session_state.mode = st.radio("Response mode", options=["Basic model", "GraphRAG", "Advanced model"], index=mode_index, disabled=disabled)
+        st.session_state.mode = st.radio(" ", options=["TA", "Professor"], index=mode_index, disabled=disabled)
+
+
+# Function to display the chat interface
+def show_page_option():
+    with st.sidebar:
+        # Navigation Menu
+        menu = ["📑 Document reading", "📬 KnoWhiz?"]
+        st.session_state.page = st.selectbox(" ", menu)
 
 
 # Function to display the chat interface
@@ -78,19 +86,12 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
             avatar = learner_avatar if msg["role"] == "user" else tutor_avatar
             with st.chat_message(msg["role"], avatar=avatar):
                 st.write(msg["content"])
-                if msg["role"] == "assistant":
-                    if st.session_state.mode == "GraphRAG":
-                        st.button(
-                            "Re-generate",
-                            key=f"regen_response_{idx}",
-                            on_click=regen_response
-                        )
-                    elif st.session_state.mode == "Advanced model":
-                        st.button(
-                            "Re-generate",
-                            key=f"regen_response_{idx}",
-                            on_click=regen_response
-                        )
+                # if msg["role"] == "assistant":
+                #     st.button(
+                #         "Re-generate",
+                #         key=f"regen_response_{idx}",
+                #         on_click=regen_response
+                #     )
 
         # If new user input exists
         if user_input := st.session_state.get('user_input', None):
@@ -122,18 +123,11 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
                     )
                     with st.chat_message("assistant", avatar=tutor_avatar):
                         st.write(answer)
-                        if st.session_state.mode == "GraphRAG":
-                            st.button(
-                                "Re-generate",
-                                key=f"regen_response_{idx}",
-                                on_click=regen_response
-                            )
-                        elif st.session_state.mode == "Advanced model":
-                            st.button(
-                                "Re-generate",
-                                key=f"regen_response_{idx}",
-                                on_click=regen_response
-                            )
+                        # st.button(
+                        #     "Re-generate",
+                        #     key=f"regen_response_{idx}",
+                        #     on_click=regen_response
+                        # )
 
                     st.session_state.sources = sources
                     st.session_state.chat_occurred = True
@@ -177,3 +171,27 @@ def show_pdf_viewer(file):
         st.write(f"Page {st.session_state.current_page} of {total_pages}")
     with col4:
         st.button("→", on_click=next_page)
+
+
+# Function to display the footer
+def show_footer():
+    with st.sidebar:
+        st.markdown("---")
+        st.markdown("Professors and TAs can make mistakes, sometimes you have to trust **YOURSELF**! 🧠")
+
+
+# Function to display the contact us page
+def show_contact_us():
+    st.title("📬 Contact Us")
+    st.markdown("""
+    We'd love to hear from you! Whether you have any **question, feedback, or want to contribute**, feel free to reach out.
+
+    - **Email:** [knowhiz.us@gmail.com](mailto:knowhiz.us@gmail.com) 📨
+    - **Discord:** [Join our Discord community](https://discord.gg/7ucnweCKk8) 💬
+    - **GitHub:** [Contribute on GitHub](https://github.com/KnoWhiz/KnoWhizTutor) 🛠️
+    - **Follow us:** [LinkedIn](https://www.linkedin.com/company/knowhiz) | [Twitter](https://x.com/knowhizlearning) 🏄
+
+    If you'd like to request a feature or report a bug, please **let us know!** Your suggestions are highly appreciated! 🙌
+    """)
+    st.title("🗂️ KnoWhiz flashcards")
+    st.markdown("Want more **structured and systematic** learning? Check out our **[KnoWhiz flashcards learning platform](https://www.knowhiz.us/)!** 🚀")

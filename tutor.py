@@ -26,8 +26,11 @@ from frontend.ui import (
     show_header,
     show_file_upload,
     show_mode_option,
+    show_page_option,
     show_chat_interface,
-    show_pdf_viewer
+    show_pdf_viewer,
+    show_footer,
+    show_contact_us
 )
 
 
@@ -52,9 +55,11 @@ initialize_session_state()
 # Show file uploader and response mode options in the sidebar
 uploaded_file = show_file_upload(on_change=handle_file_change)
 show_mode_option(uploaded_file)
+show_page_option()
+show_footer()
 
 
-if __name__ == "__main__" and uploaded_file is not None:
+if __name__ == "__main__" and uploaded_file is not None and st.session_state.page == "📑 Document reading":
     file_size = uploaded_file.size
     max_file_size = 10 * 1024 * 1024  # 10 MB
 
@@ -77,7 +82,7 @@ if __name__ == "__main__" and uploaded_file is not None:
         documents, doc = process_pdf_file(file, uploaded_file.name)
 
         # Generate embeddings based on the selected mode
-        if st.session_state.mode == "GraphRAG":
+        if st.session_state.mode == "Professor":
             with st.spinner("Processing file, may take 3 - 5 mins..."):
                 generate_embedding(documents, embedding_folder=embedding_folder)
                 generate_GraphRAG_embedding(documents, embedding_folder=embedding_folder)
@@ -101,3 +106,6 @@ if __name__ == "__main__" and uploaded_file is not None:
 
             with outer_columns[0]:
                 show_pdf_viewer(file)
+
+elif __name__ == "__main__" and st.session_state.page == "📬 KnoWhiz?":
+    show_contact_us()

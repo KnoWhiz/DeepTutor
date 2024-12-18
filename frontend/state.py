@@ -24,11 +24,6 @@ def handle_file_change():
     st.session_state.current_page = 1
 
 
-# Function to set the response mode
-def set_response_mode(mode):
-    st.session_state.mode = mode
-
-
 # Function to save the file locally
 def save_file_locally(file):
     temp_folder = './input_files/'

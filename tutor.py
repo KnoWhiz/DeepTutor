@@ -37,7 +37,6 @@ from frontend.ui import (
 from frontend.state import (
     initialize_session_state,
     handle_file_change,
-    set_response_mode,
     process_pdf_file,
     save_file_locally
 )

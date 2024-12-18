@@ -184,10 +184,10 @@ def generate_GraphRAG_embedding(_documents, embedding_folder):
     # Check if all necessary paths in path_list exist
     if all([os.path.exists(path) for path in path_list]):
         # Load existing embeddings
-        print("All necessary index files exist. Loading existing GraphRAG embeddings...")
+        print("All necessary index files exist. Loading existing knowledge graph embeddings...")
     else:
         # Create the GraphRAG embedding
-        print("Creating new GraphRAG embeddings...")
+        print("Creating new knowledge graph embeddings...")
 
         # Initialize the project
         create_env_file(GraphRAG_embedding_folder)
@@ -219,7 +219,7 @@ def generate_GraphRAG_embedding(_documents, embedding_folder):
 
             # Open the PDF file
             with fitz.open(pdf_path) as pdf_document:
-                text = ""
+                text = " "
                 for page in pdf_document:
                     text += page.get_text()
             
@@ -245,7 +245,7 @@ def generate_GraphRAG_embedding(_documents, embedding_folder):
 
 @st.cache_resource
 async def get_response(mode, _documents, user_input, chat_history, embedding_folder):
-    if mode == 'GraphRAG':
+    if mode == 'Professor':
         return await get_GraphRAG_global_response(_documents, user_input, chat_history, embedding_folder)
 
     para = {

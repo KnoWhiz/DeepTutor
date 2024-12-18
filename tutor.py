@@ -81,7 +81,7 @@ if __name__ == "__main__" and uploaded_file is not None and st.session_state.pag
 
         # Generate embeddings based on the selected mode
         if st.session_state.mode == "Professor":
-            with st.spinner("Processing file, may take 3 - 5 mins..."):
+            with st.spinner("Processing file to generate knowledge graph, may take 3 - 5 mins..."):
                 generate_embedding(documents, embedding_folder=embedding_folder)
                 generate_GraphRAG_embedding(documents, embedding_folder=embedding_folder)
         else:

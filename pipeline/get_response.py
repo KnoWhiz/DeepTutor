@@ -255,10 +255,6 @@ async def get_response(mode, _documents, user_input, chat_history, embedding_fol
 
     embeddings = get_embedding_models('default', para)
 
-    # Define the default filenames used by FAISS when saving
-    faiss_path = os.path.join(embedding_folder, "index.faiss")
-    pkl_path = os.path.join(embedding_folder, "index.pkl")
-
     # Check if all necessary files exist to load the embeddings
     generate_embedding(_documents, embedding_folder)
 
@@ -330,6 +326,10 @@ async def get_response(mode, _documents, user_input, chat_history, embedding_fol
 
 @st.cache_resource
 async def get_GraphRAG_global_response(_documents, user_input, chat_history, embedding_folder):
+    # Chat history and user input
+    chat_history_text = truncate_chat_history(chat_history)
+    user_input_text = str(user_input)
+
     # Check if all necessary files exist to load the embeddings
     generate_GraphRAG_embedding(_documents, embedding_folder)
 
@@ -420,7 +420,14 @@ async def get_GraphRAG_global_response(_documents, user_input, chat_history, emb
     )
 
     answer = await search_engine.asearch(
-        str(user_input),
+        f"""
+        You are a patient and honest professor helping a student reading a paper.
+        The student asked the following question:
+        ```{user_input_text}```
+        Use the given context to answer the question.
+        Previous conversation history:
+        ```{chat_history_text}```
+        """,
     )
 
     return answer.response

@@ -77,12 +77,6 @@ def truncate_chat_history(chat_history, max_tokens=2000, model_name='gpt-4o'):
 
 
 @st.cache_resource
-def regen_response():
-    # Implement the logic to regenerate the response.
-    st.warning("regen_response is not implemented yet.")
-
-
-@st.cache_resource
 def get_llm(llm_type, para):
     para = para
     api = ApiHandler(para)
@@ -349,7 +343,7 @@ async def get_GraphRAG_global_response(_documents, user_input, chat_history, emb
     api_base = os.getenv("GRAPHRAG_API_BASE")
     api_version = os.getenv("GRAPHRAG_API_VERSION")
 
-    print("api_key", api_key)
+    # print("api_key", api_key)
 
     llm = ChatOpenAI(
         api_key=api_key,

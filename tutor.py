@@ -11,7 +11,6 @@ from pipeline.get_response import (
     generate_GraphRAG_embedding,
     get_response,
     get_response_source,
-    regen_response,
 )
 
 
@@ -100,7 +99,6 @@ if __name__ == "__main__" and uploaded_file is not None and st.session_state.pag
                     embedding_folder=embedding_folder,
                     get_response_fn=get_response,
                     get_source_fn=get_response_source,
-                    regen_response=regen_response,
                 )
 
             with outer_columns[0]:

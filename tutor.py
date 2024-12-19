@@ -1,9 +1,4 @@
 import os
-import base64
-import fitz
-import asyncio
-import io
-import json
 import streamlit as st
 
 from pipeline.get_response import (
@@ -16,7 +11,6 @@ from pipeline.get_response import (
 
 from pipeline.utils import (
     generate_course_id,
-    extract_documents_from_file
 )
 
 

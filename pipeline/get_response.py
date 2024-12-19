@@ -1,7 +1,6 @@
 import os
 import yaml
 import fitz
-import asyncio
 import tiktoken
 import pandas as pd
 
@@ -186,12 +185,6 @@ def generate_GraphRAG_embedding(_documents, embedding_folder):
         # Initialize the project
         create_env_file(GraphRAG_embedding_folder)
         try:
-            # Ensure an event loop is available
-            try:
-                loop = asyncio.get_event_loop()
-            except RuntimeError:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
             # Call the function with the desired path
             initialize_project_at(Path(GraphRAG_embedding_folder))
         except Exception as e:
@@ -227,7 +220,7 @@ def generate_GraphRAG_embedding(_documents, embedding_folder):
             return index_result
 
         # Assuming api and graphrag_config are already defined
-        index_result = asyncio.run(build_index_async(api, graphrag_config))
+        index_result = build_index_async(api, graphrag_config)
 
         # index_result is a list of workflows that make up the indexing pipeline that was run
         for workflow_result in index_result:
@@ -238,9 +231,9 @@ def generate_GraphRAG_embedding(_documents, embedding_folder):
 
 
 @st.cache_resource
-async def get_response(mode, _documents, user_input, chat_history, embedding_folder):
+def get_response(mode, _documents, user_input, chat_history, embedding_folder):
     if mode == 'Professor':
-        return await get_GraphRAG_global_response(_documents, user_input, chat_history, embedding_folder)
+        return get_GraphRAG_global_response(_documents, user_input, chat_history, embedding_folder)
 
     para = {
         'llm_source': 'openai',  # or 'anthropic'
@@ -325,7 +318,7 @@ async def get_response(mode, _documents, user_input, chat_history, embedding_fol
 
 
 @st.cache_resource
-async def get_GraphRAG_global_response(_documents, user_input, chat_history, embedding_folder):
+def get_GraphRAG_global_response(_documents, user_input, chat_history, embedding_folder):
     # Chat history and user input
     chat_history_text = truncate_chat_history(chat_history)
     user_input_text = str(user_input)
@@ -419,7 +412,7 @@ async def get_GraphRAG_global_response(_documents, user_input, chat_history, emb
         response_type="multiple paragraphs",  # free form text describing the response type and format, can be anything, e.g. prioritized list, single paragraph, multiple paragraphs, multiple-page report
     )
 
-    answer = await search_engine.asearch(
+    answer = search_engine.search(
         f"""
         You are a patient and honest professor helping a student reading a paper.
         The student asked the following question:

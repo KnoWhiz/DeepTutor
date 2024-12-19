@@ -40,15 +40,15 @@ setup_page_config()
 show_header()
 
 
-# Initialize state
-initialize_session_state()
-
-
 # Show file uploader and response mode options in the sidebar
 uploaded_file = show_file_upload(on_change=handle_file_change)
 show_mode_option(uploaded_file)
 show_page_option()
 show_footer()
+
+
+# # Initialize state
+# initialize_session_state()
 
 
 if __name__ == "__main__" and uploaded_file is not None and st.session_state.page == "📑 Document reading":

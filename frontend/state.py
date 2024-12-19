@@ -9,22 +9,24 @@ from pipeline.utils import extract_documents_from_file
 def initialize_session_state():
     if "mode" not in st.session_state:
         st.session_state.mode = "TA"
-    if "chat_history" not in st.session_state:
+    if "chat_history" not in st.session_state: 
         st.session_state.chat_history = [
-            {"role": "assistant", "content": "Hi how can I help you today!"}
+            {"role": "assistant", "content": "Hello! How can I assist you today? "}
         ]
+        st.session_state.show_chat_border = False
+    else:
         st.session_state.show_chat_border = True
 
 
 # Function to handle file change
 def handle_file_change():
     # Reset states when a new file is uploaded
-    st.session_state.chat_history = []
     st.session_state.annotations = []
     st.session_state.chat_occurred = False
     st.session_state.sources = []
     st.session_state.total_pages = 1
     st.session_state.current_page = 1
+    initialize_session_state()
 
 
 # Function to process the PDF file

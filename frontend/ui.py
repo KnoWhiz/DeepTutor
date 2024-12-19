@@ -64,15 +64,6 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
     learner_avatar = "frontend/images/learner.svg"
     tutor_avatar = "frontend/images/tutor.svg"
 
-    # Initialize chat history if not exists
-    if "chat_history" not in st.session_state:
-        st.session_state.chat_history = [
-            {"role": "assistant", "content": "Hi how can I help you today!"}
-        ]
-        st.session_state.show_chat_border = True
-    else:
-        st.session_state.show_chat_border = True
-
     with st.container(border=st.session_state.show_chat_border, height=700):
         with st.container():
             st.chat_input(key='user_input', on_submit=chat_content)

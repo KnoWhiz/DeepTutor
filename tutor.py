@@ -6,6 +6,7 @@ from pipeline.get_response import (
     generate_GraphRAG_embedding,
     get_response,
     get_response_source,
+    get_query_helper,
 )
 
 
@@ -28,7 +29,6 @@ from frontend.ui import (
 
 
 from frontend.state import (
-    initialize_session_state,
     handle_file_change,
     process_pdf_file,
     save_file_locally
@@ -95,6 +95,7 @@ if __name__ == "__main__" and uploaded_file is not None and st.session_state.pag
                     embedding_folder=embedding_folder,
                     get_response_fn=get_response,
                     get_source_fn=get_response_source,
+                    get_query_fn=get_query_helper,
                 )
 
             with outer_columns[0]:

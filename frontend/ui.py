@@ -58,7 +58,7 @@ def show_page_option():
 
 
 # Function to display the chat interface
-def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_source_fn):
+def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_source_fn, get_query_fn):
     # Init float function for chat_input textbox
     float_init(theme=True, include_unstable_primary=False)
     learner_avatar = "frontend/images/learner.svg"
@@ -87,6 +87,13 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
         if user_input := st.session_state.get('user_input', None):
             with st.spinner("Generating response..."):
                 try:
+                    # Rephrase the user input
+                    user_input = get_query_fn(
+                            user_input,
+                            chat_history=st.session_state.chat_history,
+                            embedding_folder=embedding_folder
+                        )
+
                     # Get response
                     answer = get_response_fn(
                             st.session_state.mode,
@@ -109,6 +116,8 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
                     # Print sources
                     print("Source content:", sources)
 
+                    answer = f"""Are you asking: **{user_input}**
+                    """ + "\n" + answer
                     st.session_state.chat_history.append(
                         {"role": "assistant", "content": answer}
                     )
@@ -119,7 +128,7 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
                         st.write(answer)
                     with st.chat_message("sources", avatar=tutor_avatar):
                         st.write(sources)
-                        
+
                         # st.button(
                         #     "Re-generate",
                         #     key=f"regen_response_{idx}",

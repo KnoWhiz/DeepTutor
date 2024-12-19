@@ -100,11 +100,14 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
                     sources = get_source_fn(
                         documents,
                         user_input,
+                        answer,
                         chat_history=[str(x) for x in st.session_state.chat_history],
                         embedding_folder=embedding_folder
                     )
                     # Validate sources
                     sources = sources if all(isinstance(s, str) for s in sources) else []
+                    # Print sources
+                    print("Source content:", sources)
 
                     st.session_state.chat_history.append(
                         {"role": "assistant", "content": answer}

@@ -414,7 +414,7 @@ def get_GraphRAG_global_response(_documents, user_input, chat_history, embedding
 
 
 @st.cache_resource
-def get_response_source(_documents, user_input, chat_history, embedding_folder):
+def get_response_source(_documents, user_input, answer, chat_history, embedding_folder):
     para = {
         'llm_source': 'openai',  # or 'anthropic'
         'temperature': 0,
@@ -456,18 +456,18 @@ def get_response_source(_documents, user_input, chat_history, embedding_folder):
     # retriever = db.as_retriever(
     #     search_type="mmr", search_kwargs={"k": 2, "lambda_mult": 0.8}
     # )
-    retriever = db.as_retriever(search_kwargs={"k":2})
+    retriever = db.as_retriever(search_kwargs={"k":5})
 
     # Create the RetrievalQA chain
     system_prompt = (
         """
         You are a honest professor helping a student reading a paper.
         For the given question about the context,
-        find and provide sources that are helpful for answering the question.
-        Use direct sentences or paragraphs from the context that are related to the question.
-        ONLY RELEVANT TEXT DIRECTLY FROM THE DOCUMENTS. 
+        find and provide sources that are related to a given question or answer.
+        Use direct sentences or paragraphs from the context that are related to the question or answer.
+        ONLY RELEVANT TEXT DIRECTLY FROM THE DOCUMENTS.
         DO NOT ADD ANYTHING EXTRA. DO NOT INVENT ANYTHING.
-        Make as comprehensive a list of all the things that might be helpful
+        Make as comprehensive a list of all the things that might be related
 
         Context: ```{context}```
 
@@ -487,7 +487,7 @@ def get_response_source(_documents, user_input, chat_history, embedding_folder):
     )
     human_prompt = (
         """
-        My question is: {input}. I want to find the sources sentences that are helpful for answering the question.
+        For text: ```{input}```, I want to find the sources sentences that are related.
         """
     )
     prompt = ChatPromptTemplate.from_messages(
@@ -513,6 +513,16 @@ def get_response_source(_documents, user_input, chat_history, embedding_folder):
     chain = RunnablePassthrough.assign(context=retrieve_docs).assign(
         answer=rag_chain_from_docs
     )
-    parsed_result = chain.invoke({"input": user_input})
-    sources = parsed_result['answer']['sources']
+    parsed_result_question = chain.invoke({"input": user_input})
+    sources_question = parsed_result_question['answer']['sources']
+
+    # Pass answer to retriever
+    retrieve_docs = (lambda x: x["input"]) | retriever
+    chain = RunnablePassthrough.assign(context=retrieve_docs).assign(
+        answer=rag_chain_from_docs
+    )
+    parsed_result_answer = chain.invoke({"input": answer})
+    sources_answer = parsed_result_answer['answer']['sources']
+
+    sources = sources_question + sources_answer
     return sources

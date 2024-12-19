@@ -1,6 +1,7 @@
 import os
 import yaml
 import fitz
+import asyncio
 import tiktoken
 import pandas as pd
 
@@ -185,6 +186,12 @@ def generate_GraphRAG_embedding(_documents, embedding_folder):
         # Initialize the project
         create_env_file(GraphRAG_embedding_folder)
         try:
+            # Ensure an event loop is available
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
             # Call the function with the desired path
             initialize_project_at(Path(GraphRAG_embedding_folder))
         except Exception as e:
@@ -220,7 +227,7 @@ def generate_GraphRAG_embedding(_documents, embedding_folder):
             return index_result
 
         # Assuming api and graphrag_config are already defined
-        index_result = build_index_async(api, graphrag_config)
+        index_result = asyncio.run(build_index_async(api, graphrag_config))
 
         # index_result is a list of workflows that make up the indexing pipeline that was run
         for workflow_result in index_result:

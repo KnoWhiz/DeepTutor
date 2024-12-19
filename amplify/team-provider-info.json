@@ -1,0 +1,20 @@
+{
+  "knowhizoau": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-knowhizpool-knowhizoau-215023-authRole",
+      "UnauthRoleArn": "arn:aws:iam::820581025843:role/amplify-knowhizpool-knowhizoau-215023-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::820581025843:role/amplify-knowhizpool-knowhizoau-215023-authRole",
+      "Region": "us-west-2",
+      "DeploymentBucketName": "amplify-knowhizpool-knowhizoau-215023-deployment",
+      "UnauthRoleName": "amplify-knowhizpool-knowhizoau-215023-unauthRole",
+      "StackName": "amplify-knowhizpool-knowhizoau-215023",
+      "StackId": "arn:aws:cloudformation:us-west-2:820581025843:stack/amplify-knowhizpool-knowhizoau-215023/cb46d010-c0c5-11ee-9d3d-06c4bbd63bf1",
+      "AmplifyAppId": "dbl0jbgk4cga8"
+    },
+    "categories": {
+      "auth": {
+        "knowhizpool5f6ba34f": {}
+      }
+    }
+  }
+}

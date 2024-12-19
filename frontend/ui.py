@@ -92,7 +92,7 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
                             st.session_state.mode,
                             documents,
                             user_input,
-                            chat_history=[str(x) for x in st.session_state.chat_history],
+                            chat_history=st.session_state.chat_history,
                             embedding_folder=embedding_folder
                         )
 
@@ -101,7 +101,7 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
                         documents,
                         user_input,
                         answer,
-                        chat_history=[str(x) for x in st.session_state.chat_history],
+                        chat_history=st.session_state.chat_history,
                         embedding_folder=embedding_folder
                     )
                     # Validate sources
@@ -112,8 +112,14 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
                     st.session_state.chat_history.append(
                         {"role": "assistant", "content": answer}
                     )
+                    st.session_state.chat_history.append(
+                        {"role": "sources", "content": sources}
+                    )
                     with st.chat_message("assistant", avatar=tutor_avatar):
                         st.write(answer)
+                    with st.chat_message("sources", avatar=tutor_avatar):
+                        st.write(sources)
+                        
                         # st.button(
                         #     "Re-generate",
                         #     key=f"regen_response_{idx}",

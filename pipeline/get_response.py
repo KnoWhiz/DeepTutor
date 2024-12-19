@@ -121,9 +121,10 @@ def generate_embedding(_documents, embedding_folder):
     # Define the default filenames used by FAISS when saving
     faiss_path = os.path.join(embedding_folder, "index.faiss")
     pkl_path = os.path.join(embedding_folder, "index.pkl")
+    documents_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
 
     # Check if all necessary files exist to load the embeddings
-    if os.path.exists(faiss_path) and os.path.exists(pkl_path):
+    if os.path.exists(faiss_path) and os.path.exists(pkl_path) and os.path.exists(documents_summary_path):
         # Load existing embeddings
         print("Loading existing embeddings...")
         db = FAISS.load_local(
@@ -141,6 +142,20 @@ def generate_embedding(_documents, embedding_folder):
         db = FAISS.from_documents(texts, embeddings)
         # Save the embeddings to the specified folder
         db.save_local(embedding_folder)
+
+        llm = get_llm('basic', para)
+        parser = StrOutputParser()
+        error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
+        prompt = """
+        Summarize the given text within 300 words.
+        {document}
+        """
+        prompt = ChatPromptTemplate.from_template(prompt)
+        chain = prompt | llm | error_parser
+        parsed_result = chain.invoke({"document": _documents})
+        documents_summary = parsed_result
+        with open(documents_summary_path, "w") as f:
+            f.write(documents_summary)
 
     return
 
@@ -274,7 +289,7 @@ def get_response(mode, _documents, user_input, chat_history, embedding_folder):
         Our previous conversation is: {chat_history}
         This time my query is: {input}
         Answer the question based on the context provided.
-        Since I am a student with no related knowledge backgroud, 
+        Since I am a student with no related knowledge background, 
         provide a concise answer and directly answer the question in easy to understand language.
         Use markdown syntax for bold formatting to highlight important points or words.
         """
@@ -528,5 +543,67 @@ def get_response_source(_documents, user_input, answer, chat_history, embedding_
     parsed_result_answer = chain.invoke({"input": answer})
     sources_answer = parsed_result_answer['answer']['sources']
 
-    sources = sources_question + sources_answer
+    # Combine sources from question and answer and make sure there are no duplicates
+    # sources = sources_question + sources_answer
+    sources = list(set(sources_question + sources_answer))
     return sources
+
+
+@st.cache_resource
+def get_query_helper(user_input, chat_history, embedding_folder):
+    # If we have "documents_summary" in the embedding folder, we can use it to speed up the search
+    documents_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
+    if os.path.exists(documents_summary_path):
+        with open(documents_summary_path, "r") as f:
+            documents_summary = f.read()
+    else:
+        documents_summary = " "
+
+    para = {
+        'llm_source': 'openai',  # or 'anthropic'
+        'temperature': 0,
+        "creative_temperature": 0.5,
+        "openai_key_dir": ".env",
+        "anthropic_key_dir": ".env",
+    }
+    llm = get_llm('basic', para)
+    parser = JsonOutputParser()
+    error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
+
+    system_prompt = (
+        """
+        You are a educational professor helping a student reading a document {context}.
+        The goals are:
+        1. to ask questions in a better way.
+        2. to identify the question is about local or global context of the document.
+
+        Organize final response in the following JSON format:
+        ```json
+        {{
+            "question": "<question rephrased in a better way>",
+            "question_type": "<local/global>"
+        }}
+        ```
+        """
+    )
+    human_prompt = (
+        """
+        Previous conversation history:
+        ```{chat_history}```
+        The student asked the following question:
+        ```{input}```
+        """
+    )
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", system_prompt),
+            ("human", human_prompt),
+        ]
+    )
+    chain = prompt | llm | error_parser
+    parsed_result = chain.invoke({"input": user_input,
+                                  "context": documents_summary,
+                                  "chat_history": truncate_chat_history(chat_history)})
+    question = parsed_result['question']
+    question_type = parsed_result['question_type']
+    return question

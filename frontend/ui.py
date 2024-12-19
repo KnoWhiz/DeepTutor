@@ -1,6 +1,5 @@
 import json
 import base64
-import asyncio
 import streamlit as st
 from streamlit_pdf_viewer import pdf_viewer
 from streamlit_float import float_init, float_parent, float_css_helper
@@ -98,15 +97,13 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
             with st.spinner("Generating response..."):
                 try:
                     # Get response
-                    answer = asyncio.run(
-                        get_response_fn(
+                    answer = get_response_fn(
                             st.session_state.mode,
                             documents,
                             user_input,
                             chat_history=[str(x) for x in st.session_state.chat_history],
                             embedding_folder=embedding_folder
                         )
-                    )
 
                     # Get sources
                     sources = get_source_fn(

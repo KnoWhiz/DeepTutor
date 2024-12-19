@@ -69,7 +69,7 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
         st.session_state.chat_history = [
             {"role": "assistant", "content": "Hi how can I help you today!"}
         ]
-        st.session_state.show_chat_border = False
+        st.session_state.show_chat_border = True
     else:
         st.session_state.show_chat_border = True
 
@@ -174,7 +174,7 @@ def show_pdf_viewer(file):
 def show_footer():
     with st.sidebar:
         st.markdown("---")
-        st.markdown("Professors and TAs can make mistakes, sometimes you have to trust **YOURSELF**! 🧠")
+        st.markdown("**Professors** and **TAs** can make mistakes, sometimes you have to trust **YOURSELF**! 🧠")
 
 
 # Function to display the contact us page

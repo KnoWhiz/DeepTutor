@@ -59,7 +59,6 @@ if __name__ == "__main__" and uploaded_file is not None and st.session_state.pag
         st.error("File size exceeds the 10 MB limit. Please upload a smaller file.")
     else:
         file = uploaded_file.read()
-        save_file_locally(file)
 
         # Compute hashed ID and prepare embedding folder
         file_hash = generate_course_id(file)
@@ -69,6 +68,9 @@ if __name__ == "__main__" and uploaded_file is not None and st.session_state.pag
             os.makedirs('embedded_content')
         if not os.path.exists(embedding_folder):
             os.makedirs(embedding_folder)
+
+        # Save the file locally
+        save_file_locally(file, filename=uploaded_file.name, embedding_folder=embedding_folder)
 
         # Process file and create session states for documents and PDF object
         documents, doc = process_pdf_file(file, uploaded_file.name)

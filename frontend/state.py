@@ -8,9 +8,12 @@ from pipeline.utils import extract_documents_from_file
 # Function to initialize the session state
 def initialize_session_state():
     if "mode" not in st.session_state:
-        st.session_state.mode = "Normal"
+        st.session_state.mode = "TA"
     if "chat_history" not in st.session_state:
-        st.session_state.chat_history = []
+        st.session_state.chat_history = [
+            {"role": "assistant", "content": "Hi how can I help you today!"}
+        ]
+        st.session_state.show_chat_border = True
 
 
 # Function to handle file change
@@ -24,24 +27,6 @@ def handle_file_change():
     st.session_state.current_page = 1
 
 
-# Function to save the file locally
-def save_file_locally(file):
-    temp_folder = './input_files/'
-    if not os.path.exists(temp_folder):
-        os.makedirs(temp_folder)
-    # Clear the temp folder
-    for f in os.listdir(temp_folder):
-        file_path = os.path.join(temp_folder, f)
-        try:
-            if os.path.isfile(file_path):
-                os.unlink(file_path)
-        except Exception as e:
-            print(e)
-    # (Optionally save the file if needed)
-    # with open(os.path.join(temp_folder, "temp.pdf"), "wb") as f:
-    #     f.write(file)
-
-
 # Function to process the PDF file
 def process_pdf_file(file, filename):
     documents = extract_documents_from_file(file, filename)
@@ -49,3 +34,34 @@ def process_pdf_file(file, filename):
     st.session_state.doc = doc
     st.session_state.total_pages = len(doc)
     return documents, doc
+
+
+# Function to save the file locally as a text file
+def save_file_locally(file, filename, embedding_folder):
+    """
+    Save the file (e.g., PDF) loaded as text into the GraphRAG_embedding_input_folder.
+    """
+
+    # Define folder structure
+    GraphRAG_embedding_folder = os.path.join(embedding_folder, "GraphRAG")
+    GraphRAG_embedding_input_folder = os.path.join(GraphRAG_embedding_folder, "input")
+
+    # Create folders if they do not exist
+    os.makedirs(GraphRAG_embedding_input_folder, exist_ok=True)
+
+    # Determine the output text file path
+    base_name = os.path.splitext(filename)[0]
+    output_file_path = os.path.join(GraphRAG_embedding_input_folder, f"{base_name}.txt")
+
+    # Extract text from the PDF using the provided utility function
+    documents = extract_documents_from_file(file, filename)
+
+    # Write the extracted text into a .txt file
+    with open(output_file_path, "w", encoding="utf-8") as f:
+        for doc in documents:
+            # Each doc is expected to have a `page_content` attribute if it's a Document object
+            if hasattr(doc, 'page_content') and doc.page_content:
+                # Write the text, followed by a newline for clarity
+                f.write(doc.page_content.strip() + "\n")
+
+    print(f"Text successfully saved to: {output_file_path}")

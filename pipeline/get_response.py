@@ -200,26 +200,6 @@ def generate_GraphRAG_embedding(_documents, embedding_folder):
         graphrag_config = create_graphrag_config(
             values=settings, root_dir=GraphRAG_embedding_folder
         )
-        # Create output directory if it doesn't exist
-        os.makedirs(GraphRAG_embedding_folder+'input', exist_ok=True)
-
-        # Get all PDF files in the input_files directory
-        pdf_files = [f for f in os.listdir('./input_files') if f.endswith('.pdf')]
-
-        # Convert each PDF to a text file called 'texxt i.txt'
-        for i, pdf_file in enumerate(pdf_files, start=1):
-            pdf_path = os.path.join('./input_files', pdf_file)
-            txt_path = os.path.join(GraphRAG_embedding_folder+'input', f'text {i}.txt')
-
-            # Open the PDF file
-            with fitz.open(pdf_path) as pdf_document:
-                text = " "
-                for page in pdf_document:
-                    text += page.get_text()
-            
-            # Save the text to a file
-            with open(txt_path, 'w', encoding='utf-8') as txt_file:
-                txt_file.write(text)
 
         # Create the GraphRAG embedding
         async def build_index_async(api, graphrag_config):

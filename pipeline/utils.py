@@ -21,14 +21,6 @@ def extract_documents_from_file(file, filename):
     if not os.path.exists(input_dir):
         os.makedirs(input_dir)
 
-    # # Clean up the input_files directory
-    # for existing_file in os.listdir(input_dir):
-    #     file_path = os.path.join(input_dir, existing_file)
-    #     if os.path.isfile(file_path) or os.path.islink(file_path):
-    #         os.unlink(file_path)
-    #     elif os.path.isdir(file_path):
-    #         shutil.rmtree(file_path)
-
     # Save the file to the input_files directory with the original filename
     file_path = os.path.join(input_dir, filename)
     with open(file_path, 'wb') as f:

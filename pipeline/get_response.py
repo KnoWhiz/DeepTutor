@@ -64,15 +64,19 @@ def count_tokens(text, model_name='gpt-4o'):
 
 @st.cache_resource
 def truncate_chat_history(chat_history, max_tokens=2000, model_name='gpt-4o'):
+    """
+    Only keep the messages from \"assistant\" and \"User\" that fit within the token limit.
+    """
     total_tokens = 0
     truncated_history = []
     for message in reversed(chat_history):
-        message = str(message)
-        message_tokens = count_tokens(message, model_name)
-        if total_tokens + message_tokens > max_tokens:
-            break
-        truncated_history.insert(0, message)
-        total_tokens += message_tokens
+        if(message['role'] == 'assistant' or message['role'] == 'user'):
+            message = str(message)
+            message_tokens = count_tokens(message, model_name)
+            if total_tokens + message_tokens > max_tokens:
+                break
+            truncated_history.insert(0, message)
+            total_tokens += message_tokens
     return truncated_history
 
 
@@ -248,7 +252,7 @@ def get_response(mode, _documents, user_input, chat_history, embedding_folder):
     # retriever = db.as_retriever(
     #     search_type="mmr", search_kwargs={"k": 2, "lambda_mult": 0.8}
     # )
-    retriever = db.as_retriever(search_kwargs={"k":2})
+    retriever = db.as_retriever(search_kwargs={"k": 4})
 
     # Create the RetrievalQA chain
     system_prompt = (
@@ -456,7 +460,7 @@ def get_response_source(_documents, user_input, answer, chat_history, embedding_
     # retriever = db.as_retriever(
     #     search_type="mmr", search_kwargs={"k": 2, "lambda_mult": 0.8}
     # )
-    retriever = db.as_retriever(search_kwargs={"k":5})
+    retriever = db.as_retriever(search_kwargs={"k": 3})
 
     # Create the RetrievalQA chain
     system_prompt = (

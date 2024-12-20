@@ -64,7 +64,6 @@ if st.session_state['isAuth']:
     show_footer()
 
 
-
     if __name__ == "__main__" and uploaded_file is not None and st.session_state.page == "📑 Document reading":
         file_size = uploaded_file.size
         max_file_size = 10 * 1024 * 1024  # 10 MB

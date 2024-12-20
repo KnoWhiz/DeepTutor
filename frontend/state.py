@@ -26,6 +26,7 @@ def handle_file_change():
     st.session_state.sources = []
     st.session_state.total_pages = 1
     st.session_state.current_page = 1
+    st.session_state.uploaded_file = True
     initialize_session_state()
 
 

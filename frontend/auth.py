@@ -71,4 +71,5 @@ def show_auth():
 
 
 def show_signedIn():
-    st.title("Welcome to KnoWhiz Tutor!")
+    if "uploaded_file" not in st.session_state: 
+        st.title("Welcome to KnoWhiz Tutor!")

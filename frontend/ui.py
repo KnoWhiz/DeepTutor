@@ -128,13 +128,13 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
                     st.session_state.chat_history.append(
                         {"role": "assistant", "content": answer}
                     )
-                    st.session_state.chat_history.append(
-                        {"role": "sources", "content": sources}
-                    )
+                    # st.session_state.chat_history.append(
+                    #     {"role": "sources", "content": sources}
+                    # )
                     with st.chat_message("assistant", avatar=tutor_avatar):
                         st.write(answer)
                     with st.chat_message("sources", avatar=tutor_avatar):
-                        st.write(sources)
+                        st.json(sources, expanded=False)
 
                         # st.button(
                         #     "Re-generate",

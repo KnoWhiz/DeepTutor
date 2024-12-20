@@ -63,6 +63,7 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
     float_init(theme=True, include_unstable_primary=False)
     learner_avatar = "frontend/images/learner.svg"
     tutor_avatar = "frontend/images/tutor.svg"
+    professor_avatar = "frontend/images/professor.jpeg"
 
     with st.container(border=st.session_state.show_chat_border, height=700):
         with st.container():
@@ -73,7 +74,13 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
 
         # Display existing chat history
         for idx, msg in enumerate(st.session_state.chat_history):
-            avatar = learner_avatar if msg["role"] == "user" else tutor_avatar
+            # avatar = learner_avatar if msg["role"] == "user" else tutor_avatar
+            if msg["role"] == "user":
+                avatar = learner_avatar
+            elif msg["role"] == "assistant" and st.session_state.mode == "Professor":
+                avatar = professor_avatar
+            else:
+                avatar = tutor_avatar
             with st.chat_message(msg["role"], avatar=avatar):
                 st.write(msg["content"])
                 # if msg["role"] == "assistant":

@@ -1,12 +1,18 @@
+import os
 import boto3
 import streamlit as st
+from dotenv import load_dotenv
+
 
 # Cognito User Pool Details
-USER_POOL_ID = "us-west-2_8anv9jMoW"
-CLIENT_ID = "5u6htpcfet1ths30am4tqcvtg8"
+load_dotenv(".env")
+USER_POOL_ID = str(os.getenv("USER_POOL_ID"))
+CLIENT_ID = str(os.getenv("CLIENT_ID"))
+
 
 # Initialize Cognito client
 cognito_client = boto3.client("cognito-idp", region_name="us-west-2")
+
 
 def sign_up(username, password, email):
     try:
@@ -22,6 +28,7 @@ def sign_up(username, password, email):
     except Exception as e:
         st.error(f"Error: {e}")
 
+
 def sign_in(username, password):
     try:
         response = cognito_client.initiate_auth(
@@ -36,8 +43,8 @@ def sign_in(username, password):
     except Exception as e:
         st.error(f"Error: {e}")
 
-# Streamlit App
 
+# Streamlit App
 def show_auth():
     if not st.session_state['isAuth']:
         st.title("Please sign in to visit KnoWhiz Tutor")
@@ -61,6 +68,7 @@ def show_auth():
                     st.rerun()
                 else:
                     st.error("Sign in failed, please try again")
+
 
 def show_signedIn():
     st.title("Welcome to KnoWhiz Tutor!")

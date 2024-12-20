@@ -39,6 +39,7 @@ def process_pdf_file(file, filename):
 
 
 # Function to save the file locally as a text file
+@st.cache_resource
 def save_file_locally(file, filename, embedding_folder):
     """
     Save the file (e.g., PDF) loaded as text into the GraphRAG_embedding_input_folder.
@@ -59,6 +60,9 @@ def save_file_locally(file, filename, embedding_folder):
     documents = extract_documents_from_file(file, filename)
 
     # Write the extracted text into a .txt file
+    # If the file does not exist, it will be created
+    if os.path.exists(output_file_path):
+        return
     with open(output_file_path, "w", encoding="utf-8") as f:
         for doc in documents:
             # Each doc is expected to have a `page_content` attribute if it's a Document object
@@ -67,3 +71,4 @@ def save_file_locally(file, filename, embedding_folder):
                 f.write(doc.page_content.strip() + "\n")
 
     print(f"Text successfully saved to: {output_file_path}")
+    return

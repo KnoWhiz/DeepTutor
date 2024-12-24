@@ -107,7 +107,7 @@ def get_embedding_models(embedding_model_type, para):
         return embedding_model_default
 
 
-@st.cache_resource
+# @st.cache_resource
 def generate_embedding(_documents, embedding_folder):
     para = {
         'llm_source': 'openai',  # or 'anthropic'
@@ -160,7 +160,7 @@ def generate_embedding(_documents, embedding_folder):
     return
 
 
-@st.cache_resource
+# @st.cache_resource
 def generate_GraphRAG_embedding(_documents, embedding_folder):
     para = {
         'llm_source': 'openai',  # or 'anthropic'

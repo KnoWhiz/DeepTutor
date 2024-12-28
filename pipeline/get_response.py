@@ -54,6 +54,7 @@ from streamlit_float import *
 
 from pipeline.api_handler import ApiHandler
 from pipeline.api_handler import create_env_file
+from pipeline.helper.index_files_saving import index_files_check, index_files_compress, index_files_decompress
 
 
 @st.cache_resource

@@ -1,9 +1,14 @@
 import os
 import shutil
-from azure_blob import AzureBlobHelper
+from pipeline.helper.azure_blob import AzureBlobHelper
 
 
 def index_files_check(embedding_folder):
+    """
+    Function to check if all necessary files exist to load the embeddings
+    :param embedding_folder: The path to the embedding folder
+    :return: True if all necessary files exist, False otherwise
+    """
     # Define the index files path for GraphRAG embedding
     GraphRAG_embedding_folder = os.path.join(embedding_folder, "GraphRAG/")
     create_final_community_reports_path = GraphRAG_embedding_folder + "output/create_final_community_reports.parquet"
@@ -43,58 +48,105 @@ def index_files_check(embedding_folder):
             all_files_exist = False
             print(f"Missing directory: {path}")
     return all_files_exist
-    
+
 
 def index_files_compress(embedding_folder):
-    # Compress the entire embedding folder to a zip file under the folder one level up (the parent folder outside folder named with course_id). The zip file should be named as course_id.zip
-    # course_id is the latest part of the embedding_folder path
-    # parent_folder is the parent folder of the embedding_folder
-    # remove the ""/"" at the end of the parent_folder if it exists
-    if embedding_folder.endswith("/"):
-        folder = embedding_folder[:-1]
-    course_id = os.path.basename(folder)
-    parent_folder = folder.replace(course_id, "").rstrip(os.sep)
-    compressed_file = os.path.join(parent_folder, course_id)
-    shutil.make_archive(compressed_file, 'zip', folder)
-    print(f"Compressed the embedding folder to {compressed_file}")
-
-    # Upload the compressed zip file to Azure Blob Storage
-    azure_blob_helper = AzureBlobHelper()
-    azure_blob_helper.upload(compressed_file + ".zip", f"graphrag_index/{course_id}.zip", "knowhiztutorrag")
-
-
-def index_files_decompress(embedding_folder):
+    """
+    Function to compress the index files and upload them to Azure Blob Storage
+    :param embedding_folder: The path to the embedding folder
+    :return: True if the index files are ready now in embedding_folder and uploaded to Azure blob, False otherwise
+    """
     # Decompress the zip file to the folder named with course_id under the parent folder
     if embedding_folder.endswith("/"):
         folder = embedding_folder[:-1]
+    else:
+        folder = embedding_folder
+    course_id = os.path.basename(folder)
+    parent_folder = folder.replace(course_id, "").rstrip(os.sep)
+    compressed_file = os.path.join(parent_folder, course_id)
+
+    if index_files_check(embedding_folder):
+        print("Index files are already ready to be compressed!")
+
+        shutil.make_archive(compressed_file, 'zip', folder)
+        print(f"Compressed the embedding folder to {compressed_file}")
+
+        # Upload the compressed zip file to Azure Blob Storage
+        azure_blob_helper = AzureBlobHelper()
+        azure_blob_helper.upload(compressed_file + ".zip", f"graphrag_index/{course_id}.zip", "knowhiztutorrag")
+        print(f"Uploaded the compressed {course_id}.zip file to Azure Blob Storage")
+        return True
+    else:
+        # CLEANUP: If the files are not ready, clear the compressed zip file and the corresponding folder
+        if os.path.exists(compressed_file + ".zip"):
+            os.remove(compressed_file + ".zip")
+        if os.path.exists(folder):
+            shutil.rmtree(folder)
+        print("Index files are not ready to be compressed!")
+        return False
+
+
+def index_files_decompress(embedding_folder):
+    """
+    Function to decompress the index files and download them from Azure Blob Storage
+    :param embedding_folder: The path to the embedding folder
+    :return: True if the index files are ready now in embedding_folder, False otherwise
+    """
+    # Decompress the zip file to the folder named with course_id under the parent folder
+    if embedding_folder.endswith("/"):
+        folder = embedding_folder[:-1]
+    else:
+        folder = embedding_folder
     course_id = os.path.basename(folder)
     parent_folder = folder.replace(course_id, "").rstrip(os.sep)
     compressed_file = os.path.join(parent_folder, course_id)
     compressed_file_blob = f"graphrag_index/{course_id}.zip"
 
-    # Download the compressed zip file from Azure Blob Storage to the parent folder
-    azure_blob_helper = AzureBlobHelper()
-    azure_blob_helper.download(compressed_file_blob, compressed_file + ".zip", "knowhiztutorrag")
+    # Try No.1: Check if the index files are already ready
+    if index_files_check(embedding_folder):
+        print("Index files are already ready!")
+        return True
+    else:
+        # CLEANUP: Clear the existing folder if the index files are not ready yet
+        if os.path.exists(compressed_file + ".zip"):
+            os.remove(compressed_file + ".zip")
+        if os.path.exists(folder):
+            shutil.rmtree(folder)
+        print("Index files are not ready yet!")
 
-    # Decompress the zip file and overwrite the existing folder
-    shutil.unpack_archive(compressed_file + ".zip", folder)
-    print(f"Decompressed the zip file to {folder}")
+    # Try No.2: Download the compressed zip file from Azure Blob Storage and decompress it
+    try:
+        # Download the compressed zip file from Azure Blob Storage to the parent folder
+        azure_blob_helper = AzureBlobHelper()
+        azure_blob_helper.download(compressed_file_blob, compressed_file + ".zip", "knowhiztutorrag")
+
+        # Decompress the zip file and overwrite the existing folder
+        shutil.unpack_archive(compressed_file + ".zip", folder)
+
+        print(f"Decompressed the zip file to {folder}")
+
+        if index_files_check(embedding_folder):
+            print("Index files are already ready after being decompressed!")
+            return True
+        else:
+            print("Index files are not ready after being decompressed, zip file in Azure blob may be unhealthy!")
+            return False
+    except Exception as e:
+        # CLEANUP: Clear the downloaded zip file and the corresponding folder if an error occurs
+        if os.path.exists(compressed_file + ".zip"):
+            os.remove(compressed_file + ".zip")
+        if os.path.exists(folder):
+            shutil.rmtree(folder)
+
+        print(f"Error downloading the zip file: {e}")
+        return False
 
 
 if __name__ == "__main__":
-    embedding_folder = "../../embedded_content/be5a180265450fcb5959618dc94d7186/"
-    
-    # Upload the index files to Azure Blob Storage
-    if index_files_check(embedding_folder):
-        index_files_compress(embedding_folder)
-        print("Index files have been compressed and uploaded to Azure Blob Storage!")
-    else:
-        print("Index files are not ready to be compressed!")
+    embedding_folder = "../../embedded_content/be5a180265450fcb5959618dc94d7186"
 
-    # Download the index files from Azure Blob Storage
-    try:
-        index_files_decompress(embedding_folder)
-        print("Index files have been downloaded and decompressed!")
-    except Exception as e:
-        print(f"Error decompressing index files: {e}")
-        raise
+    # Upload the index files to Azure Blob Storage
+    index_files_compress(embedding_folder)
+
+    # # Download the index files from Azure Blob Storage
+    # index_files_decompress(embedding_folder)

@@ -15,6 +15,13 @@ from pipeline.utils import (
 )
 
 
+from pipeline.helper.index_files_saving import (
+    index_files_check,
+    index_files_compress,
+    index_files_decompress,
+)
+
+
 from frontend.ui import (
     setup_page_config,
     show_header,
@@ -24,7 +31,7 @@ from frontend.ui import (
     show_chat_interface,
     show_pdf_viewer,
     show_footer,
-    show_contact_us
+    show_contact_us,
 )
 
 
@@ -32,12 +39,12 @@ from frontend.state import (
     handle_file_change,
     initialize_session_state,
     process_pdf_file,
-    save_file_locally
+    save_file_locally,
 )
 
 from frontend.auth import (
     show_auth,
-    show_signedIn
+    show_signedIn,
 )
 
 
@@ -77,6 +84,7 @@ if st.session_state['isAuth']:
             file_hash = generate_course_id(file)
             course_id = file_hash
             embedding_folder = os.path.join('embedded_content', course_id)
+            print(f"Embedding folder: {embedding_folder}")
             if not os.path.exists('embedded_content'):
                 os.makedirs('embedded_content')
             if not os.path.exists(embedding_folder):
@@ -90,9 +98,23 @@ if st.session_state['isAuth']:
 
             # Generate embeddings based on the selected mode
             if st.session_state.mode == "Professor":
-                with st.spinner("Processing file to generate knowledge graph, may take 3 - 5 mins..."):
-                    generate_embedding(documents, embedding_folder=embedding_folder)
-                    generate_GraphRAG_embedding(documents, embedding_folder=embedding_folder)
+                with st.spinner("Processing file to generate knowledge graph"):
+                    if(index_files_decompress(embedding_folder)):
+                        print("Index files are ready.")
+                    else:
+                        with st.spinner("Processing file to generate knowledge graph, may take 3 - 5 mins..."):
+                            generate_embedding(documents, embedding_folder=embedding_folder)
+                            generate_GraphRAG_embedding(documents, embedding_folder=embedding_folder)
+                            if(index_files_compress(embedding_folder)):
+                                print("Index files are ready and uploaded to Azure Blob Storage.")
+                            else:
+                                # Files are missing and have been cleaned up
+                                generate_embedding(documents, embedding_folder=embedding_folder)
+                                generate_GraphRAG_embedding(documents, embedding_folder=embedding_folder)
+                                if(index_files_compress(embedding_folder)):
+                                    print("Index files are ready and uploaded to Azure Blob Storage.")
+                                else:
+                                    print("Error compressing and uploading index files to Azure Blob Storage.")
             else:
                 with st.spinner("Processing file..."):
                     generate_embedding(documents, embedding_folder=embedding_folder)

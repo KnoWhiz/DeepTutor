@@ -103,12 +103,15 @@ if st.session_state['isAuth']:
                         print("Index files are ready.")
                     else:
                         with st.spinner("Processing file to generate knowledge graph, may take 3 - 5 mins..."):
+                            # Files are missing and have been cleaned up
+                            save_file_locally(file, filename=uploaded_file.name, embedding_folder=embedding_folder)
                             generate_embedding(documents, embedding_folder=embedding_folder)
                             generate_GraphRAG_embedding(documents, embedding_folder=embedding_folder)
                             if(index_files_compress(embedding_folder)):
                                 print("Index files are ready and uploaded to Azure Blob Storage.")
                             else:
                                 # Files are missing and have been cleaned up
+                                save_file_locally(file, filename=uploaded_file.name, embedding_folder=embedding_folder)
                                 generate_embedding(documents, embedding_folder=embedding_folder)
                                 generate_GraphRAG_embedding(documents, embedding_folder=embedding_folder)
                                 if(index_files_compress(embedding_folder)):

@@ -191,17 +191,7 @@ def generate_embedding(_documents, embedding_folder):
 
 
 # @st.cache_resource
-def generate_GraphRAG_embedding(_documents, embedding_folder):
-    para = {
-        'llm_source': 'openai',  # or 'anthropic'
-        'temperature': 0,
-        "creative_temperature": 0.5,
-        "openai_key_dir": ".env",
-        "anthropic_key_dir": ".env",
-    }
-    llm = get_llm('advance', para)
-    embeddings = get_embedding_models('default', para)
-
+async def generate_GraphRAG_embedding(_documents, embedding_folder):
     GraphRAG_embedding_folder = os.path.join(embedding_folder, "GraphRAG/")
     create_final_community_reports_path = GraphRAG_embedding_folder + "output/create_final_community_reports.parquet"
     create_final_covariates_path = GraphRAG_embedding_folder + "output/create_final_covariates.parquet"
@@ -273,7 +263,7 @@ def generate_GraphRAG_embedding(_documents, embedding_folder):
         )
 
         try:
-            asyncio.run(api.build_index(config=graphrag_config))
+            await api.build_index(config=graphrag_config)
         except Exception as e:
             print("Index building error:", e)
 

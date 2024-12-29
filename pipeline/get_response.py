@@ -240,7 +240,11 @@ def generate_GraphRAG_embedding(_documents, embedding_folder):
 @st.cache_resource
 def get_response(mode, _documents, user_input, chat_history, embedding_folder):
     if mode == 'Professor':
-        return get_GraphRAG_global_response(_documents, user_input, chat_history, embedding_folder)
+        try:
+            answer = get_GraphRAG_global_response(_documents, user_input, chat_history, embedding_folder)
+            return answer
+        except Exception as e:
+            print("Error getting response from GraphRAG:", e)
 
     para = {
         'llm_source': 'openai',  # or 'anthropic'
@@ -329,9 +333,6 @@ def get_GraphRAG_global_response(_documents, user_input, chat_history, embedding
     # Chat history and user input
     chat_history_text = truncate_chat_history(chat_history)
     user_input_text = str(user_input)
-
-    # Check if all necessary files exist to load the embeddings
-    generate_GraphRAG_embedding(_documents, embedding_folder)
 
     # Search for the documents in the GraphRAG embedding
     try:

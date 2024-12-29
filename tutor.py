@@ -1,4 +1,5 @@
 import os
+import asyncio
 import streamlit as st
 
 from pipeline.get_response import (
@@ -73,10 +74,10 @@ if st.session_state['isAuth']:
 
     if __name__ == "__main__" and uploaded_file is not None and st.session_state.page == "📑 Document reading":
         file_size = uploaded_file.size
-        max_file_size = 10 * 1024 * 1024  # 10 MB
+        max_file_size = 20 * 1024 * 1024  # 20 MB
 
         if file_size > max_file_size:
-            st.error("File size exceeds the 10 MB limit. Please upload a smaller file.")
+            st.error("File size exceeds the 20 MB limit. Please upload a smaller file.")
         else:
             file = uploaded_file.read()
 
@@ -98,26 +99,27 @@ if st.session_state['isAuth']:
 
             # Generate embeddings based on the selected mode
             if st.session_state.mode == "Professor":
-                with st.spinner("Processing file to generate knowledge graph"):
+                with st.spinner("Processing file to generate knowledge graph, may take 3 - 5 mins..."):
                     if(index_files_decompress(embedding_folder)):
                         print("Index files are ready.")
                     else:
-                        with st.spinner("Processing file to generate knowledge graph, may take 3 - 5 mins..."):
+                        # Files are missing and have been cleaned up
+                        save_file_locally(file, filename=uploaded_file.name, embedding_folder=embedding_folder)
+                        generate_embedding(documents, embedding_folder=embedding_folder)
+                        # generate_GraphRAG_embedding(documents, embedding_folder=embedding_folder)
+                        asyncio.run(generate_GraphRAG_embedding(documents, embedding_folder=embedding_folder))
+                        if(index_files_compress(embedding_folder)):
+                            print("Index files are ready and uploaded to Azure Blob Storage.")
+                        else:
                             # Files are missing and have been cleaned up
                             save_file_locally(file, filename=uploaded_file.name, embedding_folder=embedding_folder)
                             generate_embedding(documents, embedding_folder=embedding_folder)
-                            generate_GraphRAG_embedding(documents, embedding_folder=embedding_folder)
+                            # generate_GraphRAG_embedding(documents, embedding_folder=embedding_folder)
+                            asyncio.run(generate_GraphRAG_embedding(documents, embedding_folder=embedding_folder))
                             if(index_files_compress(embedding_folder)):
                                 print("Index files are ready and uploaded to Azure Blob Storage.")
                             else:
-                                # Files are missing and have been cleaned up
-                                save_file_locally(file, filename=uploaded_file.name, embedding_folder=embedding_folder)
-                                generate_embedding(documents, embedding_folder=embedding_folder)
-                                generate_GraphRAG_embedding(documents, embedding_folder=embedding_folder)
-                                if(index_files_compress(embedding_folder)):
-                                    print("Index files are ready and uploaded to Azure Blob Storage.")
-                                else:
-                                    print("Error compressing and uploading index files to Azure Blob Storage.")
+                                print("Error compressing and uploading index files to Azure Blob Storage.")
             else:
                 with st.spinner("Processing file..."):
                     generate_embedding(documents, embedding_folder=embedding_folder)

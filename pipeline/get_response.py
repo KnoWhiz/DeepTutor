@@ -50,6 +50,24 @@ from graphrag.query.structured_search.local_search.search import LocalSearch
 from graphrag.vector_stores.lancedb import LanceDBVectorStore
 
 
+from graphrag.config.init_content import INIT_DOTENV, INIT_YAML
+from graphrag.prompts.index.claim_extraction import CLAIM_EXTRACTION_PROMPT
+from graphrag.prompts.index.community_report import (
+    COMMUNITY_REPORT_PROMPT,
+)
+from graphrag.prompts.index.entity_extraction import GRAPH_EXTRACTION_PROMPT
+from graphrag.prompts.index.summarize_descriptions import SUMMARIZE_PROMPT
+from graphrag.prompts.query.drift_search_system_prompt import DRIFT_LOCAL_SYSTEM_PROMPT
+from graphrag.prompts.query.global_search_knowledge_system_prompt import (
+    GENERAL_KNOWLEDGE_INSTRUCTION,
+)
+from graphrag.prompts.query.global_search_map_system_prompt import MAP_SYSTEM_PROMPT
+from graphrag.prompts.query.global_search_reduce_system_prompt import (
+    REDUCE_SYSTEM_PROMPT,
+)
+from graphrag.prompts.query.local_search_system_prompt import LOCAL_SEARCH_SYSTEM_PROMPT
+from graphrag.prompts.query.question_gen_system_prompt import QUESTION_SYSTEM_PROMPT
+
 from streamlit_float import *
 
 from pipeline.api_handler import ApiHandler
@@ -57,7 +75,6 @@ from pipeline.api_handler import create_env_file
 from pipeline.helper.index_files_saving import index_files_check, index_files_compress, index_files_decompress
 
 
-@st.cache_resource
 def count_tokens(text, model_name='gpt-4o'):
     encoding = tiktoken.encoding_for_model(model_name)
     return len(encoding.encode(text))
@@ -79,6 +96,18 @@ def truncate_chat_history(chat_history, max_tokens=2000, model_name='gpt-4o'):
             truncated_history.insert(0, message)
             total_tokens += message_tokens
     return truncated_history
+
+
+@st.cache_resource
+def truncate_document(_document, max_tokens=6000, model_name='gpt-4o'):
+    """
+    Only keep the beginning part of the document that fit within the token limit.
+    """
+    _document = str(_document)
+    document_tokens = count_tokens(_document, model_name)
+    if document_tokens > max_tokens:
+        _document = _document[:max_tokens]
+    return _document
 
 
 @st.cache_resource
@@ -153,7 +182,7 @@ def generate_embedding(_documents, embedding_folder):
         """
         prompt = ChatPromptTemplate.from_template(prompt)
         chain = prompt | llm | error_parser
-        parsed_result = chain.invoke({"document": _documents})
+        parsed_result = chain.invoke({"document": truncate_document(_documents)})
         documents_summary = parsed_result
         with open(documents_summary_path, "w") as f:
             f.write(documents_summary)
@@ -162,17 +191,7 @@ def generate_embedding(_documents, embedding_folder):
 
 
 # @st.cache_resource
-def generate_GraphRAG_embedding(_documents, embedding_folder):
-    para = {
-        'llm_source': 'openai',  # or 'anthropic'
-        'temperature': 0,
-        "creative_temperature": 0.5,
-        "openai_key_dir": ".env",
-        "anthropic_key_dir": ".env",
-    }
-    llm = get_llm('advance', para)
-    embeddings = get_embedding_models('default', para)
-
+async def generate_GraphRAG_embedding(_documents, embedding_folder):
     GraphRAG_embedding_folder = os.path.join(embedding_folder, "GraphRAG/")
     create_final_community_reports_path = GraphRAG_embedding_folder + "output/create_final_community_reports.parquet"
     create_final_covariates_path = GraphRAG_embedding_folder + "output/create_final_covariates.parquet"
@@ -206,14 +225,36 @@ def generate_GraphRAG_embedding(_documents, embedding_folder):
         # Initialize the project
         create_env_file(GraphRAG_embedding_folder)
         try:
-            # Ensure an event loop is available
-            try:
-                loop = asyncio.get_event_loop()
-            except RuntimeError:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-            # Call the function with the desired path
-            initialize_project_at(Path(GraphRAG_embedding_folder))
+            """Initialize the project at the given path."""
+            # Initialize the project
+            path = GraphRAG_embedding_folder
+            root = Path(path)
+            if not root.exists():
+                root.mkdir(parents=True, exist_ok=True)
+            dotenv = root / ".env"
+            if not dotenv.exists():
+                with dotenv.open("wb") as file:
+                    file.write(INIT_DOTENV.encode(encoding="utf-8", errors="strict"))
+            prompts_dir = root / "prompts"
+            if not prompts_dir.exists():
+                prompts_dir.mkdir(parents=True, exist_ok=True)
+            prompts = {
+                "entity_extraction": GRAPH_EXTRACTION_PROMPT,
+                "summarize_descriptions": SUMMARIZE_PROMPT,
+                "claim_extraction": CLAIM_EXTRACTION_PROMPT,
+                "community_report": COMMUNITY_REPORT_PROMPT,
+                "drift_search_system_prompt": DRIFT_LOCAL_SYSTEM_PROMPT,
+                "global_search_map_system_prompt": MAP_SYSTEM_PROMPT,
+                "global_search_reduce_system_prompt": REDUCE_SYSTEM_PROMPT,
+                "global_search_knowledge_system_prompt": GENERAL_KNOWLEDGE_INSTRUCTION,
+                "local_search_system_prompt": LOCAL_SEARCH_SYSTEM_PROMPT,
+                "question_gen_system_prompt": QUESTION_SYSTEM_PROMPT,
+            }
+            for name, content in prompts.items():
+                prompt_file = prompts_dir / f"{name}.txt"
+                if not prompt_file.exists():
+                    with prompt_file.open("wb") as file:
+                        file.write(content.encode(encoding="utf-8", errors="strict"))
         except Exception as e:
             print("Initialization error:", e)
         settings = yaml.safe_load(open("./pipeline/graphrag_settings.yaml"))
@@ -221,18 +262,10 @@ def generate_GraphRAG_embedding(_documents, embedding_folder):
             values=settings, root_dir=GraphRAG_embedding_folder
         )
 
-        # Create the GraphRAG embedding
-        async def build_index_async(api, graphrag_config):
-            index_result: list[PipelineRunResult] = await api.build_index(config=graphrag_config)
-            return index_result
-
-        # Assuming api and graphrag_config are already defined
-        index_result = asyncio.run(build_index_async(api, graphrag_config))
-
-        # index_result is a list of workflows that make up the indexing pipeline that was run
-        for workflow_result in index_result:
-            status = f"error\n{workflow_result.errors}" if workflow_result.errors else "success"
-            print(f"Workflow Name: {workflow_result.workflow}\tStatus: {status}")
+        try:
+            await api.build_index(config=graphrag_config)
+        except Exception as e:
+            print("Index building error:", e)
 
     return
 

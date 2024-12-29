@@ -272,15 +272,8 @@ def generate_GraphRAG_embedding(_documents, embedding_folder):
             values=settings, root_dir=GraphRAG_embedding_folder
         )
 
-        # Create the GraphRAG embedding
-        async def build_index_async(api, graphrag_config):
-            index_result: list[PipelineRunResult] = await api.build_index(config=graphrag_config)
-            return index_result
-
         try:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            index_result = loop.run_until_complete(build_index_async(api, graphrag_config))
+            asyncio.run(api.build_index(config=graphrag_config))
         except Exception as e:
             print("Index building error:", e)
 

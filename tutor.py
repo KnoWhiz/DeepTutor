@@ -73,10 +73,10 @@ if st.session_state['isAuth']:
 
     if __name__ == "__main__" and uploaded_file is not None and st.session_state.page == "📑 Document reading":
         file_size = uploaded_file.size
-        max_file_size = 10 * 1024 * 1024  # 10 MB
+        max_file_size = 20 * 1024 * 1024  # 20 MB
 
         if file_size > max_file_size:
-            st.error("File size exceeds the 10 MB limit. Please upload a smaller file.")
+            st.error("File size exceeds the 20 MB limit. Please upload a smaller file.")
         else:
             file = uploaded_file.read()
 

@@ -57,7 +57,6 @@ from pipeline.api_handler import create_env_file
 from pipeline.helper.index_files_saving import index_files_check, index_files_compress, index_files_decompress
 
 
-@st.cache_resource
 def count_tokens(text, model_name='gpt-4o'):
     encoding = tiktoken.encoding_for_model(model_name)
     return len(encoding.encode(text))
@@ -79,6 +78,18 @@ def truncate_chat_history(chat_history, max_tokens=2000, model_name='gpt-4o'):
             truncated_history.insert(0, message)
             total_tokens += message_tokens
     return truncated_history
+
+
+@st.cache_resource
+def truncate_document(_document, max_tokens=6000, model_name='gpt-4o'):
+    """
+    Only keep the beginning part of the document that fit within the token limit.
+    """
+    _document = str(_document)
+    document_tokens = count_tokens(_document, model_name)
+    if document_tokens > max_tokens:
+        _document = _document[:max_tokens]
+    return _document
 
 
 @st.cache_resource
@@ -153,7 +164,7 @@ def generate_embedding(_documents, embedding_folder):
         """
         prompt = ChatPromptTemplate.from_template(prompt)
         chain = prompt | llm | error_parser
-        parsed_result = chain.invoke({"document": _documents})
+        parsed_result = chain.invoke({"document": truncate_document(_documents)})
         documents_summary = parsed_result
         with open(documents_summary_path, "w") as f:
             f.write(documents_summary)

@@ -217,14 +217,9 @@ def generate_GraphRAG_embedding(_documents, embedding_folder):
         # Initialize the project
         create_env_file(GraphRAG_embedding_folder)
         try:
-            # Ensure an event loop is available
-            try:
-                loop = asyncio.get_event_loop()
-            except RuntimeError:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-            # Call the function with the desired path
-            initialize_project_at(Path(GraphRAG_embedding_folder))
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(initialize_project_at(Path(GraphRAG_embedding_folder)))
         except Exception as e:
             print("Initialization error:", e)
         settings = yaml.safe_load(open("./pipeline/graphrag_settings.yaml"))
@@ -237,13 +232,12 @@ def generate_GraphRAG_embedding(_documents, embedding_folder):
             index_result: list[PipelineRunResult] = await api.build_index(config=graphrag_config)
             return index_result
 
-        # Assuming api and graphrag_config are already defined
-        index_result = asyncio.run(build_index_async(api, graphrag_config))
-
-        # index_result is a list of workflows that make up the indexing pipeline that was run
-        for workflow_result in index_result:
-            status = f"error\n{workflow_result.errors}" if workflow_result.errors else "success"
-            print(f"Workflow Name: {workflow_result.workflow}\tStatus: {status}")
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            index_result = loop.run_until_complete(build_index_async(api, graphrag_config))
+        except Exception as e:
+            print("Index building error:", e)
 
     return
 

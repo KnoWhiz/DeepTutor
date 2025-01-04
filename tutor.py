@@ -2,6 +2,17 @@ import os
 import asyncio
 import streamlit as st
 
+from frontend.ui import setup_page_config
+
+# Set page configuration
+setup_page_config()
+
+def css_style():
+    with open("frontend/style.css") as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
+css_style()
+
 from pipeline.get_response import (
     generate_embedding,
     generate_GraphRAG_embedding,
@@ -24,7 +35,7 @@ from pipeline.helper.index_files_saving import (
 
 
 from frontend.ui import (
-    setup_page_config,
+    show_auth_top,
     show_header,
     show_file_upload,
     show_mode_option,
@@ -43,16 +54,16 @@ from frontend.state import (
     save_file_locally,
 )
 
+
 from frontend.auth import (
     show_auth,
     show_signedIn,
 )
 
-
 if 'isAuth' not in st.session_state:
     st.session_state['isAuth'] = False
 
-setup_page_config()
+show_auth_top()
 show_auth()
 
 if st.session_state['isAuth']:

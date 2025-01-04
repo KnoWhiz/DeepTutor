@@ -55,7 +55,7 @@ def show_auth():
             password = st.text_input("Password", type="password")
             if st.button("Sign Up"):
                 response = sign_up(email, password, email)
-                st.success("Sign-up successful! Please confirm your email.")
+                st.success("Sign-up successful! Please check and confirm with your email.")
 
         elif auth_option == "Sign In":
             username = st.text_input("Email")
@@ -63,7 +63,7 @@ def show_auth():
             if st.button("Sign In"):
                 token = sign_in(username, password)
                 if type(token)==str:
-                    st.success(f"Signed in! Token: {token}")
+                    # st.success(f"Signed in! Token: {token}")
                     st.session_state['isAuth'] = True
                     st.rerun()
                 else:

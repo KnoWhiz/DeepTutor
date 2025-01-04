@@ -30,7 +30,7 @@
      border-radius: 12px;                /* Slightly rounded corners */
      padding: 2rem;                     /* Unified padding */
      margin: 1rem auto;                 /* Center alignment with spacing */
-     max-width: 60%;                    /* Prevent excessive stretching */
+     max-width: 95%;                    /* Prevent excessive stretching */
      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* Soft shadow for elevation */
      transition: all 0.3s ease-in-out;  /* Smooth hover/focus animation */
      box-sizing: border-box;            /* Include padding & border in total width */

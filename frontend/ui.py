@@ -18,6 +18,10 @@ def setup_page_config():
     )
 
 
+def show_auth_top():
+    st.write("")
+
+
 # Function to display the header
 def show_header():
     with st.sidebar:

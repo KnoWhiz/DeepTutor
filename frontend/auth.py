@@ -47,7 +47,7 @@ def sign_in(username, password):
 # Streamlit App
 def show_auth():
     if not st.session_state['isAuth']:
-        st.title("Please sign in to visit KnoWhiz Tutor")
+        st.title("KnoWhiz Tutor")
         auth_option = st.radio("Select Option", ["Sign Up", "Sign In"])
         if auth_option == "Sign Up":
             #username = st.text_input("Username")

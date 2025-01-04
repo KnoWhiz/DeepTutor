@@ -6,6 +6,7 @@ from streamlit_float import float_init, float_parent, float_css_helper
 
 from frontend.utils import previous_page, next_page, close_pdf, chat_content
 from pipeline.utils import find_pages_with_excerpts, get_highlight_info
+from frontend.forms.contact import contact_form
 
 
 # Function to set up the page configuration
@@ -193,6 +194,11 @@ def show_footer():
         st.markdown("**Professors** and **TAs** can make mistakes, sometimes you have to trust **YOURSELF**! 🧠")
 
 
+@st.dialog("Contact Us")
+def show_contact_form():
+    contact_form()
+
+
 # Function to display the contact us page
 def show_contact_us():
     st.title("📬 Contact Us")
@@ -206,5 +212,7 @@ def show_contact_us():
 
     If you'd like to request a feature or report a bug, please **let us know!** Your suggestions are highly appreciated! 🙌
     """)
+    if st.button("Feedback Form"):
+        show_contact_form()
     st.title("🗂️ KnoWhiz flashcards")
     st.markdown("Want more **structured and systematic** learning? Check out our **[KnoWhiz flashcards learning platform](https://www.knowhiz.us/)!** 🚀")

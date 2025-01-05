@@ -63,7 +63,7 @@ from frontend.auth import (
 if 'isAuth' not in st.session_state:
     st.session_state['isAuth'] = False
 
-show_auth_top()
+# show_auth_top()
 show_auth()
 
 if st.session_state['isAuth']:

@@ -66,12 +66,12 @@ def show_page_option():
 # Function to display the chat interface
 def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_source_fn, get_query_fn):
     # Init float function for chat_input textbox
-    float_init(theme=True, include_unstable_primary=False)
     learner_avatar = "frontend/images/learner.svg"
     tutor_avatar = "frontend/images/tutor.svg"
     professor_avatar = "frontend/images/professor.svg"
 
     with st.container(border=st.session_state.show_chat_border, height=750):
+        float_init(theme=True, include_unstable_primary=False)
         with st.container():
             st.chat_input(key='user_input', on_submit=chat_content)
             button_b_pos = "1.2rem"

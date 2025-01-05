@@ -3,6 +3,7 @@ import base64
 import streamlit as st
 from streamlit_pdf_viewer import pdf_viewer
 from streamlit_float import float_init, float_parent, float_css_helper
+from streamlit_extras.stylable_container import stylable_container
 
 from frontend.utils import previous_page, next_page, close_pdf, chat_content
 from pipeline.utils import find_pages_with_excerpts, get_highlight_info
@@ -70,11 +71,11 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
     tutor_avatar = "frontend/images/tutor.svg"
     professor_avatar = "frontend/images/professor.svg"
 
-    with st.container(border=st.session_state.show_chat_border, height=700):
+    with st.container(border=st.session_state.show_chat_border, height=750):
         with st.container():
             st.chat_input(key='user_input', on_submit=chat_content)
-            button_b_pos = "2.2rem"
-            button_css = float_css_helper(width="2.2rem", bottom=button_b_pos, transition=0)
+            button_b_pos = "1.2rem"
+            button_css = float_css_helper(width="1.2rem", bottom=button_b_pos, transition=0)
             float_parent(css=button_css)
 
         # Display existing chat history
@@ -173,22 +174,43 @@ def show_pdf_viewer(file):
         st.session_state.current_page = 1
     if "annotations" not in st.session_state:
         st.session_state.annotations = []
-    pdf_viewer(
-        file,
-        width=1000,
-        height=630,
-        annotations=st.session_state.annotations,
-        pages_to_render=[st.session_state.current_page],
-        render_text=True,
-    )
-    col1, col2, col3, col4 = st.columns([8, 6, 3, 3], vertical_alignment='center')
-    with col1:
-        st.button("←", on_click=previous_page)
-    with col2:
-        total_pages = st.session_state.get('total_pages', 1)
-        st.write(f"Page {st.session_state.current_page} of {total_pages}")
-    with col4:
-        st.button("→", on_click=next_page)
+    with st.container(border=st.session_state.show_chat_border, height=750):
+        with st.container():
+            pdf_viewer(
+                file,
+                width=1000,
+                annotations=st.session_state.annotations,
+                pages_to_render=[st.session_state.current_page],
+                render_text=True,
+            )
+        columns = st.columns([1, 1])
+        with columns[0]:
+            with stylable_container(
+                key="left_aligned_button",
+                css_styles="""
+                button {
+                    float: left;
+                }
+                """
+            ):
+                st.button("←", key='←', on_click=previous_page)
+                button_css = float_css_helper(width="1.2rem", bottom="1.2rem", transition=0)
+                float_parent(css=button_css)
+        with columns[1]:
+            with stylable_container(
+                key="right_aligned_button",
+                css_styles="""
+                button {
+                    float: right;
+                }
+                """
+            ):
+                st.button("→", key='→', on_click=next_page)
+                button_css = float_css_helper(width="1.2rem", bottom="1.2rem", transition=0)
+                float_parent(css=button_css)
+            # st.button("→", key='→', on_click=next_page)
+            # button_css = float_css_helper(width="1.2rem", bottom="1.2rem", transition=0)
+            # float_parent(css=button_css)
 
 
 # Function to display the footer

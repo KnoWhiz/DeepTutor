@@ -68,7 +68,7 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
     float_init(theme=True, include_unstable_primary=False)
     learner_avatar = "frontend/images/learner.svg"
     tutor_avatar = "frontend/images/tutor.svg"
-    professor_avatar = "frontend/images/professor.jpeg"
+    professor_avatar = "frontend/images/professor.svg"
 
     with st.container(border=st.session_state.show_chat_border, height=700):
         with st.container():

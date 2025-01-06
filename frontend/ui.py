@@ -46,7 +46,11 @@ def show_header():
 # Function to display the file uploader
 def show_file_upload(on_change=None):
     with st.sidebar:
-        return st.file_uploader(" ", type="pdf", on_change=on_change)
+        if st.session_state['is_uploaded_file'] is not True:
+            st.session_state.uploaded_file = st.file_uploader(" ", type="pdf", on_change=on_change)
+        # if file uploaded successfully, set st.session_state['uploaded_file'] to True
+        if st.session_state.get('is_uploaded_file', None):
+            st.session_state['is_uploaded_file'] = True
 
 
 # Function to display the response mode options

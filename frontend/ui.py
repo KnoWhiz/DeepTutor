@@ -15,7 +15,8 @@ def setup_page_config():
     st.set_page_config(
         page_title="KnoWhiz Office Hours",
         page_icon="frontend/images/logo_short.ico",
-        layout="wide"
+        layout="wide",
+        initial_sidebar_state="collapsed",
     )
 
 

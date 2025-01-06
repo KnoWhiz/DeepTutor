@@ -73,5 +73,13 @@ def show_auth():
 
 
 def show_signedIn():
-    if "uploaded_file" not in st.session_state: 
+    if "uploaded_file" not in st.session_state:
         st.title("Welcome to KnoWhiz Tutor!")
+        # uploaded_file = st.file_uploader("Choose a file")
+        # link = st.text_input("Or enter a link")
+        # if uploaded_file:
+        #     st.session_state["uploaded_file"] = uploaded_file
+        #     st.success("File uploaded successfully!")
+        # elif link:
+        #     st.session_state["uploaded_file"] = link
+        #     st.success("Link submitted successfully!")

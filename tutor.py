@@ -7,11 +7,11 @@ from frontend.ui import setup_page_config
 # Set page configuration
 setup_page_config()
 
-def css_style():
-    with open("frontend/style.css") as f:
-        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+# def css_style():
+#     with open("frontend/style.css") as f:
+#         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
-css_style()
+# css_style()
 
 from pipeline.get_response import (
     generate_embedding,

@@ -86,21 +86,23 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
 
         # Display existing chat history
         for idx, msg in enumerate(st.session_state.chat_history):
-            # avatar = learner_avatar if msg["role"] == "user" else tutor_avatar
             if msg["role"] == "user":
                 avatar = learner_avatar
-            elif msg["role"] == "assistant" and st.session_state.mode == "Professor":
-                avatar = professor_avatar
-            else:
-                avatar = tutor_avatar
-            with st.chat_message(msg["role"], avatar=avatar):
-                st.write(msg["content"])
-                # if msg["role"] == "assistant":
-                #     st.button(
-                #         "Re-generate",
-                #         key=f"regen_response_{idx}",
-                #         on_click=regen_response
-                #     )
+                with st.chat_message(msg["role"], avatar=avatar):
+                    st.write(msg["content"])
+            elif msg["role"] == "assistant":
+                avatar = professor_avatar if st.session_state.mode == "Professor" else tutor_avatar
+                with st.chat_message(msg["role"], avatar=avatar):
+                    st.write(msg["content"])
+            elif msg["role"] == "source_buttons":
+                # Display source buttons in a row
+                cols = st.columns(len(msg["sources"]))
+                for idx, (col, source) in enumerate(zip(cols, msg["sources"]), 1):
+                    page_num = msg["pages"][source]
+                    with col:
+                        if st.button(str(idx), key=f"source_btn_{idx}_{msg['timestamp']}", use_container_width=True):
+                            st.session_state.current_page = page_num
+                            st.session_state.annotations = get_highlight_info(doc, [source])
 
         # If new user input exists
         if user_input := st.session_state.get('user_input', None):
@@ -137,23 +139,30 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
 
                     answer = f"""Are you asking: **{user_input}**
                     """ + "\n" + answer
+                    
+                    # Store source-to-page mapping
+                    source_pages = {}
+                    for source in sources:
+                        pages_with_excerpts = find_pages_with_excerpts(doc, [source])
+                        if pages_with_excerpts:
+                            source_pages[source] = pages_with_excerpts[0] + 1
+                    
+                    # Add response to chat history
                     st.session_state.chat_history.append(
                         {"role": "assistant", "content": answer}
                     )
-                    st.session_state.chat_history.append(
-                        {"role": "sources", "content": sources}
-                    )
+                    
+                    # Add source buttons to chat history
+                    st.session_state.chat_history.append({
+                        "role": "source_buttons",
+                        "sources": sources,
+                        "pages": source_pages,
+                        "timestamp": len(st.session_state.chat_history)  # Use as unique key for buttons
+                    })
+                    
                     with st.chat_message("assistant", avatar=tutor_avatar):
                         st.write(answer)
-                    with st.chat_message("sources", avatar=tutor_avatar):
-                        st.json(sources, expanded=False)
-
-                        # st.button(
-                        #     "Re-generate",
-                        #     key=f"regen_response_{idx}",
-                        #     on_click=regen_response
-                        # )
-
+                    
                     st.session_state.sources = sources
                     st.session_state.chat_occurred = True
 
@@ -162,16 +171,10 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
 
             # Highlight PDF excerpts
             if doc and st.session_state.get("chat_occurred", False):
-                pages_with_excerpts = find_pages_with_excerpts(doc, st.session_state.sources)
                 if "current_page" not in st.session_state:
-                    st.session_state.current_page = pages_with_excerpts[0] + 1 if pages_with_excerpts else 1
-                if 'pages_with_excerpts' not in st.session_state:
-                    st.session_state.pages_with_excerpts = pages_with_excerpts
-                st.session_state.annotations = get_highlight_info(doc, st.session_state.sources)
-                if st.session_state.annotations:
-                    st.session_state.current_page = min(
-                        annotation["page"] for annotation in st.session_state.annotations
-                    )
+                    st.session_state.current_page = 1
+                if st.session_state.get("sources"):
+                    st.session_state.annotations = get_highlight_info(doc, st.session_state.sources)
     viewer_css = float_css_helper(transition=0)
     float_parent(css=viewer_css)
 
@@ -215,9 +218,6 @@ def show_pdf_viewer(file):
                 st.button("→", key='→', on_click=next_page)
                 button_css = float_css_helper(width="1.2rem", bottom="1.2rem", transition=0)
                 float_parent(css=button_css)
-            # st.button("→", key='→', on_click=next_page)
-            # button_css = float_css_helper(width="1.2rem", bottom="1.2rem", transition=0)
-            # float_parent(css=button_css)
     viewer_css = float_css_helper(transition=0)
     float_parent(css=viewer_css)
 

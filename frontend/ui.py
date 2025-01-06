@@ -10,27 +10,27 @@ from pipeline.utils import find_pages_with_excerpts, get_highlight_info
 from frontend.forms.contact import contact_form
 
 
-# Function to set up the page configuration
-def setup_page_config():
-    st.set_page_config(
-        page_title="KnoWhiz Office Hours",
-        page_icon="frontend/images/logo_short.ico",
-        layout="wide",
-        initial_sidebar_state="collapsed",
-    )
-
-
-def show_auth_top():
-    # st.write("")
-    pass
-
-
-# Function to display the header
-def show_header():
-    with st.sidebar:
-        with open("frontend/images/logo_short.png", "rb") as image_file:
-            encoded_image = base64.b64encode(image_file.read()).decode()
-        st.markdown(
+def to_roman(num):
+    """Convert an integer to a Roman numeral."""
+    val = [
+        1000, 900, 500, 400,
+        100, 90, 50, 40,
+        10, 9, 5, 4,
+        1
+    ]
+    syb = [
+        "M", "CM", "D", "CD",
+        "C", "XC", "L", "XL",
+        "X", "IX", "V", "IV",
+        "I"
+    ]
+    roman_num = ''
+    i = 0
+    while num > 0:
+        for _ in range(num // val[i]):
+            roman_num += syb[i]
+            num -= val[i]
+        i += 1
             f"""
             <h2 style='text-align: left;'>
                 <img src="data:image/png;base64,{encoded_image}" alt='icon' style='width:50px; height:50px; vertical-align: left; margin-right: 10px;'>
@@ -162,6 +162,16 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
                     
                     with st.chat_message("assistant", avatar=tutor_avatar):
                         st.write(answer)
+                    
+                    # Display source buttons immediately
+                    cols = st.columns(len(sources))
+                    for idx, (col, source) in enumerate(zip(cols, sources), 1):
+                        page_num = source_pages.get(source)
+                        if page_num:
+                            with col:
+                                if st.button(str(idx), key=f"source_btn_{idx}_current", use_container_width=True):
+                                    st.session_state.current_page = page_num
+                                    st.session_state.annotations = get_highlight_info(doc, [source])
                     
                     st.session_state.sources = sources
                     st.session_state.chat_occurred = True

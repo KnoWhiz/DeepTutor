@@ -330,6 +330,7 @@ def get_response(mode, _documents, user_input, chat_history, embedding_folder):
         Since I am a student with no related knowledge background, 
         provide a concise answer and directly answer the question in easy to understand language.
         Use markdown syntax for bold formatting to highlight important points or words.
+        Use emojis when suitable to make the answer more engaging and interesting.
         """
     )
     prompt = ChatPromptTemplate.from_messages(

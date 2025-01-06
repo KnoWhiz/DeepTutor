@@ -59,11 +59,13 @@ from frontend.auth import (
     show_auth,
 )
 
-if 'isAuth' not in st.session_state:
-    st.session_state['isAuth'] = False
+from frontend.state import SKIP_AUTH
 
-# show_auth_top()
-show_auth()
+if 'isAuth' not in st.session_state:
+    st.session_state['isAuth'] = SKIP_AUTH
+
+if not SKIP_AUTH:
+    show_auth()
 
 if st.session_state['isAuth']:
     # Set up basic page configuration and header

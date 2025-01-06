@@ -4,6 +4,9 @@ import fitz
 import io
 from pipeline.utils import extract_documents_from_file
 
+# Control whether to skip authentication for local testing
+SKIP_AUTH = True if os.getenv("ENVIRONMENT") == "local" else False
+
 
 # Function to initialize the session state
 def initialize_session_state():

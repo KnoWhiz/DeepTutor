@@ -7,11 +7,11 @@ from frontend.ui import setup_page_config
 # Set page configuration
 setup_page_config()
 
-def css_style():
-    with open("frontend/style.css") as f:
-        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+# def css_style():
+#     with open("frontend/style.css") as f:
+#         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
-css_style()
+# css_style()
 
 from pipeline.get_response import (
     generate_embedding,
@@ -57,18 +57,16 @@ from frontend.state import (
 
 from frontend.auth import (
     show_auth,
-    show_signedIn,
 )
 
 if 'isAuth' not in st.session_state:
     st.session_state['isAuth'] = False
 
-show_auth_top()
+# show_auth_top()
 show_auth()
 
 if st.session_state['isAuth']:
     # Set up basic page configuration and header
-    show_signedIn()
     show_header()
 
 
@@ -77,20 +75,23 @@ if st.session_state['isAuth']:
 
 
     # Show file uploader and response mode options in the sidebar
-    uploaded_file = show_file_upload(on_change=handle_file_change)
-    show_mode_option(uploaded_file)
+    if 'is_uploaded_file' not in st.session_state:
+        st.session_state['is_uploaded_file'] = False
+    show_file_upload(on_change=handle_file_change)
+    # uploaded_file = st.session_state.uploaded_file
+    show_mode_option(st.session_state.uploaded_file)
     show_page_option()
     show_footer()
 
 
-    if __name__ == "__main__" and uploaded_file is not None and st.session_state.page == "📑 Document reading":
-        file_size = uploaded_file.size
+    if __name__ == "__main__" and st.session_state.uploaded_file is not None and st.session_state.page == "📑 Document reading":
+        file_size = st.session_state.uploaded_file.size
         max_file_size = 20 * 1024 * 1024  # 20 MB
 
         if file_size > max_file_size:
             st.error("File size exceeds the 20 MB limit. Please upload a smaller file.")
         else:
-            file = uploaded_file.read()
+            file = st.session_state.uploaded_file.read()
 
             # Compute hashed ID and prepare embedding folder
             file_hash = generate_course_id(file)
@@ -103,10 +104,10 @@ if st.session_state['isAuth']:
                 os.makedirs(embedding_folder)
 
             # Save the file locally
-            save_file_locally(file, filename=uploaded_file.name, embedding_folder=embedding_folder)
+            save_file_locally(file, filename=st.session_state.uploaded_file.name, embedding_folder=embedding_folder)
 
             # Process file and create session states for documents and PDF object
-            documents, doc = process_pdf_file(file, uploaded_file.name)
+            documents, doc = process_pdf_file(file, st.session_state.uploaded_file.name)
 
             # Generate embeddings based on the selected mode
             if st.session_state.mode == "Professor":
@@ -115,7 +116,7 @@ if st.session_state['isAuth']:
                         print("Index files are ready.")
                     else:
                         # Files are missing and have been cleaned up
-                        save_file_locally(file, filename=uploaded_file.name, embedding_folder=embedding_folder)
+                        save_file_locally(file, filename=st.session_state.uploaded_file.name, embedding_folder=embedding_folder)
                         generate_embedding(documents, embedding_folder=embedding_folder)
                         # generate_GraphRAG_embedding(documents, embedding_folder=embedding_folder)
                         asyncio.run(generate_GraphRAG_embedding(documents, embedding_folder=embedding_folder))
@@ -123,7 +124,7 @@ if st.session_state['isAuth']:
                             print("Index files are ready and uploaded to Azure Blob Storage.")
                         else:
                             # Files are missing and have been cleaned up
-                            save_file_locally(file, filename=uploaded_file.name, embedding_folder=embedding_folder)
+                            save_file_locally(file, filename=st.session_state.uploaded_file.name, embedding_folder=embedding_folder)
                             generate_embedding(documents, embedding_folder=embedding_folder)
                             # generate_GraphRAG_embedding(documents, embedding_folder=embedding_folder)
                             asyncio.run(generate_GraphRAG_embedding(documents, embedding_folder=embedding_folder))

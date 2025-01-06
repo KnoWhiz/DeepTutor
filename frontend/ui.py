@@ -15,12 +15,14 @@ def setup_page_config():
     st.set_page_config(
         page_title="KnoWhiz Office Hours",
         page_icon="frontend/images/logo_short.ico",
-        layout="wide"
+        layout="wide",
+        initial_sidebar_state="collapsed",
     )
 
 
 def show_auth_top():
-    st.write("")
+    # st.write("")
+    pass
 
 
 # Function to display the header
@@ -44,7 +46,11 @@ def show_header():
 # Function to display the file uploader
 def show_file_upload(on_change=None):
     with st.sidebar:
-        return st.file_uploader(" ", type="pdf", on_change=on_change)
+        if st.session_state['is_uploaded_file'] is not True:
+            st.session_state.uploaded_file = st.file_uploader(" ", type="pdf", on_change=on_change)
+        # if file uploaded successfully, set st.session_state['uploaded_file'] to True
+        if st.session_state.get('is_uploaded_file', None):
+            st.session_state['is_uploaded_file'] = True
 
 
 # Function to display the response mode options
@@ -70,7 +76,7 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
     tutor_avatar = "frontend/images/tutor.svg"
     professor_avatar = "frontend/images/professor.svg"
 
-    with st.container(border=st.session_state.show_chat_border, height=750):
+    with st.container(border=st.session_state.show_chat_border, height=620):
         float_init(theme=True, include_unstable_primary=False)
         with st.container():
             st.chat_input(key='user_input', on_submit=chat_content)
@@ -166,6 +172,8 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
                     st.session_state.current_page = min(
                         annotation["page"] for annotation in st.session_state.annotations
                     )
+    viewer_css = float_css_helper(transition=0)
+    float_parent(css=viewer_css)
 
 
 # Function to display the pdf viewer
@@ -174,15 +182,14 @@ def show_pdf_viewer(file):
         st.session_state.current_page = 1
     if "annotations" not in st.session_state:
         st.session_state.annotations = []
-    with st.container(border=st.session_state.show_chat_border, height=750):
-        with st.container():
-            pdf_viewer(
-                file,
-                width=1000,
-                annotations=st.session_state.annotations,
-                pages_to_render=[st.session_state.current_page],
-                render_text=True,
-            )
+    with st.container(border=st.session_state.show_chat_border, height=620):
+        pdf_viewer(
+            file,
+            width=1000,
+            annotations=st.session_state.annotations,
+            pages_to_render=[st.session_state.current_page],
+            render_text=True,
+        )
         columns = st.columns([1, 1])
         with columns[0]:
             with stylable_container(
@@ -211,6 +218,8 @@ def show_pdf_viewer(file):
             # st.button("→", key='→', on_click=next_page)
             # button_css = float_css_helper(width="1.2rem", bottom="1.2rem", transition=0)
             # float_parent(css=button_css)
+    viewer_css = float_css_helper(transition=0)
+    float_parent(css=viewer_css)
 
 
 # Function to display the footer

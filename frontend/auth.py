@@ -46,30 +46,28 @@ def sign_in(username, password):
 
 # Streamlit App
 def show_auth():
-    if not st.session_state['isAuth']:
-        st.title("KnoWhiz Tutor")
-        auth_option = st.radio("Select Option", ["Sign Up", "Sign In"])
-        if auth_option == "Sign Up":
-            #username = st.text_input("Username")
-            email = st.text_input("Email")
-            password = st.text_input("Password", type="password")
-            if st.button("Sign Up"):
-                response = sign_up(email, password, email)
-                st.success("Sign-up successful! Please check and confirm with your email.")
+    columns = st.columns([1, 3, 1])
+    with columns[1]:
+        with st.container(border=True):
+            if not st.session_state['isAuth']:
+                st.title("KnoWhiz Tutor")
+                auth_option = st.radio("Select Option", ["Sign Up", "Sign In"])
+                if auth_option == "Sign Up":
+                    #username = st.text_input("Username")
+                    email = st.text_input("Email")
+                    password = st.text_input("Password", type="password")
+                    if st.button("Sign Up"):
+                        response = sign_up(email, password, email)
+                        st.success("Sign-up successful! Please check and confirm with your email.")
 
-        elif auth_option == "Sign In":
-            username = st.text_input("Email")
-            password = st.text_input("Password", type="password")
-            if st.button("Sign In"):
-                token = sign_in(username, password)
-                if type(token)==str:
-                    # st.success(f"Signed in! Token: {token}")
-                    st.session_state['isAuth'] = True
-                    st.rerun()
-                else:
-                    st.error("Sign in failed, please try again")
-
-
-def show_signedIn():
-    if "uploaded_file" not in st.session_state: 
-        st.title("Welcome to KnoWhiz Tutor!")
+                elif auth_option == "Sign In":
+                    username = st.text_input("Email")
+                    password = st.text_input("Password", type="password")
+                    if st.button("Sign In"):
+                        token = sign_in(username, password)
+                        if type(token)==str:
+                            # st.success(f"Signed in! Token: {token}")
+                            st.session_state['isAuth'] = True
+                            st.rerun()
+                        else:
+                            st.error("Sign in failed, please try again")

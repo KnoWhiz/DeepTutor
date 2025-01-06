@@ -41,6 +41,7 @@ def setup_page_config():
         page_icon="frontend/images/logo_short.ico",
         layout="wide",
         # initial_sidebar_state="collapsed",
+        initial_sidebar_state="expanded"
     )
 
 

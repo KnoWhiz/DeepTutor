@@ -4,6 +4,14 @@ import fitz
 import asyncio
 import tiktoken
 import pandas as pd
+import json
+from pathlib import Path
+
+def load_config():
+    """Load configuration from config.json"""
+    config_path = Path(__file__).parent / 'config.json'
+    with open(config_path, 'r') as f:
+        return json.load(f)
 
 from dotenv import load_dotenv
 from pathlib import Path
@@ -85,13 +93,8 @@ def truncate_chat_history(chat_history, model_name='gpt-4o'):
     """
     Only keep the messages from \"assistant\" and \"User\" that fit within the token limit.
     """
-    para = {
-        'llm_source': 'openai',  # or 'anthropic'
-        'temperature': 0,
-        "creative_temperature": 0.5,
-        "openai_key_dir": ".env",
-        "anthropic_key_dir": ".env",
-    }
+    config = load_config()
+    para = config['llm']
     api = ApiHandler(para)
     if model_name == 'gpt-4o':
         model_level = 'advance'
@@ -116,13 +119,8 @@ def truncate_document(_document, model_name='gpt-4o'):
     """
     Only keep the beginning part of the document that fit within the token limit.
     """
-    para = {
-        'llm_source': 'openai',  # or 'anthropic'
-        'temperature': 0,
-        "creative_temperature": 0.5,
-        "openai_key_dir": ".env",
-        "anthropic_key_dir": ".env",
-    }
+    config = load_config()
+    para = config['llm']
     api = ApiHandler(para)
     if model_name == 'gpt-4o':
         model_level = 'advance'
@@ -165,13 +163,8 @@ def get_embedding_models(embedding_model_type, para):
 
 # @st.cache_resource
 def generate_embedding(_documents, embedding_folder):
-    para = {
-        'llm_source': 'openai',  # or 'anthropic'
-        'temperature': 0,
-        "creative_temperature": 0.5,
-        "openai_key_dir": ".env",
-        "anthropic_key_dir": ".env",
-    }
+    config = load_config()
+    para = config['llm']
     embeddings = get_embedding_models('default', para)
 
     # Define the default filenames used by FAISS when saving
@@ -189,8 +182,10 @@ def generate_embedding(_documents, embedding_folder):
     else:
         # Split the documents into chunks
         print("Creating new embeddings...")
-        # text_splitter = CharacterTextSplitter(chunk_size=512, chunk_overlap=0)
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=512, chunk_overlap=20)
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=config['embedding']['chunk_size'],
+            chunk_overlap=config['embedding']['chunk_overlap']
+        )
         texts = text_splitter.split_documents(_documents)
         print(f"length of document chunks generated for get_response_source:{len(texts)}")
 
@@ -305,13 +300,8 @@ def get_response(mode, _documents, user_input, chat_history, embedding_folder):
         except Exception as e:
             print("Error getting response from GraphRAG:", e)
 
-    para = {
-        'llm_source': 'openai',  # or 'anthropic'
-        'temperature': 0,
-        "creative_temperature": 0.5,
-        "openai_key_dir": ".env",
-        "anthropic_key_dir": ".env",
-    }
+    config = load_config()
+    para = config['llm']
     llm = get_llm('advance', para)
     parser = StrOutputParser()
     error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
@@ -331,7 +321,8 @@ def get_response(mode, _documents, user_input, chat_history, embedding_folder):
     # retriever = db.as_retriever(
     #     search_type="mmr", search_kwargs={"k": 2, "lambda_mult": 0.8}
     # )
-    retriever = db.as_retriever(search_kwargs={"k": 4})
+    config = load_config()
+    retriever = db.as_retriever(search_kwargs={"k": config['retriever']['k']})
 
     # Create the RetrievalQA chain
     system_prompt = (
@@ -496,13 +487,8 @@ def get_GraphRAG_global_response(_documents, user_input, chat_history, embedding
 
 @st.cache_resource
 def get_response_source(_documents, user_input, answer, chat_history, embedding_folder):
-    para = {
-        'llm_source': 'openai',  # or 'anthropic'
-        'temperature': 0,
-        "creative_temperature": 0.5,
-        "openai_key_dir": ".env",
-        "anthropic_key_dir": ".env",
-    }
+    config = load_config()
+    para = config['llm']
     llm = get_llm('advance', para)
     parser = JsonOutputParser()
     error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
@@ -524,7 +510,10 @@ def get_response_source(_documents, user_input, answer, chat_history, embedding_
         # Split the documents into chunks
         print("Creating new embeddings...")
         # text_splitter = CharacterTextSplitter(chunk_size=512, chunk_overlap=0)
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=512, chunk_overlap=20)
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=config['embedding']['chunk_size'],
+            chunk_overlap=config['embedding']['chunk_overlap']
+        )
         texts = text_splitter.split_documents(_documents)
         print(f"length of document chunks generated for get_response_source:{len(texts)}")
 
@@ -537,7 +526,8 @@ def get_response_source(_documents, user_input, answer, chat_history, embedding_
     # retriever = db.as_retriever(
     #     search_type="mmr", search_kwargs={"k": 2, "lambda_mult": 0.8}
     # )
-    retriever = db.as_retriever(search_kwargs={"k": 3})
+    config = load_config()
+    retriever = db.as_retriever(search_kwargs={"k": config['retriever']['k']})
 
     # Create the RetrievalQA chain
     system_prompt = (
@@ -621,13 +611,8 @@ def get_query_helper(user_input, chat_history, embedding_folder):
     else:
         documents_summary = " "
 
-    para = {
-        'llm_source': 'openai',  # or 'anthropic'
-        'temperature': 0,
-        "creative_temperature": 0.5,
-        "openai_key_dir": ".env",
-        "anthropic_key_dir": ".env",
-    }
+    config = load_config()
+    para = config['llm']
     llm = get_llm('basic', para)
     parser = JsonOutputParser()
     error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)

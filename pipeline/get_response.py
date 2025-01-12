@@ -81,10 +81,23 @@ def count_tokens(text, model_name='gpt-4o'):
 
 
 @st.cache_resource
-def truncate_chat_history(chat_history, max_tokens=2000, model_name='gpt-4o'):
+def truncate_chat_history(chat_history, model_name='gpt-4o'):
     """
     Only keep the messages from \"assistant\" and \"User\" that fit within the token limit.
     """
+    para = {
+        'llm_source': 'openai',  # or 'anthropic'
+        'temperature': 0,
+        "creative_temperature": 0.5,
+        "openai_key_dir": ".env",
+        "anthropic_key_dir": ".env",
+    }
+    api = ApiHandler(para)
+    if model_name == 'gpt-4o':
+        model_level = 'advance'
+    else:
+        model_level = 'basic'
+    max_tokens = int(api.models[model_level]['context_window']/1.2)
     total_tokens = 0
     truncated_history = []
     for message in reversed(chat_history):
@@ -99,10 +112,23 @@ def truncate_chat_history(chat_history, max_tokens=2000, model_name='gpt-4o'):
 
 
 @st.cache_resource
-def truncate_document(_document, max_tokens=6000, model_name='gpt-4o'):
+def truncate_document(_document, model_name='gpt-4o'):
     """
     Only keep the beginning part of the document that fit within the token limit.
     """
+    para = {
+        'llm_source': 'openai',  # or 'anthropic'
+        'temperature': 0,
+        "creative_temperature": 0.5,
+        "openai_key_dir": ".env",
+        "anthropic_key_dir": ".env",
+    }
+    api = ApiHandler(para)
+    if model_name == 'gpt-4o':
+        model_level = 'advance'
+    else:
+        model_level = 'basic'
+    max_tokens = int(api.models[model_level]['context_window']/1.2)
     _document = str(_document)
     document_tokens = count_tokens(_document, model_name)
     if document_tokens > max_tokens:

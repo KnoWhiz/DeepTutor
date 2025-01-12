@@ -9,12 +9,21 @@ SKIP_AUTH = True if os.getenv("ENVIRONMENT") == "local" else False
 
 
 # Function to initialize the session state
-def initialize_session_state():
+def initialize_session_state(embedding_folder):
     if "mode" not in st.session_state:
         st.session_state.mode = "TA"
-    if "chat_history" not in st.session_state: 
+    if "chat_history" not in st.session_state:
+        # Load initial message from documents_summary.txt
+        try:
+            # If we have "documents_summary" in the embedding folder, we can use it to speed up the search
+            documents_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
+            with open(documents_summary_path, "r") as f:
+                initial_message = f.read()
+        except FileNotFoundError:
+            initial_message = "Hello! How can I assist you today?"
+            
         st.session_state.chat_history = [
-            {"role": "assistant", "content": "Hello! How can I assist you today? "}
+            {"role": "assistant", "content": initial_message}
         ]
         st.session_state.show_chat_border = False
     else:
@@ -30,7 +39,7 @@ def handle_file_change():
     st.session_state.total_pages = 1
     st.session_state.current_page = 1
     st.session_state.uploaded_file = True
-    initialize_session_state()
+    # initialize_session_state()
 
 
 # Function to process the PDF file

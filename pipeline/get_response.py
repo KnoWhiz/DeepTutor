@@ -194,19 +194,8 @@ def generate_embedding(_documents, embedding_folder):
         # Save the embeddings to the specified folder
         db.save_local(embedding_folder)
 
-        llm = get_llm('basic', para)
-        parser = StrOutputParser()
-        error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
-        prompt = """
-        Summarize the given text within 300 words.
-        {document}
-        """
-        prompt = ChatPromptTemplate.from_template(prompt)
-        chain = prompt | llm | error_parser
-        parsed_result = chain.invoke({"document": truncate_document(_documents)})
-        documents_summary = parsed_result
-        with open(documents_summary_path, "w") as f:
-            f.write(documents_summary)
+        # Generate and save document summary
+        generate_document_summary(_documents, embedding_folder)
 
     return
 
@@ -654,3 +643,107 @@ def get_query_helper(user_input, chat_history, embedding_folder):
     question = parsed_result['question']
     question_type = parsed_result['question_type']
     return question
+
+
+def generate_document_summary(_documents, embedding_folder):
+    """
+    Generate a comprehensive markdown-formatted summary of the documents using multiple LLM calls.
+    """
+    config = load_config()
+    para = config['llm']
+    llm = get_llm('advance', para)  # Using advanced model for better quality
+
+    # First LLM call: Extract main topics
+    topics_prompt = """
+    Analyze the following document and identify the main topics/sections.
+    Focus on identifying key components like:
+    - Main objectives or goals
+    - Methodology or approach
+    - Key findings or results
+    - Technical components
+    - Evaluation or analysis
+    
+    List only the major topics in a JSON array format.
+    
+    Document: {document}
+    
+    Return format:
+    {{"topics": ["topic1", "topic2", ...]}}
+    """
+    topics_prompt = ChatPromptTemplate.from_template(topics_prompt)
+    parser = JsonOutputParser()
+    error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
+    topics_chain = topics_prompt | llm | error_parser
+    topics_result = topics_chain.invoke({"document": truncate_document(_documents)})
+    
+    try:
+        topics = topics_result.get("topics", [])
+    except AttributeError:
+        print("Warning: Failed to get topics. Using default topics.")
+        topics = ["Overview", "Methods", "Results", "Discussion"]
+
+    # First generate the overview
+    overview_prompt = """
+    Provide a clear and informative overview of the document in 2-3 sentences.
+    Focus on:
+    - The main purpose and objectives
+    - Key innovations or contributions
+    - Significance or impact of the work
+    
+    Use markdown formatting:
+    - **Bold** for key terms and concepts
+    - Use clear and concise language
+    - Highlight the most important points
+    
+    Document: {document}
+    """
+    overview_prompt = ChatPromptTemplate.from_template(overview_prompt)
+    str_parser = StrOutputParser()
+    overview_chain = overview_prompt | llm | str_parser
+    overview = overview_chain.invoke({"document": truncate_document(_documents)})
+
+    # Then generate summaries for each topic
+    summaries = []
+    for topic in topics:
+        topic_prompt = """
+        For the topic "{topic}", provide a detailed yet concise summary.
+        
+        Guidelines:
+        - Focus on key points and findings
+        - Include specific details, metrics, or results where relevant
+        - Explain the significance of this aspect
+        - Keep to 3-4 informative sentences
+        
+        Use markdown formatting:
+        - **Bold** for important terms and concepts
+        - Use bullet points for lists if needed
+        - Highlight numerical results or key metrics
+        
+        Document: {document}
+        """
+        topic_prompt = ChatPromptTemplate.from_template(topic_prompt)
+        topic_chain = topic_prompt | llm | str_parser
+        topic_summary = topic_chain.invoke({
+            "topic": topic,
+            "document": truncate_document(_documents)
+        })
+        summaries.append((topic, topic_summary))
+
+    # Combine everything into markdown format
+    markdown_summary = f"""## Overview
+{overview}
+
+## Key Components
+"""
+    
+    for topic, summary in summaries:
+        markdown_summary += f"""### {topic}
+{summary}
+
+"""
+
+    documents_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
+    with open(documents_summary_path, "w", encoding='utf-8') as f:
+        f.write(markdown_summary)
+
+    return markdown_summary

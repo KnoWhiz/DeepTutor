@@ -220,6 +220,12 @@ def show_pdf_viewer(file):
         st.session_state.current_page = 1
     if "annotations" not in st.session_state:
         st.session_state.annotations = []
+    if "total_pages" not in st.session_state:
+        # Get total pages from the PDF file
+        import PyPDF2
+        pdf = PyPDF2.PdfReader(file)
+        st.session_state.total_pages = len(pdf.pages)
+        
     with st.container(border=st.session_state.show_chat_border, height=620):
         pdf_viewer(
             file,
@@ -228,7 +234,11 @@ def show_pdf_viewer(file):
             pages_to_render=[st.session_state.current_page],
             render_text=True,
         )
-        columns = st.columns([1, 1])
+        
+        # Create three columns for the navigation controls
+        columns = st.columns([1, 2, 1])
+        
+        # Left arrow button
         with columns[0]:
             with stylable_container(
                 key="left_aligned_button",
@@ -241,7 +251,18 @@ def show_pdf_viewer(file):
                 st.button("←", key='←', on_click=previous_page)
                 button_css = float_css_helper(width="1.2rem", bottom="1.2rem", transition=0)
                 float_parent(css=button_css)
+        
+        # Page counter in the middle
         with columns[1]:
+            st.markdown(
+                f"""<div style="text-align: center; color: #666666;">
+                    Page {st.session_state.current_page} of {st.session_state.total_pages}
+                    </div>""",
+                unsafe_allow_html=True
+            )
+            
+        # Right arrow button
+        with columns[2]:
             with stylable_container(
                 key="right_aligned_button",
                 css_styles="""
@@ -253,6 +274,7 @@ def show_pdf_viewer(file):
                 st.button("→", key='→', on_click=next_page)
                 button_css = float_css_helper(width="1.2rem", bottom="1.2rem", transition=0)
                 float_parent(css=button_css)
+                
     viewer_css = float_css_helper(transition=0)
     float_parent(css=viewer_css)
 

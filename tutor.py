@@ -72,10 +72,6 @@ if st.session_state['isAuth']:
     show_header()
 
 
-    # Initialize state
-    initialize_session_state()
-
-
     # Show file uploader and response mode options in the sidebar
     if 'is_uploaded_file' not in st.session_state:
         st.session_state['is_uploaded_file'] = False
@@ -137,6 +133,11 @@ if st.session_state['isAuth']:
             else:
                 with st.spinner("Processing file..."):
                     generate_embedding(documents, embedding_folder=embedding_folder)
+
+
+            # Initialize state
+            initialize_session_state(embedding_folder=embedding_folder)
+            
 
             # If documents are found, proceed to show chat interface and PDF viewer
             if documents:

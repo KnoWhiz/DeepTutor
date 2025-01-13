@@ -653,22 +653,43 @@ def generate_document_summary(_documents, embedding_folder):
     para = config['llm']
     llm = get_llm('advance', para)  # Using advanced model for better quality
 
-    # First LLM call: Extract main topics
-    topics_prompt = """
-    Analyze the following document and identify the main topics/sections.
-    Focus on identifying key components like:
-    - Main objectives or goals
-    - Methodology or approach
-    - Key findings or results
-    - Technical components
-    - Evaluation or analysis
+    # First generate the take-home message
+    takehome_prompt = """
+    Provide a single, impactful sentence that captures the most important takeaway from this document.
     
-    List only the major topics in a JSON array format.
+    Guidelines:
+    - Be extremely concise and specific
+    - Focus on the main contribution or finding
+    - Use bold for key terms
+    - Keep it to one sentence
+    - Add a relevant emoji at the start of bullet points or the first sentence
+    - For inline formulas use single $ marks: $E = mc^2$
+    - For block formulas use double $$ marks:
+      $$
+      F = ma
+      $$
     
     Document: {document}
+    """
+    takehome_prompt = ChatPromptTemplate.from_template(takehome_prompt)
+    str_parser = StrOutputParser()
+    takehome_chain = takehome_prompt | llm | str_parser
+    takehome = takehome_chain.invoke({"document": truncate_document(_documents)})
+
+    # Topics extraction
+    topics_prompt = """
+    Identify only the most essential topics/sections from this document.
+    Be extremely selective and concise - only include major components.
     
     Return format:
     {{"topics": ["topic1", "topic2", ...]}}
+    
+    Guidelines:
+    - Include maximum 4-5 topics
+    - Focus only on critical sections
+    - Use short, descriptive names
+    
+    Document: {document}
     """
     topics_prompt = ChatPromptTemplate.from_template(topics_prompt)
     parser = JsonOutputParser()
@@ -682,42 +703,43 @@ def generate_document_summary(_documents, embedding_folder):
         print("Warning: Failed to get topics. Using default topics.")
         topics = ["Overview", "Methods", "Results", "Discussion"]
 
-    # First generate the overview
+    # Generate overview
     overview_prompt = """
-    Provide a clear and informative overview of the document in 2-3 sentences.
-    Focus on:
-    - The main purpose and objectives
-    - Key innovations or contributions
-    - Significance or impact of the work
+    Provide a clear and engaging overview using bullet points.
     
-    Use markdown formatting:
-    - **Bold** for key terms and concepts
-    - Use clear and concise language
-    - Highlight the most important points
+    Guidelines:
+    - Use 3-4 concise bullet points
+    - **Bold** for key terms
+    - Each bullet point should be one short sentence
+    - For inline formulas use single $ marks: $E = mc^2$
+    - For block formulas use double $$ marks:
+      $$
+      F = ma
+      $$
     
     Document: {document}
     """
     overview_prompt = ChatPromptTemplate.from_template(overview_prompt)
-    str_parser = StrOutputParser()
     overview_chain = overview_prompt | llm | str_parser
     overview = overview_chain.invoke({"document": truncate_document(_documents)})
 
-    # Then generate summaries for each topic
+    # Generate summaries for each topic
     summaries = []
     for topic in topics:
         topic_prompt = """
-        For the topic "{topic}", provide a detailed yet concise summary.
+        Provide an engaging summary for the topic "{topic}" using bullet points.
         
         Guidelines:
-        - Focus on key points and findings
-        - Include specific details, metrics, or results where relevant
-        - Explain the significance of this aspect
-        - Keep to 3-4 informative sentences
-        
-        Use markdown formatting:
-        - **Bold** for important terms and concepts
-        - Use bullet points for lists if needed
-        - Highlight numerical results or key metrics
+        - Use 2-3 bullet points
+        - Each bullet point should be one short sentence
+        - **Bold** for key terms
+        - Use simple, clear language
+        - Include specific metrics only if crucial
+        - For inline formulas use single $ marks: $E = mc^2$
+        - For block formulas use double $$ marks:
+          $$
+          F = ma
+          $$
         
         Document: {document}
         """
@@ -729,17 +751,64 @@ def generate_document_summary(_documents, embedding_folder):
         })
         summaries.append((topic, topic_summary))
 
-    # Combine everything into markdown format
-    markdown_summary = f"""## Overview
+    # Combine everything into markdown format with welcome message and take-home message
+    markdown_summary = f"""### 👋 Welcome to KnoWhiz Office Hour! 
+
+I'm your AI tutor 🤖 ready to help you understand this document.
+
+### 💡 Key Takeaway
+{takehome}
+
+### 📚 Document Overview
 {overview}
 
-## Key Components
 """
     
+    # Add emojis for common topic titles
+    topic_emojis = {
+        "introduction": "📖",
+        "overview": "🔎",
+        "background": "📚",
+        "methods": "🔬",
+        "methodology": "🔬", 
+        "results": "📊",
+        "discussion": "💭",
+        "conclusion": "🎯",
+        "future work": "🔮",
+        "implementation": "⚙️",
+        "evaluation": "📈",
+        "analysis": "🔍",
+        "design": "✏️",
+        "architecture": "🏗️",
+        "experiments": "🧪",
+        "related work": "🔗",
+        "motivation": "💪",
+        "approach": "🎯",
+        "system": "🖥️",
+        "framework": "🔧",
+        "model": "🤖",
+        "data": "📊",
+        "algorithm": "⚡",
+        "performance": "⚡",
+        "limitations": "⚠️",
+        "applications": "💡",
+        "default": "📌" # Default emoji for topics not in the mapping
+    }
+    
     for topic, summary in summaries:
-        markdown_summary += f"""### {topic}
+        # Get emoji based on topic, defaulting to 📌 if not found
+        topic_lower = topic.lower()
+        emoji = next((v for k, v in topic_emojis.items() if k in topic_lower), topic_emojis["default"])
+        
+        markdown_summary += f"""### {emoji} {topic}
 {summary}
 
+"""
+
+    markdown_summary += """
+---
+### 💬 Ask Me Anything!
+Feel free to ask me any questions about the document! I'm here to help! ✨
 """
 
     documents_summary_path = os.path.join(embedding_folder, "documents_summary.txt")

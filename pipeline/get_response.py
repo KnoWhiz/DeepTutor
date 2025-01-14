@@ -70,7 +70,7 @@ from streamlit_float import *
 from pipeline.api_handler import ApiHandler
 from pipeline.api_handler import create_env_file
 from pipeline.api_handler import ApiHandler, create_env_file
-from pipeline.helper.index_files_saving import index_files_check, index_files_compress, index_files_decompress
+from pipeline.helper.index_files_saving import graphrag_index_files_check, graphrag_index_files_compress, graphrag_index_files_decompress
 from pipeline.utils import (
     load_config,
     count_tokens,

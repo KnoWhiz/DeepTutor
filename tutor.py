@@ -28,9 +28,12 @@ from pipeline.utils import (
 
 
 from pipeline.helper.index_files_saving import (
-    index_files_check,
-    index_files_compress,
-    index_files_decompress,
+    graphrag_index_files_check,
+    graphrag_index_files_compress,
+    graphrag_index_files_decompress,
+    vectorrag_index_files_check,
+    vectorrag_index_files_compress,
+    vectorrag_index_files_decompress,
 )
 
 
@@ -110,30 +113,42 @@ if st.session_state['isAuth']:
             # Generate embeddings based on the selected mode
             if st.session_state.mode == "Professor":
                 with st.spinner("Processing file to generate knowledge graph, may take 3 - 5 mins..."):
-                    if(index_files_decompress(embedding_folder)):
-                        print("Index files are ready.")
+                    if(graphrag_index_files_decompress(embedding_folder)):
+                        print("GraphRAG index files are ready.")
                     else:
                         # Files are missing and have been cleaned up
                         save_file_locally(file, filename=st.session_state.uploaded_file.name, embedding_folder=embedding_folder)
                         generate_embedding(documents, embedding_folder=embedding_folder)
-                        # generate_GraphRAG_embedding(documents, embedding_folder=embedding_folder)
                         asyncio.run(generate_GraphRAG_embedding(documents, embedding_folder=embedding_folder))
-                        if(index_files_compress(embedding_folder)):
-                            print("Index files are ready and uploaded to Azure Blob Storage.")
+                        if(graphrag_index_files_compress(embedding_folder)):
+                            print("GraphRAG index files are ready and uploaded to Azure Blob Storage.")
                         else:
-                            # Files are missing and have been cleaned up
+                            # Retry once if first attempt fails
                             save_file_locally(file, filename=st.session_state.uploaded_file.name, embedding_folder=embedding_folder)
                             generate_embedding(documents, embedding_folder=embedding_folder)
-                            # generate_GraphRAG_embedding(documents, embedding_folder=embedding_folder)
                             asyncio.run(generate_GraphRAG_embedding(documents, embedding_folder=embedding_folder))
-                            if(index_files_compress(embedding_folder)):
-                                print("Index files are ready and uploaded to Azure Blob Storage.")
+                            if(graphrag_index_files_compress(embedding_folder)):
+                                print("GraphRAG index files are ready and uploaded to Azure Blob Storage.")
                             else:
-                                print("Error compressing and uploading index files to Azure Blob Storage.")
-            else:
+                                print("Error compressing and uploading GraphRAG index files to Azure Blob Storage.")
+            else:  # TA mode
                 with st.spinner("Processing file..."):
-                    generate_embedding(documents, embedding_folder=embedding_folder)
-
+                    if(vectorrag_index_files_decompress(embedding_folder)):
+                        print("VectorRAG index files are ready.")
+                    else:
+                        # Files are missing and have been cleaned up
+                        save_file_locally(file, filename=st.session_state.uploaded_file.name, embedding_folder=embedding_folder)
+                        generate_embedding(documents, embedding_folder=embedding_folder)
+                        if(vectorrag_index_files_compress(embedding_folder)):
+                            print("VectorRAG index files are ready and uploaded to Azure Blob Storage.")
+                        else:
+                            # Retry once if first attempt fails
+                            save_file_locally(file, filename=st.session_state.uploaded_file.name, embedding_folder=embedding_folder)
+                            generate_embedding(documents, embedding_folder=embedding_folder)
+                            if(vectorrag_index_files_compress(embedding_folder)):
+                                print("VectorRAG index files are ready and uploaded to Azure Blob Storage.")
+                            else:
+                                print("Error compressing and uploading VectorRAG index files to Azure Blob Storage.")
 
             # Initialize state
             initialize_session_state(embedding_folder=embedding_folder)

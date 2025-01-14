@@ -88,7 +88,7 @@ def count_tokens(text, model_name='gpt-4o'):
     return len(encoding.encode(text))
 
 
-@st.cache_resource
+# @st.cache_resource
 def truncate_chat_history(chat_history, model_name='gpt-4o'):
     """
     Only keep the messages from \"assistant\" and \"User\" that fit within the token limit.
@@ -114,7 +114,7 @@ def truncate_chat_history(chat_history, model_name='gpt-4o'):
     return truncated_history
 
 
-@st.cache_resource
+# @st.cache_resource
 def truncate_document(_document, model_name='gpt-4o'):
     """
     Only keep the beginning part of the document that fit within the token limit.

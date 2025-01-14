@@ -2,31 +2,21 @@ import os
 import yaml
 import fitz
 import asyncio
-import tiktoken
 import pandas as pd
-import json
 from pathlib import Path
-
-def load_config():
-    """Load configuration from config.json"""
-    config_path = Path(__file__).parent / 'config.json'
-    with open(config_path, 'r') as f:
-        return json.load(f)
-
 from dotenv import load_dotenv
-from pathlib import Path
+import streamlit as st
+
 from langchain_community.vectorstores import FAISS
 from langchain_core.runnables import RunnablePassthrough
-from langchain.chains import RetrievalQA
-from langchain_core.prompts import PromptTemplate
+from langchain.chains import RetrievalQA, create_retrieval_chain
 from langchain_core.prompts import ChatPromptTemplate
-from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
 from langchain.output_parsers import OutputFixingParser
-from langchain_text_splitters import CharacterTextSplitter
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
+# GraphRAG imports
 import graphrag.api as api
 from graphrag.cli.initialize import initialize_project_at
 from graphrag.index.typing import PipelineRunResult
@@ -57,7 +47,6 @@ from graphrag.query.structured_search.local_search.mixed_context import (
 from graphrag.query.structured_search.local_search.search import LocalSearch
 from graphrag.vector_stores.lancedb import LanceDBVectorStore
 
-
 from graphrag.config.init_content import INIT_DOTENV, INIT_YAML
 from graphrag.prompts.index.claim_extraction import CLAIM_EXTRACTION_PROMPT
 from graphrag.prompts.index.community_report import (
@@ -80,59 +69,14 @@ from streamlit_float import *
 
 from pipeline.api_handler import ApiHandler
 from pipeline.api_handler import create_env_file
+from pipeline.api_handler import ApiHandler, create_env_file
 from pipeline.helper.index_files_saving import index_files_check, index_files_compress, index_files_decompress
-
-
-def count_tokens(text, model_name='gpt-4o'):
-    encoding = tiktoken.encoding_for_model(model_name)
-    return len(encoding.encode(text))
-
-
-# @st.cache_resource
-def truncate_chat_history(chat_history, model_name='gpt-4o'):
-    """
-    Only keep the messages from \"assistant\" and \"User\" that fit within the token limit.
-    """
-    config = load_config()
-    para = config['llm']
-    api = ApiHandler(para)
-    if model_name == 'gpt-4o':
-        model_level = 'advance'
-    else:
-        model_level = 'basic'
-    max_tokens = int(api.models[model_level]['context_window']/1.2)
-    total_tokens = 0
-    truncated_history = []
-    for message in reversed(chat_history):
-        if(message['role'] == 'assistant' or message['role'] == 'user'):
-            message = str(message)
-            message_tokens = count_tokens(message, model_name)
-            if total_tokens + message_tokens > max_tokens:
-                break
-            truncated_history.insert(0, message)
-            total_tokens += message_tokens
-    return truncated_history
-
-
-# @st.cache_resource
-def truncate_document(_document, model_name='gpt-4o'):
-    """
-    Only keep the beginning part of the document that fit within the token limit.
-    """
-    config = load_config()
-    para = config['llm']
-    api = ApiHandler(para)
-    if model_name == 'gpt-4o':
-        model_level = 'advance'
-    else:
-        model_level = 'basic'
-    max_tokens = int(api.models[model_level]['context_window']/1.2)
-    _document = str(_document)
-    document_tokens = count_tokens(_document, model_name)
-    if document_tokens > max_tokens:
-        _document = _document[:max_tokens]
-    return _document
-
+from pipeline.utils import (
+    load_config,
+    count_tokens,
+    truncate_chat_history,
+    truncate_document
+)
 
 @st.cache_resource
 def get_llm(llm_type, para):
@@ -149,7 +93,6 @@ def get_llm(llm_type, para):
         return llm_creative
     return llm_basic
 
-
 @st.cache_resource
 def get_embedding_models(embedding_model_type, para):
     para = para
@@ -159,7 +102,6 @@ def get_embedding_models(embedding_model_type, para):
         return embedding_model_default
     else:
         return embedding_model_default
-
 
 # @st.cache_resource
 def generate_embedding(_documents, embedding_folder):
@@ -198,7 +140,6 @@ def generate_embedding(_documents, embedding_folder):
         generate_document_summary(_documents, embedding_folder)
 
     return
-
 
 # @st.cache_resource
 async def generate_GraphRAG_embedding(_documents, embedding_folder):
@@ -278,7 +219,6 @@ async def generate_GraphRAG_embedding(_documents, embedding_folder):
             print("Index building error:", e)
 
     return
-
 
 # @st.cache_resource
 def get_response(mode, _documents, user_input, chat_history, embedding_folder):
@@ -366,7 +306,6 @@ def get_response(mode, _documents, user_input, chat_history, embedding_folder):
     parsed_result = chain.invoke({"input": user_input, "chat_history": truncate_chat_history(chat_history)})
     answer = parsed_result['answer']
     return answer
-
 
 # @st.cache_resource
 def get_GraphRAG_global_response(_documents, user_input, chat_history, embedding_folder):
@@ -472,7 +411,6 @@ def get_GraphRAG_global_response(_documents, user_input, chat_history, embedding
     )
 
     return answer.response
-
 
 # @st.cache_resource
 def get_response_source(_documents, user_input, answer, chat_history, embedding_folder):
@@ -589,7 +527,6 @@ def get_response_source(_documents, user_input, answer, chat_history, embedding_
     sources = list(set(sources_question + sources_answer))
     return sources
 
-
 # @st.cache_resource
 def get_query_helper(user_input, chat_history, embedding_folder):
     # If we have "documents_summary" in the embedding folder, we can use it to speed up the search
@@ -643,7 +580,6 @@ def get_query_helper(user_input, chat_history, embedding_folder):
     question = parsed_result['question']
     question_type = parsed_result['question_type']
     return question
-
 
 def generate_document_summary(_documents, embedding_folder):
     """

@@ -2,9 +2,14 @@ import os
 import hashlib
 import shutil
 import fitz
+import tiktoken
+from pathlib import Path
+import json
+import streamlit as st
 
 from langchain_community.document_loaders import PyPDFLoader, PyMuPDFLoader
 from streamlit_float import *
+from pipeline.api_handler import ApiHandler
 
 
 # Generate a unique course ID for the uploaded file
@@ -65,3 +70,54 @@ def get_highlight_info(doc, excerpts):
                         }
                     )
     return annotations
+
+
+# Add new helper functions
+def load_config():
+    """Load configuration from config.json"""
+    config_path = Path(__file__).parent / 'config.json'
+    with open(config_path, 'r') as f:
+        return json.load(f)
+
+def count_tokens(text, model_name='gpt-4o'):
+    """Count tokens in text using tiktoken"""
+    encoding = tiktoken.encoding_for_model(model_name)
+    return len(encoding.encode(text))
+
+def truncate_chat_history(chat_history, model_name='gpt-4o'):
+    """Only keep messages that fit within token limit"""
+    config = load_config()
+    para = config['llm']
+    api = ApiHandler(para)
+    if model_name == 'gpt-4o':
+        model_level = 'advance'
+    else:
+        model_level = 'basic'
+    max_tokens = int(api.models[model_level]['context_window']/1.2)
+    total_tokens = 0
+    truncated_history = []
+    for message in reversed(chat_history):
+        if(message['role'] == 'assistant' or message['role'] == 'user'):
+            message = str(message)
+            message_tokens = count_tokens(message, model_name)
+            if total_tokens + message_tokens > max_tokens:
+                break
+            truncated_history.insert(0, message)
+            total_tokens += message_tokens
+    return truncated_history
+
+def truncate_document(_document, model_name='gpt-4o'):
+    """Only keep beginning of document that fits token limit"""
+    config = load_config()
+    para = config['llm']
+    api = ApiHandler(para)
+    if model_name == 'gpt-4o':
+        model_level = 'advance'
+    else:
+        model_level = 'basic'
+    max_tokens = int(api.models[model_level]['context_window']/1.2)
+    _document = str(_document)
+    document_tokens = count_tokens(_document, model_name)
+    if document_tokens > max_tokens:
+        _document = _document[:max_tokens]
+    return _document

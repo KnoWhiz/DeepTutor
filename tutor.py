@@ -28,9 +28,9 @@ from pipeline.utils import (
 
 
 from pipeline.helper.index_files_saving import (
-    index_files_check,
-    index_files_compress,
-    index_files_decompress,
+    graphrag_index_files_check,
+    graphrag_index_files_compress,
+    graphrag_index_files_decompress,
 )
 
 
@@ -110,7 +110,7 @@ if st.session_state['isAuth']:
             # Generate embeddings based on the selected mode
             if st.session_state.mode == "Professor":
                 with st.spinner("Processing file to generate knowledge graph, may take 3 - 5 mins..."):
-                    if(index_files_decompress(embedding_folder)):
+                    if(graphrag_index_files_decompress(embedding_folder)):
                         print("Index files are ready.")
                     else:
                         # Files are missing and have been cleaned up
@@ -118,7 +118,7 @@ if st.session_state['isAuth']:
                         generate_embedding(documents, embedding_folder=embedding_folder)
                         # generate_GraphRAG_embedding(documents, embedding_folder=embedding_folder)
                         asyncio.run(generate_GraphRAG_embedding(documents, embedding_folder=embedding_folder))
-                        if(index_files_compress(embedding_folder)):
+                        if(graphrag_index_files_compress(embedding_folder)):
                             print("Index files are ready and uploaded to Azure Blob Storage.")
                         else:
                             # Files are missing and have been cleaned up
@@ -126,7 +126,7 @@ if st.session_state['isAuth']:
                             generate_embedding(documents, embedding_folder=embedding_folder)
                             # generate_GraphRAG_embedding(documents, embedding_folder=embedding_folder)
                             asyncio.run(generate_GraphRAG_embedding(documents, embedding_folder=embedding_folder))
-                            if(index_files_compress(embedding_folder)):
+                            if(graphrag_index_files_compress(embedding_folder)):
                                 print("Index files are ready and uploaded to Azure Blob Storage.")
                             else:
                                 print("Error compressing and uploading index files to Azure Blob Storage.")

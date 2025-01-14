@@ -3,7 +3,7 @@ import shutil
 from pipeline.helper.azure_blob import AzureBlobHelper
 
 
-def index_files_check(embedding_folder):
+def graphrag_index_files_check(embedding_folder):
     """
     Function to check if all necessary files exist to load the embeddings
     :param embedding_folder: The path to the embedding folder
@@ -50,7 +50,7 @@ def index_files_check(embedding_folder):
     return all_files_exist
 
 
-def index_files_compress(embedding_folder):
+def graphrag_index_files_compress(embedding_folder):
     """
     Function to compress the index files and upload them to Azure Blob Storage
     :param embedding_folder: The path to the embedding folder
@@ -65,7 +65,7 @@ def index_files_compress(embedding_folder):
     parent_folder = folder.replace(course_id, "").rstrip(os.sep)
     compressed_file = os.path.join(parent_folder, course_id)
 
-    if index_files_check(embedding_folder):
+    if graphrag_index_files_check(embedding_folder):
         print("Index files are already ready to be compressed!")
 
         shutil.make_archive(compressed_file, 'zip', folder)
@@ -86,7 +86,7 @@ def index_files_compress(embedding_folder):
         return False
 
 
-def index_files_decompress(embedding_folder):
+def graphrag_index_files_decompress(embedding_folder):
     """
     Function to decompress the index files and download them from Azure Blob Storage
     :param embedding_folder: The path to the embedding folder
@@ -103,7 +103,7 @@ def index_files_decompress(embedding_folder):
     compressed_file_blob = f"graphrag_index/{course_id}.zip"
 
     # Try No.1: Check if the index files are already ready
-    if index_files_check(embedding_folder):
+    if graphrag_index_files_check(embedding_folder):
         print("Index files are already ready!")
         return True
     else:
@@ -125,7 +125,7 @@ def index_files_decompress(embedding_folder):
 
         print(f"Decompressed the zip file to {folder}")
 
-        if index_files_check(embedding_folder):
+        if graphrag_index_files_check(embedding_folder):
             print("Index files are already ready after being decompressed!")
             return True
         else:
@@ -146,7 +146,7 @@ if __name__ == "__main__":
     embedding_folder = "../../embedded_content/be5a180265450fcb5959618dc94d7186"
 
     # Upload the index files to Azure Blob Storage
-    index_files_compress(embedding_folder)
+    graphrag_index_files_compress(embedding_folder)
 
     # # Download the index files from Azure Blob Storage
-    # index_files_decompress(embedding_folder)
+    # graphrag_index_files_decompress(embedding_folder)

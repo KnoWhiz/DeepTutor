@@ -71,9 +71,18 @@ def show_header():
 # Function to display the file uploader
 def show_file_upload(on_change=None):
     with st.sidebar:
-        if st.session_state['is_uploaded_file'] is not True:
-            st.session_state.uploaded_file = st.file_uploader(" ", type="pdf", on_change=on_change)
-        # if file uploaded successfully, set st.session_state['uploaded_file'] to True
+        previous_file = st.session_state.get('uploaded_file', None)
+        current_file = st.file_uploader(" ", type="pdf", on_change=on_change)
+        
+        # Check if file has changed
+        if previous_file is not None and current_file is not None:
+            if previous_file.name != current_file.name:
+                # File has changed, trigger the change handler
+                handle_file_change()
+        
+        st.session_state.uploaded_file = current_file
+        
+        # Set upload state
         if st.session_state.get('is_uploaded_file', None):
             st.session_state['is_uploaded_file'] = True
 

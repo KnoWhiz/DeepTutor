@@ -12,34 +12,54 @@ SKIP_AUTH = True if os.getenv("ENVIRONMENT") == "local" else False
 def initialize_session_state(embedding_folder):
     if "mode" not in st.session_state:
         st.session_state.mode = "TA"
+    
+    # Always try to load the latest document summary for the current document
+    try:
+        documents_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
+        with open(documents_summary_path, "r") as f:
+            initial_message = f.read()
+    except FileNotFoundError:
+        initial_message = "Hello! How can I assist you today?"
+    
+    # Reset chat history with new document summary
     if "chat_history" not in st.session_state:
-        # Load initial message from documents_summary.txt
-        try:
-            # If we have "documents_summary" in the embedding folder, we can use it to speed up the search
-            documents_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
-            with open(documents_summary_path, "r") as f:
-                initial_message = f.read()
-        except FileNotFoundError:
-            initial_message = "Hello! How can I assist you today?"
-            
         st.session_state.chat_history = [
             {"role": "assistant", "content": initial_message}
         ]
         st.session_state.show_chat_border = False
     else:
+        # If chat history exists but file changed, reset it with new summary
+        if len(st.session_state.chat_history) == 0 or st.session_state.chat_history[0]["content"] != initial_message:
+            st.session_state.chat_history = [
+                {"role": "assistant", "content": initial_message}
+            ]
         st.session_state.show_chat_border = True
 
 
 # Function to handle file change
 def handle_file_change():
-    # Reset states when a new file is uploaded
-    st.session_state.annotations = []
-    st.session_state.chat_occurred = False
-    st.session_state.sources = []
-    st.session_state.total_pages = 1
-    st.session_state.current_page = 1
-    st.session_state.uploaded_file = True
-    # initialize_session_state()
+    # Reset all relevant session states when a new file is uploaded
+    if 'chat_history' in st.session_state:
+        del st.session_state.chat_history
+    if 'annotations' in st.session_state:
+        del st.session_state.annotations
+    if 'chat_occurred' in st.session_state:
+        del st.session_state.chat_occurred
+    if 'sources' in st.session_state:
+        del st.session_state.sources
+    if 'total_pages' in st.session_state:
+        del st.session_state.total_pages
+    if 'current_page' in st.session_state:
+        del st.session_state.current_page
+    if 'doc' in st.session_state:
+        del st.session_state.doc
+    
+    # Clear Streamlit cache
+    st.cache_data.clear()
+    st.cache_resource.clear()
+    
+    # Reset uploaded file state
+    st.session_state.is_uploaded_file = True
 
 
 # Function to process the PDF file

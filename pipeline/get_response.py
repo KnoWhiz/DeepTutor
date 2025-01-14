@@ -280,7 +280,7 @@ async def generate_GraphRAG_embedding(_documents, embedding_folder):
     return
 
 
-@st.cache_resource
+# @st.cache_resource
 def get_response(mode, _documents, user_input, chat_history, embedding_folder):
     if mode == 'Professor':
         try:
@@ -368,7 +368,7 @@ def get_response(mode, _documents, user_input, chat_history, embedding_folder):
     return answer
 
 
-@st.cache_resource
+# @st.cache_resource
 def get_GraphRAG_global_response(_documents, user_input, chat_history, embedding_folder):
     # Chat history and user input
     chat_history_text = truncate_chat_history(chat_history)
@@ -474,7 +474,7 @@ def get_GraphRAG_global_response(_documents, user_input, chat_history, embedding
     return answer.response
 
 
-@st.cache_resource
+# @st.cache_resource
 def get_response_source(_documents, user_input, answer, chat_history, embedding_folder):
     config = load_config()
     para = config['llm']
@@ -590,7 +590,7 @@ def get_response_source(_documents, user_input, answer, chat_history, embedding_
     return sources
 
 
-@st.cache_resource
+# @st.cache_resource
 def get_query_helper(user_input, chat_history, embedding_folder):
     # If we have "documents_summary" in the embedding folder, we can use it to speed up the search
     documents_summary_path = os.path.join(embedding_folder, "documents_summary.txt")

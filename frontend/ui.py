@@ -78,7 +78,7 @@ def show_file_upload(on_change=None):
         if previous_file is not None and current_file is not None:
             if previous_file.name != current_file.name:
                 # File has changed, trigger the change handler
-                handle_file_change()
+                on_change()
         
         st.session_state.uploaded_file = current_file
         

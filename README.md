@@ -4,15 +4,15 @@
 
 Please feel free to try out our deployed webapp here and feel free to leave any comments!
 
-https://ai-tutor-knowhiz.streamlit.app/
+https://deeptutor.streamlit.app/
 
 ## Installation
 
 Create environment and install required packages
 
 ```bash
-conda create --name knowhiztutor python=3.12
-conda activate knowhiztutor
+conda create --name deeptutor python=3.12
+conda activate deeptutor
 pip install -r requirements.txt
 ```
 

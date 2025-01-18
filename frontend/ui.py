@@ -10,28 +10,23 @@ from pipeline.utils import find_pages_with_excerpts, get_highlight_info
 from frontend.forms.contact import contact_form
 
 
-def to_roman(num):
-    """Convert an integer to a Roman numeral."""
-    val = [
-        1000, 900, 500, 400,
-        100, 90, 50, 40,
-        10, 9, 5, 4,
-        1
+def to_emoji_number(num: int) -> str:
+    """Convert an integer to an emoji number (1-10).
+    
+    Args:
+        num: Integer to convert
+        
+    Returns:
+        String containing the emoji number representation for 1-10,
+        or regular number for values > 10
+    """
+    emoji_numbers = [
+        "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣",
+        "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"
     ]
-    syb = [
-        "M", "CM", "D", "CD",
-        "C", "XC", "L", "XL",
-        "X", "IX", "V", "IV",
-        "I"
-    ]
-    roman_num = ''
-    i = 0
-    while num > 0:
-        for _ in range(num // val[i]):
-            roman_num += syb[i]
-            num -= val[i]
-        i += 1
-    return roman_num
+    if 1 <= num <= len(emoji_numbers):
+        return emoji_numbers[num - 1]
+    return str(num)  # Use regular number if > 10
 
 
 # Function to set up the page configuration
@@ -111,7 +106,7 @@ def show_language_option():
             "🇵🇹 Português": "pt",
             "🇮🇹 Italiano": "it"
         }
-        
+
         # Get current language from session state or default to English
         current_lang = st.session_state.get("language", "en")
         
@@ -166,7 +161,7 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
                 for idx, (col, source) in enumerate(zip(cols, msg["sources"]), 1):
                     page_num = msg["pages"][source]
                     with col:
-                        if st.button(to_roman(idx), key=f"source_btn_{idx}_{msg['timestamp']}", use_container_width=True):
+                        if st.button(to_emoji_number(idx), key=f"source_btn_{idx}_{msg['timestamp']}", use_container_width=True):
                             st.session_state.current_page = page_num
                             st.session_state.annotations = get_highlight_info(doc, [source])
 
@@ -235,7 +230,7 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
                         page_num = source_pages.get(source)
                         if page_num:
                             with col:
-                                if st.button(to_roman(idx), key=f"source_btn_{idx}_current", use_container_width=True):
+                                if st.button(to_emoji_number(idx), key=f"source_btn_{idx}_current", use_container_width=True):
                                     st.session_state.current_page = page_num
                                     st.session_state.annotations = get_highlight_info(doc, [source])
                     

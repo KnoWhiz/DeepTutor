@@ -221,7 +221,7 @@ async def generate_GraphRAG_embedding(_documents, embedding_folder):
     return
 
 # @st.cache_resource
-def get_response(mode, _documents, user_input, chat_history, embedding_folder):
+def get_response(mode, _doc, _documents, user_input, chat_history, embedding_folder):
     # TEST
     print("Current language:", st.session_state.language)
 
@@ -416,7 +416,7 @@ def get_GraphRAG_global_response(_documents, user_input, chat_history, embedding
     return answer.response
 
 # @st.cache_resource
-def get_response_source(_documents, user_input, answer, chat_history, embedding_folder):
+def get_response_source(_doc, _documents, user_input, answer, chat_history, embedding_folder):
     config = load_config()
     para = config['llm']
     llm = get_llm('advance', para)
@@ -526,9 +526,21 @@ def get_response_source(_documents, user_input, answer, chat_history, embedding_
     sources_answer = parsed_result_answer['answer']['sources']
 
     # Combine sources from question and answer and make sure there are no duplicates
-    # sources = sources_question + sources_answer
     sources = list(set(sources_question + sources_answer))
-    return sources
+    
+    # Refine sources by checking if they can be found in the document
+    # Only get first 10 sources
+    # Show then in the order they are found in the document
+    refined_sources = []
+    for page in _doc:
+        for source in sources:
+            text_instances = page.search_for(source)
+            if text_instances:
+                refined_sources.append(source)
+
+    print(f"refined_sources: {refined_sources}")
+    print(f"length of refined_sources: {len(refined_sources)}")
+    return refined_sources[:10]
 
 # @st.cache_resource
 def get_query_helper(user_input, chat_history, embedding_folder):
@@ -605,7 +617,7 @@ def generate_document_summary(_documents, embedding_folder):
     - For inline formulas use single $ marks: $E = mc^2$
     - For block formulas use double $$ marks:
       $$
-      F = ma
+      F = ma (just an example, not a real formula)
       $$
     
     Document: {document}
@@ -653,7 +665,7 @@ def generate_document_summary(_documents, embedding_folder):
     - For inline formulas use single $ marks: $E = mc^2$
     - For block formulas use double $$ marks:
       $$
-      F = ma
+      F = ma (just an example, not a real formula)
       $$
     
     Document: {document}
@@ -677,7 +689,7 @@ def generate_document_summary(_documents, embedding_folder):
         - For inline formulas use single $ marks: $E = mc^2$
         - For block formulas use double $$ marks:
           $$
-          F = ma
+          F = ma (just an example, not a real formula)
           $$
         
         Document: {document}

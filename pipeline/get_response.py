@@ -623,7 +623,7 @@ def generate_document_summary(_documents, embedding_folder):
     - For inline formulas use single $ marks: $E = mc^2$
     - For block formulas use double $$ marks:
       $$
-      F = ma
+      F = ma (just an example, may not be a real formula in the doc)
       $$
     
     Document: {document}
@@ -671,7 +671,7 @@ def generate_document_summary(_documents, embedding_folder):
     - For inline formulas use single $ marks: $E = mc^2$
     - For block formulas use double $$ marks:
       $$
-      F = ma
+      F = ma (just an example, may not be a real formula in the doc)
       $$
     
     Document: {document}
@@ -695,7 +695,7 @@ def generate_document_summary(_documents, embedding_folder):
         - For inline formulas use single $ marks: $E = mc^2$
         - For block formulas use double $$ marks:
           $$
-          F = ma
+          F = ma (just an example, may not be a real formula in the doc)
           $$
         
         Document: {document}

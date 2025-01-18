@@ -11,22 +11,22 @@ from frontend.forms.contact import contact_form
 
 
 def to_emoji_number(num: int) -> str:
-    """Convert an integer to an emoji number (1-10).
+    """Convert an integer to a bold circled number (1-20).
     
     Args:
         num: Integer to convert
         
     Returns:
-        String containing the emoji number representation for 1-10,
-        or regular number for values > 10
+        String containing the bold circled number representation for 1-20,
+        or regular number for values > 20
     """
-    emoji_numbers = [
-        "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣",
-        "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"
+    circled_numbers = [
+        "❶", "❷", "❸", "❹", "❺", "❻", "❼", "❽", "❾", "❿",
+        "⓫", "⓬", "⓭", "⓮", "⓯", "⓰", "⓱", "⓲", "⓳", "⓴"
     ]
-    if 1 <= num <= len(emoji_numbers):
-        return emoji_numbers[num - 1]
-    return str(num)  # Use regular number if > 10
+    if 1 <= num <= len(circled_numbers):
+        return circled_numbers[num - 1]
+    return str(num)  # Use regular number if > 20
 
 
 # Function to set up the page configuration

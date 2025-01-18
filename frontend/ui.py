@@ -343,7 +343,7 @@ def show_contact_us():
 
     - **Email:** [knowhiz.us@gmail.com](mailto:knowhiz.us@gmail.com) 📨
     - **Discord:** [Join our Discord community](https://discord.gg/7ucnweCKk8) 💬
-    - **GitHub:** [Contribute on GitHub](https://github.com/DeepTutor/KnoWhizTutor) 🛠️
+    - **GitHub:** [Contribute on GitHub](https://github.com/DeepTutor/DeepTutor) 🛠️
     - **Follow us:** [LinkedIn](https://www.linkedin.com/company/knowhiz) | [Twitter](https://x.com/knowhizlearning) 🏄
 
     If you'd like to request a feature or report a bug, please **let us know!** Your suggestions are highly appreciated! 🙌

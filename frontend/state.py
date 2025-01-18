@@ -64,10 +64,6 @@ def handle_file_change():
 
 # Function to process the PDF file
 def process_pdf_file(file, filename):
-    """
-    documents: Contains chunked/split text content optimized for embedding and retrieval
-    doc: Contains the complete PDF structure including pages, formatting, and visual elements
-    """
     documents = extract_documents_from_file(file, filename)
     doc = fitz.open(stream=io.BytesIO(file), filetype="pdf")
     st.session_state.doc = doc

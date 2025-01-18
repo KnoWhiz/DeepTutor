@@ -157,10 +157,9 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
                     st.write(msg["content"])
             elif msg["role"] == "source_buttons":
                 # Display source buttons in a row
-                if len(msg["sources"]) > 0:
-                    cols = st.columns(len(msg["sources"]))
-                    for idx, (col, source) in enumerate(zip(cols, msg["sources"]), 1):
-                        page_num = msg["pages"][source]
+                cols = st.columns(len(msg["sources"]))
+                for idx, (col, source) in enumerate(zip(cols, msg["sources"]), 1):
+                    page_num = msg["pages"][source]
                     with col:
                         if st.button(to_emoji_number(idx), key=f"source_btn_{idx}_{msg['timestamp']}", use_container_width=True):
                             st.session_state.current_page = page_num
@@ -180,7 +179,6 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
                     # Get response
                     answer = get_response_fn(
                             st.session_state.mode,
-                            doc,
                             documents,
                             user_input,
                             chat_history=st.session_state.chat_history,
@@ -189,7 +187,6 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
 
                     # Get sources
                     sources = get_source_fn(
-                        doc,
                         documents,
                         user_input,
                         answer,
@@ -228,15 +225,14 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
                         st.write(answer)
                     
                     # Display source buttons immediately
-                    if len(sources) > 0:
-                        cols = st.columns(len(sources))
-                        for idx, (col, source) in enumerate(zip(cols, sources), 1):
-                            page_num = source_pages.get(source)
-                            if page_num:
-                                with col:
-                                    if st.button(to_emoji_number(idx), key=f"source_btn_{idx}_current", use_container_width=True):
-                                        st.session_state.current_page = page_num
-                                        st.session_state.annotations = get_highlight_info(doc, [source])
+                    cols = st.columns(len(sources))
+                    for idx, (col, source) in enumerate(zip(cols, sources), 1):
+                        page_num = source_pages.get(source)
+                        if page_num:
+                            with col:
+                                if st.button(to_emoji_number(idx), key=f"source_btn_{idx}_current", use_container_width=True):
+                                    st.session_state.current_page = page_num
+                                    st.session_state.annotations = get_highlight_info(doc, [source])
                     
                     st.session_state.sources = sources
                     st.session_state.chat_occurred = True
@@ -314,7 +310,7 @@ def show_pdf_viewer(file):
                 st.button("→", key='→', on_click=next_page)
                 button_css = float_css_helper(width="1.2rem", bottom="1.2rem", transition=0)
                 float_parent(css=button_css)
-
+                
     viewer_css = float_css_helper(transition=0)
     float_parent(css=viewer_css)
 

@@ -117,7 +117,8 @@ def show_language_option():
         
         # Create the language selector
         selected_lang_display = st.selectbox(
-            "🌐 Language | 语言 | Idioma | Langue | Sprache | 言語 | 언어 | भाषा | Língua | Lingua",
+            # "🌐 Language | 语言 | Idioma | Langue | Sprache | 言語 | 언어 | भाषा | Língua | Lingua",
+            "🌐 Language",
             options=list(languages.keys()),
             index=list(languages.values()).index(current_lang)
         )

@@ -222,6 +222,9 @@ async def generate_GraphRAG_embedding(_documents, embedding_folder):
 
 # @st.cache_resource
 def get_response(mode, _documents, user_input, chat_history, embedding_folder):
+    # TEST
+    print("Current language:", st.session_state.language)
+
     if mode == 'Professor':
         try:
             answer = get_GraphRAG_global_response(_documents, user_input, chat_history, embedding_folder)
@@ -632,7 +635,7 @@ def generate_document_summary(_documents, embedding_folder):
     error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
     topics_chain = topics_prompt | llm | error_parser
     topics_result = topics_chain.invoke({"document": truncate_document(_documents)})
-    
+
     try:
         topics = topics_result.get("topics", [])
     except AttributeError:
@@ -642,7 +645,7 @@ def generate_document_summary(_documents, embedding_folder):
     # Generate overview
     overview_prompt = """
     Provide a clear and engaging overview using bullet points.
-    
+
     Guidelines:
     - Use 3-4 concise bullet points
     - **Bold** for key terms
@@ -730,7 +733,7 @@ I'm your AI tutor 🤖 ready to help you understand this document.
         "applications": "💡",
         "default": "📌" # Default emoji for topics not in the mapping
     }
-    
+
     for topic, summary in summaries:
         # Get emoji based on topic, defaulting to 📌 if not found
         topic_lower = topic.lower()

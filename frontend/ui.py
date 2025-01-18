@@ -95,12 +95,43 @@ def show_mode_option(uploaded_file):
         st.session_state.mode = st.radio(" ", options=["TA", "Professor"], index=mode_index, disabled=disabled)
 
 
+# Function to display the language selection options in the sidebar
+def show_language_option():
+    """Function to display the language selection options in the sidebar."""
+    with st.sidebar:
+        languages = {
+            "🇺🇸 English": "en",
+            "🇨🇳 中文": "zh",
+            "🇪🇸 Español": "es",
+            "🇫🇷 Français": "fr",
+            "🇩🇪 Deutsch": "de",
+            "🇯🇵 日本語": "ja",
+            "🇰🇷 한국어": "ko",
+            "🇮🇳 हिन्दी": "hi",
+            "🇵🇹 Português": "pt",
+            "🇮🇹 Italiano": "it"
+        }
+        
+        # Get current language from session state or default to English
+        current_lang = st.session_state.get("language", "en")
+        
+        # Create the language selector
+        selected_lang_display = st.selectbox(
+            "🌐 Language | 语言 | Idioma | Langue | Sprache | 言語 | 언어 | भाषा | Língua | Lingua",
+            options=list(languages.keys()),
+            index=list(languages.values()).index(current_lang)
+        )
+        
+        # Update the session state with the selected language code
+        st.session_state.language = languages[selected_lang_display]
+
+
 # Function to display the chat interface
 def show_page_option():
     with st.sidebar:
         # Navigation Menu
         menu = ["📑 Document reading", "📬 KnoWhiz?"]
-        st.session_state.page = st.selectbox(" ", menu)
+        st.session_state.page = st.selectbox("🖥️ Page", menu)
 
 
 # Function to display the chat interface

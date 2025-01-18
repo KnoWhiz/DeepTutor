@@ -42,6 +42,7 @@ from frontend.ui import (
     show_header,
     show_file_upload,
     show_mode_option,
+    show_language_option,
     show_page_option,
     show_chat_interface,
     show_pdf_viewer,
@@ -72,6 +73,7 @@ if not SKIP_AUTH:
 
 if st.session_state['isAuth']:
     # Set up basic page configuration and header
+    show_auth_top()
     show_header()
 
 
@@ -80,7 +82,8 @@ if st.session_state['isAuth']:
         st.session_state['is_uploaded_file'] = False
     show_file_upload(on_change=handle_file_change)
     # uploaded_file = st.session_state.uploaded_file
-    show_mode_option(st.session_state.uploaded_file)
+    show_mode_option(st.session_state.get('uploaded_file', None))
+    show_language_option()
     show_page_option()
     show_footer()
 

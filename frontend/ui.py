@@ -179,6 +179,7 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
                     # Get response
                     answer = get_response_fn(
                             st.session_state.mode,
+                            doc,
                             documents,
                             user_input,
                             chat_history=st.session_state.chat_history,
@@ -187,6 +188,7 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
 
                     # Get sources
                     sources = get_source_fn(
+                        doc,
                         documents,
                         user_input,
                         answer,

@@ -221,13 +221,13 @@ async def generate_GraphRAG_embedding(_documents, embedding_folder):
     return
 
 # @st.cache_resource
-def get_response(mode, _documents, user_input, chat_history, embedding_folder):
+def get_response(mode, _doc, _documents, user_input, chat_history, embedding_folder):
     # TEST
     print("Current language:", st.session_state.language)
 
     if mode == 'Professor':
         try:
-            answer = get_GraphRAG_global_response(_documents, user_input, chat_history, embedding_folder)
+            answer = get_GraphRAG_global_response(_doc,_documents, user_input, chat_history, embedding_folder)
             return answer
         except Exception as e:
             print("Error getting response from GraphRAG:", e)
@@ -311,7 +311,7 @@ def get_response(mode, _documents, user_input, chat_history, embedding_folder):
     return answer
 
 # @st.cache_resource
-def get_GraphRAG_global_response(_documents, user_input, chat_history, embedding_folder):
+def get_GraphRAG_global_response(_doc, _documents, user_input, chat_history, embedding_folder):
     # Chat history and user input
     chat_history_text = truncate_chat_history(chat_history)
     user_input_text = str(user_input)
@@ -416,7 +416,7 @@ def get_GraphRAG_global_response(_documents, user_input, chat_history, embedding
     return answer.response
 
 # @st.cache_resource
-def get_response_source(_documents, user_input, answer, chat_history, embedding_folder):
+def get_response_source(_doc, _documents, user_input, answer, chat_history, embedding_folder):
     config = load_config()
     para = config['llm']
     llm = get_llm('advance', para)
@@ -528,7 +528,25 @@ def get_response_source(_documents, user_input, answer, chat_history, embedding_
     # Combine sources from question and answer and make sure there are no duplicates
     # sources = sources_question + sources_answer
     sources = list(set(sources_question + sources_answer))
+    sources = refine_sources(_doc, _documents, sources)
     return sources
+
+def refine_sources(_doc, _documents, sources):
+    """
+    Refine sources by checking if they can be found in the document
+    Only get first 10 sources
+    Show then in the order they are found in the document
+    """
+    refined_sources = []
+    for page in _doc:
+        for source in sources:
+            text_instances = page.search_for(source)
+            if text_instances:
+                refined_sources.append(source)
+
+    print(f"refined_sources: {refined_sources}")
+    print(f"length of refined_sources: {len(refined_sources)}")
+    return refined_sources[:10]
 
 # @st.cache_resource
 def get_query_helper(user_input, chat_history, embedding_folder):

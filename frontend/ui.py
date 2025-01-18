@@ -32,8 +32,8 @@ def to_emoji_number(num: int) -> str:
 # Function to set up the page configuration
 def setup_page_config():
     st.set_page_config(
-        page_title="KnoWhiz Office Hours",
-        page_icon="frontend/images/logo_short.ico",
+        page_title="DeepTutor Office Hours",
+        page_icon="frontend/images/professor.svg",
         layout="wide",
         # initial_sidebar_state="collapsed",
         initial_sidebar_state="expanded"
@@ -48,14 +48,14 @@ def show_auth_top():
 # Function to display the header
 def show_header():
     with st.sidebar:
-        with open("frontend/images/logo_short.png", "rb") as image_file:
+        with open("frontend/images/professor.ico", "rb") as image_file:
             encoded_image = base64.b64encode(image_file.read()).decode()
         st.markdown(
             f"""
-            <h2 style='text-align: left;'>
+            <h1 style='text-align: left;'>
                 <img src="data:image/png;base64,{encoded_image}" alt='icon' style='width:50px; height:50px; vertical-align: left; margin-right: 10px;'>
-                KnoWhiz Office Hours
-            </h2>
+                DeepTutor
+            </h1>
             """,
             unsafe_allow_html=True
         )
@@ -126,7 +126,7 @@ def show_language_option():
 def show_page_option():
     with st.sidebar:
         # Navigation Menu
-        menu = ["📑 Document reading", "📬 KnoWhiz?"]
+        menu = ["📑 Document reading", "📬 DeepTutor?"]
         st.session_state.page = st.selectbox("🖥️ Page", menu)
 
 
@@ -343,7 +343,7 @@ def show_contact_us():
 
     - **Email:** [knowhiz.us@gmail.com](mailto:knowhiz.us@gmail.com) 📨
     - **Discord:** [Join our Discord community](https://discord.gg/7ucnweCKk8) 💬
-    - **GitHub:** [Contribute on GitHub](https://github.com/KnoWhiz/KnoWhizTutor) 🛠️
+    - **GitHub:** [Contribute on GitHub](https://github.com/DeepTutor/KnoWhizTutor) 🛠️
     - **Follow us:** [LinkedIn](https://www.linkedin.com/company/knowhiz) | [Twitter](https://x.com/knowhizlearning) 🏄
 
     If you'd like to request a feature or report a bug, please **let us know!** Your suggestions are highly appreciated! 🙌

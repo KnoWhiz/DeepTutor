@@ -108,7 +108,7 @@ def show_language_option():
         }
 
         # Get current language from session state or default to English
-        current_lang = st.session_state.get("language", "en")
+        current_lang = st.session_state.get("language", "English")
         
         # Create the language selector
         selected_lang_display = st.selectbox(

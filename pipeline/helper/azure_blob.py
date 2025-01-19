@@ -34,5 +34,5 @@ class AzureBlobHelper(object):
 
 if __name__ == "__main__":
     azure_blob_helper = AzureBlobHelper()
-    azure_blob_helper.upload("/Users/bingran_you/Documents/GitHub_MacBook/KnoWhizTutor/input_files/(LEC#5 Optional) Can Language Models Encode Perceptual Structure Without Grounding A Case Study in Color.pdf", "graphrag_index/666f4fd662e98b4ac4ccbf54/test.pdf", "knowhiztutorrag")
+    azure_blob_helper.upload("/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/input_files/(LEC#5 Optional) Can Language Models Encode Perceptual Structure Without Grounding A Case Study in Color.pdf", "graphrag_index/666f4fd662e98b4ac4ccbf54/test.pdf", "knowhiztutorrag")
     # azure_blob_helper.download("graphrag_index/666f4fd662e98b4ac4ccbf54/test.pdf", "test.pdf", "knowhiztutorrag")

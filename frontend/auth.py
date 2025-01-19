@@ -50,7 +50,7 @@ def show_auth():
     with columns[1]:
         with st.container(border=True):
             if not st.session_state['isAuth']:
-                st.title("KnoWhiz Tutor")
+                st.title("DeepTutor")
                 auth_option = st.radio("Select Option", ["Sign Up", "Sign In"])
                 if auth_option == "Sign Up":
                     #username = st.text_input("Username")

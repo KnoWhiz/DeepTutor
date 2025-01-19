@@ -10,35 +10,30 @@ from pipeline.utils import find_pages_with_excerpts, get_highlight_info
 from frontend.forms.contact import contact_form
 
 
-def to_roman(num):
-    """Convert an integer to a Roman numeral."""
-    val = [
-        1000, 900, 500, 400,
-        100, 90, 50, 40,
-        10, 9, 5, 4,
-        1
+def to_emoji_number(num: int) -> str:
+    """Convert an integer to a bold circled number (1-20).
+    
+    Args:
+        num: Integer to convert
+        
+    Returns:
+        String containing the bold circled number representation for 1-20,
+        or regular number for values > 20
+    """
+    circled_numbers = [
+        "❶", "❷", "❸", "❹", "❺", "❻", "❼", "❽", "❾", "❿",
+        "⓫", "⓬", "⓭", "⓮", "⓯", "⓰", "⓱", "⓲", "⓳", "⓴"
     ]
-    syb = [
-        "M", "CM", "D", "CD",
-        "C", "XC", "L", "XL",
-        "X", "IX", "V", "IV",
-        "I"
-    ]
-    roman_num = ''
-    i = 0
-    while num > 0:
-        for _ in range(num // val[i]):
-            roman_num += syb[i]
-            num -= val[i]
-        i += 1
-    return roman_num
+    if 1 <= num <= len(circled_numbers):
+        return circled_numbers[num - 1]
+    return str(num)  # Use regular number if > 20
 
 
 # Function to set up the page configuration
 def setup_page_config():
     st.set_page_config(
-        page_title="KnoWhiz Office Hours",
-        page_icon="frontend/images/logo_short.ico",
+        page_title="DeepTutor Office Hours",
+        page_icon="frontend/images/professor.svg",
         layout="wide",
         # initial_sidebar_state="collapsed",
         initial_sidebar_state="expanded"
@@ -53,14 +48,14 @@ def show_auth_top():
 # Function to display the header
 def show_header():
     with st.sidebar:
-        with open("frontend/images/logo_short.png", "rb") as image_file:
+        with open("frontend/images/professor.ico", "rb") as image_file:
             encoded_image = base64.b64encode(image_file.read()).decode()
         st.markdown(
             f"""
-            <h2 style='text-align: left;'>
+            <h1 style='text-align: left;'>
                 <img src="data:image/png;base64,{encoded_image}" alt='icon' style='width:50px; height:50px; vertical-align: left; margin-right: 10px;'>
-                KnoWhiz Office Hours
-            </h2>
+                DeepTutor
+            </h1>
             """,
             unsafe_allow_html=True
         )
@@ -95,12 +90,44 @@ def show_mode_option(uploaded_file):
         st.session_state.mode = st.radio(" ", options=["TA", "Professor"], index=mode_index, disabled=disabled)
 
 
+# Function to display the language selection options in the sidebar
+def show_language_option():
+    """Function to display the language selection options in the sidebar."""
+    with st.sidebar:
+        languages = {
+            "🇺🇸 English": "en",
+            "🇨🇳 中文": "zh",
+            "🇪🇸 Español": "es",
+            "🇫🇷 Français": "fr",
+            "🇩🇪 Deutsch": "de",
+            "🇯🇵 日本語": "ja",
+            "🇰🇷 한국어": "ko",
+            "🇮🇳 हिन्दी": "hi",
+            "🇵🇹 Português": "pt",
+            "🇮🇹 Italiano": "it"
+        }
+
+        # Get current language from session state or default to English
+        current_lang = st.session_state.get("language", "en")
+        
+        # Create the language selector
+        selected_lang_display = st.selectbox(
+            # "🌐 Language | 语言 | Idioma | Langue | Sprache | 言語 | 언어 | भाषा | Língua | Lingua",
+            "🌐 Language",
+            options=list(languages.keys()),
+            index=list(languages.values()).index(current_lang)
+        )
+        
+        # Update the session state with the selected language code
+        st.session_state.language = languages[selected_lang_display]
+
+
 # Function to display the chat interface
 def show_page_option():
     with st.sidebar:
         # Navigation Menu
-        menu = ["📑 Document reading", "📬 KnoWhiz?"]
-        st.session_state.page = st.selectbox(" ", menu)
+        menu = ["📑 Document reading", "📬 DeepTutor?"]
+        st.session_state.page = st.selectbox("🖥️ Page", menu)
 
 
 # Function to display the chat interface
@@ -129,14 +156,17 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
                 with st.chat_message(msg["role"], avatar=avatar):
                     st.write(msg["content"])
             elif msg["role"] == "source_buttons":
-                # Display source buttons in a row
-                cols = st.columns(len(msg["sources"]))
-                for idx, (col, source) in enumerate(zip(cols, msg["sources"]), 1):
-                    page_num = msg["pages"][source]
-                    with col:
-                        if st.button(to_roman(idx), key=f"source_btn_{idx}_{msg['timestamp']}", use_container_width=True):
-                            st.session_state.current_page = page_num
-                            st.session_state.annotations = get_highlight_info(doc, [source])
+                # Display source buttons in a row if there are sources
+                if msg["sources"] and len(msg["sources"]) > 0:
+                    cols = st.columns(len(msg["sources"]))
+                    for idx, (col, source) in enumerate(zip(cols, msg["sources"]), 1):
+                        page_num = msg["pages"][source]
+                        with col:
+                            if st.button(to_emoji_number(idx), key=f"source_btn_{idx}_{msg['timestamp']}", use_container_width=True):
+                                st.session_state.current_page = page_num
+                                st.session_state.annotations = get_highlight_info(doc, [source])
+                else:
+                    st.info("No sources were found for this response.")
 
         # If new user input exists
         if user_input := st.session_state.get('user_input', None):
@@ -152,6 +182,7 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
                     # Get response
                     answer = get_response_fn(
                             st.session_state.mode,
+                            doc,
                             documents,
                             user_input,
                             chat_history=st.session_state.chat_history,
@@ -160,6 +191,7 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
 
                     # Get sources
                     sources = get_source_fn(
+                        doc,
                         documents,
                         user_input,
                         answer,
@@ -198,14 +230,17 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
                         st.write(answer)
                     
                     # Display source buttons immediately
-                    cols = st.columns(len(sources))
-                    for idx, (col, source) in enumerate(zip(cols, sources), 1):
-                        page_num = source_pages.get(source)
-                        if page_num:
-                            with col:
-                                if st.button(to_roman(idx), key=f"source_btn_{idx}_current", use_container_width=True):
-                                    st.session_state.current_page = page_num
-                                    st.session_state.annotations = get_highlight_info(doc, [source])
+                    if sources and len(sources) > 0:
+                        cols = st.columns(len(sources))
+                        for idx, (col, source) in enumerate(zip(cols, sources), 1):
+                            page_num = source_pages.get(source)
+                            if page_num:
+                                with col:
+                                    if st.button(to_emoji_number(idx), key=f"source_btn_{idx}_current", use_container_width=True):
+                                        st.session_state.current_page = page_num
+                                        st.session_state.annotations = get_highlight_info(doc, [source])
+                    else:
+                        st.info("No relevant sources found for this response.")
                     
                     st.session_state.sources = sources
                     st.session_state.chat_occurred = True
@@ -308,7 +343,7 @@ def show_contact_us():
 
     - **Email:** [knowhiz.us@gmail.com](mailto:knowhiz.us@gmail.com) 📨
     - **Discord:** [Join our Discord community](https://discord.gg/7ucnweCKk8) 💬
-    - **GitHub:** [Contribute on GitHub](https://github.com/KnoWhiz/KnoWhizTutor) 🛠️
+    - **GitHub:** [Contribute on GitHub](https://github.com/DeepTutor/DeepTutor) 🛠️
     - **Follow us:** [LinkedIn](https://www.linkedin.com/company/knowhiz) | [Twitter](https://x.com/knowhizlearning) 🏄
 
     If you'd like to request a feature or report a bug, please **let us know!** Your suggestions are highly appreciated! 🙌

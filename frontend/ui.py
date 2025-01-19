@@ -95,16 +95,16 @@ def show_language_option():
     """Function to display the language selection options in the sidebar."""
     with st.sidebar:
         languages = {
-            "🇺🇸 English": "en",
-            "🇨🇳 中文": "zh",
-            "🇪🇸 Español": "es",
-            "🇫🇷 Français": "fr",
-            "🇩🇪 Deutsch": "de",
-            "🇯🇵 日本語": "ja",
-            "🇰🇷 한국어": "ko",
-            "🇮🇳 हिन्दी": "hi",
-            "🇵🇹 Português": "pt",
-            "🇮🇹 Italiano": "it"
+            "🇺🇸 English": "English",
+            "🇨🇳 中文": "Chinese",
+            "🇪🇸 Español": "Spanish",
+            "🇫🇷 Français": "French",
+            "🇩🇪 Deutsch": "German",
+            "🇯🇵 日本語": "Japanese",
+            "🇰🇷 한국어": "Korean",
+            "🇮🇳 हिन्दी": "Hindi",
+            "🇵🇹 Português": "Portuguese",
+            "🇮🇹 Italiano": "Italian"
         }
 
         # Get current language from session state or default to English

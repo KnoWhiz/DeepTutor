@@ -9,7 +9,15 @@ import streamlit as st
 
 from langchain_community.document_loaders import PyPDFLoader, PyMuPDFLoader
 from streamlit_float import *
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+from langchain.output_parsers import OutputFixingParser
+
+from pipeline.config import load_config
 from pipeline.api_handler import ApiHandler
+
+# from config import load_config
+# from api_handler import ApiHandler
 
 
 # Generate a unique course ID for the uploaded file
@@ -73,12 +81,6 @@ def get_highlight_info(doc, excerpts):
 
 
 # Add new helper functions
-def load_config():
-    """Load configuration from config.json"""
-    config_path = Path(__file__).parent / 'config.json'
-    with open(config_path, 'r') as f:
-        return json.load(f)
-
 def count_tokens(text, model_name='gpt-4o'):
     """Count tokens in text using tiktoken"""
     encoding = tiktoken.encoding_for_model(model_name)
@@ -122,12 +124,19 @@ def truncate_document(_document, model_name='gpt-4o'):
         _document = _document[:max_tokens]
     return _document
 
+def get_translation_llm(para):
+    """Get LLM instance specifically for translation"""
+    api = ApiHandler(para)
+    return api.models['basic']['instance']
+
 def translate_content(content: str, source_lang: str, target_lang: str) -> str:
     """
-    Translates content from source language to target language using the API.
+    Translates content from source language to target language using the LLM.
     
     Args:
         content (str): The text content to translate
+        source_lang (str): Source language code (e.g. "en", "zh")
+        target_lang (str): Target language code (e.g. "en", "zh") 
     
     Returns:
         str: Translated content, or original content if source_lang equals target_lang
@@ -135,30 +144,39 @@ def translate_content(content: str, source_lang: str, target_lang: str) -> str:
     # If source and target languages are the same, return original content
     if source_lang.lower() == target_lang.lower():
         return content
+
+    # Load config and get LLM
+    config = load_config()
+    para = config['llm']
+    llm = get_translation_llm(para)
+    parser = StrOutputParser()
+    error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
+
+    # Create translation prompt
+    system_prompt = """
+    You are a professional translator.
+    Translate the following content from {source_lang} to {target_lang}.
+    Maintain the original formatting, including markdown syntax, LaTeX formulas, and emojis.
+    Only translate the text content - do not modify any formatting, code, or special syntax.
+    """
     
-    try:
-        # Load config and initialize API handler
-        config = load_config()
-        para = config['llm']
-        api = ApiHandler(para)
-        
-        # Construct the translation prompt
-        prompt = f"""Translate the following text from {source_lang} to {target_lang}:
-        
-{content}
+    human_prompt = """
+    Content to translate:
+    {content}
+    """
 
-Provide only the translation without any additional explanations or notes."""
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", system_prompt),
+        ("human", human_prompt),
+    ])
 
-        # Get translation from API
-        messages = [{"role": "user", "content": prompt}]
-        response = api.get_chat_response(messages)
-        
-        if response and isinstance(response, str):
-            return response.strip()
-        else:
-            raise ValueError("Invalid response from translation API")
-            
-    except Exception as e:
-        # Log error and return original content if translation fails
-        print(f"Translation error: {str(e)}")
-        return content
+    # Create and execute translation chain
+    translation_chain = prompt | llm | error_parser
+    
+    translated_content = translation_chain.invoke({
+        "source_lang": source_lang,
+        "target_lang": target_lang,
+        "content": content
+    })
+
+    return translated_content

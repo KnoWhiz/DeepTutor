@@ -71,8 +71,8 @@ from pipeline.api_handler import ApiHandler
 from pipeline.api_handler import create_env_file
 from pipeline.api_handler import ApiHandler, create_env_file
 from pipeline.helper.index_files_saving import graphrag_index_files_check, graphrag_index_files_compress, graphrag_index_files_decompress
+from pipeline.config import load_config
 from pipeline.utils import (
-    load_config,
     count_tokens,
     truncate_chat_history,
     truncate_document

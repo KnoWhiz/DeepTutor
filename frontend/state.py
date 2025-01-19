@@ -13,6 +13,9 @@ def initialize_session_state(embedding_folder):
     if "mode" not in st.session_state:
         st.session_state.mode = "TA"
     
+    if "language" not in st.session_state:
+        st.session_state.language = "English"
+    
     # Always try to load the latest document summary for the current document
     try:
         documents_summary_path = os.path.join(embedding_folder, "documents_summary.txt")

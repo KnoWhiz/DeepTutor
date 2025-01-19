@@ -24,6 +24,7 @@ from pipeline.get_response import (
 
 from pipeline.utils import (
     generate_course_id,
+    translate_content,
 )
 
 
@@ -153,9 +154,18 @@ if st.session_state['isAuth']:
                             else:
                                 print("Error compressing and uploading VectorRAG index files to Azure Blob Storage.")
 
-            # Initialize state
+            # Initialize state with translated initial message
             initialize_session_state(embedding_folder=embedding_folder)
-            
+
+            # Translate initial message if needed
+            if st.session_state.chat_history and len(st.session_state.chat_history) > 0:
+                initial_msg = st.session_state.chat_history[0]["content"]
+                translated_msg = translate_content(
+                    content=initial_msg,
+                    source_lang="English",
+                    target_lang=st.session_state.language
+                )
+                st.session_state.chat_history[0]["content"] = translated_msg
 
             # If documents are found, proceed to show chat interface and PDF viewer
             if documents:

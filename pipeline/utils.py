@@ -132,33 +132,14 @@ def translate_content(content: str, source_lang: str, target_lang: str) -> str:
     Returns:
         str: Translated content, or original content if source_lang equals target_lang
     """
+    # If source language is not specified, use English
+    if source_lang is None:
+        source_lang = "English"
+    
     # If source and target languages are the same, return original content
     if source_lang.lower() == target_lang.lower():
+        print("Source and target languages are the same. Returning original content.")
         return content
     
-    try:
-        # Load config and initialize API handler
-        config = load_config()
-        para = config['llm']
-        api = ApiHandler(para)
-        
-        # Construct the translation prompt
-        prompt = f"""Translate the following text from {source_lang} to {target_lang}:
-        
-{content}
-
-Provide only the translation without any additional explanations or notes."""
-
-        # Get translation from API
-        messages = [{"role": "user", "content": prompt}]
-        response = api.get_chat_response(messages)
-        
-        if response and isinstance(response, str):
-            return response.strip()
-        else:
-            raise ValueError("Invalid response from translation API")
-            
-    except Exception as e:
-        # Log error and return original content if translation fails
-        print(f"Translation error: {str(e)}")
-        return content
+    # Call llm to translate the content
+    

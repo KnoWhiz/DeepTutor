@@ -21,10 +21,13 @@ from pipeline.doc_processor import (
 
 from pipeline.get_response import (
     get_response,
-    get_response_source,
     get_query_helper,
 )
 
+
+from pipeline.sources_retrieval import (
+    get_response_source,
+)
 
 from pipeline.utils import (
     generate_course_id,
@@ -67,7 +70,9 @@ from frontend.auth import (
     show_auth,
 )
 
+
 from frontend.state import SKIP_AUTH
+
 
 if 'isAuth' not in st.session_state:
     st.session_state['isAuth'] = SKIP_AUTH

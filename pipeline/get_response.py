@@ -558,23 +558,12 @@ def get_query_helper(user_input, chat_history, embedding_folder):
     else:
         documents_summary = " "
 
-    language_dict = {
-        "🇺🇸 English": "English",
-        "🇨🇳 中文": "Chinese",
-        "🇪🇸 Español": "Spanish",
-        "🇫🇷 Français": "French",
-        "🇩🇪 Deutsch": "German",
-        "🇯🇵 日本語": "Japanese",
-        "🇰🇷 한국어": "Korean",
-        "🇮🇳 हिन्दी": "Hindi",
-        "🇵🇹 Português": "Portuguese",
-        "🇮🇹 Italiano": "Italian"
-    }
+    # Load languages from config
+    config = load_config()
+    language_dict = config['languages']
     language_options = list(language_dict.values())
 
-    config = load_config()
-    para = config['llm']
-    llm = get_llm('basic', para)
+    llm = get_llm('basic', config['llm'])
     parser = JsonOutputParser()
     error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
 

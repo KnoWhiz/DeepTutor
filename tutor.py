@@ -175,9 +175,9 @@ if st.session_state['isAuth']:
                     doc=doc,
                     documents=documents,
                     embedding_folder=embedding_folder,
-                    get_response_fn=get_response,
-                    get_query_fn=get_query_helper,
-                    get_source_fn=get_response_source,
+                    get_response=get_response,
+                    get_query_helper=get_query_helper,
+                    get_response_source=get_response_source,
                 )
 
                 with outer_columns[0]:

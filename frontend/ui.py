@@ -122,7 +122,7 @@ def show_page_option():
 
 
 # Function to display the chat interface
-def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_source_fn, get_query_fn):
+def show_chat_interface(doc, documents, embedding_folder, get_response, get_response_source, get_query_helper):
     # Init float function for chat_input textbox
     learner_avatar = "frontend/images/learner.svg"
     tutor_avatar = "frontend/images/tutor.svg"
@@ -164,14 +164,14 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
             with st.spinner("Generating response..."):
                 try:
                     # Rephrase the user input
-                    user_input = get_query_fn(
+                    user_input = get_query_helper(
                             user_input,
                             chat_history=st.session_state.chat_history,
                             embedding_folder=embedding_folder
                         )
 
                     # Get response
-                    answer = get_response_fn(
+                    answer = get_response(
                             st.session_state.mode,
                             doc,
                             documents,
@@ -181,7 +181,7 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
                         )
 
                     # Get sources
-                    sources = get_source_fn(
+                    sources = get_response_source(
                         doc,
                         documents,
                         user_input,

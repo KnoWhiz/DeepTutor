@@ -232,7 +232,6 @@ def get_GraphRAG_global_response(_doc, _documents, user_input, chat_history, emb
     return answer.response
 
 
-
 def get_query_helper(user_input, chat_history, embedding_folder):
     # If we have "documents_summary" in the embedding folder, we can use it to speed up the search
     documents_summary_path = os.path.join(embedding_folder, "documents_summary.txt")

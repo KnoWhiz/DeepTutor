@@ -8,6 +8,7 @@ from streamlit_extras.stylable_container import stylable_container
 from frontend.utils import previous_page, next_page, close_pdf, chat_content
 from pipeline.utils import find_pages_with_excerpts, get_highlight_info
 from frontend.forms.contact import contact_form
+from pipeline.config import load_config
 
 
 def to_emoji_number(num: int) -> str:
@@ -94,25 +95,15 @@ def show_mode_option(uploaded_file):
 def show_language_option():
     """Function to display the language selection options in the sidebar."""
     with st.sidebar:
-        languages = {
-            "🇺🇸 English": "English",
-            "🇨🇳 中文": "Chinese",
-            "🇪🇸 Español": "Spanish",
-            "🇫🇷 Français": "French",
-            "🇩🇪 Deutsch": "German",
-            "🇯🇵 日本語": "Japanese",
-            "🇰🇷 한국어": "Korean",
-            "🇮🇳 हिन्दी": "Hindi",
-            "🇵🇹 Português": "Portuguese",
-            "🇮🇹 Italiano": "Italian"
-        }
+        # Load languages from config
+        config = load_config()
+        languages = config['languages']
 
         # Get current language from session state or default to English
         current_lang = st.session_state.get("language", "English")
         
         # Create the language selector
         selected_lang_display = st.selectbox(
-            # "🌐 Language | 语言 | Idioma | Langue | Sprache | 言語 | 언어 | भाषा | Língua | Lingua",
             "🌐 Language",
             options=list(languages.keys()),
             index=list(languages.values()).index(current_lang)

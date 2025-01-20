@@ -30,11 +30,37 @@ from pipeline.utils import (
     tiktoken,
     truncate_chat_history,
     get_llm,
-    get_embedding_models
+    get_embedding_models,
+    translate_content
 )
 from pipeline.doc_processor import (
     generate_embedding,
 )
+from pipeline.sources_retrieval import (
+    get_response_source,
+)
+
+
+def tutor_agent(mode, _doc, _documents, user_input, chat_history, embedding_folder):
+    """
+    Taking the user input, documents, and chat history, generate a response and sources
+    """
+    # Refine user input
+    refined_user_input = get_query_helper(user_input, chat_history, embedding_folder)
+    # Get response
+    answer = get_response(mode, _doc, _documents, refined_user_input, chat_history, embedding_folder)
+    # Get sources
+    sources = get_response_source(_doc, _documents, refined_user_input, answer, chat_history, embedding_folder)
+
+    answer = f"""Are you asking: **{user_input}**
+    """ + "\n" + answer
+
+    # Translate the answer to the selected language
+    answer = translate_content(
+        content=answer,
+        target_lang=st.session_state.language
+    )
+    return answer, sources
 
 
 def get_response(mode, _doc, _documents, user_input, chat_history, embedding_folder):

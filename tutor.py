@@ -20,14 +20,9 @@ from pipeline.doc_processor import (
 
 
 from pipeline.get_response import (
-    get_response,
-    get_query_helper,
+    tutor_agent,
 )
 
-
-from pipeline.sources_retrieval import (
-    get_response_source,
-)
 
 from pipeline.utils import (
     generate_course_id,
@@ -175,9 +170,7 @@ if st.session_state['isAuth']:
                     doc=doc,
                     documents=documents,
                     embedding_folder=embedding_folder,
-                    get_response=get_response,
-                    get_query_helper=get_query_helper,
-                    get_response_source=get_response_source,
+                    tutor_agent=tutor_agent
                 )
 
                 with outer_columns[0]:

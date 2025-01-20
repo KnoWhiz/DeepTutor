@@ -2,7 +2,7 @@ import os
 import streamlit as st
 import fitz
 import io
-from pipeline.utils import extract_documents_from_file
+from pipeline.utils import extract_documents_from_file, translate_content
 
 # Control whether to skip authentication for local testing
 SKIP_AUTH = True if os.getenv("ENVIRONMENT") == "local" else False
@@ -20,6 +20,12 @@ def initialize_session_state(embedding_folder):
             initial_message = f.read()
     except FileNotFoundError:
         initial_message = "Hello! How can I assist you today?"
+
+    # Translate the initial message to the selected language
+    initial_message = translate_content(
+        content=initial_message,
+        target_lang=st.session_state.language
+    )
     
     # Reset chat history with new document summary
     if "chat_history" not in st.session_state:

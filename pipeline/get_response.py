@@ -78,7 +78,6 @@ from pipeline.utils import (
     truncate_document
 )
 
-@st.cache_resource
 def get_llm(llm_type, para):
     para = para
     api = ApiHandler(para)
@@ -93,7 +92,6 @@ def get_llm(llm_type, para):
         return llm_creative
     return llm_basic
 
-@st.cache_resource
 def get_embedding_models(embedding_model_type, para):
     para = para
     api = ApiHandler(para)
@@ -103,7 +101,7 @@ def get_embedding_models(embedding_model_type, para):
     else:
         return embedding_model_default
 
-# @st.cache_resource
+# 
 def generate_embedding(_documents, embedding_folder):
     config = load_config()
     para = config['llm']
@@ -141,7 +139,6 @@ def generate_embedding(_documents, embedding_folder):
 
     return
 
-# @st.cache_resource
 async def generate_GraphRAG_embedding(_documents, embedding_folder):
     GraphRAG_embedding_folder = os.path.join(embedding_folder, "GraphRAG/")
     create_final_community_reports_path = GraphRAG_embedding_folder + "output/create_final_community_reports.parquet"
@@ -220,7 +217,6 @@ async def generate_GraphRAG_embedding(_documents, embedding_folder):
 
     return
 
-# @st.cache_resource
 def get_response(mode, _doc, _documents, user_input, chat_history, embedding_folder):
     # TEST
     print("Current language:", st.session_state.language)
@@ -310,7 +306,6 @@ def get_response(mode, _doc, _documents, user_input, chat_history, embedding_fol
     answer = parsed_result['answer']
     return answer
 
-# @st.cache_resource
 def get_GraphRAG_global_response(_doc, _documents, user_input, chat_history, embedding_folder):
     # Chat history and user input
     chat_history_text = truncate_chat_history(chat_history)
@@ -415,7 +410,6 @@ def get_GraphRAG_global_response(_doc, _documents, user_input, chat_history, emb
 
     return answer.response
 
-# @st.cache_resource
 def get_response_source(_doc, _documents, user_input, answer, chat_history, embedding_folder):
     config = load_config()
     para = config['llm']
@@ -548,7 +542,6 @@ def refine_sources(_doc, _documents, sources):
     print(f"length of refined_sources: {len(refined_sources)}")
     return refined_sources[:10]
 
-# @st.cache_resource
 def get_query_helper(user_input, chat_history, embedding_folder):
     # If we have "documents_summary" in the embedding folder, we can use it to speed up the search
     documents_summary_path = os.path.join(embedding_folder, "documents_summary.txt")

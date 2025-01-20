@@ -122,7 +122,7 @@ def show_page_option():
 
 
 # Function to display the chat interface
-def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_source_fn, get_query_fn):
+def show_chat_interface(doc, documents, embedding_folder, tutor_agent):
     # Init float function for chat_input textbox
     learner_avatar = "frontend/images/learner.svg"
     tutor_avatar = "frontend/images/tutor.svg"
@@ -163,29 +163,12 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
         if user_input := st.session_state.get('user_input', None):
             with st.spinner("Generating response..."):
                 try:
-                    # Rephrase the user input
-                    user_input = get_query_fn(
-                            user_input,
-                            chat_history=st.session_state.chat_history,
-                            embedding_folder=embedding_folder
-                        )
-
                     # Get response
-                    answer = get_response_fn(
-                            st.session_state.mode,
-                            doc,
-                            documents,
-                            user_input,
-                            chat_history=st.session_state.chat_history,
-                            embedding_folder=embedding_folder
-                        )
-
-                    # Get sources
-                    sources = get_source_fn(
-                        doc,
-                        documents,
-                        user_input,
-                        answer,
+                    answer, sources = tutor_agent(
+                        mode=st.session_state.mode,
+                        _doc=doc,
+                        _documents=documents,
+                        user_input=user_input,
                         chat_history=st.session_state.chat_history,
                         embedding_folder=embedding_folder
                     )
@@ -193,15 +176,6 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
                     sources = sources if all(isinstance(s, str) for s in sources) else []
                     # Print sources
                     print("Source content:", sources)
-
-                    answer = f"""Are you asking: **{user_input}**
-                    """ + "\n" + answer
-
-                    # Translate the answer to the selected language
-                    answer = translate_content(
-                        content=answer,
-                        target_lang=st.session_state.language
-                    )
                     
                     # Store source-to-page mapping
                     source_pages = {}

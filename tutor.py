@@ -13,9 +13,13 @@ setup_page_config()
 
 # css_style()
 
-from pipeline.get_response import (
+from pipeline.doc_processor import (
     generate_embedding,
     generate_GraphRAG_embedding,
+)
+
+
+from pipeline.get_response import (
     get_response,
     get_response_source,
     get_query_helper,

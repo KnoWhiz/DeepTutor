@@ -75,147 +75,10 @@ from pipeline.config import load_config
 from pipeline.utils import (
     count_tokens,
     truncate_chat_history,
-    truncate_document
+    truncate_document,
+    get_llm,
+    get_embedding_models
 )
-
-def get_llm(llm_type, para):
-    para = para
-    api = ApiHandler(para)
-    llm_basic = api.models['basic']['instance']
-    llm_advance = api.models['advance']['instance']
-    llm_creative = api.models['creative']['instance']
-    if llm_type == 'basic':
-        return llm_basic
-    elif llm_type == 'advance':
-        return llm_advance
-    elif llm_type == 'creative':
-        return llm_creative
-    return llm_basic
-
-def get_embedding_models(embedding_model_type, para):
-    para = para
-    api = ApiHandler(para)
-    embedding_model_default = api.embedding_models['default']['instance']
-    if embedding_model_type == 'default':
-        return embedding_model_default
-    else:
-        return embedding_model_default
-
-# 
-def generate_embedding(_documents, embedding_folder):
-    config = load_config()
-    para = config['llm']
-    embeddings = get_embedding_models('default', para)
-
-    # Define the default filenames used by FAISS when saving
-    faiss_path = os.path.join(embedding_folder, "index.faiss")
-    pkl_path = os.path.join(embedding_folder, "index.pkl")
-    documents_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
-
-    # Check if all necessary files exist to load the embeddings
-    if os.path.exists(faiss_path) and os.path.exists(pkl_path) and os.path.exists(documents_summary_path):
-        # Load existing embeddings
-        print("Loading existing embeddings...")
-        db = FAISS.load_local(
-            embedding_folder, embeddings, allow_dangerous_deserialization=True
-        )
-    else:
-        # Split the documents into chunks
-        print("Creating new embeddings...")
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=config['embedding']['chunk_size'],
-            chunk_overlap=config['embedding']['chunk_overlap']
-        )
-        texts = text_splitter.split_documents(_documents)
-        print(f"length of document chunks generated for get_response_source:{len(texts)}")
-
-        # Create the vector store to use as the index
-        db = FAISS.from_documents(texts, embeddings)
-        # Save the embeddings to the specified folder
-        db.save_local(embedding_folder)
-
-        # Generate and save document summary
-        generate_document_summary(_documents, embedding_folder)
-
-    return
-
-async def generate_GraphRAG_embedding(_documents, embedding_folder):
-    GraphRAG_embedding_folder = os.path.join(embedding_folder, "GraphRAG/")
-    create_final_community_reports_path = GraphRAG_embedding_folder + "output/create_final_community_reports.parquet"
-    create_final_covariates_path = GraphRAG_embedding_folder + "output/create_final_covariates.parquet"
-    create_final_documents_path = GraphRAG_embedding_folder + "output/create_final_documents.parquet"
-    create_final_entities_path = GraphRAG_embedding_folder + "output/create_final_entities.parquet"
-    create_final_nodes_path = GraphRAG_embedding_folder + "output/create_final_nodes.parquet"
-    create_final_relationships_path = GraphRAG_embedding_folder + "output/create_final_relationships.parquet"
-    create_final_text_units_path = GraphRAG_embedding_folder + "output/create_final_text_units.parquet"
-    create_final_communities_path = GraphRAG_embedding_folder + "output/create_final_communities.parquet"
-    lancedb_path = GraphRAG_embedding_folder + "output/lancedb/"
-    path_list = [
-        create_final_community_reports_path,
-        create_final_covariates_path,
-        create_final_documents_path,
-        create_final_entities_path,
-        create_final_nodes_path,
-        create_final_relationships_path,
-        create_final_text_units_path,
-        create_final_communities_path,
-        lancedb_path
-    ]
-
-    # Check if all necessary paths in path_list exist
-    if all([os.path.exists(path) for path in path_list]):
-        # Load existing embeddings
-        print("All necessary index files exist. Loading existing knowledge graph embeddings...")
-    else:
-        # Create the GraphRAG embedding
-        print("Creating new knowledge graph embeddings...")
-
-        # Initialize the project
-        create_env_file(GraphRAG_embedding_folder)
-        try:
-            """Initialize the project at the given path."""
-            # Initialize the project
-            path = GraphRAG_embedding_folder
-            root = Path(path)
-            if not root.exists():
-                root.mkdir(parents=True, exist_ok=True)
-            dotenv = root / ".env"
-            if not dotenv.exists():
-                with dotenv.open("wb") as file:
-                    file.write(INIT_DOTENV.encode(encoding="utf-8", errors="strict"))
-            prompts_dir = root / "prompts"
-            if not prompts_dir.exists():
-                prompts_dir.mkdir(parents=True, exist_ok=True)
-            prompts = {
-                "entity_extraction": GRAPH_EXTRACTION_PROMPT,
-                "summarize_descriptions": SUMMARIZE_PROMPT,
-                "claim_extraction": CLAIM_EXTRACTION_PROMPT,
-                "community_report": COMMUNITY_REPORT_PROMPT,
-                "drift_search_system_prompt": DRIFT_LOCAL_SYSTEM_PROMPT,
-                "global_search_map_system_prompt": MAP_SYSTEM_PROMPT,
-                "global_search_reduce_system_prompt": REDUCE_SYSTEM_PROMPT,
-                "global_search_knowledge_system_prompt": GENERAL_KNOWLEDGE_INSTRUCTION,
-                "local_search_system_prompt": LOCAL_SEARCH_SYSTEM_PROMPT,
-                "question_gen_system_prompt": QUESTION_SYSTEM_PROMPT,
-            }
-            for name, content in prompts.items():
-                prompt_file = prompts_dir / f"{name}.txt"
-                if not prompt_file.exists():
-                    with prompt_file.open("wb") as file:
-                        file.write(content.encode(encoding="utf-8", errors="strict"))
-        except Exception as e:
-            print("Initialization error:", e)
-        settings = yaml.safe_load(open("./pipeline/graphrag_settings.yaml"))
-        graphrag_config = create_graphrag_config(
-            values=settings, root_dir=GraphRAG_embedding_folder
-        )
-
-        try:
-            await api.build_index(config=graphrag_config)
-        except Exception as e:
-            print("Index building error:", e)
-
-    return
 
 def get_response(mode, _doc, _documents, user_input, chat_history, embedding_folder):
     # TEST
@@ -305,6 +168,7 @@ def get_response(mode, _doc, _documents, user_input, chat_history, embedding_fol
     parsed_result = chain.invoke({"input": user_input, "chat_history": truncate_chat_history(chat_history)})
     answer = parsed_result['answer']
     return answer
+
 
 def get_GraphRAG_global_response(_doc, _documents, user_input, chat_history, embedding_folder):
     # Chat history and user input
@@ -409,6 +273,7 @@ def get_GraphRAG_global_response(_doc, _documents, user_input, chat_history, emb
     )
 
     return answer.response
+
 
 def get_response_source(_doc, _documents, user_input, answer, chat_history, embedding_folder):
     config = load_config()
@@ -525,6 +390,7 @@ def get_response_source(_doc, _documents, user_input, answer, chat_history, embe
     sources = refine_sources(_doc, _documents, sources)
     return sources
 
+
 def refine_sources(_doc, _documents, sources):
     """
     Refine sources by checking if they can be found in the document
@@ -541,6 +407,7 @@ def refine_sources(_doc, _documents, sources):
     print(f"refined_sources: {refined_sources}")
     print(f"length of refined_sources: {len(refined_sources)}")
     return refined_sources[:10]
+
 
 def get_query_helper(user_input, chat_history, embedding_folder):
     # If we have "documents_summary" in the embedding folder, we can use it to speed up the search
@@ -603,6 +470,7 @@ def get_query_helper(user_input, chat_history, embedding_folder):
     language = parsed_result['language']
     st.session_state.language = language
     return question
+
 
 def generate_document_summary(_documents, embedding_folder):
     """

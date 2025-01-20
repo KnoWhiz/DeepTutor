@@ -39,7 +39,7 @@ echo "AZURE_OPENAI_ENDPOINT=xxx" > .env
 Run the streamlit app via
 
 ```bash
-streamlit run tutor.py
+python -m streamlit run tutor.py
 ```
 
 ## Commone errors

@@ -71,8 +71,8 @@ from pipeline.api_handler import ApiHandler
 from pipeline.api_handler import create_env_file
 from pipeline.api_handler import ApiHandler, create_env_file
 from pipeline.helper.index_files_saving import graphrag_index_files_check, graphrag_index_files_compress, graphrag_index_files_decompress
+from pipeline.config import load_config
 from pipeline.utils import (
-    load_config,
     count_tokens,
     truncate_chat_history,
     truncate_document
@@ -558,6 +558,20 @@ def get_query_helper(user_input, chat_history, embedding_folder):
     else:
         documents_summary = " "
 
+    language_dict = {
+        "🇺🇸 English": "English",
+        "🇨🇳 中文": "Chinese",
+        "🇪🇸 Español": "Spanish",
+        "🇫🇷 Français": "French",
+        "🇩🇪 Deutsch": "German",
+        "🇯🇵 日本語": "Japanese",
+        "🇰🇷 한국어": "Korean",
+        "🇮🇳 हिन्दी": "Hindi",
+        "🇵🇹 Português": "Portuguese",
+        "🇮🇹 Italiano": "Italian"
+    }
+    language_options = list(language_dict.values())
+
     config = load_config()
     para = config['llm']
     llm = get_llm('basic', para)
@@ -570,12 +584,15 @@ def get_query_helper(user_input, chat_history, embedding_folder):
         The goals are:
         1. to ask questions in a better way.
         2. to identify the question is about local or global context of the document.
+        3. to identify the language of the question based on list of languages options {language_options}
+           if you are not sure, choose the "English" by default.
 
         Organize final response in the following JSON format:
         ```json
         {{
             "question": "<question rephrased in a better way>",
-            "question_type": "<local/global>"
+            "question_type": "<local/global>",
+            "language": "<language of the question>"
         }}
         ```
         """
@@ -596,10 +613,13 @@ def get_query_helper(user_input, chat_history, embedding_folder):
     )
     chain = prompt | llm | error_parser
     parsed_result = chain.invoke({"input": user_input,
+                                  "language_options": language_options,
                                   "context": documents_summary,
                                   "chat_history": truncate_chat_history(chat_history)})
     question = parsed_result['question']
     question_type = parsed_result['question_type']
+    language = parsed_result['language']
+    st.session_state.language = language
     return question
 
 def generate_document_summary(_documents, embedding_folder):

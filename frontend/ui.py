@@ -6,7 +6,7 @@ from streamlit_float import float_init, float_parent, float_css_helper
 from streamlit_extras.stylable_container import stylable_container
 
 from frontend.utils import previous_page, next_page, close_pdf, chat_content
-from pipeline.utils import find_pages_with_excerpts, get_highlight_info
+from pipeline.utils import find_pages_with_excerpts, get_highlight_info, translate_content
 from frontend.forms.contact import contact_form
 from pipeline.config import load_config
 
@@ -196,6 +196,12 @@ def show_chat_interface(doc, documents, embedding_folder, get_response_fn, get_s
 
                     answer = f"""Are you asking: **{user_input}**
                     """ + "\n" + answer
+
+                    # Translate the answer to the selected language
+                    answer = translate_content(
+                        content=answer,
+                        target_lang=st.session_state.language
+                    )
                     
                     # Store source-to-page mapping
                     source_pages = {}

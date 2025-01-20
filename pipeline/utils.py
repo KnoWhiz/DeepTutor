@@ -129,22 +129,17 @@ def get_translation_llm(para):
     api = ApiHandler(para)
     return api.models['basic']['instance']
 
-def translate_content(content: str, source_lang: str, target_lang: str) -> str:
+def translate_content(content: str, target_lang: str) -> str:
     """
     Translates content from source language to target language using the LLM.
     
     Args:
         content (str): The text content to translate
-        source_lang (str): Source language code (e.g. "en", "zh")
         target_lang (str): Target language code (e.g. "en", "zh") 
     
     Returns:
-        str: Translated content, or original content if source_lang equals target_lang
+        str: Translated content
     """
-    # If source and target languages are the same, return original content
-    if source_lang.lower() == target_lang.lower():
-        return content
-
     # Load config and get LLM
     config = load_config()
     para = config['llm']
@@ -155,8 +150,8 @@ def translate_content(content: str, source_lang: str, target_lang: str) -> str:
     # Create translation prompt
     system_prompt = """
     You are a professional translator.
-    Translate the following content from {source_lang} to {target_lang}.
-    Maintain the original formatting, including markdown syntax, LaTeX formulas, and emojis.
+    Translate the following content to {target_lang} language.
+    Maintain the meaning and original formatting, including markdown syntax, LaTeX formulas, and emojis.
     Only translate the text content - do not modify any formatting, code, or special syntax.
     """
     
@@ -174,7 +169,6 @@ def translate_content(content: str, source_lang: str, target_lang: str) -> str:
     translation_chain = prompt | llm | error_parser
     
     translated_content = translation_chain.invoke({
-        "source_lang": source_lang,
         "target_lang": target_lang,
         "content": content
     })

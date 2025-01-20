@@ -43,8 +43,30 @@ from pipeline.sources_retrieval import (
 
 def tutor_agent(mode, _doc, _documents, user_input, chat_history, embedding_folder):
     """
-    Taking the user input, documents, and chat history, generate a response and sources
+    Taking the user input, documents, and chat history, generate a response and sources.
+    If user_input is None, generates the initial welcome message.
     """
+    # Handle initial welcome message when chat history is empty
+    if not chat_history:
+        try:
+            # Try to load existing document summary
+            documents_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
+            with open(documents_summary_path, "r") as f:
+                initial_message = f.read()
+        except FileNotFoundError:
+            initial_message = "Hello! How can I assist you today?"
+
+        answer = initial_message
+        # Translate the initial message to the selected language
+        answer = translate_content(
+            content=answer,
+            target_lang=st.session_state.language
+        )
+        sources = []
+            
+        return answer, sources
+
+    # Regular chat flow
     # Refine user input
     refined_user_input = get_query_helper(user_input, chat_history, embedding_folder)
     # Get response

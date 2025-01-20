@@ -136,7 +136,22 @@ def show_chat_interface(doc, documents, embedding_folder, tutor_agent):
             button_css = float_css_helper(width="1.2rem", bottom=button_b_pos, transition=0)
             float_parent(css=button_css)
 
-        # Display existing chat history
+        # Generate initial welcome message if chat history is empty
+        if not st.session_state.chat_history:
+            with st.spinner("Loading document summary..."):
+                initial_message, _ = tutor_agent(
+                    mode=st.session_state.mode,
+                    _doc=doc,
+                    _documents=documents,
+                    user_input=None,
+                    chat_history=[],
+                    embedding_folder=embedding_folder
+                )
+                st.session_state.chat_history.append(
+                    {"role": "assistant", "content": initial_message}
+                )
+
+        # Display chat history
         for idx, msg in enumerate(st.session_state.chat_history):
             if msg["role"] == "user":
                 avatar = learner_avatar

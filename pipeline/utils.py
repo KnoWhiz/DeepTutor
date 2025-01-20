@@ -86,6 +86,7 @@ def count_tokens(text, model_name='gpt-4o'):
     encoding = tiktoken.encoding_for_model(model_name)
     return len(encoding.encode(text))
 
+
 def truncate_chat_history(chat_history, model_name='gpt-4o'):
     """Only keep messages that fit within token limit"""
     config = load_config()
@@ -108,6 +109,7 @@ def truncate_chat_history(chat_history, model_name='gpt-4o'):
             total_tokens += message_tokens
     return truncated_history
 
+
 def truncate_document(_document, model_name='gpt-4o'):
     """Only keep beginning of document that fits token limit"""
     config = load_config()
@@ -124,10 +126,37 @@ def truncate_document(_document, model_name='gpt-4o'):
         _document = _document[:max_tokens]
     return _document
 
+
+def get_embedding_models(embedding_model_type, para):
+    para = para
+    api = ApiHandler(para)
+    embedding_model_default = api.embedding_models['default']['instance']
+    if embedding_model_type == 'default':
+        return embedding_model_default
+    else:
+        return embedding_model_default
+
+
+def get_llm(llm_type, para):
+    para = para
+    api = ApiHandler(para)
+    llm_basic = api.models['basic']['instance']
+    llm_advance = api.models['advance']['instance']
+    llm_creative = api.models['creative']['instance']
+    if llm_type == 'basic':
+        return llm_basic
+    elif llm_type == 'advance':
+        return llm_advance
+    elif llm_type == 'creative':
+        return llm_creative
+    return llm_basic
+
+
 def get_translation_llm(para):
     """Get LLM instance specifically for translation"""
     api = ApiHandler(para)
     return api.models['basic']['instance']
+
 
 def translate_content(content: str, target_lang: str) -> str:
     """

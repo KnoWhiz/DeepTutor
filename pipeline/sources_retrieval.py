@@ -7,6 +7,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
 from langchain.output_parsers import OutputFixingParser
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.schema import Document
 
 from streamlit_float import *
 
@@ -36,11 +37,11 @@ def get_response_source(_doc, _documents, user_input, answer, chat_history, embe
             embedding_folder, embeddings, allow_dangerous_deserialization=True
         )
     else:
-        # Split the documents into chunks
+        # Split the documents into chunks, respecting page boundaries
         print("Creating new embeddings...")
-        text_splitter = RecursiveCharacterTextSplitter(
+        text_splitter = PageAwareTextSplitter(
             chunk_size=config['embedding']['chunk_size'],
-            chunk_overlap=config['embedding']['chunk_overlap']
+            chunk_overlap=0
         )
         texts = text_splitter.split_documents(_documents)
         print(f"length of document chunks generated for get_response_source:{len(texts)}")
@@ -92,3 +93,37 @@ def refine_sources(_doc, _documents, sources):
             if text_instances:
                 refined_sources.append(source)
     return refined_sources[:20]
+
+
+class PageAwareTextSplitter(RecursiveCharacterTextSplitter):
+    """Custom text splitter that respects page boundaries"""
+    
+    def split_documents(self, documents):
+        """Split documents while respecting page boundaries"""
+        final_chunks = []
+        
+        for doc in documents:
+            # Get the page number from the metadata
+            page_num = doc.metadata.get("page", 0)
+            text = doc.page_content
+            
+            # Use parent class's splitting logic first
+            chunks = super().split_text(text)
+            
+            # Create new documents for each chunk with original metadata
+            for i, chunk in enumerate(chunks):
+                metadata = doc.metadata.copy()
+                # Update metadata to indicate chunk position
+                metadata["chunk_index"] = i
+                final_chunks.append(Document(
+                    page_content=chunk,
+                    metadata=metadata
+                ))
+                
+        # Sort chunks by page number and then by chunk index
+        final_chunks.sort(key=lambda x: (
+            x.metadata.get("page", 0),
+            x.metadata.get("chunk_index", 0)
+        ))
+        
+        return final_chunks

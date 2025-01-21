@@ -21,9 +21,13 @@ def to_emoji_number(num: int) -> str:
         String containing the bold circled number representation for 1-20,
         or regular number for values > 20
     """
+    # Use circled numbers for 1-50
     circled_numbers = [
-        "❶", "❷", "❸", "❹", "❺", "❻", "❼", "❽", "❾", "❿",
-        "⓫", "⓬", "⓭", "⓮", "⓯", "⓰", "⓱", "⓲", "⓳", "⓴"
+        "①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩",
+        "⑪", "⑫", "⑬", "⑭", "⑮", "⑯", "⑰", "⑱", "⑲", "⑳",
+        "㉑", "㉒", "㉓", "㉔", "㉕", "㉖", "㉗", "㉘", "㉙", "㉚",
+        "㉛", "㉜", "㉝", "㉞", "㉟", "㊱", "㊲", "㊳", "㊴", "㊵",
+        "㊶", "㊷", "㊸", "㊹", "㊺", "㊻", "㊼", "㊽", "㊾", "㊿"
     ]
     if 1 <= num <= len(circled_numbers):
         return circled_numbers[num - 1]

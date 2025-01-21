@@ -60,7 +60,7 @@ def get_response_source(_doc, _documents, user_input, answer, chat_history, embe
     #     search_type="mmr", search_kwargs={"k": 2, "lambda_mult": 0.8}
     # )
     config = load_config()
-    retriever = db.as_retriever(search_kwargs={"k": config['retriever']['k']})
+    retriever = db.as_retriever(search_kwargs={"k": config['sources_retriever']['k']})
 
     # Create the RetrievalQA chain
     system_prompt = (
@@ -150,4 +150,4 @@ def refine_sources(_doc, _documents, sources):
 
     print(f"refined_sources: {refined_sources}")
     print(f"length of refined_sources: {len(refined_sources)}")
-    return refined_sources[:10]
+    return refined_sources[:20]

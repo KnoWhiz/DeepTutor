@@ -14,6 +14,10 @@
         "search_type": "similarity",
         "k": 4
     },
+    "sources_retriever": {
+        "search_type": "similarity",
+        "k": 10
+    },
     "languages": {
         "🇺🇸 English": "English",
         "🇨🇳 中文": "Chinese", 

@@ -20,6 +20,39 @@ from pipeline.api_handler import ApiHandler
 # from api_handler import ApiHandler
 
 
+def robust_search_for(page, text, chunk_size=512):
+    """
+    A more robust search routine:
+    1) Splits text into chunks of up to 'chunk_size' tokens 
+       so that extremely large strings don't fail.
+    2) Uses PyMuPDF search flags to handle hyphens/spaces 
+       (still an exact match, but more flexible about formatting).
+    """
+    flags = fitz.TEXT_DEHYPHENATE | fitz.TEXT_INHIBIT_SPACES
+
+    # Remove leading/trailing whitespace
+    text = text.strip()
+    if not text:
+        return []
+
+    # Tokenize by whitespace. Adjust to your needs if you want a different definition of "token."
+    tokens = text.split()
+
+    # If the text is short, just do a direct search
+    if len(tokens) <= chunk_size:
+        return page.search_for(text, flags=flags)
+
+    # Otherwise, split into smaller chunks and search for each
+    results = []
+    for i in range(0, len(tokens), chunk_size):
+        sub_tokens = tokens[i : i + chunk_size]
+        chunk_text = " ".join(sub_tokens).strip()
+        found_instances = page.search_for(chunk_text, flags=flags)
+        results.extend(found_instances)
+
+    return results
+
+
 # Generate a unique course ID for the uploaded file
 def generate_course_id(file):
     file_hash = hashlib.md5(file).hexdigest()
@@ -51,7 +84,7 @@ def find_pages_with_excerpts(doc, excerpts):
     for page_num in range(len(doc)):
         page = doc.load_page(page_num)
         for excerpt in excerpts:
-            text_instances = page.search_for(excerpt)
+            text_instances = robust_search_for(page, excerpt)
             if text_instances:
                 pages_with_excerpts.append(page_num)
                 break
@@ -61,22 +94,19 @@ def find_pages_with_excerpts(doc, excerpts):
 # Get the highlight information for the given excerpts
 def get_highlight_info(doc, excerpts):
     annotations = []
-    for page_num in range(len(doc)):
-        page = doc[page_num]
+    for page_num, page in enumerate(doc):
         for excerpt in excerpts:
-            text_instances = page.search_for(excerpt)
+            text_instances = robust_search_for(page, excerpt)
             if text_instances:
                 for inst in text_instances:
-                    annotations.append(
-                        {
-                            "page": page_num + 1,
-                            "x": inst.x0,
-                            "y": inst.y0,
-                            "width": inst.x1 - inst.x0,
-                            "height": inst.y1 - inst.y0,
-                            "color": "red",
-                        }
-                    )
+                    annotations.append({
+                        "page": page_num + 1,
+                        "x": inst.x0,
+                        "y": inst.y0,
+                        "width": inst.x1 - inst.x0,
+                        "height": inst.y1 - inst.y0,
+                        "color": "red",
+                    })
     return annotations
 
 

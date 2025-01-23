@@ -16,7 +16,8 @@ from pipeline.utils import (
     tiktoken,
     truncate_chat_history,
     get_llm,
-    get_embedding_models
+    get_embedding_models,
+    robust_search_for
 )
 
 
@@ -83,13 +84,13 @@ def get_response_source(_doc, _documents, user_input, answer, chat_history, embe
 def refine_sources(_doc, _documents, sources):
     """
     Refine sources by checking if they can be found in the document
-    Only get first 10 sources
-    Show then in the order they are found in the document
+    Only get first 20 sources
+    Show them in the order they are found in the document
     """
     refined_sources = []
     for page in _doc:
         for source in sources:
-            text_instances = page.search_for(source)
+            text_instances = robust_search_for(page, source)
             if text_instances:
                 refined_sources.append(source)
     return refined_sources[:20]

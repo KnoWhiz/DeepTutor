@@ -302,7 +302,7 @@ def get_query_helper(user_input, chat_history, embedding_folder):
         """
         You are a educational professor helping a student reading a document {context}.
         The goals are:
-        1. to ask questions in a better way.
+        1. to ask questions in a better way to make sure it’s optimized to query a Vector Database for RAG (Retrieval Augmented Generation).
         2. to identify the question is about local or global context of the document.
         3. to identify the language of the question based on list of languages options {language_options}
            if you are not sure, choose the "English" by default.
@@ -310,7 +310,7 @@ def get_query_helper(user_input, chat_history, embedding_folder):
         Organize final response in the following JSON format:
         ```json
         {{
-            "question": "<question rephrased in a better way>",
+            "question": "<question rephrased in a better way to make sure it’s optimized to query a Vector Database for RAG (Retrieval Augmented Generation)>",
             "question_type": "<local/global>",
             "language": "<language of the question>"
         }}

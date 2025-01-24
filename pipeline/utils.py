@@ -3,9 +3,11 @@ import hashlib
 import shutil
 import fitz
 import tiktoken
-from pathlib import Path
 import json
+import langid
 import streamlit as st
+
+from pathlib import Path
 
 from langchain_community.document_loaders import PyPDFLoader, PyMuPDFLoader
 from streamlit_float import *
@@ -188,6 +190,23 @@ def get_translation_llm(para):
     return api.models['basic']['instance']
 
 
+def detect_language(text):
+    """Detect language of the text"""
+    # Load languages from config
+    config = load_config()
+    language_dict = config['languages']
+    language_options = list(language_dict.values())
+    language_short_dict = config['languages_short']
+    language_short_options = list(language_short_dict.keys())
+
+    language = langid.classify(text)[0]
+    if language not in language_short_options:
+        language = "English"
+    else:
+        language = language_short_dict[language]
+    return language
+
+
 def translate_content(content: str, target_lang: str) -> str:
     """
     Translates content from source language to target language using the LLM.
@@ -199,6 +218,10 @@ def translate_content(content: str, target_lang: str) -> str:
     Returns:
         str: Translated content
     """
+    language = detect_language(content)
+    if language == target_lang:
+        return content
+
     # Load config and get LLM
     config = load_config()
     para = config['llm']

@@ -2,9 +2,6 @@ import os
 import pandas as pd
 import streamlit as st
 from dotenv import load_dotenv
-# from langdetect import detect, DetectorFactory
-# from textblob import TextBlob
-import langid
 
 from langchain_community.vectorstores import FAISS
 from langchain_core.runnables import RunnablePassthrough
@@ -41,6 +38,9 @@ from pipeline.doc_processor import (
 )
 from pipeline.sources_retrieval import (
     get_response_source,
+)
+from pipeline.utils import (
+    detect_language
 )
 
 
@@ -294,11 +294,6 @@ def get_query_helper(user_input, chat_history, embedding_folder):
 
     # Load languages from config
     config = load_config()
-    language_dict = config['languages']
-    language_options = list(language_dict.values())
-    language_short_dict = config['languages_short']
-    language_short_options = list(language_short_dict.keys())
-    
     llm = get_llm('basic', config['llm'])
     parser = JsonOutputParser()
     error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
@@ -339,18 +334,8 @@ def get_query_helper(user_input, chat_history, embedding_folder):
                                   "chat_history": truncate_chat_history(chat_history)})
     question = parsed_result['question']
     question_type = parsed_result['question_type']
-    # DetectorFactory.seed = 42
-    # language = detect(user_input)
-    # language_TextBlob = TextBlob(user_input)
-    # language = language_TextBlob.detect_language()
-    language = langid.classify(user_input)[0]
-    # If the language is not in the language_short_options, set the language to "English"
+    language = detect_language(user_input)
     print("language detected:", language)
-
-    if language not in language_short_options:
-        language = "English"
-    else:
-        language = language_short_dict[language]
 
     st.session_state.language = language
     return question

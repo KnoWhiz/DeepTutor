@@ -29,5 +29,17 @@
         "🇮🇳 हिन्दी": "Hindi",
         "🇵🇹 Português": "Portuguese",
         "🇮🇹 Italiano": "Italian"
+    },
+    "languages_short": {
+        "en": "English",
+        "zh": "Chinese", 
+        "es": "Spanish",
+        "fr": "French",
+        "de": "German",
+        "ja": "Japanese",
+        "ko": "Korean",
+        "hi": "Hindi",
+        "pt": "Portuguese",
+        "it": "Italian"
     }
 }

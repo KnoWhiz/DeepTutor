@@ -188,6 +188,11 @@ def get_translation_llm(para):
     return api.models['basic']['instance']
 
 
+def detect_language(text):
+    """Detect language of the text"""
+    return langid.classify(text)[0]
+
+
 def translate_content(content: str, target_lang: str) -> str:
     """
     Translates content from source language to target language using the LLM.

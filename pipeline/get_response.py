@@ -1,7 +1,10 @@
 import os
 import pandas as pd
-from dotenv import load_dotenv
 import streamlit as st
+from dotenv import load_dotenv
+# from langdetect import detect, DetectorFactory
+# from textblob import TextBlob
+import langid
 
 from langchain_community.vectorstores import FAISS
 from langchain_core.runnables import RunnablePassthrough
@@ -293,7 +296,9 @@ def get_query_helper(user_input, chat_history, embedding_folder):
     config = load_config()
     language_dict = config['languages']
     language_options = list(language_dict.values())
-
+    language_short_dict = config['languages_short']
+    language_short_options = list(language_short_dict.keys())
+    
     llm = get_llm('basic', config['llm'])
     parser = JsonOutputParser()
     error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
@@ -304,15 +309,12 @@ def get_query_helper(user_input, chat_history, embedding_folder):
         The goals are:
         1. to ask questions in a better way to make sure it’s optimized to query a Vector Database for RAG (Retrieval Augmented Generation).
         2. to identify the question is about local or global context of the document.
-        3. to identify the language of the question based on list of languages options {language_options}
-           if you are not sure, choose the "English" by default.
 
         Organize final response in the following JSON format:
         ```json
         {{
             "question": "<question rephrased in a better way to make sure it’s optimized to query a Vector Database for RAG (Retrieval Augmented Generation)>",
             "question_type": "<local/global>",
-            "language": "<language of the question>"
         }}
         ```
         """
@@ -333,11 +335,22 @@ def get_query_helper(user_input, chat_history, embedding_folder):
     )
     chain = prompt | llm | error_parser
     parsed_result = chain.invoke({"input": user_input,
-                                  "language_options": language_options,
                                   "context": documents_summary,
                                   "chat_history": truncate_chat_history(chat_history)})
     question = parsed_result['question']
     question_type = parsed_result['question_type']
-    language = parsed_result['language']
+    # DetectorFactory.seed = 42
+    # language = detect(user_input)
+    # language_TextBlob = TextBlob(user_input)
+    # language = language_TextBlob.detect_language()
+    language = langid.classify(user_input)[0]
+    # If the language is not in the language_short_options, set the language to "English"
+    print("language detected:", language)
+
+    if language not in language_short_options:
+        language = "English"
+    else:
+        language = language_short_dict[language]
+
     st.session_state.language = language
     return question

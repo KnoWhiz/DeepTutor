@@ -218,6 +218,10 @@ def translate_content(content: str, target_lang: str) -> str:
     Returns:
         str: Translated content
     """
+    language = detect_language(content)
+    if language == target_lang:
+        return content
+
     # Load config and get LLM
     config = load_config()
     para = config['llm']

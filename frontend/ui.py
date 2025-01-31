@@ -4,6 +4,7 @@ import streamlit as st
 from streamlit_pdf_viewer import pdf_viewer
 from streamlit_float import float_init, float_parent, float_css_helper
 from streamlit_extras.stylable_container import stylable_container
+from streamlit_js_eval import streamlit_js_eval
 
 from frontend.utils import previous_page, next_page, close_pdf, chat_content
 from pipeline.utils import find_pages_with_excerpts, get_highlight_info, translate_content
@@ -37,7 +38,7 @@ def to_emoji_number(num: int) -> str:
 # Function to set up the page configuration
 def setup_page_config():
     st.set_page_config(
-        page_title="DeepTutor Office Hours",
+        page_title="DeepTutor",
         page_icon="frontend/images/professor.svg",
         layout="wide",
         # initial_sidebar_state="collapsed",
@@ -260,6 +261,10 @@ def show_pdf_viewer(file):
         pdf = PyPDF2.PdfReader(file)
         st.session_state.total_pages = len(pdf.pages)
         
+    # # TEST
+    # page_height = streamlit_js_eval(js_expressions='window.innerHeight', key='HEIGHT', want_output=True)
+    # print(f"Page height is {page_height} pixels.")
+    
     with st.container(border=st.session_state.show_chat_border, height=620):
         pdf_viewer(
             file,

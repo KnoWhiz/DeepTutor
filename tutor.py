@@ -118,7 +118,7 @@ if st.session_state['isAuth']:
             documents, doc = process_pdf_file(file, st.session_state.uploaded_file.name)
 
             # Generate embeddings based on the selected mode
-            if st.session_state.mode == "Professor":
+            if st.session_state.mode == "Advanced":
                 with st.spinner("Processing file to generate knowledge graph, may take 3 - 5 mins..."):
                     if(graphrag_index_files_decompress(embedding_folder)):
                         print("GraphRAG index files are ready.")
@@ -138,7 +138,7 @@ if st.session_state['isAuth']:
                                 print("GraphRAG index files are ready and uploaded to Azure Blob Storage.")
                             else:
                                 print("Error compressing and uploading GraphRAG index files to Azure Blob Storage.")
-            else:  # TA mode
+            else:  # Basic mode
                 with st.spinner("Processing file..."):
                     if(vectorrag_index_files_decompress(embedding_folder)):
                         print("VectorRAG index files are ready.")

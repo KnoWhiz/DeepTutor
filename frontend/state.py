@@ -12,7 +12,7 @@ SKIP_AUTH = True if os.getenv("ENVIRONMENT") == "local" else False
 def initialize_session_state(embedding_folder):
     """Initialize session state variables"""
     if "mode" not in st.session_state:
-        st.session_state.mode = "TA"
+        st.session_state.mode = "Basic"
     
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []

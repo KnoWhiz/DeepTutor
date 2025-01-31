@@ -92,7 +92,7 @@ def get_response(mode, _doc, _documents, user_input, chat_history, embedding_fol
     # TEST
     print("Current language:", st.session_state.language)
 
-    if mode == 'Professor':
+    if mode == 'Advanced':
         try:
             answer = get_GraphRAG_global_response(_doc,_documents, user_input, chat_history, embedding_folder)
             return answer

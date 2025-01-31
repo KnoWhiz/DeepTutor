@@ -305,7 +305,7 @@ def generate_document_summary(_documents, embedding_folder):
         summaries.append((topic, topic_summary))
 
     # Combine everything into markdown format with welcome message and take-home message
-    markdown_summary = f"""### 👋 Welcome to DeepTutor Office Hour! 
+    markdown_summary = f"""### 👋 Welcome to DeepTutor! 
 
 I'm your AI tutor 🤖 ready to help you understand this document.
 

@@ -92,7 +92,7 @@ def show_mode_option(uploaded_file):
     with st.sidebar:
         disabled = uploaded_file is not None
         mode_index = 0
-        st.session_state.mode = st.radio(" ", options=["TA", "Professor"], index=mode_index, disabled=disabled)
+        st.session_state.mode = st.radio("Basic model (faster) or Advanced model (slower but more accurate)?", options=["Basic", "Advanced"], index=mode_index, disabled=disabled)
 
 
 # Function to display the language selection options in the sidebar
@@ -162,7 +162,7 @@ def show_chat_interface(doc, documents, embedding_folder, tutor_agent):
                 with st.chat_message(msg["role"], avatar=avatar):
                     st.write(msg["content"])
             elif msg["role"] == "assistant":
-                avatar = professor_avatar if st.session_state.mode == "Professor" else tutor_avatar
+                avatar = professor_avatar if st.session_state.mode == "Advanced" else tutor_avatar
                 with st.chat_message(msg["role"], avatar=avatar):
                     st.write(msg["content"])
             elif msg["role"] == "source_buttons":
@@ -308,7 +308,7 @@ def show_pdf_viewer(file):
                 st.button("→", key='→', on_click=next_page)
                 button_css = float_css_helper(width="1.2rem", bottom="1.2rem", transition=0)
                 float_parent(css=button_css)
-                
+
     viewer_css = float_css_helper(transition=0)
     float_parent(css=viewer_css)
 

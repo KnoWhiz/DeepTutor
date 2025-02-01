@@ -245,8 +245,8 @@ def show_chat_interface(doc, documents, embedding_folder, tutor_agent):
                     st.session_state.current_page = 1
                 if st.session_state.get("sources"):
                     st.session_state.annotations = get_highlight_info(doc, st.session_state.sources)
-    viewer_css = float_css_helper(transition=0)
-    float_parent(css=viewer_css)
+    # viewer_css = float_css_helper(transition=0)
+    # float_parent(css=viewer_css)
 
 
 # Function to display the pdf viewer

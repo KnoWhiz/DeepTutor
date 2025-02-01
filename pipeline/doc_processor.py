@@ -204,7 +204,7 @@ def generate_document_summary(_documents, embedding_folder):
     """
     config = load_config()
     para = config['llm']
-    llm = get_llm('advance', para)  # Using advanced model for better quality
+    llm = get_llm(para["level"], para)  # Using advanced model for better quality
 
     # First generate the take-home message
     takehome_prompt = """

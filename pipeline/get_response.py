@@ -77,7 +77,7 @@ def tutor_agent(mode, _doc, _documents, user_input, chat_history, embedding_fold
     # Get sources
     sources = get_response_source(_doc, _documents, refined_user_input, answer, chat_history, embedding_folder)
 
-    answer = f"""Are you asking: **{user_input}**
+    answer = f"""Are you asking: **{refined_user_input}**
     """ + "\n" + answer
 
     # Translate the answer to the selected language
@@ -308,7 +308,7 @@ def get_query_helper(user_input, chat_history, embedding_folder):
         Organize final response in the following JSON format:
         ```json
         {{
-            "question": "<question rephrased in a better way to make sure it’s optimized to query a Vector Database for RAG (Retrieval Augmented Generation)>",
+            "question": "<question try to understand what the user really mean by the question and rephrase it in a better way>",
             "question_type": "<local/global>",
         }}
         ```
@@ -338,4 +338,7 @@ def get_query_helper(user_input, chat_history, embedding_folder):
     print("language detected:", language)
 
     st.session_state.language = language
+
+    # # TEST
+    # print("question rephrased:", question)
     return question

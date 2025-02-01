@@ -134,14 +134,23 @@ def show_chat_interface(doc, documents, embedding_folder, tutor_agent):
     professor_avatar = "frontend/images/professor.svg"
 
     with st.container():
+        float_init(theme=True, include_unstable_primary=False)
         st.chat_input(key='user_input', on_submit=chat_content)
         button_b_pos = "1.2rem"
         button_css = float_css_helper(width="1.2rem", bottom=button_b_pos, transition=0)
         float_parent(css=button_css)
 
-    with st.container(border=st.session_state.show_chat_border, height=1000):
-        float_init(theme=True, include_unstable_primary=False)
+    # st.markdown('''
+    #             <style>
+    #             .fullHeight {height : 80vh;
+    #                 width : 100%}
+    #             </style>''', unsafe_allow_html = True)
 
+    chat_container = st.container(border=st.session_state.show_chat_border, height=700)
+
+    # chat_container.markdown("<iframe scr='linke', class = 'fullHeight'></iframe>", unsafe_allow_html = True)
+
+    with chat_container:
         # Generate initial welcome message if chat history is empty
         if not st.session_state.chat_history:
             with st.spinner("Loading document summary..."):
@@ -246,6 +255,7 @@ def show_chat_interface(doc, documents, embedding_folder, tutor_agent):
                     st.session_state.current_page = 1
                 if st.session_state.get("sources"):
                     st.session_state.annotations = get_highlight_info(doc, st.session_state.sources)
+
     # viewer_css = float_css_helper(transition=0)
     # float_parent(css=viewer_css)
 
@@ -274,7 +284,9 @@ def show_pdf_viewer(file):
         </style>
         """, unsafe_allow_html=True)
     
-    with st.container(border=st.session_state.show_chat_border, height=1000):
+    pdf_container = st.container(border=st.session_state.show_chat_border, height=700)
+
+    with pdf_container:
         pdf_viewer(
             file,
             width=1000,

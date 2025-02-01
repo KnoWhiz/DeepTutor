@@ -4,6 +4,7 @@ import streamlit as st
 from streamlit_pdf_viewer import pdf_viewer
 from streamlit_float import float_init, float_parent, float_css_helper
 from streamlit_extras.stylable_container import stylable_container
+import streamlit.components.v1 as components
 from streamlit_js_eval import streamlit_js_eval
 
 from frontend.utils import previous_page, next_page, close_pdf, chat_content
@@ -146,7 +147,7 @@ def show_chat_interface(doc, documents, embedding_folder, tutor_agent):
     #                 width : 100%}
     #             </style>''', unsafe_allow_html = True)
 
-    chat_container = st.container(border=st.session_state.show_chat_border, height=700)
+    chat_container = st.container(border=st.session_state.show_chat_border, height=1005)
 
     # chat_container.markdown("<iframe scr='linke', class = 'fullHeight'></iframe>", unsafe_allow_html = True)
 
@@ -256,6 +257,7 @@ def show_chat_interface(doc, documents, embedding_folder, tutor_agent):
                 if st.session_state.get("sources"):
                     st.session_state.annotations = get_highlight_info(doc, st.session_state.sources)
 
+    # chat_container.markdown("<iframe scr='linke', class = 'fullHeight'></iframe>", unsafe_allow_html = True)
     # viewer_css = float_css_helper(transition=0)
     # float_parent(css=viewer_css)
 
@@ -284,7 +286,7 @@ def show_pdf_viewer(file):
         </style>
         """, unsafe_allow_html=True)
     
-    pdf_container = st.container(border=st.session_state.show_chat_border, height=700)
+    pdf_container = st.container(border=st.session_state.show_chat_border, height=1005)
 
     with pdf_container:
         pdf_viewer(

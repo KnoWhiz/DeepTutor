@@ -265,35 +265,6 @@ def show_chat_interface(doc, documents, embedding_folder, tutor_agent):
 
 # Function to display the pdf viewer
 def show_pdf_viewer(file):
-    # Add responsive container CSS
-    st.markdown("""
-        <style>
-        .pdf-container {
-            height: 80vh;
-            display: flex;
-            flex-direction: column;
-        }
-        .viewer-container {
-            flex: 1;
-            overflow-y: auto;
-            padding: 1rem;
-            margin-bottom: 60px; /* Space for navigation */
-        }
-        .navigation-container {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            padding: 10px;
-            background: white;
-            border-top: 1px solid #ddd;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
     if "current_page" not in st.session_state:
         st.session_state.current_page = 1
     if "annotations" not in st.session_state:
@@ -308,11 +279,16 @@ def show_pdf_viewer(file):
     # print(f"Page height is {page_height} pixels.")
 
     with st.container():
-        # Main PDF container
-        st.markdown('<div class="pdf-container">', unsafe_allow_html=True)
-        
-        # Scrollable viewer area
-        st.markdown('<div class="viewer-container">', unsafe_allow_html=True)
+        st.markdown("""
+        <style>
+        .fullHeight {height : 80vh;
+                    width : 100%}
+        </style>
+        """, unsafe_allow_html=True)
+    
+    pdf_container = st.container(border=st.session_state.show_chat_border, height=1005)
+
+    with pdf_container:
         pdf_viewer(
             file,
             width=1000,
@@ -320,7 +296,6 @@ def show_pdf_viewer(file):
             pages_to_render=[st.session_state.current_page],
             render_text=True,
         )
-        st.markdown('</div>', unsafe_allow_html=True)
 
     # Create three columns for the navigation controls
     columns = st.columns([1, 2, 1])

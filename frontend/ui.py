@@ -133,13 +133,14 @@ def show_chat_interface(doc, documents, embedding_folder, tutor_agent):
     tutor_avatar = "frontend/images/tutor.svg"
     professor_avatar = "frontend/images/professor.svg"
 
+    with st.container():
+        st.chat_input(key='user_input', on_submit=chat_content)
+        button_b_pos = "1.2rem"
+        button_css = float_css_helper(width="1.2rem", bottom=button_b_pos, transition=0)
+        float_parent(css=button_css)
+
     with st.container(border=st.session_state.show_chat_border, height=620):
         float_init(theme=True, include_unstable_primary=False)
-        with st.container():
-            st.chat_input(key='user_input', on_submit=chat_content)
-            button_b_pos = "1.2rem"
-            button_css = float_css_helper(width="1.2rem", bottom=button_b_pos, transition=0)
-            float_parent(css=button_css)
 
         # Generate initial welcome message if chat history is empty
         if not st.session_state.chat_history:
@@ -264,6 +265,14 @@ def show_pdf_viewer(file):
     # # TEST
     # page_height = streamlit_js_eval(js_expressions='window.innerHeight', key='HEIGHT', want_output=True)
     # print(f"Page height is {page_height} pixels.")
+
+    with st.container():
+        st.markdown("""
+        <style>
+        .fullHeight {height : 80vh;
+                    width : 100%}
+        </style>
+        """, unsafe_allow_html=True)
     
     with st.container(border=st.session_state.show_chat_border, height=620):
         pdf_viewer(
@@ -273,49 +282,48 @@ def show_pdf_viewer(file):
             pages_to_render=[st.session_state.current_page],
             render_text=True,
         )
-        
-        # Create three columns for the navigation controls
-        columns = st.columns([1, 2, 1])
-        
-        # Left arrow button
-        with columns[0]:
-            with stylable_container(
-                key="left_aligned_button",
-                css_styles="""
-                button {
-                    float: left;
-                }
-                """
-            ):
-                st.button("←", key='←', on_click=previous_page)
-                button_css = float_css_helper(width="1.2rem", bottom="1.2rem", transition=0)
-                float_parent(css=button_css)
-        
-        # Page counter in the middle
-        with columns[1]:
-            st.markdown(
-                f"""<div style="text-align: center; color: #666666;">
-                    Page {st.session_state.current_page} of {st.session_state.total_pages}
-                    </div>""",
-                unsafe_allow_html=True
-            )
-            
-        # Right arrow button
-        with columns[2]:
-            with stylable_container(
-                key="right_aligned_button",
-                css_styles="""
-                button {
-                    float: right;
-                }
-                """
-            ):
-                st.button("→", key='→', on_click=next_page)
-                button_css = float_css_helper(width="1.2rem", bottom="1.2rem", transition=0)
-                float_parent(css=button_css)
 
-    viewer_css = float_css_helper(transition=0)
-    float_parent(css=viewer_css)
+    # Create three columns for the navigation controls
+    columns = st.columns([1, 2, 1])
+    
+    # Left arrow button
+    with columns[0]:
+        with stylable_container(
+            key="left_aligned_button",
+            css_styles="""
+            button {
+                float: left;
+            }
+            """
+        ):
+            st.button("←", key='←', on_click=previous_page)
+            button_css = float_css_helper(width="1.2rem", bottom="1.2rem", transition=0)
+            float_parent(css=button_css)
+    
+    # Page counter in the middle
+    with columns[1]:
+        st.markdown(
+            f"""<div style="text-align: center; color: #666666;">
+                Page {st.session_state.current_page} of {st.session_state.total_pages}
+                </div>""",
+            unsafe_allow_html=True
+        )
+        
+    # Right arrow button
+    with columns[2]:
+        with stylable_container(
+            key="right_aligned_button",
+            css_styles="""
+            button {
+                float: right;
+            }
+            """
+        ):
+            st.button("→", key='→', on_click=next_page)
+            button_css = float_css_helper(width="1.2rem", bottom="1.2rem", transition=0)
+            float_parent(css=button_css)
+    # viewer_css = float_css_helper(transition=0)
+    # float_parent(css=viewer_css)
 
 
 # Function to display the footer

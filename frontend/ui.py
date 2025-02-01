@@ -139,7 +139,7 @@ def show_chat_interface(doc, documents, embedding_folder, tutor_agent):
         button_css = float_css_helper(width="1.2rem", bottom=button_b_pos, transition=0)
         float_parent(css=button_css)
 
-    with st.container(border=st.session_state.show_chat_border, height=620):
+    with st.container(border=st.session_state.show_chat_border, height=1000):
         float_init(theme=True, include_unstable_primary=False)
 
         # Generate initial welcome message if chat history is empty
@@ -274,7 +274,7 @@ def show_pdf_viewer(file):
         </style>
         """, unsafe_allow_html=True)
     
-    with st.container(border=st.session_state.show_chat_border, height=620):
+    with st.container(border=st.session_state.show_chat_border, height=1000):
         pdf_viewer(
             file,
             width=1000,

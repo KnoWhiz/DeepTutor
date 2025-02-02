@@ -27,6 +27,8 @@ from pipeline.api_handler import ApiHandler
 # from config import load_config
 # from api_handler import ApiHandler
 
+os.environ['OPENCV_IO_ENABLE_JASPER'] = '1'
+
 
 def robust_search_for(page, text, chunk_size=512):
     """

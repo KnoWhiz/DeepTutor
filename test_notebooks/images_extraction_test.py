@@ -7,7 +7,7 @@ from marker.models import create_model_dict
 from marker.output import text_from_rendered
 from marker.settings import settings
 
-def extract_pdf_content(
+def extract_pdf_content_to_markdown(
     pdf_path: str | Path,
     output_dir: str | Path,
 ) -> Tuple[str, Dict[str, Image.Image]]:
@@ -77,11 +77,12 @@ def extract_pdf_content(
 
 if __name__ == "__main__":
     # Example usage
-    pdf_path = "/Users/bingran_you/Library/Mobile Documents/com~apple~CloudDocs/Downloads/papers/science.1189075.pdf"
-    output_dir = "output"
+    # pdf_path = "/Users/bingran_you/Library/Mobile Documents/com~apple~CloudDocs/Downloads/papers/science.1189075.pdf"
+    pdf_path = "/Users/bingran_you/Library/Mobile Documents/com~apple~CloudDocs/Downloads/papers/RankRAG- Unifying Context Ranking with  Retrieval-Augmented Generation in LLMs.pdf"
+    output_dir = "markdown_output"
     
     try:
-        md_path, saved_images = extract_pdf_content(pdf_path, output_dir)
+        md_path, saved_images = extract_pdf_content_to_markdown(pdf_path, output_dir)
         print(f"Successfully processed PDF. Markdown saved to: {md_path}")
         print(f"Number of images extracted: {len(saved_images)}")
     except Exception as e:

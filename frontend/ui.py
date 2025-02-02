@@ -129,7 +129,7 @@ def show_page_option():
 
 
 # Function to display the chat interface
-def show_chat_interface(doc, documents, embedding_folder, tutor_agent):
+def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agent):
     # Init float function for chat_input textbox
     learner_avatar = "frontend/images/learner.svg"
     tutor_avatar = "frontend/images/tutor.svg"
@@ -160,6 +160,7 @@ def show_chat_interface(doc, documents, embedding_folder, tutor_agent):
                     mode=st.session_state.mode,
                     _doc=doc,
                     _documents=documents,
+                    file_paths=file_paths,
                     user_input=None,
                     chat_history=[],
                     embedding_folder=embedding_folder
@@ -200,6 +201,7 @@ def show_chat_interface(doc, documents, embedding_folder, tutor_agent):
                         mode=st.session_state.mode,
                         _doc=doc,
                         _documents=documents,
+                        file_paths=file_paths,
                         user_input=user_input,
                         chat_history=st.session_state.chat_history,
                         embedding_folder=embedding_folder

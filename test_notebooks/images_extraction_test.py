@@ -10,7 +10,6 @@ from marker.settings import settings
 def extract_pdf_content(
     pdf_path: str | Path,
     output_dir: str | Path,
-    image_format: str = "png"
 ) -> Tuple[str, Dict[str, Image.Image]]:
     """
     Extract text and images from a PDF file and save them to the specified directory.
@@ -18,7 +17,6 @@ def extract_pdf_content(
     Args:
         pdf_path: Path to the input PDF file
         output_dir: Directory where images and markdown will be saved
-        image_format: Output format for images (default: "png")
     
     Returns:
         Tuple containing:
@@ -65,7 +63,7 @@ def extract_pdf_content(
                 try:
                     # Create a valid filename from the image name
                     safe_filename = "".join(c for c in img_name if c.isalnum() or c in ('-', '_', '.'))
-                    output_path = images_dir / f"{safe_filename}.{image_format}"
+                    output_path = images_dir / f"{safe_filename}"
                     
                     # Save the image
                     img.save(output_path)

@@ -95,7 +95,12 @@ if __name__ == "__main__":
     output_dir = "extracted_images"
     
     try:
-        extracted_files = extract_images_from_pdf(pdf_path, output_dir)
+        # Set minimum size to 100x100 pixels
+        extracted_files = extract_images_from_pdf(
+            pdf_path, 
+            output_dir,
+            min_size=(100, 100)  # Adjust these values as needed
+        )
         print(f"Successfully extracted {len(extracted_files)} images:")
         for image_path in extracted_files:
             print(f"- {image_path}")

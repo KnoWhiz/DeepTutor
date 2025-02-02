@@ -175,12 +175,15 @@ def get_llm(llm_type, para):
     llm_basic = api.models['basic']['instance']
     llm_advance = api.models['advance']['instance']
     llm_creative = api.models['creative']['instance']
+    llm_deepseek_basic = api.models['deepseek_basic']['instance']
     if llm_type == 'basic':
         return llm_basic
     elif llm_type == 'advance':
         return llm_advance
     elif llm_type == 'creative':
         return llm_creative
+    elif llm_type == 'deepseek_basic':
+        return llm_deepseek_basic
     return llm_basic
 
 

@@ -1,5 +1,6 @@
 import json
 import base64
+import PyPDF2
 import streamlit as st
 from streamlit_pdf_viewer import pdf_viewer
 from streamlit_float import float_init, float_parent, float_css_helper
@@ -270,7 +271,6 @@ def show_pdf_viewer(file):
         st.session_state.annotations = []
     if "total_pages" not in st.session_state:
         # Get total pages from the PDF file
-        import PyPDF2
         pdf = PyPDF2.PdfReader(file)
         st.session_state.total_pages = len(pdf.pages)
         

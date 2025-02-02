@@ -101,7 +101,7 @@ def get_response(mode, _doc, _documents, user_input, chat_history, embedding_fol
 
     config = load_config()
     para = config['llm']
-    llm = get_llm('advance', para)
+    llm = get_llm(para["level"], para)
     parser = StrOutputParser()
     error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
 

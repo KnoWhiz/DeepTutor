@@ -108,7 +108,7 @@ def get_response(mode, _doc, _documents, user_input, chat_history, embedding_fol
     embeddings = get_embedding_models('default', para)
 
     # Check if all necessary files exist to load the embeddings
-    generate_embedding(_documents, embedding_folder)
+    generate_embedding(_documents, _doc, embedding_folder)
 
     # Load existing embeddings
     print("Loading existing embeddings...")

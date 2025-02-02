@@ -77,11 +77,12 @@ from pipeline.utils import (
     truncate_chat_history,
     truncate_document,
     get_llm,
-    get_embedding_models
+    get_embedding_models,
+    extract_images_from_pdf,
 )
 
 
-def generate_embedding(_documents, embedding_folder):
+def generate_embedding(_documents, _doc, embedding_folder):
     config = load_config()
     para = config['llm']
     embeddings = get_embedding_models('default', para)
@@ -115,6 +116,10 @@ def generate_embedding(_documents, embedding_folder):
 
         # Generate and save document summary
         generate_document_summary(_documents, embedding_folder)
+
+        # Extract images from the PDF
+        images_dir = os.path.join(embedding_folder, "images")
+        extract_images_from_pdf(_doc, images_dir)
 
     return
 
@@ -205,6 +210,9 @@ def generate_document_summary(_documents, embedding_folder):
     config = load_config()
     para = config['llm']
     llm = get_llm(para["level"], para)  # Using advanced model for better quality
+
+    # TEST
+    print("Current model:", llm)
 
     # First generate the take-home message
     takehome_prompt = """

@@ -80,6 +80,7 @@ from pipeline.utils import (
     get_embedding_models,
     extract_images_from_pdf,
     extract_pdf_content_to_markdown,
+    extract_pdf_content_to_markdown_via_api,
 )
 
 
@@ -125,6 +126,10 @@ def generate_embedding(_documents, _doc, pdf_path, embedding_folder):
         # # Extract content to markdown
         # markdown_dir = os.path.join(embedding_folder, "markdown")
         # extract_pdf_content_to_markdown(pdf_path, markdown_dir)
+
+        # Extract content to markdown via API
+        markdown_dir = os.path.join(embedding_folder, "markdown")
+        extract_pdf_content_to_markdown_via_api(pdf_path, markdown_dir)
 
     return
 

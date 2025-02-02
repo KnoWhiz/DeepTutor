@@ -36,10 +36,6 @@ def extract_pdf_content(
     # Create output directory
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Create images subdirectory
-    images_dir = output_dir / "images"
-    images_dir.mkdir(exist_ok=True)
 
     try:
         # Initialize converter and process PDF
@@ -58,12 +54,12 @@ def extract_pdf_content(
         # Save images
         saved_images = {}
         if images:
-            print(f"Saving {len(images)} images to {images_dir}")
+            print(f"Saving {len(images)} images to {output_dir}")
             for img_name, img in images.items():
                 try:
                     # Create a valid filename from the image name
                     safe_filename = "".join(c for c in img_name if c.isalnum() or c in ('-', '_', '.'))
-                    output_path = images_dir / f"{safe_filename}"
+                    output_path = output_dir / safe_filename
                     
                     # Save the image
                     img.save(output_path)

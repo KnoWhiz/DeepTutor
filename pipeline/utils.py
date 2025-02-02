@@ -7,7 +7,13 @@ import json
 import langid
 import streamlit as st
 
+from typing import List, Tuple, Dict
 from pathlib import Path
+from PIL import Image
+from marker.converters.pdf import PdfConverter
+from marker.models import create_model_dict
+from marker.output import text_from_rendered
+from marker.settings import settings
 
 from langchain_community.document_loaders import PyPDFLoader, PyMuPDFLoader
 from streamlit_float import *
@@ -77,7 +83,11 @@ def extract_documents_from_file(file, filename):
     # Load the document
     loader = PyMuPDFLoader(file_path)
     documents = loader.load()
-    return documents
+
+    # file path
+    file_paths = os.path.join(input_dir, filename)
+
+    return documents, file_paths
 
 
 # Find pages with the given excerpts in the document
@@ -175,15 +185,12 @@ def get_llm(llm_type, para):
     llm_basic = api.models['basic']['instance']
     llm_advance = api.models['advance']['instance']
     llm_creative = api.models['creative']['instance']
-    llm_deepseek_basic = api.models['deepseek_basic']['instance']
     if llm_type == 'basic':
         return llm_basic
     elif llm_type == 'advance':
         return llm_advance
     elif llm_type == 'creative':
         return llm_creative
-    elif llm_type == 'deepseek_basic':
-        return llm_deepseek_basic
     return llm_basic
 
 
@@ -259,3 +266,152 @@ def translate_content(content: str, target_lang: str) -> str:
     })
 
     return translated_content
+
+
+def extract_images_from_pdf(
+    pdf_doc: fitz.Document,
+    output_dir: str | Path,
+    min_size: Tuple[int, int] = (50, 50)  # Minimum size to filter out tiny images
+) -> List[str]:
+    """
+    Extract images from a PDF file and save them to the specified directory.
+    
+    Args:
+        pdf_doc: fitz.Document object
+        output_dir: Directory where images will be saved
+        min_size: Minimum dimensions (width, height) for images to be extracted
+    
+    Returns:
+        List of paths to the extracted image files. But currently only supports png or jpg.
+    
+    Raises:
+        FileNotFoundError: If PDF file doesn't exist
+        PermissionError: If output directory can't be created/accessed
+        ValueError: If PDF file is invalid
+    """
+    # Convert paths to Path objects for better handling
+    output_dir = Path(output_dir)
+    
+    # Create output directory if it doesn't exist
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    # List to store paths of extracted images
+    extracted_images: List[str] = []
+    
+    try:
+        # Open the PDF
+        pdf_document = pdf_doc
+        
+        # Counter for naming images
+        image_counter = 1
+        
+        # Iterate through each page
+        for page_num in range(pdf_document.page_count):
+            page = pdf_document[page_num]
+            
+            # Get images from page
+            images = page.get_images()
+            
+            # Process each image
+            for image_index, image in enumerate(images):
+                # Get image data
+                base_image = pdf_document.extract_image(image[0])
+                image_bytes = base_image["image"]
+                image_ext = base_image["ext"]
+                
+                # Get image size
+                img_xref = image[0]
+                pix = fitz.Pixmap(pdf_document, img_xref)
+                
+                # Skip images smaller than min_size
+                if pix.width < min_size[0] or pix.height < min_size[1]:
+                    continue
+                
+                # Generate image filename
+                image_filename = f"{image_counter}.{image_ext}"
+                image_path = output_dir / image_filename
+                
+                # Save image
+                with open(image_path, "wb") as img_file:
+                    img_file.write(image_bytes)
+                
+                extracted_images.append(str(image_path))
+                image_counter += 1
+        
+        return extracted_images
+    
+    except Exception as e:
+        raise ValueError(f"Error processing PDF: {str(e)}")
+    
+    finally:
+        if 'pdf_document' in locals():
+            pdf_document.close()
+
+
+def extract_pdf_content_to_markdown(
+    pdf_path: str | Path,
+    output_dir: str | Path,
+) -> Tuple[str, Dict[str, Image.Image]]:
+    """
+    Extract text and images from a PDF file and save them to the specified directory.
+    
+    Args:
+        pdf_path: Path to the input PDF file
+        output_dir: Directory where images and markdown will be saved
+    
+    Returns:
+        Tuple containing:
+        - Path to the saved markdown file
+        - Dictionary of image names and their PIL Image objects
+    
+    Raises:
+        FileNotFoundError: If PDF file doesn't exist
+        OSError: If output directory cannot be created
+        Exception: For other processing errors
+    """
+    # Validate input PDF exists
+    pdf_path = Path(pdf_path)
+    if not pdf_path.exists():
+        raise FileNotFoundError(f"PDF file not found: {pdf_path}")
+
+    # Create output directory
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        # Initialize converter and process PDF
+        converter = PdfConverter(
+            artifact_dict=create_model_dict(),
+        )
+        rendered = converter(str(pdf_path))
+        text, _, images = text_from_rendered(rendered)
+
+        # Save markdown content
+        md_path = output_dir / f"{pdf_path.stem}.md"
+        with open(md_path, "w", encoding="utf-8") as f:
+            f.write(text)
+        print(f"Saved markdown to: {md_path}")
+
+        # Save images
+        saved_images = {}
+        if images:
+            print(f"Saving {len(images)} images to {output_dir}")
+            for img_name, img in images.items():
+                try:
+                    # Create a valid filename from the image name
+                    safe_filename = "".join(c for c in img_name if c.isalnum() or c in ('-', '_', '.'))
+                    output_path = output_dir / safe_filename
+                    
+                    # Save the image
+                    img.save(output_path)
+                    saved_images[img_name] = img
+                    print(f"Saved image: {output_path}")
+                except Exception as e:
+                    print(f"Error saving image {img_name}: {str(e)}")
+        else:
+            print("No images found in the PDF")
+
+        return str(md_path), saved_images
+
+    except Exception as e:
+        raise Exception(f"Error processing PDF: {str(e)}")

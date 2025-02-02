@@ -82,15 +82,18 @@ class ApiHandler:
         llm_creative = self.get_models(api_key=self.api_key, endpoint=self.azure_endpoint, api_version='2024-06-01', deployment_name='gpt-4o', temperature=self.para['creative_temperature'], host='azure')
         llm_deepseek = self.get_models(api_key=self.deepseek_api_key, endpoint=self.azure_endpoint, api_version='2024-06-01', deployment_name='deepseek-chat', temperature=self.para['temperature'], host='deepseek')
 
-        models = {
-            # 'basic': {'instance': llm_basic, 'context_window': 128000},
-            # 'advance': {'instance': llm_advance, 'context_window': 128000},
-            # 'creative': {'instance': llm_creative, 'context_window': 128000},
-            'basic': {'instance': llm_deepseek, 'context_window': 128000},
-            'advance': {'instance': llm_deepseek, 'context_window': 128000},
-            'creative': {'instance': llm_deepseek, 'context_window': 128000},
-            'deepseek_basic': {'instance': llm_deepseek, 'context_window': 128000},
-        }
+        if self.para['llm_source'] == 'openai':
+            models = {
+                'basic': {'instance': llm_basic, 'context_window': 128000},
+                'advance': {'instance': llm_advance, 'context_window': 128000},
+                'creative': {'instance': llm_creative, 'context_window': 128000},
+            }
+        elif self.para['llm_source'] == 'deepseek':
+            models = {
+                'basic': {'instance': llm_deepseek, 'context_window': 128000},
+                'advance': {'instance': llm_deepseek, 'context_window': 128000},
+                'creative': {'instance': llm_deepseek, 'context_window': 128000},
+            }
         return models
 
 

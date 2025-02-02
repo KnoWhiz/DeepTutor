@@ -44,7 +44,7 @@ from pipeline.utils import (
 )
 
 
-def tutor_agent(mode, _doc, _documents, user_input, chat_history, embedding_folder):
+def tutor_agent(mode, _doc, _documents, file_paths, user_input, chat_history, embedding_folder):
     """
     Taking the user input, documents, and chat history, generate a response and sources.
     If user_input is None, generates the initial welcome message.
@@ -73,7 +73,7 @@ def tutor_agent(mode, _doc, _documents, user_input, chat_history, embedding_fold
     # Refine user input
     refined_user_input = get_query_helper(user_input, chat_history, embedding_folder)
     # Get response
-    answer = get_response(mode, _doc, _documents, refined_user_input, chat_history, embedding_folder)
+    answer = get_response(mode, _doc, _documents, file_paths, refined_user_input, chat_history, embedding_folder)
     # Get sources
     sources = get_response_source(_doc, _documents, refined_user_input, answer, chat_history, embedding_folder)
 
@@ -88,13 +88,13 @@ def tutor_agent(mode, _doc, _documents, user_input, chat_history, embedding_fold
     return answer, sources
 
 
-def get_response(mode, _doc, _documents, user_input, chat_history, embedding_folder):
+def get_response(mode, _doc, _documents, file_paths, user_input, chat_history, embedding_folder):
     # TEST
     print("Current language:", st.session_state.language)
 
     if mode == 'Advanced':
         try:
-            answer = get_GraphRAG_global_response(_doc,_documents, user_input, chat_history, embedding_folder)
+            answer = get_GraphRAG_global_response(_doc, _documents, user_input, chat_history, embedding_folder)
             return answer
         except Exception as e:
             print("Error getting response from GraphRAG:", e)
@@ -108,7 +108,7 @@ def get_response(mode, _doc, _documents, user_input, chat_history, embedding_fol
     embeddings = get_embedding_models('default', para)
 
     # Check if all necessary files exist to load the embeddings
-    generate_embedding(_documents, embedding_folder)
+    generate_embedding(_documents, _doc, file_paths, embedding_folder)
 
     # Load existing embeddings
     print("Loading existing embeddings...")

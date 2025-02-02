@@ -1,6 +1,6 @@
 {
     "llm": {
-        "llm_source": "deepseek",
+        "llm_source": "openai",
         "level": "advance",
         "temperature": 0,
         "creative_temperature": 0.5,

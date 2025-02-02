@@ -53,11 +53,11 @@ def process_pdf_file(file, filename):
     documents: Contains chunked/split text content optimized for embedding and retrieval
     doc: Contains the complete PDF structure including pages, formatting, and visual elements
     """
-    documents = extract_documents_from_file(file, filename)
+    documents, file_paths = extract_documents_from_file(file, filename)
     doc = fitz.open(stream=io.BytesIO(file), filetype="pdf")
     st.session_state.doc = doc
     st.session_state.total_pages = len(doc)
-    return documents, doc
+    return documents, doc, file_paths
 
 
 # Function to save the file locally as a text file
@@ -78,7 +78,7 @@ def save_file_locally(file, filename, embedding_folder):
     output_file_path = os.path.join(GraphRAG_embedding_input_folder, f"{base_name}.txt")
 
     # Extract text from the PDF using the provided utility function
-    documents = extract_documents_from_file(file, filename)
+    documents, file_paths = extract_documents_from_file(file, filename)
 
     # Write the extracted text into a .txt file
     # If the file does not exist, it will be created

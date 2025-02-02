@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 def extract_images_from_pdf(
-    pdf_path: str | Path,
+    pdf_doc: fitz.Document,
     output_dir: str | Path,
     min_size: Tuple[int, int] = (50, 50)  # Minimum size to filter out tiny images
 ) -> List[str]:
@@ -13,7 +13,7 @@ def extract_images_from_pdf(
     Extract images from a PDF file and save them to the specified directory.
     
     Args:
-        pdf_path: Path to the PDF file
+        pdf_doc: fitz.Document object
         output_dir: Directory where images will be saved
         min_size: Minimum dimensions (width, height) for images to be extracted
     
@@ -26,12 +26,7 @@ def extract_images_from_pdf(
         ValueError: If PDF file is invalid
     """
     # Convert paths to Path objects for better handling
-    pdf_path = Path(pdf_path)
     output_dir = Path(output_dir)
-    
-    # Validate inputs
-    if not pdf_path.exists():
-        raise FileNotFoundError(f"PDF file not found: {pdf_path}")
     
     # Create output directory if it doesn't exist
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -41,7 +36,7 @@ def extract_images_from_pdf(
     
     try:
         # Open the PDF
-        pdf_document = fitz.open(pdf_path)
+        pdf_document = pdf_doc
         
         # Counter for naming images
         image_counter = 1
@@ -92,12 +87,13 @@ def extract_images_from_pdf(
 if __name__ == "__main__":
     # Example usage
     pdf_path = "/Users/bingran_you/Downloads/Toward Keyword Generation through Large Language Models.pdf"
+    pdf_doc = fitz.open(pdf_path)
     output_dir = "extracted_images"
     
     try:
         # Set minimum size to 100x100 pixels
         extracted_files = extract_images_from_pdf(
-            pdf_path, 
+            pdf_doc, 
             output_dir,
             min_size=(100, 100)  # Adjust these values as needed
         )

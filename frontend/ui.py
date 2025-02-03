@@ -308,8 +308,16 @@ def show_pdf_viewer(file):
     with st.container():
         st.markdown("""
         <style>
-        .fullHeight {height : 80vh;
-                    width : 100%}
+        .fullHeight {
+            height: 80vh;
+            width: 100%;
+            max-width: 100%;
+            overflow: auto;
+        }
+        .stPdfViewer {
+            width: 100% !important;
+            height: auto !important;
+        }
         </style>
         """, unsafe_allow_html=True)
     
@@ -318,10 +326,10 @@ def show_pdf_viewer(file):
     with pdf_container:
         pdf_viewer(
             file,
-            width=1000,
+            width="100%",
             annotations=st.session_state.annotations,
             pages_to_render=[st.session_state.current_page],
-            render_text=True,
+            render_text=True
         )
 
     # Create three columns for the navigation controls

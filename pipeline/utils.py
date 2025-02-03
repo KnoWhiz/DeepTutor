@@ -1,4 +1,5 @@
 import os
+import io
 import hashlib
 import shutil
 import fitz
@@ -6,14 +7,26 @@ import tiktoken
 import json
 import langid
 import streamlit as st
+import requests
+import base64
+import time
+from dotenv import load_dotenv
 
 from typing import List, Tuple, Dict
 from pathlib import Path
 from PIL import Image
-# from marker.converters.pdf import PdfConverter
-# from marker.models import create_model_dict
-# from marker.output import text_from_rendered
-# from marker.settings import settings
+
+load_dotenv()
+# Control whether to use Marker API or not. Only for local environment we skip Marker API.
+SKIP_MARKER_API = True if os.getenv("ENVIRONMENT") == "local" else False
+
+print(f"SKIP_MARKER_API: {SKIP_MARKER_API}")
+
+if SKIP_MARKER_API:
+    from marker.converters.pdf import PdfConverter
+    from marker.models import create_model_dict
+    from marker.output import text_from_rendered
+    from marker.settings import settings
 
 from langchain_community.document_loaders import PyPDFLoader, PyMuPDFLoader
 from streamlit_float import *
@@ -26,8 +39,6 @@ from pipeline.api_handler import ApiHandler
 
 # from config import load_config
 # from api_handler import ApiHandler
-
-os.environ['OPENCV_IO_ENABLE_JASPER'] = '1'
 
 
 def robust_search_for(page, text, chunk_size=512):
@@ -371,6 +382,11 @@ def extract_pdf_content_to_markdown(
         OSError: If output directory cannot be created
         Exception: For other processing errors
     """
+    from marker.converters.pdf import PdfConverter
+    from marker.models import create_model_dict
+    from marker.output import text_from_rendered
+    from marker.settings import settings
+
     # Validate input PDF exists
     pdf_path = Path(pdf_path)
     if not pdf_path.exists():
@@ -417,3 +433,119 @@ def extract_pdf_content_to_markdown(
 
     except Exception as e:
         raise Exception(f"Error processing PDF: {str(e)}")
+    
+
+def extract_pdf_content_to_markdown_via_api(
+    pdf_path: str | Path,
+    output_dir: str | Path,
+) -> Tuple[str, Dict[str, Image.Image]]:
+    """
+    Extract text and images from a PDF file using the Marker API and save them to the specified directory.
+    
+    Args:
+        pdf_path: Path to the input PDF file
+        output_dir: Directory where images and markdown will be saved
+    
+    Returns:
+        Tuple containing:
+        - Path to the saved markdown file
+        - Dictionary of image names and their PIL Image objects
+    
+    Raises:
+        FileNotFoundError: If PDF file doesn't exist
+        OSError: If output directory cannot be created
+        Exception: For API errors or processing failures
+    """
+    # Load environment variables and validate input
+    load_dotenv()
+    API_KEY = os.getenv("MARKER_API_KEY")
+    if not API_KEY:
+        raise ValueError("MARKER_API_KEY not found in environment variables")
+
+    # Validate input PDF exists
+    pdf_path = Path(pdf_path)
+    if not pdf_path.exists():
+        raise FileNotFoundError(f"PDF file not found: {pdf_path}")
+
+    # Create output directory
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    API_URL = "https://www.datalab.to/api/v1/marker"
+    
+    # Submit the file to API
+    with open(pdf_path, "rb") as f:
+        form_data = {
+            "file": (str(pdf_path), f, "application/pdf"),
+            "langs": (None, "English"),
+            "force_ocr": (None, False),
+            "paginate": (None, False),
+            "output_format": (None, "markdown"),
+            "use_llm": (None, False),
+            "strip_existing_ocr": (None, False),
+            "disable_image_extraction": (None, False),
+        }
+        headers = {"X-Api-Key": API_KEY}
+        response = requests.post(API_URL, files=form_data, headers=headers)
+
+    # Check initial response
+    data = response.json()
+    if not data.get("success"):
+        raise Exception(f"API request failed: {data.get('error')}")
+
+    request_check_url = data.get("request_check_url")
+    print(f"Submitted request. Polling for results...")
+
+    # Poll until processing is complete
+    max_polls = 300
+    poll_interval = 2
+    result = None
+    
+    for i in range(max_polls):
+        time.sleep(poll_interval)
+        poll_response = requests.get(request_check_url, headers=headers)
+        result = poll_response.json()
+        status = result.get("status")
+        print(f"Poll {i+1}: status = {status}")
+        if status == "complete":
+            break
+    else:
+        raise Exception("The request did not complete within the expected time.")
+
+    # Process and save results
+    if not result.get("success"):
+        raise Exception(f"Processing failed: {result.get('error')}")
+
+    # Save markdown content
+    markdown = result.get("markdown", "")
+    md_path = output_dir / f"{pdf_path.stem}.md"
+    with open(md_path, "w", encoding="utf-8") as md_file:
+        md_file.write(markdown)
+    print(f"Saved markdown to: {md_path}")
+
+    # Process and save images
+    saved_images: Dict[str, Image.Image] = {}
+    images = result.get("images", {})
+    
+    if images:
+        print(f"Processing {len(images)} images...")
+        for filename, b64data in images.items():
+            try:
+                # Create PIL Image from base64 data
+                image_data = base64.b64decode(b64data)
+                img = Image.open(io.BytesIO(image_data))
+                
+                # Create a valid filename
+                safe_filename = "".join(c for c in filename if c.isalnum() or c in ('-', '_', '.'))
+                output_path = output_dir / safe_filename
+                
+                # Save the image
+                img.save(output_path)
+                saved_images[filename] = img
+                print(f"Saved image: {output_path}")
+            except Exception as e:
+                print(f"Error saving image {filename}: {e}")
+    else:
+        print("No images were returned with the result")
+
+    return str(md_path), saved_images

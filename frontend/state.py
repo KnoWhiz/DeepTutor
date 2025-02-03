@@ -6,8 +6,8 @@ from pipeline.utils import extract_documents_from_file
 import hashlib
 import json
 
-# Control whether to skip authentication for local testing
-SKIP_AUTH = True if os.getenv("ENVIRONMENT") == "local" else False
+# Control whether to skip authentication for local or staging environment.
+SKIP_AUTH = True if os.getenv("ENVIRONMENT") == "local" or os.getenv("ENVIRONMENT") == "staging" else False
 
 
 # Function to initialize the session state

@@ -10,8 +10,8 @@ import streamlit as st
 import requests
 import base64
 import time
-from dotenv import load_dotenv
 
+from dotenv import load_dotenv
 from typing import List, Tuple, Dict
 from pathlib import Path
 from PIL import Image

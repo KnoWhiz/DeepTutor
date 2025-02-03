@@ -39,7 +39,7 @@ def get_context_window(lines: List[str], target_line_idx: int) -> List[str]:
     
     return context
 
-def extract_image_context(folder_dir: str) -> None:
+def extract_image_context(folder_dir: str, context_tokens: int = 500) -> None:
     """
     Scan the given folder for image files and a markdown file.
     For each image file, search the markdown file for lines that mention the image filename,
@@ -100,4 +100,4 @@ def extract_image_context(folder_dir: str) -> None:
 if __name__ == "__main__":
     # folder_dir = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/16005aaa19145334b5605c6bf61661a0/markdown/"
     folder_dir = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/c8773c4a9a62ca3bafd2010d3d0093f5/markdown"
-    extract_image_context(folder_dir)
+    extract_image_context(folder_dir) 

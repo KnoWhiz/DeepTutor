@@ -79,9 +79,9 @@ def save_file_locally(file, filename, embedding_folder):
     # Create folders if they do not exist
     os.makedirs(GraphRAG_embedding_input_folder, exist_ok=True)
 
-    # Generate a shorter filename using hash
+    # Generate a shorter filename using hash, and it should be unique and consistent for the same file
     base_name = os.path.splitext(filename)[0]
-    hashed_name = hashlib.md5(base_name.encode()).hexdigest()[:8]  # Use first 8 chars of hash
+    hashed_name = hashlib.md5(file).hexdigest()[:8]  # Use first 8 chars of hash
     output_file_path = os.path.join(GraphRAG_embedding_input_folder, f"{hashed_name}.txt")
 
     # Extract text from the PDF using the provided utility function

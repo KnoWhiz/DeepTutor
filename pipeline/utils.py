@@ -173,6 +173,17 @@ def truncate_document(_document, model_name='gpt-4o'):
     else:
         model_level = 'basic'
     max_tokens = int(api.models[model_level]['context_window']/1.2)
+
+    # TEST
+    print(f"max_tokens: {max_tokens}")
+    print(f"model_name: {model_name}")
+    print(f"model_level: {model_level}")
+    print(f"api.models[model_level]: {api.models[model_level]}")
+    print(f"api.models[model_level]['context_window']: {api.models[model_level]['context_window']}")
+    print(f"api.models[model_level]['context_window']/1.2: {api.models[model_level]['context_window']/1.2}")
+    print(f"int(api.models[model_level]['context_window']/1.2): {int(api.models[model_level]['context_window']/1.2)}")
+    # TEST
+    
     _document = str(_document)
     document_tokens = count_tokens(_document, model_name)
     if document_tokens > max_tokens:

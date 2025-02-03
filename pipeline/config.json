@@ -1,6 +1,6 @@
 {
     "llm": {
-        "llm_source": "openai",
+        "llm_source": "azure",
         "level": "advance",
         "temperature": 0,
         "creative_temperature": 0.5,

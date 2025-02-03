@@ -8,6 +8,8 @@ from streamlit_float import float_init, float_parent, float_css_helper
 from streamlit_extras.stylable_container import stylable_container
 import streamlit.components.v1 as components
 from streamlit_js_eval import streamlit_js_eval
+import os
+from PIL import Image
 
 from frontend.utils import previous_page, next_page, close_pdf, chat_content
 from pipeline.utils import find_pages_with_excerpts, get_highlight_info, translate_content
@@ -213,9 +215,18 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                     print("Final sources:")
                     pprint.pprint(sources)
 
-                    # Store source-to-page mapping
-                    source_pages = {}
+                    # Separate image sources from text sources
+                    image_sources = []
+                    text_sources = []
                     for source in sources:
+                        if any(source.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif']):
+                            image_sources.append(source)
+                        else:
+                            text_sources.append(source)
+
+                    # Store source-to-page mapping for text sources only
+                    source_pages = {}
+                    for source in text_sources:
                         pages_with_excerpts = find_pages_with_excerpts(doc, [source])
                         if pages_with_excerpts:
                             source_pages[source] = pages_with_excerpts[0] + 1
@@ -225,31 +236,43 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                         {"role": "assistant", "content": answer}
                     )
                     
-                    # Add source buttons to chat history
+                    # Add source buttons to chat history (text sources only)
                     st.session_state.chat_history.append({
                         "role": "source_buttons",
-                        "sources": sources,
+                        "sources": text_sources,
                         "pages": source_pages,
                         "timestamp": len(st.session_state.chat_history)  # Use as unique key for buttons
                     })
                     
                     with st.chat_message("assistant", avatar=tutor_avatar):
                         st.write(answer)
+                        # Display images if any
+                        if image_sources:
+                            st.write("📸 Related images:")
+                            for img_source in image_sources:
+                                try:
+                                    image_path = os.path.join(embedding_folder, "markdown", img_source)
+                                    if os.path.exists(image_path):
+                                        image = Image.open(image_path)
+                                        st.image(image, caption=img_source, use_container_width=True)
+                                except Exception as e:
+                                    st.error(f"Error displaying image {img_source}: {str(e)}")
                     
-                    # Display source buttons immediately
-                    if sources and len(sources) > 0:
-                        cols = st.columns(len(sources))
-                        for idx, (col, source) in enumerate(zip(cols, sources), 1):
+                    # Display source buttons immediately (text sources only)
+                    if text_sources and len(text_sources) > 0:
+                        cols = st.columns(len(text_sources))
+                        for idx, (col, source) in enumerate(zip(cols, text_sources), 1):
                             page_num = source_pages.get(source)
                             if page_num:
                                 with col:
                                     if st.button(to_emoji_number(idx), key=f"source_btn_{idx}_current", use_container_width=True):
                                         st.session_state.current_page = page_num
                                         st.session_state.annotations = get_highlight_info(doc, [source])
-                    else:
+                    elif not image_sources:  # Only show "no sources" message if there are no images either
                         st.info("No relevant sources found for this response.")
                     
-                    st.session_state.sources = sources
+                    # Store all sources in session state for PDF highlighting
+                    st.session_state.sources = text_sources  # Only store text sources for highlighting
                     st.session_state.chat_occurred = True
 
                 except json.JSONDecodeError:

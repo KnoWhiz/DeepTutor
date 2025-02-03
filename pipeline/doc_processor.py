@@ -1,4 +1,5 @@
 import os
+import json
 import yaml
 import fitz
 import asyncio
@@ -16,6 +17,7 @@ from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
 from langchain.output_parsers import OutputFixingParser
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_core.documents import Document
 
 # GraphRAG imports
 import graphrag.api as api
@@ -109,6 +111,16 @@ def generate_embedding(_documents, _doc, pdf_path, embedding_folder):
             embedding_folder, embeddings, allow_dangerous_deserialization=True
         )
     else:
+        # Extract content to markdown via API
+        if not SKIP_MARKER_API:
+            print("Marker API is enabled. Using Marker API to extract content to markdown.")
+            markdown_dir = os.path.join(embedding_folder, "markdown")
+            extract_pdf_content_to_markdown_via_api(pdf_path, markdown_dir)
+        else:
+            print("Marker API is disabled. Using local PDF extraction.")
+            markdown_dir = os.path.join(embedding_folder, "markdown")
+            extract_pdf_content_to_markdown(pdf_path, markdown_dir)
+
         # Split the documents into chunks
         print("Creating new embeddings...")
         text_splitter = RecursiveCharacterTextSplitter(
@@ -117,6 +129,15 @@ def generate_embedding(_documents, _doc, pdf_path, embedding_folder):
         )
         texts = text_splitter.split_documents(_documents)
         print(f"length of document chunks generated for get_response_source:{len(texts)}")
+
+        # Append the image context to the texts
+        image_context_path = os.path.join(embedding_folder, "markdown/image_context.json")
+        with open(image_context_path, "r") as f:
+            image_context = json.load(f)
+        # Append each image context list of strings to the texts. Note that we need to convert each string to a Document object.
+        for image, context in image_context.items():
+            for c in context:
+                texts.append(Document(page_content=c, metadata={"source": image}))
 
         # Create the vector store to use as the index
         db = FAISS.from_documents(texts, embeddings)
@@ -133,16 +154,6 @@ def generate_embedding(_documents, _doc, pdf_path, embedding_folder):
         # # Extract content to markdown
         # markdown_dir = os.path.join(embedding_folder, "markdown")
         # extract_pdf_content_to_markdown(pdf_path, markdown_dir)
-
-        # Extract content to markdown via API
-        if not SKIP_MARKER_API:
-            print("Marker API is enabled. Using Marker API to extract content to markdown.")
-            markdown_dir = os.path.join(embedding_folder, "markdown")
-            extract_pdf_content_to_markdown_via_api(pdf_path, markdown_dir)
-        else:
-            print("Marker API is disabled. Using local PDF extraction.")
-            markdown_dir = os.path.join(embedding_folder, "markdown")
-            extract_pdf_content_to_markdown(pdf_path, markdown_dir)
 
     return
 

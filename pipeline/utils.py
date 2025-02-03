@@ -15,10 +15,18 @@ from dotenv import load_dotenv
 from typing import List, Tuple, Dict
 from pathlib import Path
 from PIL import Image
-# from marker.converters.pdf import PdfConverter
-# from marker.models import create_model_dict
-# from marker.output import text_from_rendered
-# from marker.settings import settings
+
+load_dotenv()
+# Control whether to use Marker API or not. Only for local environment we skip Marker API.
+SKIP_MARKER_API = True if os.getenv("ENVIRONMENT") == "local" else False
+
+print(f"SKIP_MARKER_API: {SKIP_MARKER_API}")
+
+if SKIP_MARKER_API:
+    from marker.converters.pdf import PdfConverter
+    from marker.models import create_model_dict
+    from marker.output import text_from_rendered
+    from marker.settings import settings
 
 from langchain_community.document_loaders import PyPDFLoader, PyMuPDFLoader
 from streamlit_float import *
@@ -31,8 +39,6 @@ from pipeline.api_handler import ApiHandler
 
 # from config import load_config
 # from api_handler import ApiHandler
-
-os.environ['OPENCV_IO_ENABLE_JASPER'] = '1'
 
 
 def robust_search_for(page, text, chunk_size=512):
@@ -376,6 +382,11 @@ def extract_pdf_content_to_markdown(
         OSError: If output directory cannot be created
         Exception: For other processing errors
     """
+    from marker.converters.pdf import PdfConverter
+    from marker.models import create_model_dict
+    from marker.output import text_from_rendered
+    from marker.settings import settings
+
     # Validate input PDF exists
     pdf_path = Path(pdf_path)
     if not pdf_path.exists():

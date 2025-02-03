@@ -84,6 +84,11 @@ from pipeline.utils import (
 )
 
 
+load_dotenv()
+# Control whether to use Marker API or not. Only for local environment we skip Marker API.
+SKIP_MARKER_API = True if os.getenv("ENVIRONMENT") == "local" else False
+
+
 def generate_embedding(_documents, _doc, pdf_path, embedding_folder):
     config = load_config()
     para = config['llm']
@@ -128,8 +133,14 @@ def generate_embedding(_documents, _doc, pdf_path, embedding_folder):
         # extract_pdf_content_to_markdown(pdf_path, markdown_dir)
 
         # Extract content to markdown via API
-        markdown_dir = os.path.join(embedding_folder, "markdown")
-        extract_pdf_content_to_markdown_via_api(pdf_path, markdown_dir)
+        if not SKIP_MARKER_API:
+            print("Marker API is enabled. Using Marker API to extract content to markdown.")
+            markdown_dir = os.path.join(embedding_folder, "markdown")
+            extract_pdf_content_to_markdown_via_api(pdf_path, markdown_dir)
+        else:
+            print("Marker API is disabled. Using local PDF extraction.")
+            markdown_dir = os.path.join(embedding_folder, "markdown")
+            extract_pdf_content_to_markdown(pdf_path, markdown_dir)
 
     return
 

@@ -17,60 +17,36 @@ def count_tokens(text: str) -> int:
     # a proper tokenizer from transformers or tiktoken
     return len(text.split())
 
-def get_context_window(lines: List[str], target_line_idx: int, max_tokens: int) -> List[str]:
+def get_context_window(lines: List[str], target_line_idx: int) -> List[str]:
     """
-    Get surrounding context around a target line within token limit.
+    Get only the second line following a target line.
     
     Parameters:
         lines (List[str]): All lines from the document
         target_line_idx (int): Index of the target line
-        max_tokens (int): Maximum number of tokens for the context window
         
     Returns:
-        List[str]: Context lines within token budget
+        List[str]: Context line (only the second line after target, if it exists)
     """
     context: List[str] = []
-    current_tokens = 0
     
-    # Add the target line first
-    target_line = lines[target_line_idx]
-    context.append(target_line)
-    current_tokens += count_tokens(target_line)
+    # Look for the second line after target
+    next_idx = target_line_idx + 2
+    if next_idx < len(lines):
+        next_line = lines[next_idx].strip()
+        if next_line:  # Only add non-empty line
+            context.append(next_line)
     
-    # Expand context in both directions
-    left_idx = target_line_idx - 1
-    right_idx = target_line_idx + 1
-    
-    while current_tokens < max_tokens and (left_idx >= 0 or right_idx < len(lines)):
-        # Try to add line from left
-        if left_idx >= 0:
-            left_line = lines[left_idx]
-            left_tokens = count_tokens(left_line)
-            if current_tokens + left_tokens <= max_tokens:
-                context.insert(0, left_line)
-                current_tokens += left_tokens
-            left_idx -= 1
-            
-        # Try to add line from right
-        if right_idx < len(lines):
-            right_line = lines[right_idx]
-            right_tokens = count_tokens(right_line)
-            if current_tokens + right_tokens <= max_tokens:
-                context.append(right_line)
-                current_tokens += right_tokens
-            right_idx += 1
-            
     return context
 
-def extract_image_context(folder_dir: str, context_tokens: int = 500) -> None:
+def extract_image_context(folder_dir: str) -> None:
     """
     Scan the given folder for image files and a markdown file.
     For each image file, search the markdown file for lines that mention the image filename,
-    including surrounding context within a token limit.
+    including only the second line after each mention.
     
     Parameters:
         folder_dir (str): The path to the folder containing image files and one markdown file
-        context_tokens (int): Maximum number of tokens to include in context window around each mention
     
     Output:
         A JSON file named 'image_context.json' is written to the folder.
@@ -106,9 +82,10 @@ def extract_image_context(folder_dir: str, context_tokens: int = 500) -> None:
         contexts = []
         for idx, line in enumerate(md_lines):
             if image in line:
-                # Get context window around this mention
-                context_window = get_context_window(md_lines, idx, context_tokens)
-                contexts.append("\n".join(context_window))
+                # Get only the second line after this mention
+                context_window = get_context_window(md_lines, idx)
+                if context_window:  # Only add if we found a valid context line
+                    contexts.append(context_window[0])
         
         if contexts:
             image_context[image] = contexts
@@ -123,4 +100,4 @@ def extract_image_context(folder_dir: str, context_tokens: int = 500) -> None:
 if __name__ == "__main__":
     # folder_dir = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/16005aaa19145334b5605c6bf61661a0/markdown/"
     folder_dir = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/c8773c4a9a62ca3bafd2010d3d0093f5/markdown"
-    extract_image_context(folder_dir, context_tokens=500)
+    extract_image_context(folder_dir)

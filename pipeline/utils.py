@@ -16,6 +16,15 @@ from typing import List, Tuple, Dict
 from pathlib import Path
 from PIL import Image
 
+from langchain_community.document_loaders import PyPDFLoader, PyMuPDFLoader
+from streamlit_float import *
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+from langchain.output_parsers import OutputFixingParser
+
+from pipeline.config import load_config
+from pipeline.api_handler import ApiHandler
+
 
 load_dotenv()
 # Control whether to use Marker API or not. Only for local environment we skip Marker API.
@@ -28,18 +37,6 @@ if SKIP_MARKER_API:
     from marker.models import create_model_dict
     from marker.output import text_from_rendered
     from marker.settings import settings
-
-from langchain_community.document_loaders import PyPDFLoader, PyMuPDFLoader
-from streamlit_float import *
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-from langchain.output_parsers import OutputFixingParser
-
-from pipeline.config import load_config
-from pipeline.api_handler import ApiHandler
-
-# from config import load_config
-# from api_handler import ApiHandler
 
 
 def robust_search_for(page, text, chunk_size=512):

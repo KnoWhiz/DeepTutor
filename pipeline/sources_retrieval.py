@@ -1,5 +1,6 @@
 import os
 import pprint
+import json
 from dotenv import load_dotenv
 
 from langchain_community.vectorstores import FAISS
@@ -26,6 +27,17 @@ def get_response_source(_doc, _documents, user_input, answer, chat_history, embe
     config = load_config()
     para = config['llm']
     embeddings = get_embedding_models('default', para)
+
+    # Load image context
+    image_context_path = os.path.join(embedding_folder, "markdown/image_context.json")
+    with open(image_context_path, 'r') as f:
+        image_context = json.loads(f.read())
+    
+    # Create reverse mapping from description to image name. But note that multiple descriptions can map to the same image name.
+    image_mapping = {}
+    for image_name, descriptions in image_context.items():
+        for desc in descriptions:
+            image_mapping[desc] = image_name
 
     # Define the default filenames used by FAISS when saving
     faiss_path = os.path.join(embedding_folder, "index.faiss")
@@ -68,6 +80,9 @@ def get_response_source(_doc, _documents, user_input, answer, chat_history, embe
 
     # Combine sources from question and answer and remove duplicates
     sources = list(set(sources_question + sources_answer))
+
+    # Replace matching sources with image names
+    sources = [image_mapping.get(source, source) for source in sources]
 
     # TEST
     # Display the list of strings in a beautiful way

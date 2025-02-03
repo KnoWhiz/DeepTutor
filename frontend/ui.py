@@ -1,6 +1,7 @@
 import json
 import base64
 import PyPDF2
+import pprint
 import streamlit as st
 from streamlit_pdf_viewer import pdf_viewer
 from streamlit_float import float_init, float_parent, float_css_helper
@@ -209,8 +210,9 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                     # Validate sources
                     sources = sources if all(isinstance(s, str) for s in sources) else []
                     # Print sources
-                    print("Source content:", sources)
-                    
+                    print("Final sources:")
+                    pprint.pprint(sources)
+
                     # Store source-to-page mapping
                     source_pages = {}
                     for source in sources:

@@ -1,4 +1,5 @@
 import os
+import pprint
 from dotenv import load_dotenv
 
 from langchain_community.vectorstores import FAISS
@@ -69,14 +70,18 @@ def get_response_source(_doc, _documents, user_input, answer, chat_history, embe
     sources = list(set(sources_question + sources_answer))
 
     # TEST
-    print(f"sources before refine: {sources}")
+    # Display the list of strings in a beautiful way
+    print("sources before refine:")
+    pprint.pprint(sources)
     print(f"length of sources before refine: {len(sources)}")
 
     # Refine and limit sources
     sources = refine_sources(_doc, _documents, sources)
 
     # TEST
-    print(f"sources after refine: {sources}")
+    # Display the list of strings in a beautiful way
+    print("sources after refine:")
+    pprint.pprint(sources)
     print(f"length of sources after refine: {len(sources)}")
     return sources
 

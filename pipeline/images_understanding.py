@@ -62,7 +62,7 @@ def get_context_window(lines: List[str], target_line_idx: int, max_tokens: int) 
             
     return context
 
-def extract_image_context(folder_dir: str, context_tokens: int = 100) -> None:
+def extract_image_context(folder_dir: str, context_tokens: int = 500) -> None:
     """
     Scan the given folder for image files and a markdown file.
     For each image file, search the markdown file for lines that mention the image filename,

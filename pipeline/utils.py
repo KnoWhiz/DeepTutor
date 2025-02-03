@@ -24,6 +24,7 @@ from langchain.output_parsers import OutputFixingParser
 
 from pipeline.config import load_config
 from pipeline.api_handler import ApiHandler
+from pipeline.images_understanding import extract_image_context
 
 
 load_dotenv()
@@ -183,7 +184,7 @@ def truncate_document(_document, model_name='gpt-4o'):
     print(f"api.models[model_level]['context_window']/1.2: {api.models[model_level]['context_window']/1.2}")
     print(f"int(api.models[model_level]['context_window']/1.2): {int(api.models[model_level]['context_window']/1.2)}")
     # TEST
-    
+
     _document = str(_document)
     document_tokens = count_tokens(_document, model_name)
     if document_tokens > max_tokens:
@@ -438,6 +439,9 @@ def extract_pdf_content_to_markdown(
         else:
             print("No images found in the PDF")
 
+        # Extract image context
+        extract_image_context(output_dir)
+
         return str(md_path), saved_images
 
     except Exception as e:
@@ -556,5 +560,8 @@ def extract_pdf_content_to_markdown_via_api(
                 print(f"Error saving image {filename}: {e}")
     else:
         print("No images were returned with the result")
+
+    # Extract image context
+    extract_image_context(output_dir)
 
     return str(md_path), saved_images

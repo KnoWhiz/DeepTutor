@@ -122,9 +122,14 @@ def generate_embedding(_documents, _doc, pdf_path, embedding_folder):
             extract_pdf_content_to_markdown(pdf_path, markdown_dir)
 
         # Split the documents into chunks
+        # The chunk size should be 1/3 of the average length of each document page
+        average_page_length = sum(len(doc.page_content) for doc in _documents) / len(_documents)
+        chunk_size = average_page_length // 3
+        print(f"Average page length: {average_page_length}")
+        print(f"Chunk size: {chunk_size}")
         print("Creating new embeddings...")
         text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=config['embedding']['chunk_size'],
+            chunk_size=chunk_size,
             chunk_overlap=config['embedding']['chunk_overlap']
         )
         texts = text_splitter.split_documents(_documents)

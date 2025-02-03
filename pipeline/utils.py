@@ -440,7 +440,9 @@ def extract_pdf_content_to_markdown(
             print("No images found in the PDF")
 
         # Extract image context
-        extract_image_context(output_dir)
+        config = load_config()
+        chunk_size = config['embedding']['chunk_size']
+        extract_image_context(output_dir, chunk_size)
 
         return str(md_path), saved_images
 
@@ -562,6 +564,8 @@ def extract_pdf_content_to_markdown_via_api(
         print("No images were returned with the result")
 
     # Extract image context
-    extract_image_context(output_dir)
+    config = load_config()
+    chunk_size = config['embedding']['chunk_size']
+    extract_image_context(output_dir, chunk_size)
 
     return str(md_path), saved_images

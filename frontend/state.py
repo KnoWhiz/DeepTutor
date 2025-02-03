@@ -1,13 +1,18 @@
 import os
-import streamlit as st
 import fitz
 import io
-from pipeline.utils import extract_documents_from_file
-import hashlib
 import json
+import hashlib
+import streamlit as st
 
+from dotenv import load_dotenv
+from pipeline.utils import extract_documents_from_file
+
+
+load_dotenv()
 # Control whether to skip authentication for local or staging environment.
 SKIP_AUTH = True if os.getenv("ENVIRONMENT") == "local" or os.getenv("ENVIRONMENT") == "staging" else False
+print(f"SKIP_AUTH: {SKIP_AUTH}")
 
 
 # Function to initialize the session state

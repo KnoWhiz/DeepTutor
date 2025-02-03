@@ -3,9 +3,10 @@ import yaml
 import fitz
 import asyncio
 import pandas as pd
+import streamlit as st
+
 from pathlib import Path
 from dotenv import load_dotenv
-import streamlit as st
 
 from langchain_community.vectorstores import FAISS
 from langchain_core.runnables import RunnablePassthrough
@@ -87,6 +88,7 @@ from pipeline.utils import (
 load_dotenv()
 # Control whether to use Marker API or not. Only for local environment we skip Marker API.
 SKIP_MARKER_API = True if os.getenv("ENVIRONMENT") == "local" else False
+print(f"SKIP_MARKER_API: {SKIP_MARKER_API}")
 
 
 def generate_embedding(_documents, _doc, pdf_path, embedding_folder):

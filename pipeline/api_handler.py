@@ -76,6 +76,7 @@ class ApiHandler:
                 # max_retries=2,
             )
 
+
     def load_models(self):
         llm_basic = self.get_models(api_key=self.api_key, endpoint=self.azure_endpoint, api_version='2024-07-01-preview', deployment_name='gpt-4o-mini', temperature=self.para['temperature'], host='azure')
         llm_advance = self.get_models(api_key=self.api_key, endpoint=self.azure_endpoint, api_version='2024-06-01', deployment_name='gpt-4o', temperature=self.para['temperature'], host='azure')

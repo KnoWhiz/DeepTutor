@@ -16,11 +16,12 @@ from typing import List, Tuple, Dict
 from pathlib import Path
 from PIL import Image
 
+
 load_dotenv()
 # Control whether to use Marker API or not. Only for local environment we skip Marker API.
 SKIP_MARKER_API = True if os.getenv("ENVIRONMENT") == "local" else False
-
 print(f"SKIP_MARKER_API: {SKIP_MARKER_API}")
+
 
 if SKIP_MARKER_API:
     from marker.converters.pdf import PdfConverter

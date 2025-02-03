@@ -1,6 +1,6 @@
 {
     "llm": {
-        "llm_source": "openai",
+        "llm_source": "azure",
         "level": "advance",
         "temperature": 0,
         "creative_temperature": 0.5,
@@ -8,39 +8,23 @@
         "anthropic_key_dir": ".env"
     },
     "embedding": {
-        "chunk_size": 2000,
+        "chunk_size": 500,
         "chunk_overlap": 0
     },
     "retriever": {
         "search_type": "similarity",
-        "k": 10
+        "k": 5
     },
     "sources_retriever": {
         "search_type": "similarity",
-        "k": 20
+        "k": 5
     },
     "languages": {
         "🇺🇸 English": "English",
-        "🇨🇳 中文": "Chinese", 
-        "🇪🇸 Español": "Spanish",
-        "🇫🇷 Français": "French",
-        "🇩🇪 Deutsch": "German",
-        "🇯🇵 日本語": "Japanese",
-        "🇰🇷 한국어": "Korean",
-        "🇮🇳 हिन्दी": "Hindi",
-        "🇵🇹 Português": "Portuguese",
-        "🇮🇹 Italiano": "Italian"
+        "🇨🇳 中文": "Chinese"
     },
     "languages_short": {
         "en": "English",
-        "zh": "Chinese", 
-        "es": "Spanish",
-        "fr": "French",
-        "de": "German",
-        "ja": "Japanese",
-        "ko": "Korean",
-        "hi": "Hindi",
-        "pt": "Portuguese",
-        "it": "Italian"
+        "zh": "Chinese"
     }
 }

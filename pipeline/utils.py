@@ -10,23 +10,11 @@ import streamlit as st
 import requests
 import base64
 import time
-from dotenv import load_dotenv
 
+from dotenv import load_dotenv
 from typing import List, Tuple, Dict
 from pathlib import Path
 from PIL import Image
-
-load_dotenv()
-# Control whether to use Marker API or not. Only for local environment we skip Marker API.
-SKIP_MARKER_API = True if os.getenv("ENVIRONMENT") == "local" else False
-
-print(f"SKIP_MARKER_API: {SKIP_MARKER_API}")
-
-if SKIP_MARKER_API:
-    from marker.converters.pdf import PdfConverter
-    from marker.models import create_model_dict
-    from marker.output import text_from_rendered
-    from marker.settings import settings
 
 from langchain_community.document_loaders import PyPDFLoader, PyMuPDFLoader
 from streamlit_float import *
@@ -36,9 +24,20 @@ from langchain.output_parsers import OutputFixingParser
 
 from pipeline.config import load_config
 from pipeline.api_handler import ApiHandler
+from pipeline.images_understanding import extract_image_context
 
-# from config import load_config
-# from api_handler import ApiHandler
+
+load_dotenv()
+# Control whether to use Marker API or not. Only for local environment we skip Marker API.
+SKIP_MARKER_API = True if os.getenv("ENVIRONMENT") == "local" else False
+print(f"SKIP_MARKER_API: {SKIP_MARKER_API}")
+
+
+if SKIP_MARKER_API:
+    from marker.converters.pdf import PdfConverter
+    from marker.models import create_model_dict
+    from marker.output import text_from_rendered
+    from marker.settings import settings
 
 
 def robust_search_for(page, text, chunk_size=512):
@@ -175,6 +174,17 @@ def truncate_document(_document, model_name='gpt-4o'):
     else:
         model_level = 'basic'
     max_tokens = int(api.models[model_level]['context_window']/1.2)
+
+    # TEST
+    print(f"max_tokens: {max_tokens}")
+    print(f"model_name: {model_name}")
+    print(f"model_level: {model_level}")
+    print(f"api.models[model_level]: {api.models[model_level]}")
+    print(f"api.models[model_level]['context_window']: {api.models[model_level]['context_window']}")
+    print(f"api.models[model_level]['context_window']/1.2: {api.models[model_level]['context_window']/1.2}")
+    print(f"int(api.models[model_level]['context_window']/1.2): {int(api.models[model_level]['context_window']/1.2)}")
+    # TEST
+
     _document = str(_document)
     document_tokens = count_tokens(_document, model_name)
     if document_tokens > max_tokens:
@@ -429,6 +439,11 @@ def extract_pdf_content_to_markdown(
         else:
             print("No images found in the PDF")
 
+        # Extract image context
+        config = load_config()
+        chunk_size = config['embedding']['chunk_size']
+        extract_image_context(output_dir, chunk_size)
+
         return str(md_path), saved_images
 
     except Exception as e:
@@ -547,5 +562,10 @@ def extract_pdf_content_to_markdown_via_api(
                 print(f"Error saving image {filename}: {e}")
     else:
         print("No images were returned with the result")
+
+    # Extract image context
+    config = load_config()
+    chunk_size = config['embedding']['chunk_size']
+    extract_image_context(output_dir, chunk_size)
 
     return str(md_path), saved_images

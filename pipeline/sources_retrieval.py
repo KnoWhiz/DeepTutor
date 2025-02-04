@@ -91,7 +91,8 @@ def get_response_source(_doc, _documents, user_input, answer, chat_history, embe
     print(f"length of sources before refine: {len(sources)}")
 
     # Refine and limit sources
-    sources = refine_sources(_doc, _documents, sources)
+    markdown_dir = os.path.join(embedding_folder, "markdown")
+    sources = refine_sources(_doc, _documents, sources, markdown_dir)
 
     # TEST
     # Display the list of strings in a beautiful way
@@ -101,19 +102,35 @@ def get_response_source(_doc, _documents, user_input, answer, chat_history, embe
     return sources
 
 
-def refine_sources(_doc, _documents, sources):
+def refine_sources(_doc, _documents, sources, markdown_dir):
     """
     Refine sources by checking if they can be found in the document
     Only get first 20 sources
     Show them in the order they are found in the document
+    Preserve image filenames without filtering them
     """
     refined_sources = []
+    image_sources = []
+    
+    # First separate image sources from text sources
+    text_sources = []
+    for source in sources:
+        # Check if source looks like an image filename (has image extension)
+        if any(source.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.bmp']):
+            image_sources.append(source)
+        else:
+            text_sources.append(source)
+    
+    # Process text sources as before
     for page in _doc:
-        for source in sources:
+        for source in text_sources:
             text_instances = robust_search_for(page, source)
             if text_instances:
                 refined_sources.append(source)
-    return refined_sources[:20]
+    
+    # Combine image sources with refined text sources
+    final_sources = image_sources + refined_sources
+    return final_sources[:20]
 
 
 class PageAwareTextSplitter(RecursiveCharacterTextSplitter):

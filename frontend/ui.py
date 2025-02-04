@@ -69,14 +69,21 @@ def show_header():
             unsafe_allow_html=True
         )
         st.subheader(" ")
-        st.subheader("Upload a document to get started.")
+        # st.subheader("Upload a document to get started.")
+
+
+# Function to display the response mode options
+def show_mode_option():
+    with st.sidebar:
+        mode_index = 0
+        st.session_state.mode = st.radio("Basic model (faster) or Advanced model (slower but more accurate)?", options=["Basic", "Advanced"], index=mode_index)
 
 
 # Function to display the file uploader
 def show_file_upload(on_change=None):
     with st.sidebar:
         previous_file = st.session_state.get('uploaded_file', None)
-        current_file = st.file_uploader(" ", type="pdf", on_change=on_change)
+        current_file = st.file_uploader("Upload a document to get started.", type="pdf", on_change=on_change)
         
         # Check if file has changed
         if previous_file is not None and current_file is not None:
@@ -89,14 +96,6 @@ def show_file_upload(on_change=None):
         # Set upload state
         if st.session_state.get('is_uploaded_file', None):
             st.session_state['is_uploaded_file'] = True
-
-
-# Function to display the response mode options
-def show_mode_option(uploaded_file):
-    with st.sidebar:
-        disabled = uploaded_file is not None
-        mode_index = 0
-        st.session_state.mode = st.radio("Basic model (faster) or Advanced model (slower but more accurate)?", options=["Basic", "Advanced"], index=mode_index, disabled=disabled)
 
 
 # Function to display the language selection options in the sidebar

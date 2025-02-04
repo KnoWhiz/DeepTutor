@@ -81,12 +81,13 @@ if st.session_state['isAuth']:
     show_header()
 
 
-    # Show file uploader and response mode options in the sidebar
+    # Show mode selection and file uploader in the sidebar
     if 'is_uploaded_file' not in st.session_state:
         st.session_state['is_uploaded_file'] = False
+
+    # Move mode selection before file upload
+    show_mode_option()
     show_file_upload(on_change=handle_file_change)
-    # uploaded_file = st.session_state.uploaded_file
-    show_mode_option(st.session_state.get('uploaded_file', None))
     show_language_option()
     show_page_option()
     show_footer()

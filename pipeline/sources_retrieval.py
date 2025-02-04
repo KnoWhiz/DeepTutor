@@ -92,7 +92,7 @@ def get_response_source(_doc, _documents, user_input, answer, chat_history, embe
 
     # Refine and limit sources
     markdown_dir = os.path.join(embedding_folder, "markdown")
-    sources = refine_sources(_doc, _documents, sources, markdown_dir)
+    sources = refine_sources(_doc, _documents, sources, markdown_dir, user_input)
 
     # TEST
     # Display the list of strings in a beautiful way
@@ -102,7 +102,7 @@ def get_response_source(_doc, _documents, user_input, answer, chat_history, embe
     return sources
 
 
-def refine_sources(_doc, _documents, sources, markdown_dir):
+def refine_sources(_doc, _documents, sources, markdown_dir, user_input):
     """
     Refine sources by checking if they can be found in the document
     Only get first 20 sources

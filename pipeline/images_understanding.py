@@ -2,6 +2,7 @@ import os
 import json
 import sys
 from typing import Dict, List, Set
+from pathlib import Path
 
 # Add the project root to Python path for direct script execution
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -52,36 +53,114 @@ def get_context_window(lines: List[str], target_line_idx: int) -> List[str]:
     
     return context
 
-def extract_image_context(folder_dir: str, context_tokens: int = 500) -> None:
+def upload_images_to_azure(folder_dir: str | Path) -> None:
+    """
+    Upload images from the given folder to Azure Blob storage and create a mapping file.
+    The images will be stored in the format '/course_id/images/...'
+    If an image already exists in Azure storage, it will be skipped.
+    
+    Parameters:
+        folder_dir (str | Path): The path to the folder containing image files
+        
+    Output:
+        A JSON file named 'image_urls.json' is written to the folder.
+        The JSON contains a dictionary mapping image filenames to their Azure URLs.
+    """
+    # Convert to Path object if it's a string
+    folder_path = Path(folder_dir) if isinstance(folder_dir, str) else folder_dir
+    
+    # Define the image file extensions we care about
+    image_extensions: Set[str] = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp', '.svg'}
+    
+    # Extract course_id from the folder path
+    course_id = folder_path.parts[-2]
+    
+    # List all image files in the folder
+    image_files = [f for f in os.listdir(folder_path) if os.path.splitext(f.lower())[1] in image_extensions]
+    if not image_files:
+        print("No image files found in the folder.")
+        return
+        
+    # Initialize Azure Blob helper
+    azure_blob = AzureBlobHelper()
+    container_name = "knowhiztutorrag"
+    
+    # Check if image_urls.json already exists and load it
+    output_path = folder_path / 'image_urls.json'
+    image_urls: Dict[str, str] = {}
+    if output_path.exists():
+        with open(output_path, 'r', encoding='utf-8') as infile:
+            image_urls = json.load(infile)
+            print("Loaded existing image_urls.json")
+    
+    # Upload each image and store its URL if not already uploaded
+    for image_file in image_files:
+        # Skip if image is already in our mapping
+        if image_file in image_urls:
+            print(f"Skipping {image_file} - already uploaded")
+            continue
+            
+        local_path = folder_path / image_file
+        blob_name = f"file_appendix/{course_id}/images/{image_file}"
+        
+        try:
+            # Check if blob already exists
+            blob_client = azure_blob.blob_service_client.get_blob_client(container=container_name, blob=blob_name)
+            if blob_client.exists():
+                url = f"https://{azure_blob.blob_service_client.account_name}.blob.core.windows.net/{container_name}/{blob_name}"
+                image_urls[image_file] = url
+                print(f"Skipping {image_file} - already exists in Azure storage")
+                continue
+                
+            # Upload only if doesn't exist
+            azure_blob.upload(str(local_path), blob_name, container_name)
+            url = f"https://{azure_blob.blob_service_client.account_name}.blob.core.windows.net/{container_name}/{blob_name}"
+            image_urls[image_file] = url
+            print(f"Uploaded {image_file}")
+        except Exception as e:
+            print(f"Error processing {image_file}: {e}")
+            continue
+    
+    # Write the updated URL mapping to JSON file
+    with open(output_path, 'w', encoding='utf-8') as outfile:
+        json.dump(image_urls, outfile, indent=2, ensure_ascii=False)
+    
+    print(f"Image URLs mapping saved to: {output_path}")
+
+def extract_image_context(folder_dir: str | Path, context_tokens: int = 500) -> None:
     """
     Scan the given folder for image files and a markdown file.
     For each image file, search the markdown file for lines that mention the image filename,
     including only the second line after each mention.
     
     Parameters:
-        folder_dir (str): The path to the folder containing image files and one markdown file
+        folder_dir (str | Path): The path to the folder containing image files and one markdown file
+        context_tokens (int): Maximum number of tokens in context (default: 500)
     
     Output:
         A JSON file named 'image_context.json' is written to the folder.
         The JSON contains a dictionary mapping image filenames to a list of context strings.
     """
+    # Convert to Path object if it's a string
+    folder_path = Path(folder_dir) if isinstance(folder_dir, str) else folder_dir
+    
     # Define the image file extensions we care about
     image_extensions: Set[str] = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp', '.svg'}
 
     # List all image files in the folder (case-insensitive match)
-    image_files = [f for f in os.listdir(folder_dir) if os.path.splitext(f.lower())[1] in image_extensions]
+    image_files = [f for f in os.listdir(folder_path) if os.path.splitext(f.lower())[1] in image_extensions]
     if not image_files:
         print("No image files found in the folder.")
         return
 
     # Find the markdown file (assuming there's only one .md file)
-    md_files = [f for f in os.listdir(folder_dir) if f.lower().endswith('.md')]
+    md_files = [f for f in os.listdir(folder_path) if f.lower().endswith('.md')]
     if not md_files:
         print("No markdown file found in the folder.")
         return
     
     md_file = md_files[0]
-    md_path = os.path.join(folder_dir, md_file)
+    md_path = folder_path / md_file
     
     # Read the content of the markdown file
     with open(md_path, 'r', encoding='utf-8') as f:
@@ -104,66 +183,14 @@ def extract_image_context(folder_dir: str, context_tokens: int = 500) -> None:
             image_context[image] = contexts
     
     # Write the dictionary to a JSON file in the same folder
-    output_path = os.path.join(folder_dir, 'image_context.json')
+    output_path = folder_path / 'image_context.json'
     with open(output_path, 'w', encoding='utf-8') as outfile:
         json.dump(image_context, outfile, indent=2, ensure_ascii=False)
 
     # Save images to Azure Blob Storage
-    upload_images_to_azure(folder_dir)
+    upload_images_to_azure(folder_path)
     
     print(f"Image context data saved to: {output_path}")
-
-def upload_images_to_azure(folder_dir: str) -> None:
-    """
-    Upload images from the given folder to Azure Blob storage and create a mapping file.
-    The images will be stored in the format '/course_id/images/...'
-    
-    Parameters:
-        folder_dir (str): The path to the folder containing image files
-        
-    Output:
-        A JSON file named 'image_urls.json' is written to the folder.
-        The JSON contains a dictionary mapping image filenames to their Azure URLs.
-    """
-    # Define the image file extensions we care about
-    image_extensions: Set[str] = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp', '.svg'}
-    
-    # Extract course_id from the folder path
-    # Example path: .../embedded_content/c8773c4a9a62ca3bafd2010d3d0093f5/markdown
-    course_id = folder_dir.split('/')[-2]
-    
-    # List all image files in the folder
-    image_files = [f for f in os.listdir(folder_dir) if os.path.splitext(f.lower())[1] in image_extensions]
-    if not image_files:
-        print("No image files found in the folder.")
-        return
-        
-    # Initialize Azure Blob helper
-    azure_blob = AzureBlobHelper()
-    container_name = "knowhiztutorrag"  # Using the same container as in azure_blob.py
-    
-    # Dictionary to store image filename to URL mapping
-    image_urls: Dict[str, str] = {}
-    
-    # Upload each image and store its URL
-    for image_file in image_files:
-        local_path = os.path.join(folder_dir, image_file)
-        blob_name = f"file_appendix/{course_id}/images/{image_file}"
-        
-        try:
-            azure_blob.upload(local_path, blob_name, container_name)
-            url = f"https://{azure_blob.blob_service_client.account_name}.blob.core.windows.net/{container_name}/{blob_name}"
-            image_urls[image_file] = url
-        except Exception as e:
-            print(f"Error uploading {image_file}: {e}")
-            continue
-    
-    # Write the URL mapping to a JSON file
-    output_path = os.path.join(folder_dir, 'image_urls.json')
-    with open(output_path, 'w', encoding='utf-8') as outfile:
-        json.dump(image_urls, outfile, indent=2, ensure_ascii=False)
-    
-    print(f"Image URLs mapping saved to: {output_path}")
 
 if __name__ == "__main__":
     # folder_dir = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/16005aaa19145334b5605c6bf61661a0/markdown/"

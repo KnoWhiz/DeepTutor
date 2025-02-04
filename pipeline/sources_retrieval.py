@@ -107,7 +107,7 @@ def refine_sources(_doc, _documents, sources, markdown_dir, user_input):
     Refine sources by checking if they can be found in the document
     Only get first 20 sources
     Show them in the order they are found in the document
-    Preserve image filenames but filter them based on context relevance
+    Preserve image filenames but filter them based on context relevance using LLM
     """
     refined_sources = []
     image_sources = []
@@ -126,37 +126,113 @@ def refine_sources(_doc, _documents, sources, markdown_dir, user_input):
         else:
             text_sources.append(source)
     
-    # Filter image sources based on context similarity
+    # Filter image sources based on LLM evaluation
     filtered_images = []
     if image_sources:
-        # Initialize embeddings for similarity comparison
+        # Initialize LLM for relevance evaluation
         config = load_config()
         para = config['llm']
-        embeddings = get_embedding_models('default', para)
+        llm = get_llm('basic', para)
+        parser = JsonOutputParser()
+        error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
+
+        # Create prompt for image relevance evaluation
+        system_prompt = """
+        You are an expert at evaluating the relevance between a user's question and image descriptions.
+        Given a user's question and descriptions of an image, determine if the image is relevant and provide a relevance score.
         
-        # Get embedding for user input
-        user_input_embedding = embeddings.embed_query(user_input)
+        First, analyze the image descriptions to identify the actual figure number in the document (e.g., "Figure 1", "Fig. 2", etc.).
+        Then evaluate the relevance considering both the actual figure number and the content.
         
-        # Calculate similarity scores for each image's contexts
+        Organize your response in the following JSON format:
+        ```json
+        {{
+            "actual_figure_number": "<extracted figure number from descriptions, e.g. 'Figure 1', 'Fig. 2', etc.>",
+            "is_relevant": <Boolean, True/False>,
+            "relevance_score": <float between 0 and 1>,
+            "explanation": "<brief explanation including actual figure number and why this image is or isn't relevant>"
+        }}
+        ```
+        
+        Pay special attention to:
+        1. If the user asks about a specific figure number (e.g., "Figure 1"), prioritize matching the ACTUAL figure number from descriptions, NOT the filename
+        2. The semantic meaning and context of both the question and image descriptions
+        3. Whether the image would help answer the user's question
+        4. Look for figure number mentions in the descriptions like "Figure X", "Fig. X", "Figure-X", etc.
+        """
+        
+        human_prompt = """
+        User's question: {question}
+        Image descriptions:
+        {descriptions}
+        
+        Note: The image filename may not reflect the actual figure number in the document. Please extract the actual figure number from the descriptions.
+        """
+        
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", system_prompt),
+            ("human", human_prompt),
+        ])
+        
+        chain = prompt | llm | error_parser
+        
+        # Evaluate each image
         image_scores = []
         for image in image_sources:
             if image in image_context:
                 # Get all context descriptions for this image
-                contexts = image_context[image]
-                # Calculate max similarity score among all contexts
-                max_score = 0
-                for context in contexts:
-                    context_embedding = embeddings.embed_query(context)
-                    similarity = cosine_similarity(user_input_embedding, context_embedding)
-                    max_score = max(max_score, similarity)
-                image_scores.append((image, max_score))
+                descriptions = image_context[image]
+                descriptions_text = "\n".join([f"- {desc}" for desc in descriptions])
+                
+                # Evaluate relevance using LLM
+                try:
+                    result = chain.invoke({
+                        "question": user_input,
+                        "descriptions": descriptions_text
+                    })
+                    
+                    # Store both the actual figure number and score
+                    if result["is_relevant"]:
+                        image_scores.append((
+                            image,
+                            result["relevance_score"],
+                            result["actual_figure_number"],
+                            result["explanation"]
+                        ))
+                    print(f"image_scores for {image}: {image_scores}")
+                    print(f"result for {image}: {result}")
+                except Exception as e:
+                    print(f"Error evaluating image {image}: {e}")
+                    continue
         
-        # Sort images by similarity score and keep only the most relevant single image
+        # Sort images by relevance score
         image_scores.sort(key=lambda x: x[1], reverse=True)
-        # Keep images with similarity score above threshold (e.g., 0.2)
-        filtered_images = [img for img, score in image_scores if score > 0.2]
+        
+        # Filter images with high relevance score
+        filtered_images = [(img, fig_num, expl) for img, score, fig_num, expl in image_scores if score > 0.2]
+        
         if filtered_images:
-            filtered_images = [filtered_images[0]]  # Keep only the most relevant image as a list
+            # If asking about a specific figure, prioritize exact figure number match
+            import re
+            figure_pattern = re.compile(r'fig(?:ure)?\.?\s*(\d+)', re.IGNORECASE)
+            user_figure_match = figure_pattern.search(user_input)
+            
+            if user_figure_match:
+                user_figure_num = user_figure_match.group(1)
+                # Look for exact figure number match first
+                exact_matches = [
+                    (img, fig_num, expl) for img, fig_num, expl in filtered_images 
+                    if re.search(rf'(?:figure|fig)\.?\s*{user_figure_num}\b', fig_num, re.IGNORECASE)
+                ]
+                if exact_matches:
+                    filtered_images = [exact_matches[0]]  # Take the highest scored exact match
+            
+            # If no specific figure was asked for or no exact match found, take the highest scored image
+            if not filtered_images:
+                filtered_images = [filtered_images[0]]
+            
+            # Keep only the image filename for further processing
+            filtered_images = [img for img, _, _ in filtered_images]
     
     # Process text sources as before
     for page in _doc:

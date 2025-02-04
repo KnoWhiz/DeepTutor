@@ -1,4 +1,5 @@
 import os
+import json
 import pandas as pd
 import streamlit as st
 from dotenv import load_dotenv
@@ -77,6 +78,19 @@ def tutor_agent(mode, _doc, _documents, file_paths, user_input, chat_history, em
     # Get sources
     sources = get_response_source(_doc, _documents, refined_user_input, answer, chat_history, embedding_folder)
 
+    images_sources = []
+    # If the sources have images, append the image URL (in image_urls.json mapping) to the end of the answer in markdown format, and remove the image name string from the sources
+    if sources:
+        image_url_path = os.path.join(embedding_folder, "markdown/image_urls.json")
+        with open(image_url_path, 'r') as f:
+            image_url_mapping = json.load(f)
+        for source in sources[:]:  # Create a copy of the list to safely remove items
+            if any(source.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.svg']):
+                image_url = image_url_mapping.get(source, None)
+                if image_url:
+                    images_sources.append(image_url)
+                    sources.remove(source)
+
     answer = f"""Are you asking: **{refined_user_input}**
     """ + "\n" + answer
 
@@ -85,6 +99,12 @@ def tutor_agent(mode, _doc, _documents, file_paths, user_input, chat_history, em
         content=answer,
         target_lang=st.session_state.language
     )
+
+    # Append images URL in markdown format to the end of the answer
+    if images_sources:
+        for image_source in images_sources:
+            answer += "\n"
+            answer += f"![]({image_source})"
     return answer, sources
 
 
@@ -302,7 +322,7 @@ def get_query_helper(user_input, chat_history, embedding_folder):
         """
         You are a educational professor helping a student reading a document {context}.
         The goals are:
-        1. to ask questions in a better way to make sure it’s optimized to query a Vector Database for RAG (Retrieval Augmented Generation).
+        1. to ask questions in a better way to make sure it's optimized to query a Vector Database for RAG (Retrieval Augmented Generation).
         2. to identify the question is about local or global context of the document.
 
         Organize final response in the following JSON format:

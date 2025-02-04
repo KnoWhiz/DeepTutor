@@ -107,10 +107,15 @@ def refine_sources(_doc, _documents, sources, markdown_dir, user_input):
     Refine sources by checking if they can be found in the document
     Only get first 20 sources
     Show them in the order they are found in the document
-    Preserve image filenames without filtering them
+    Preserve image filenames but filter them based on context relevance
     """
     refined_sources = []
     image_sources = []
+    
+    # Load image context
+    image_context_path = os.path.join(markdown_dir, "image_context.json")
+    with open(image_context_path, 'r') as f:
+        image_context = json.load(f)
     
     # First separate image sources from text sources
     text_sources = []
@@ -121,6 +126,38 @@ def refine_sources(_doc, _documents, sources, markdown_dir, user_input):
         else:
             text_sources.append(source)
     
+    # Filter image sources based on context similarity
+    filtered_images = []
+    if image_sources:
+        # Initialize embeddings for similarity comparison
+        config = load_config()
+        para = config['llm']
+        embeddings = get_embedding_models('default', para)
+        
+        # Get embedding for user input
+        user_input_embedding = embeddings.embed_query(user_input)
+        
+        # Calculate similarity scores for each image's contexts
+        image_scores = []
+        for image in image_sources:
+            if image in image_context:
+                # Get all context descriptions for this image
+                contexts = image_context[image]
+                # Calculate max similarity score among all contexts
+                max_score = 0
+                for context in contexts:
+                    context_embedding = embeddings.embed_query(context)
+                    similarity = cosine_similarity(user_input_embedding, context_embedding)
+                    max_score = max(max_score, similarity)
+                image_scores.append((image, max_score))
+        
+        # Sort images by similarity score and keep only the most relevant single image
+        image_scores.sort(key=lambda x: x[1], reverse=True)
+        # Keep images with similarity score above threshold (e.g., 0.2)
+        filtered_images = [img for img, score in image_scores if score > 0.2]
+        if filtered_images:
+            filtered_images = [filtered_images[0]]  # Keep only the most relevant image as a list
+    
     # Process text sources as before
     for page in _doc:
         for source in text_sources:
@@ -128,10 +165,16 @@ def refine_sources(_doc, _documents, sources, markdown_dir, user_input):
             if text_instances:
                 refined_sources.append(source)
     
-    # Combine image sources with refined text sources
-    final_sources = image_sources + refined_sources
+    # Combine filtered image sources with refined text sources
+    final_sources = filtered_images + refined_sources
     return final_sources[:20]
 
+def cosine_similarity(vec1, vec2):
+    """Calculate cosine similarity between two vectors"""
+    dot_product = sum(a * b for a, b in zip(vec1, vec2))
+    norm1 = sum(a * a for a in vec1) ** 0.5
+    norm2 = sum(b * b for b in vec2) ** 0.5
+    return dot_product / (norm1 * norm2) if norm1 * norm2 != 0 else 0
 
 class PageAwareTextSplitter(RecursiveCharacterTextSplitter):
     """Custom text splitter that respects page boundaries"""

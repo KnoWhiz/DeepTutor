@@ -97,7 +97,9 @@ def get_response_source(_doc, _documents, user_input, answer, chat_history, embe
     # TEST
     # Display the list of strings in a beautiful way
     print("sources after refine:")
-    pprint.pprint(sources)
+    for source in sources:
+        # pprint.pprint(source)
+        print(source)
     print(f"length of sources after refine: {len(sources)}")
     return sources
 
@@ -121,7 +123,7 @@ def refine_sources(_doc, _documents, sources, markdown_dir, user_input):
     text_sources = []
     for source in sources:
         # Check if source looks like an image filename (has image extension)
-        if any(source.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.bmp']):
+        if any(source.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.svg']):
             image_sources.append(source)
         else:
             text_sources.append(source)

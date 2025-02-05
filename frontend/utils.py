@@ -34,6 +34,25 @@ def chat_content():
 # Function to handle follow-up question clicks
 def handle_follow_up_click(question: str):
     st.session_state.next_question = question
+    
+    # Create a temporary chat history for context-specific follow-up questions
+    temp_chat_history = []
+    
+    # Find the last assistant message that generated this follow-up question
+    for i in range(len(st.session_state.chat_history) - 1, -1, -1):
+        msg = st.session_state.chat_history[i]
+        if msg["role"] == "assistant" and "follow_up_questions" in msg:
+            if question in msg["follow_up_questions"]:
+                # Include the context: previous user question and assistant's response
+                if i > 0 and st.session_state.chat_history[i-1]["role"] == "user":
+                    temp_chat_history.append(st.session_state.chat_history[i-1])  # Previous user question
+                temp_chat_history.append(msg)  # Assistant's response
+                break
+    
+    # Store the temporary chat history in session state for the agent to use
+    st.session_state.temp_chat_history = temp_chat_history
+    
+    # Add the new question to the full chat history
     st.session_state.chat_history.append(
         {"role": "user", "content": question}
     )

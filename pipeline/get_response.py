@@ -50,6 +50,14 @@ def tutor_agent(mode, _doc, _documents, file_paths, user_input, chat_history, em
     Taking the user input, documents, and chat history, generate a response and sources.
     If user_input is None, generates the initial welcome message.
     """
+    # Use temporary chat history for follow-up questions if available
+    if hasattr(st.session_state, 'temp_chat_history') and st.session_state.temp_chat_history:
+        context_chat_history = st.session_state.temp_chat_history
+        # Clear the temporary chat history after using it
+        del st.session_state.temp_chat_history
+    else:
+        context_chat_history = chat_history
+
     # Handle initial welcome message when chat history is empty
     if not chat_history:
         try:
@@ -72,11 +80,11 @@ def tutor_agent(mode, _doc, _documents, file_paths, user_input, chat_history, em
 
     # Regular chat flow
     # Refine user input
-    refined_user_input = get_query_helper(user_input, chat_history, embedding_folder)
+    refined_user_input = get_query_helper(user_input, context_chat_history, embedding_folder)
     # Get response
-    answer = get_response(mode, _doc, _documents, file_paths, refined_user_input, chat_history, embedding_folder)
+    answer = get_response(mode, _doc, _documents, file_paths, refined_user_input, context_chat_history, embedding_folder)
     # Get sources
-    sources = get_response_source(_doc, _documents, refined_user_input, answer, chat_history, embedding_folder)
+    sources = get_response_source(_doc, _documents, refined_user_input, answer, context_chat_history, embedding_folder)
 
     images_sources = []
     # If the sources have images, append the image URL (in image_urls.json mapping) to the end of the answer in markdown format, and remove the image name string from the sources
@@ -303,7 +311,7 @@ def get_GraphRAG_global_response(_doc, _documents, user_input, chat_history, emb
     return answer.response
 
 
-def get_query_helper(user_input, chat_history, embedding_folder):
+def get_query_helper(user_input, context_chat_history, embedding_folder):
     # If we have "documents_summary" in the embedding folder, we can use it to speed up the search
     documents_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
     if os.path.exists(documents_summary_path):
@@ -351,7 +359,7 @@ def get_query_helper(user_input, chat_history, embedding_folder):
     chain = prompt | llm | error_parser
     parsed_result = chain.invoke({"input": user_input,
                                   "context": documents_summary,
-                                  "chat_history": truncate_chat_history(chat_history)})
+                                  "chat_history": truncate_chat_history(context_chat_history)})
     question = parsed_result['question']
     question_type = parsed_result['question_type']
     language = detect_language(user_input)

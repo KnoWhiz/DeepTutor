@@ -383,8 +383,8 @@ def generate_follow_up_questions(answer, chat_history):
 
     The questions should be:
     - Clear and specific
+    - Short and concise, no more than 10 words
     - Engaging and thought-provoking
-    - Relevant to the current topic
     - Not repetitive with previous questions
     - Written in a way that encourages critical thinking
 

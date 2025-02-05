@@ -362,3 +362,61 @@ def get_query_helper(user_input, chat_history, embedding_folder):
     # # TEST
     # print("question rephrased:", question)
     return question
+
+
+def generate_follow_up_questions(answer, chat_history):
+    """
+    Generate 3 relevant follow-up questions based on the assistant's response and chat history.
+    """
+    config = load_config()
+    para = config['llm']
+    llm = get_llm('basic', para)
+    parser = JsonOutputParser()
+    error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
+
+    system_prompt = """
+    You are an expert at generating engaging follow-up questions based on a conversation between a tutor and a student.
+    Given the tutor's response and chat history, generate 3 relevant follow-up questions that would help the student:
+    1. Deepen their understanding of the topic
+    2. Explore related concepts
+    3. Apply the knowledge in practical ways
+
+    The questions should be:
+    - Clear and specific
+    - Engaging and thought-provoking
+    - Relevant to the current topic
+    - Not repetitive with previous questions
+    - Written in a way that encourages critical thinking
+
+    Organize your response in the following JSON format:
+    ```json
+    {{
+        "questions": [
+            "<question 1>",
+            "<question 2>",
+            "<question 3>"
+        ]
+    }}
+    ```
+    """
+
+    human_prompt = """
+    Previous conversation history:
+    ```{chat_history}```
+
+    Tutor's last response:
+    ```{answer}```
+    """
+
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", system_prompt),
+        ("human", human_prompt),
+    ])
+
+    chain = prompt | llm | error_parser
+    result = chain.invoke({
+        "answer": answer,
+        "chat_history": truncate_chat_history(chat_history)
+    })
+
+    return result["questions"]

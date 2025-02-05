@@ -179,24 +179,30 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                 with st.chat_message(msg["role"], avatar=avatar):
                     st.write(msg["content"])
                     
-                    # Display stored follow-up questions
+                    # First display source buttons if this message has associated sources
+                    next_msg = st.session_state.chat_history[idx + 1] if idx + 1 < len(st.session_state.chat_history) else None
+                    if next_msg and next_msg["role"] == "source_buttons":
+                        if next_msg["sources"] and len(next_msg["sources"]) > 0:
+                            st.write("\n\n**📚 Sources:**")
+                            cols = st.columns(len(next_msg["sources"]))
+                            for src_idx, (col, source) in enumerate(zip(cols, next_msg["sources"]), 1):
+                                page_num = next_msg["pages"][source]
+                                with col:
+                                    if st.button(to_emoji_number(src_idx), key=f"source_btn_{idx}_{src_idx}", use_container_width=True):
+                                        st.session_state.current_page = page_num
+                                        st.session_state.annotations = get_highlight_info(doc, [source])
+                        else:
+                            st.info("No sources were found for this response.")
+                    
+                    # Then display follow-up questions
                     if "follow_up_questions" in msg:
                         st.write("\n\n**📝 Follow-up Questions:**")
                         for q_idx, question in enumerate(msg["follow_up_questions"], 1):
                             if st.button(f"{q_idx}. {question}", key=f"follow_up_{idx}_{q_idx}"):
                                 handle_follow_up_click(question)
             elif msg["role"] == "source_buttons":
-                # Display source buttons in a row if there are sources
-                if msg["sources"] and len(msg["sources"]) > 0:
-                    cols = st.columns(len(msg["sources"]))
-                    for idx, (col, source) in enumerate(zip(cols, msg["sources"]), 1):
-                        page_num = msg["pages"][source]
-                        with col:
-                            if st.button(to_emoji_number(idx), key=f"source_btn_{idx}_{msg['timestamp']}", use_container_width=True):
-                                st.session_state.current_page = page_num
-                                st.session_state.annotations = get_highlight_info(doc, [source])
-                else:
-                    st.info("No sources were found for this response.")
+                # Skip source buttons here since we're showing them with the assistant message
+                pass
 
         # If there's a next question from follow-up click, process it
         if "next_question" in st.session_state:
@@ -249,26 +255,29 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                         "timestamp": len(st.session_state.chat_history)
                     })
                     
-                    # Display current response with follow-up questions
+                    # Display current response
                     with st.chat_message("assistant", avatar=tutor_avatar):
                         st.write(answer)
+                        
+                        # First display source buttons
+                        if sources and len(sources) > 0:
+                            st.write("\n\n**📚 Sources:**")
+                            cols = st.columns(len(sources))
+                            for idx, (col, source) in enumerate(zip(cols, sources), 1):
+                                page_num = source_pages.get(source)
+                                if page_num:
+                                    with col:
+                                        if st.button(to_emoji_number(idx), key=f"source_btn_{idx}_current", use_container_width=True):
+                                            st.session_state.current_page = page_num
+                                            st.session_state.annotations = get_highlight_info(doc, [source])
+                        else:
+                            st.info("No relevant sources found for this response.")
+                        
+                        # Then display follow-up questions
                         st.write("\n\n**📝 Follow-up Questions:**")
                         for q_idx, question in enumerate(follow_up_questions, 1):
                             if st.button(f"{q_idx}. {question}", key=f"follow_up_current_{q_idx}"):
                                 handle_follow_up_click(question)
-                    
-                    # Display source buttons immediately
-                    if sources and len(sources) > 0:
-                        cols = st.columns(len(sources))
-                        for idx, (col, source) in enumerate(zip(cols, sources), 1):
-                            page_num = source_pages.get(source)
-                            if page_num:
-                                with col:
-                                    if st.button(to_emoji_number(idx), key=f"source_btn_{idx}_current", use_container_width=True):
-                                        st.session_state.current_page = page_num
-                                        st.session_state.annotations = get_highlight_info(doc, [source])
-                    else:
-                        st.info("No relevant sources found for this response.")
 
                     st.session_state.sources = sources
                     st.session_state.chat_occurred = True

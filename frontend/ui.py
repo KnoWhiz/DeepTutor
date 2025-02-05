@@ -9,10 +9,11 @@ from streamlit_extras.stylable_container import stylable_container
 import streamlit.components.v1 as components
 from streamlit_js_eval import streamlit_js_eval
 
-from frontend.utils import previous_page, next_page, close_pdf, chat_content
+from frontend.utils import previous_page, next_page, close_pdf, chat_content, handle_follow_up_click
 from pipeline.utils import find_pages_with_excerpts, get_highlight_info, translate_content
 from frontend.forms.contact import contact_form
 from pipeline.config import load_config
+from pipeline.get_response import generate_follow_up_questions
 
 
 def to_emoji_number(num: int) -> str:
@@ -142,15 +143,7 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
         button_css = float_css_helper(width="1.2rem", bottom=button_b_pos, transition=0)
         float_parent(css=button_css)
 
-    # st.markdown('''
-    #             <style>
-    #             .fullHeight {height : 80vh;
-    #                 width : 100%}
-    #             </style>''', unsafe_allow_html = True)
-
     chat_container = st.container(border=st.session_state.show_chat_border, height=1005)
-
-    # chat_container.markdown("<iframe scr='linke', class = 'fullHeight'></iframe>", unsafe_allow_html = True)
 
     with chat_container:
         # Generate initial welcome message if chat history is empty
@@ -165,8 +158,14 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                     chat_history=[],
                     embedding_folder=embedding_folder
                 )
+                # Generate follow-up questions for initial message
+                follow_up_questions = generate_follow_up_questions(initial_message, [])
                 st.session_state.chat_history.append(
-                    {"role": "assistant", "content": initial_message}
+                    {
+                        "role": "assistant", 
+                        "content": initial_message,
+                        "follow_up_questions": follow_up_questions
+                    }
                 )
 
         # Display chat history
@@ -179,6 +178,13 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                 avatar = professor_avatar if st.session_state.mode == "Advanced" else tutor_avatar
                 with st.chat_message(msg["role"], avatar=avatar):
                     st.write(msg["content"])
+                    
+                    # Display stored follow-up questions
+                    if "follow_up_questions" in msg:
+                        st.write("\n\n**📝 Follow-up Questions:**")
+                        for q_idx, question in enumerate(msg["follow_up_questions"], 1):
+                            if st.button(f"{q_idx}. {question}", key=f"follow_up_{idx}_{q_idx}"):
+                                handle_follow_up_click(question)
             elif msg["role"] == "source_buttons":
                 # Display source buttons in a row if there are sources
                 if msg["sources"] and len(msg["sources"]) > 0:
@@ -192,8 +198,15 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                 else:
                     st.info("No sources were found for this response.")
 
-        # If new user input exists
-        if user_input := st.session_state.get('user_input', None):
+        # If there's a next question from follow-up click, process it
+        if "next_question" in st.session_state:
+            user_input = st.session_state.next_question
+            del st.session_state.next_question
+        else:
+            user_input = st.session_state.get('user_input', None)
+
+        # If we have input to process
+        if user_input:
             with st.spinner("Generating response..."):
                 try:
                     # Get response
@@ -208,10 +221,7 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                     )
                     # Validate sources
                     sources = sources if all(isinstance(s, str) for s in sources) else []
-                    # Print sources
-                    print("Final sources:")
-                    pprint.pprint(sources)
-
+                    
                     # Store source-to-page mapping
                     source_pages = {}
                     for source in sources:
@@ -219,9 +229,16 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                         if pages_with_excerpts:
                             source_pages[source] = pages_with_excerpts[0] + 1
                     
-                    # Add response to chat history
+                    # Generate follow-up questions for new response
+                    follow_up_questions = generate_follow_up_questions(answer, st.session_state.chat_history)
+                    
+                    # Add response with follow-up questions to chat history
                     st.session_state.chat_history.append(
-                        {"role": "assistant", "content": answer}
+                        {
+                            "role": "assistant", 
+                            "content": answer,
+                            "follow_up_questions": follow_up_questions
+                        }
                     )
                     
                     # Add source buttons to chat history
@@ -229,11 +246,16 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                         "role": "source_buttons",
                         "sources": sources,
                         "pages": source_pages,
-                        "timestamp": len(st.session_state.chat_history)  # Use as unique key for buttons
+                        "timestamp": len(st.session_state.chat_history)
                     })
                     
+                    # Display current response with follow-up questions
                     with st.chat_message("assistant", avatar=tutor_avatar):
                         st.write(answer)
+                        st.write("\n\n**📝 Follow-up Questions:**")
+                        for q_idx, question in enumerate(follow_up_questions, 1):
+                            if st.button(f"{q_idx}. {question}", key=f"follow_up_current_{q_idx}"):
+                                handle_follow_up_click(question)
                     
                     # Display source buttons immediately
                     if sources and len(sources) > 0:
@@ -247,7 +269,7 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                                         st.session_state.annotations = get_highlight_info(doc, [source])
                     else:
                         st.info("No relevant sources found for this response.")
-                    
+
                     st.session_state.sources = sources
                     st.session_state.chat_occurred = True
 
@@ -260,10 +282,6 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                     st.session_state.current_page = 1
                 if st.session_state.get("sources"):
                     st.session_state.annotations = get_highlight_info(doc, st.session_state.sources)
-
-    # chat_container.markdown("<iframe scr='linke', class = 'fullHeight'></iframe>", unsafe_allow_html = True)
-    # viewer_css = float_css_helper(transition=0)
-    # float_parent(css=viewer_css)
 
 
 # Function to display the pdf viewer

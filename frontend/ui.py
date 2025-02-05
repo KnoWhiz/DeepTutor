@@ -191,8 +191,8 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                                     if st.button(to_emoji_number(src_idx), key=f"source_btn_{idx}_{src_idx}", use_container_width=True):
                                         st.session_state.current_page = page_num
                                         st.session_state.annotations = get_highlight_info(doc, [source])
-                        else:
-                            st.info("No sources were found for this response.")
+                        # else:
+                        #     st.info("No sources were found for this response.")
                     
                     # Then display follow-up questions
                     if "follow_up_questions" in msg:
@@ -270,8 +270,8 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                                         if st.button(to_emoji_number(idx), key=f"source_btn_{idx}_current", use_container_width=True):
                                             st.session_state.current_page = page_num
                                             st.session_state.annotations = get_highlight_info(doc, [source])
-                        else:
-                            st.info("No relevant sources found for this response.")
+                        # else:
+                        #     st.info("No relevant sources found for this response.")
                         
                         # Then display follow-up questions
                         st.write("\n\n**📝 Follow-up Questions:**")

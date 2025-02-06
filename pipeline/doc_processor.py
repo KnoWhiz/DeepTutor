@@ -85,6 +85,7 @@ from pipeline.utils import (
     extract_pdf_content_to_markdown,
     extract_pdf_content_to_markdown_via_api,
 )
+from pipeline.images_understanding import initialize_image_files
 
 
 load_dotenv()
@@ -111,18 +112,33 @@ def generate_embedding(_documents, _doc, pdf_path, embedding_folder):
             embedding_folder, embeddings, allow_dangerous_deserialization=True
         )
     else:
-        # Extract content to markdown via API
-        if not SKIP_MARKER_API:
-            print("Marker API is enabled. Using Marker API to extract content to markdown.")
-            markdown_dir = os.path.join(embedding_folder, "markdown")
-            extract_pdf_content_to_markdown_via_api(pdf_path, markdown_dir)
-        else:
-            print("Marker API is disabled. Using local PDF extraction.")
-            markdown_dir = os.path.join(embedding_folder, "markdown")
-            extract_pdf_content_to_markdown(pdf_path, markdown_dir)
+        try:
+            # Extract content to markdown via API
+            if not SKIP_MARKER_API:
+                print("Marker API is enabled. Using Marker API to extract content to markdown.")
+                markdown_dir = os.path.join(embedding_folder, "markdown")
+                md_path, saved_images, md_document = extract_pdf_content_to_markdown_via_api(pdf_path, markdown_dir)
+                st.session_state.md_document = md_document
+            else:
+                print("Marker API is disabled. Using local PDF extraction.")
+                markdown_dir = os.path.join(embedding_folder, "markdown")
+                md_path, saved_images, md_document = extract_pdf_content_to_markdown(pdf_path, markdown_dir)
+                st.session_state.md_document = md_document
+        except Exception as e:
+            print(f"Error extracting content to markdown via API: {e}")
+            # Directly use the document content raw text as the markdown content
+            st.session_state.md_document = ""
+            for doc in _documents:
+                st.session_state.md_document += doc.page_content.strip() + "\n"
 
+            # And save to markdown_dir
+            markdown_dir = os.path.join(embedding_folder, "markdown")
+            os.makedirs(markdown_dir, exist_ok=True)
+            md_path = os.path.join(markdown_dir, "content.md")
+            with open(md_path, "w", encoding="utf-8") as f:
+                f.write(st.session_state.md_document)
+            
         # Split the documents into chunks
-        # The chunk size should be 1/3 of the average length of each document page
         average_page_length = sum(len(doc.page_content) for doc in _documents) / len(_documents)
         chunk_size = average_page_length // 3
         print(f"Average page length: {average_page_length}")
@@ -135,30 +151,37 @@ def generate_embedding(_documents, _doc, pdf_path, embedding_folder):
         texts = text_splitter.split_documents(_documents)
         print(f"length of document chunks generated for get_response_source:{len(texts)}")
 
-        # Append the image context to the texts
-        image_context_path = os.path.join(embedding_folder, "markdown/image_context.json")
-        with open(image_context_path, "r") as f:
-            image_context = json.load(f)
-        # Append each image context list of strings to the texts. Note that we need to convert each string to a Document object.
-        for image, context in image_context.items():
-            for c in context:
-                texts.append(Document(page_content=c, metadata={"source": image}))
+        # Initialize image files and try to append image context to texts with error handling
+        try:
+            markdown_dir = os.path.join(embedding_folder, "markdown")
+            image_context_path, _ = initialize_image_files(markdown_dir)
+            
+            with open(image_context_path, "r") as f:
+                image_context = json.load(f)
+            
+            # Only process image context if there are actual images
+            if image_context:
+                print(f"Found {len(image_context)} images with context")
+                for image, context in image_context.items():
+                    for c in context:
+                        texts.append(Document(page_content=c, metadata={"source": image}))
+            else:
+                print("No image context found to process")
+        except Exception as e:
+            print(f"Error processing image context: {e}")
+            print("Continuing without image context...")
 
         # Create the vector store to use as the index
         db = FAISS.from_documents(texts, embeddings)
         # Save the embeddings to the specified folder
         db.save_local(embedding_folder)
 
-        # Generate and save document summary
-        generate_document_summary(_documents, embedding_folder)
-
-        # # Extract images from the PDF
-        # images_dir = os.path.join(embedding_folder, "images")
-        # extract_images_from_pdf(_doc, images_dir)
-
-        # # Extract content to markdown
-        # markdown_dir = os.path.join(embedding_folder, "markdown")
-        # extract_pdf_content_to_markdown(pdf_path, markdown_dir)
+        try:
+            # Generate and save document summary
+            generate_document_summary(_documents, embedding_folder)
+        except Exception as e:
+            print(f"Error generating document summary: {e}")
+            print("Continuing without document summary...")
 
     return
 
@@ -245,6 +268,7 @@ async def generate_GraphRAG_embedding(_documents, embedding_folder):
 def generate_document_summary(_documents, embedding_folder):
     """
     Generate a comprehensive markdown-formatted summary of the documents using multiple LLM calls.
+    Documents can come from either processed PDFs or markdown files.
     """
     config = load_config()
     para = config['llm']
@@ -252,6 +276,20 @@ def generate_document_summary(_documents, embedding_folder):
 
     # TEST
     print("Current model:", llm)
+
+    # First try to get content from session state
+    combined_content = ""
+    if hasattr(st.session_state, 'md_document') and st.session_state.md_document:
+        print("Using markdown content from session state...")
+        combined_content = st.session_state.md_document
+    
+    # If no content in session state, fall back to document content
+    if not combined_content and _documents:
+        print("Using document content as source...")
+        combined_content = "\n\n".join(doc.page_content for doc in _documents)
+    
+    if not combined_content:
+        raise ValueError("No content available from either session state or documents")
 
     # First generate the take-home message
     takehome_prompt = """
@@ -274,7 +312,7 @@ def generate_document_summary(_documents, embedding_folder):
     takehome_prompt = ChatPromptTemplate.from_template(takehome_prompt)
     str_parser = StrOutputParser()
     takehome_chain = takehome_prompt | llm | str_parser
-    takehome = takehome_chain.invoke({"document": truncate_document(_documents)})
+    takehome = takehome_chain.invoke({"document": truncate_document(combined_content)})
 
     # Topics extraction
     topics_prompt = """
@@ -295,7 +333,7 @@ def generate_document_summary(_documents, embedding_folder):
     parser = JsonOutputParser()
     error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
     topics_chain = topics_prompt | llm | error_parser
-    topics_result = topics_chain.invoke({"document": truncate_document(_documents)})
+    topics_result = topics_chain.invoke({"document": truncate_document(combined_content)})
 
     try:
         topics = topics_result.get("topics", [])
@@ -321,7 +359,7 @@ def generate_document_summary(_documents, embedding_folder):
     """
     overview_prompt = ChatPromptTemplate.from_template(overview_prompt)
     overview_chain = overview_prompt | llm | str_parser
-    overview = overview_chain.invoke({"document": truncate_document(_documents)})
+    overview = overview_chain.invoke({"document": truncate_document(combined_content)})
 
     # Generate summaries for each topic
     summaries = []
@@ -347,7 +385,7 @@ def generate_document_summary(_documents, embedding_folder):
         topic_chain = topic_prompt | llm | str_parser
         topic_summary = topic_chain.invoke({
             "topic": topic,
-            "document": truncate_document(_documents)
+            "document": truncate_document(combined_content)
         })
         summaries.append((topic, topic_summary))
 

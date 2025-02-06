@@ -175,15 +175,15 @@ def truncate_document(_document, model_name='gpt-4o'):
         model_level = 'basic'
     max_tokens = int(api.models[model_level]['context_window']/1.2)
 
-    # TEST
-    print(f"max_tokens: {max_tokens}")
-    print(f"model_name: {model_name}")
-    print(f"model_level: {model_level}")
-    print(f"api.models[model_level]: {api.models[model_level]}")
-    print(f"api.models[model_level]['context_window']: {api.models[model_level]['context_window']}")
-    print(f"api.models[model_level]['context_window']/1.2: {api.models[model_level]['context_window']/1.2}")
-    print(f"int(api.models[model_level]['context_window']/1.2): {int(api.models[model_level]['context_window']/1.2)}")
-    # TEST
+    # # TEST
+    # print(f"max_tokens: {max_tokens}")
+    # print(f"model_name: {model_name}")
+    # print(f"model_level: {model_level}")
+    # print(f"api.models[model_level]: {api.models[model_level]}")
+    # print(f"api.models[model_level]['context_window']: {api.models[model_level]['context_window']}")
+    # print(f"api.models[model_level]['context_window']/1.2: {api.models[model_level]['context_window']/1.2}")
+    # print(f"int(api.models[model_level]['context_window']/1.2): {int(api.models[model_level]['context_window']/1.2)}")
+    # # TEST
 
     _document = str(_document)
     document_tokens = count_tokens(_document, model_name)
@@ -444,7 +444,7 @@ def extract_pdf_content_to_markdown(
         chunk_size = config['embedding']['chunk_size']
         extract_image_context(output_dir, chunk_size)
 
-        return str(md_path), saved_images
+        return str(md_path), saved_images, text
 
     except Exception as e:
         raise Exception(f"Error processing PDF: {str(e)}")
@@ -453,7 +453,7 @@ def extract_pdf_content_to_markdown(
 def extract_pdf_content_to_markdown_via_api(
     pdf_path: str | Path,
     output_dir: str | Path,
-) -> Tuple[str, Dict[str, Image.Image]]:
+) -> Tuple[str, Dict[str, Image.Image], str]:
     """
     Extract text and images from a PDF file using the Marker API and save them to the specified directory.
     
@@ -465,6 +465,7 @@ def extract_pdf_content_to_markdown_via_api(
         Tuple containing:
         - Path to the saved markdown file
         - Dictionary of image names and their PIL Image objects
+        - Markdown content (str)
     
     Raises:
         FileNotFoundError: If PDF file doesn't exist
@@ -509,7 +510,7 @@ def extract_pdf_content_to_markdown_via_api(
         raise Exception(f"API request failed: {data.get('error')}")
 
     request_check_url = data.get("request_check_url")
-    print(f"Submitted request. Polling for results...")
+    print("Submitted request. Polling for results...")
 
     # Poll until processing is complete
     max_polls = 300
@@ -568,4 +569,4 @@ def extract_pdf_content_to_markdown_via_api(
     chunk_size = config['embedding']['chunk_size']
     extract_image_context(output_dir, chunk_size)
 
-    return str(md_path), saved_images
+    return str(md_path), saved_images, markdown

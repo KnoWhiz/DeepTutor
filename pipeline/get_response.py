@@ -338,6 +338,10 @@ def get_query_helper(user_input, context_chat_history, embedding_folder):
         The goals are:
         1. to ask questions in a better way to make sure it's optimized to query a Vector Database for RAG (Retrieval Augmented Generation).
         2. to identify the question is about local or global context of the document.
+        3. refer to the previous conversation history when generating the question.
+
+        Previous conversation history:
+        ```{chat_history}```
 
         Organize final response in the following JSON format:
         ```json
@@ -350,8 +354,6 @@ def get_query_helper(user_input, context_chat_history, embedding_folder):
     )
     human_prompt = (
         """
-        Previous conversation history:
-        ```{chat_history}```
         The student asked the following question:
         ```{input}```
         """

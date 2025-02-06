@@ -53,6 +53,37 @@ def get_context_window(lines: List[str], target_line_idx: int) -> List[str]:
     
     return context
 
+def initialize_image_files(folder_dir: str | Path) -> tuple[str, str]:
+    """
+    Initialize both image context and image URLs JSON files if they don't exist.
+    
+    Parameters:
+        folder_dir (str | Path): Directory where the image files should be created
+        
+    Returns:
+        tuple[str, str]: Paths to the image context and image URLs files
+    """
+    folder_dir = Path(folder_dir)
+    image_context_path = folder_dir / "image_context.json"
+    image_urls_path = folder_dir / "image_urls.json"
+    
+    # Create directory if it doesn't exist
+    os.makedirs(folder_dir, exist_ok=True)
+    
+    # Create empty image context file if it doesn't exist
+    if not image_context_path.exists():
+        print("Initializing empty image context file...")
+        with open(image_context_path, "w", encoding="utf-8") as f:
+            json.dump({}, f)
+    
+    # Create empty image URLs file if it doesn't exist
+    if not image_urls_path.exists():
+        print("Initializing empty image URLs file...")
+        with open(image_urls_path, "w", encoding="utf-8") as f:
+            json.dump({}, f)
+    
+    return str(image_context_path), str(image_urls_path)
+
 def upload_images_to_azure(folder_dir: str | Path) -> None:
     """
     Upload images from the given folder to Azure Blob storage and create a mapping file.
@@ -61,13 +92,12 @@ def upload_images_to_azure(folder_dir: str | Path) -> None:
     
     Parameters:
         folder_dir (str | Path): The path to the folder containing image files
-        
-    Output:
-        A JSON file named 'image_urls.json' is written to the folder.
-        The JSON contains a dictionary mapping image filenames to their Azure URLs.
     """
     # Convert to Path object if it's a string
     folder_path = Path(folder_dir) if isinstance(folder_dir, str) else folder_dir
+    
+    # Initialize both JSON files
+    _, output_path = initialize_image_files(folder_path)
     
     # Define the image file extensions we care about
     image_extensions: Set[str] = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp', '.svg'}
@@ -85,13 +115,10 @@ def upload_images_to_azure(folder_dir: str | Path) -> None:
     azure_blob = AzureBlobHelper()
     container_name = "knowhiztutorrag"
     
-    # Check if image_urls.json already exists and load it
-    output_path = folder_path / 'image_urls.json'
-    image_urls: Dict[str, str] = {}
-    if output_path.exists():
-        with open(output_path, 'r', encoding='utf-8') as infile:
-            image_urls = json.load(infile)
-            print("Loaded existing image_urls.json")
+    # Load existing image URLs
+    with open(output_path, 'r', encoding='utf-8') as infile:
+        image_urls = json.load(infile)
+        print("Loaded existing image_urls.json")
     
     # Upload each image and store its URL if not already uploaded
     for image_file in image_files:
@@ -129,38 +156,34 @@ def upload_images_to_azure(folder_dir: str | Path) -> None:
 
 def extract_image_context(folder_dir: str | Path, context_tokens: int = 500) -> None:
     """
-    Scan the given folder for image files and a markdown file.
-    For each image file, search the markdown file for lines that mention the image filename,
-    including only the second line after each mention.
+    Extract context for each image in a folder and save to JSON.
     
     Parameters:
-        folder_dir (str | Path): The path to the folder containing image files and one markdown file
-        context_tokens (int): Maximum number of tokens in context (default: 500)
-    
-    Output:
-        A JSON file named 'image_context.json' is written to the folder.
-        The JSON contains a dictionary mapping image filenames to a list of context strings.
+        folder_dir (str | Path): Directory containing the images
+        context_tokens (int): Maximum number of tokens for context per image
     """
-    # Convert to Path object if it's a string
-    folder_path = Path(folder_dir) if isinstance(folder_dir, str) else folder_dir
+    folder_dir = Path(folder_dir)
+    
+    # Initialize both JSON files
+    image_context_path, _ = initialize_image_files(folder_dir)
     
     # Define the image file extensions we care about
     image_extensions: Set[str] = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp', '.svg'}
 
     # List all image files in the folder (case-insensitive match)
-    image_files = [f for f in os.listdir(folder_path) if os.path.splitext(f.lower())[1] in image_extensions]
+    image_files = [f for f in os.listdir(folder_dir) if os.path.splitext(f.lower())[1] in image_extensions]
     if not image_files:
         print("No image files found in the folder.")
         return
 
     # Find the markdown file (assuming there's only one .md file)
-    md_files = [f for f in os.listdir(folder_path) if f.lower().endswith('.md')]
+    md_files = [f for f in os.listdir(folder_dir) if f.lower().endswith('.md')]
     if not md_files:
         print("No markdown file found in the folder.")
         return
     
     md_file = md_files[0]
-    md_path = folder_path / md_file
+    md_path = folder_dir / md_file
     
     # Read the content of the markdown file
     with open(md_path, 'r', encoding='utf-8') as f:
@@ -183,14 +206,13 @@ def extract_image_context(folder_dir: str | Path, context_tokens: int = 500) -> 
             image_context[image] = contexts
     
     # Write the dictionary to a JSON file in the same folder
-    output_path = folder_path / 'image_context.json'
-    with open(output_path, 'w', encoding='utf-8') as outfile:
+    with open(image_context_path, 'w', encoding='utf-8') as outfile:
         json.dump(image_context, outfile, indent=2, ensure_ascii=False)
 
     # Save images to Azure Blob Storage
-    upload_images_to_azure(folder_path)
+    upload_images_to_azure(folder_dir)
     
-    print(f"Image context data saved to: {output_path}")
+    print(f"Image context data saved to: {image_context_path}")
 
 if __name__ == "__main__":
     # folder_dir = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/16005aaa19145334b5605c6bf61661a0/markdown/"

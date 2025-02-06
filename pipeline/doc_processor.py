@@ -85,6 +85,7 @@ from pipeline.utils import (
     extract_pdf_content_to_markdown,
     extract_pdf_content_to_markdown_via_api,
 )
+from pipeline.images_understanding import initialize_image_files
 
 
 load_dotenv()
@@ -118,7 +119,6 @@ def generate_embedding(_documents, _doc, pdf_path, embedding_folder):
                 markdown_dir = os.path.join(embedding_folder, "markdown")
                 md_path, saved_images, md_document = extract_pdf_content_to_markdown_via_api(pdf_path, markdown_dir)
                 st.session_state.md_document = md_document
-
             else:
                 print("Marker API is disabled. Using local PDF extraction.")
                 markdown_dir = os.path.join(embedding_folder, "markdown")
@@ -126,23 +126,19 @@ def generate_embedding(_documents, _doc, pdf_path, embedding_folder):
                 st.session_state.md_document = md_document
         except Exception as e:
             print(f"Error extracting content to markdown via API: {e}")
-            # Directly use the document content raw text as the markdown content, as the way save_file_locally() get the txt file
-            # with open(output_file_path, "w", encoding="utf-8") as f:
-            # for doc in documents:
-            #     # Each doc is expected to have a `page_content` attribute if it's a Document object
-            #     if hasattr(doc, 'page_content') and doc.page_content:
-            #         # Write the text, followed by a newline for clarity
-            #         f.write(doc.page_content.strip() + "\n")
+            # Directly use the document content raw text as the markdown content
+            st.session_state.md_document = ""
             for doc in _documents:
                 st.session_state.md_document += doc.page_content.strip() + "\n"
 
             # And save to markdown_dir
+            markdown_dir = os.path.join(embedding_folder, "markdown")
+            os.makedirs(markdown_dir, exist_ok=True)
+            md_path = os.path.join(markdown_dir, "content.md")
             with open(md_path, "w", encoding="utf-8") as f:
                 f.write(st.session_state.md_document)
-
             
         # Split the documents into chunks
-        # The chunk size should be 1/3 of the average length of each document page
         average_page_length = sum(len(doc.page_content) for doc in _documents) / len(_documents)
         chunk_size = average_page_length // 3
         print(f"Average page length: {average_page_length}")
@@ -155,14 +151,25 @@ def generate_embedding(_documents, _doc, pdf_path, embedding_folder):
         texts = text_splitter.split_documents(_documents)
         print(f"length of document chunks generated for get_response_source:{len(texts)}")
 
-        # Append the image context to the texts
-        image_context_path = os.path.join(embedding_folder, "markdown/image_context.json")
-        with open(image_context_path, "r") as f:
-            image_context = json.load(f)
-        # Append each image context list of strings to the texts. Note that we need to convert each string to a Document object.
-        for image, context in image_context.items():
-            for c in context:
-                texts.append(Document(page_content=c, metadata={"source": image}))
+        # Initialize image files and try to append image context to texts with error handling
+        try:
+            markdown_dir = os.path.join(embedding_folder, "markdown")
+            image_context_path, _ = initialize_image_files(markdown_dir)
+            
+            with open(image_context_path, "r") as f:
+                image_context = json.load(f)
+            
+            # Only process image context if there are actual images
+            if image_context:
+                print(f"Found {len(image_context)} images with context")
+                for image, context in image_context.items():
+                    for c in context:
+                        texts.append(Document(page_content=c, metadata={"source": image}))
+            else:
+                print("No image context found to process")
+        except Exception as e:
+            print(f"Error processing image context: {e}")
+            print("Continuing without image context...")
 
         # Create the vector store to use as the index
         db = FAISS.from_documents(texts, embeddings)
@@ -171,14 +178,6 @@ def generate_embedding(_documents, _doc, pdf_path, embedding_folder):
 
         # Generate and save document summary
         generate_document_summary(_documents, embedding_folder)
-
-        # # Extract images from the PDF
-        # images_dir = os.path.join(embedding_folder, "images")
-        # extract_images_from_pdf(_doc, images_dir)
-
-        # # Extract content to markdown
-        # markdown_dir = os.path.join(embedding_folder, "markdown")
-        # extract_pdf_content_to_markdown(pdf_path, markdown_dir)
 
     return
 

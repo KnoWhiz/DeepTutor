@@ -90,8 +90,14 @@ def tutor_agent(mode, _doc, _documents, file_paths, user_input, chat_history, em
     # If the sources have images, append the image URL (in image_urls.json mapping) to the end of the answer in markdown format, and remove the image name string from the sources
     if sources:
         image_url_path = os.path.join(embedding_folder, "markdown/image_urls.json")
-        with open(image_url_path, 'r') as f:
-            image_url_mapping = json.load(f)
+        if os.path.exists(image_url_path):
+            with open(image_url_path, 'r') as f:
+                image_url_mapping = json.load(f)
+        else:
+            print("image_url_path does not exist")
+            image_url_mapping = {}
+            with open(image_url_path, 'w') as f:
+                json.dump(image_url_mapping, f)
         for source in sources[:]:  # Create a copy of the list to safely remove items
             if any(source.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.svg']):
                 image_url = image_url_mapping.get(source, None)

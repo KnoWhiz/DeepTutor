@@ -30,8 +30,14 @@ def get_response_source(_doc, _documents, user_input, answer, chat_history, embe
 
     # Load image context
     image_context_path = os.path.join(embedding_folder, "markdown/image_context.json")
-    with open(image_context_path, 'r') as f:
-        image_context = json.loads(f.read())
+    if os.path.exists(image_context_path):
+        with open(image_context_path, 'r') as f:
+            image_context = json.loads(f.read())
+    else:
+        print("image_context_path does not exist")
+        image_context = {}
+        with open(image_context_path, 'w') as f:
+            json.dump(image_context, f)
     
     # Create reverse mapping from description to image name. But note that multiple descriptions can map to the same image name.
     image_mapping = {}
@@ -116,8 +122,14 @@ def refine_sources(_doc, _documents, sources, markdown_dir, user_input):
     
     # Load image context
     image_context_path = os.path.join(markdown_dir, "image_context.json")
-    with open(image_context_path, 'r') as f:
-        image_context = json.load(f)
+    if os.path.exists(image_context_path):
+        with open(image_context_path, 'r') as f:
+            image_context = json.load(f)
+    else:
+        print("image_context_path does not exist")
+        image_context = {}
+        with open(image_context_path, 'w') as f:
+            json.dump(image_context, f)
     
     # First separate image sources from text sources
     text_sources = []

@@ -176,8 +176,12 @@ def generate_embedding(_documents, _doc, pdf_path, embedding_folder):
         # Save the embeddings to the specified folder
         db.save_local(embedding_folder)
 
-        # Generate and save document summary
-        generate_document_summary(_documents, embedding_folder)
+        try:
+            # Generate and save document summary
+            generate_document_summary(_documents, embedding_folder)
+        except Exception as e:
+            print(f"Error generating document summary: {e}")
+            print("Continuing without document summary...")
 
     return
 

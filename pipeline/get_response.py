@@ -163,7 +163,8 @@ def get_response(mode, _doc, _documents, file_paths, user_input, chat_history, e
         You are a patient and honest professor helping a student reading a paper.
         Use the given context to answer the question.
         If you don't know the answer, say you don't know.
-        Context: ```{context}```
+        The previous conversation is: {chat_history} make sure your answer follow the previous conversation but not repetitive.
+        Reference context from the paper: ```{context}```
         If the concept can be better explained by formulas, use LaTeX syntax in markdown
         For inline formulas, use single dollar sign: $a/b = c/d$
         FOr block formulas, use double dollar sign:
@@ -174,8 +175,7 @@ def get_response(mode, _doc, _documents, file_paths, user_input, chat_history, e
     )
     human_prompt = (
         """
-        Our previous conversation is: {chat_history}
-        This time my query is: {input}
+        Student's query is: {input}
         Answer the question based on the context provided.
         Since I am a student with no related knowledge background, 
         provide a concise answer and directly answer the question in easy to understand language.

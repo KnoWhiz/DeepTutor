@@ -43,22 +43,33 @@ def test_source_search(pdf_path: str) -> None:
     
     print(f"Loaded PDF with {len(documents)} document chunks")
     
-    # Load config and get embedding model
-    config = load_config()
-    embeddings = get_embedding_models("default", config["llm"])
+    # Create chunks directly from the PDF content to ensure better matching
+    chunks = []
+    for page_num in range(len(doc)):
+        page = doc[page_num]
+        text_blocks = []
+        
+        # Get text blocks that can be found via search
+        for block in page.get_text("blocks"):
+            text = block[4]  # The text content is at index 4
+            # Only include non-empty text blocks
+            if text.strip():
+                text_blocks.append(Document(
+                    page_content=text.strip(),
+                    metadata={"page": page_num, "source": f"page_{page_num + 1}"}
+                ))
+        
+        chunks.extend(text_blocks)
     
-    # Split documents into chunks
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=512,
-        chunk_overlap=config["embedding"]["chunk_overlap"]
-    )
-    chunks = text_splitter.split_documents(documents)
-    
-    print(f"Split into {len(chunks)} chunks for testing")
+    print(f"Created {len(chunks)} searchable chunks from PDF")
     
     # Create temporary embedding folder
     temp_embedding_folder = "temp_embeddings"
     os.makedirs(temp_embedding_folder, exist_ok=True)
+    
+    # Load config and get embedding model
+    config = load_config()
+    embeddings = get_embedding_models("default", config["llm"])
     
     # Create vector store
     db = FAISS.from_documents(chunks, embeddings)
@@ -73,7 +84,7 @@ def test_source_search(pdf_path: str) -> None:
         print(f"\rTesting chunk {i}/{total_chunks}", end="", flush=True)
         
         # Get the page number from metadata
-        page_num = chunk.metadata.get("page", 0) - 1  # Convert to 0-based index
+        page_num = chunk.metadata.get("page", 0)  # Already 0-based
         if page_num < 0 or page_num >= len(doc):
             print(f"\nWarning: Invalid page number {page_num + 1} for chunk {i}")
             not_found_chunks.append((i, chunk.page_content))

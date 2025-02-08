@@ -74,13 +74,22 @@ def test_source_search(pdf_path: str) -> None:
     # Create vector store
     db = FAISS.from_documents(chunks, embeddings)
     
-    # Test each chunk
-    total_chunks = len(chunks)
+    # Get all chunks from the vector store by doing a similarity search with each chunk
+    retrieved_chunks = []
+    print("\nRetrieving chunks from vector store...")
+    for chunk in chunks:
+        # Use the chunk's content to find similar chunks
+        similar_chunks = db.similarity_search(chunk.page_content, k=1)
+        if similar_chunks:
+            retrieved_chunks.append(similar_chunks[0])
+    
+    # Test each retrieved chunk
+    total_chunks = len(retrieved_chunks)
     found_chunks = 0
     not_found_chunks = []
     
     print("\nTesting each chunk...")
-    for i, chunk in enumerate(chunks, 1):
+    for i, chunk in enumerate(retrieved_chunks, 1):
         print(f"\rTesting chunk {i}/{total_chunks}", end="", flush=True)
         
         # Get the page number from metadata

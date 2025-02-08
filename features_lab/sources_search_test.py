@@ -52,12 +52,47 @@ def test_source_search(pdf_path: str) -> None:
         # Get text blocks that can be found via search
         for block in page.get_text("blocks"):
             text = block[4]  # The text content is at index 4
-            # Only include non-empty text blocks
-            if text.strip():
-                text_blocks.append(Document(
-                    page_content=text.strip(),
-                    metadata={"page": page_num, "source": f"page_{page_num + 1}"}
-                ))
+            # Clean up the text
+            clean_text = text.strip()
+            
+            if clean_text:
+                # Remove hyphenation at line breaks
+                clean_text = clean_text.replace("-\n", "")
+                # Normalize spaces
+                clean_text = " ".join(clean_text.split())
+                # Replace special characters that might cause issues
+                replacements = {
+                    "−": "-",  # Replace unicode minus with hyphen
+                    "⊥": "_|_",  # Replace perpendicular symbol
+                    "≫": ">>",  # Replace much greater than
+                    "%": "",     # Remove percentage signs that might be formatting artifacts
+                    "→": "->",   # Replace arrow
+                }
+                for old, new in replacements.items():
+                    clean_text = clean_text.replace(old, new)
+                
+                # Split into chunks of 512 characters
+                while len(clean_text) > 0:
+                    # Find a good break point near 512 characters
+                    end_pos = min(512, len(clean_text))
+                    if end_pos < len(clean_text):
+                        # Try to break at a sentence or period
+                        last_period = clean_text[:end_pos].rfind(". ")
+                        if last_period > 0:
+                            end_pos = last_period + 1
+                        else:
+                            # If no period, try to break at a space
+                            last_space = clean_text[:end_pos].rfind(" ")
+                            if last_space > 0:
+                                end_pos = last_space
+                    
+                    chunk_text = clean_text[:end_pos].strip()
+                    if chunk_text:
+                        text_blocks.append(Document(
+                            page_content=chunk_text,
+                            metadata={"page": page_num, "source": f"page_{page_num + 1}"}
+                        ))
+                    clean_text = clean_text[end_pos:].strip()
         
         chunks.extend(text_blocks)
     

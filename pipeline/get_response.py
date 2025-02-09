@@ -74,7 +74,7 @@ def tutor_agent(mode, _doc, _documents, file_paths, user_input, chat_history, em
             content=answer,
             target_lang=st.session_state.language
         )
-        sources = []
+        sources = {}  # Return empty dictionary for sources
             
         return answer, sources
 
@@ -86,8 +86,8 @@ def tutor_agent(mode, _doc, _documents, file_paths, user_input, chat_history, em
     # Get sources
     sources = get_response_source(_doc, _documents, refined_user_input, answer, context_chat_history, embedding_folder)
 
-    images_sources = []
-    # If the sources have images, append the image URL (in image_urls.json mapping) to the end of the answer in markdown format, and remove the image name string from the sources
+    images_sources = {}
+    # If the sources have images, append the image URL (in image_urls.json mapping) to the end of the answer in markdown format
     if sources:
         image_url_path = os.path.join(embedding_folder, "markdown/image_urls.json")
         if os.path.exists(image_url_path):
@@ -98,12 +98,19 @@ def tutor_agent(mode, _doc, _documents, file_paths, user_input, chat_history, em
             image_url_mapping = {}
             with open(image_url_path, 'w') as f:
                 json.dump(image_url_mapping, f)
-        for source in sources[:]:  # Create a copy of the list to safely remove items
+        
+        # Process each source and check if it's an image
+        sources_to_remove = []
+        for source, score in sources.items():
             if any(source.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.svg']):
                 image_url = image_url_mapping.get(source, None)
                 if image_url:
-                    images_sources.append(image_url)
-                    sources.remove(source)
+                    images_sources[source] = score
+                    sources_to_remove.append(source)
+        
+        # Remove processed image sources from the main sources dict
+        for source in sources_to_remove:
+            del sources[source]
 
     answer = f"""Are you asking: **{refined_user_input}**
     """ + "\n" + answer
@@ -116,9 +123,14 @@ def tutor_agent(mode, _doc, _documents, file_paths, user_input, chat_history, em
 
     # Append images URL in markdown format to the end of the answer
     if images_sources:
-        for image_source in images_sources:
-            answer += "\n"
-            answer += f"![]({image_source})"
+        for source, _ in images_sources.items():
+            image_url = image_url_mapping.get(source)
+            if image_url:
+                answer += "\n"
+                answer += f"![]({image_url})"
+    
+    # Combine regular sources with image sources
+    sources.update(images_sources)
     return answer, sources
 
 

@@ -62,11 +62,11 @@ def test_source_search(pdf_path: str) -> None:
                 clean_text = " ".join(clean_text.split())
                 # Replace special characters that might cause issues
                 replacements = {
-                    "−": "-",  # Replace unicode minus with hyphen
-                    "⊥": "_|_",  # Replace perpendicular symbol
-                    "≫": ">>",  # Replace much greater than
-                    "%": "",     # Remove percentage signs that might be formatting artifacts
-                    "→": "->",   # Replace arrow
+                    # "−": "-",  # Replace unicode minus with hyphen
+                    # "⊥": "_|_",  # Replace perpendicular symbol
+                    # "≫": ">>",  # Replace much greater than
+                    # "%": "",     # Remove percentage signs that might be formatting artifacts
+                    # "→": "->",   # Replace arrow
                 }
                 for old, new in replacements.items():
                     clean_text = clean_text.replace(old, new)
@@ -155,7 +155,10 @@ def test_source_search(pdf_path: str) -> None:
         for i, content in not_found_chunks:
             print(f"\nChunk {i}:")
             print("-" * 80)
+            print("Content:")
             print(content[:200] + "..." if len(content) > 200 else content)
+            print("\nMetadata:")
+            print(retrieved_chunks[i-1].metadata)
             print("-" * 80)
     
     # Cleanup
@@ -168,4 +171,4 @@ if __name__ == "__main__":
     # parser.add_argument("pdf_path", help="Path to the PDF file to test")
     # args = parser.parse_args()
     
-    test_source_search("/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/input_files/science.1189075.pdf")
+    test_source_search("/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/input_files/RankRAG- Unifying Context Ranking with  Retrieval-Augmented Generation in LLMs.pdf")

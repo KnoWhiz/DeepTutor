@@ -3,6 +3,9 @@ import json
 import sys
 from typing import Dict, List, Set
 from pathlib import Path
+from dotenv import load_dotenv
+from openai import AzureOpenAI
+load_dotenv()
 
 # Add the project root to Python path for direct script execution
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -200,7 +203,7 @@ def extract_image_context(folder_dir: str | Path, context_tokens: int = 500) -> 
                 # Get only the second line after this mention
                 context_window = get_context_window(md_lines, idx)
                 if context_window:  # Only add if we found a valid context line
-                    contexts.append(context_window[0])
+                    contexts.append(context_window[0] + " <markdown>")
         
         if contexts:
             image_context[image] = contexts
@@ -211,8 +214,118 @@ def extract_image_context(folder_dir: str | Path, context_tokens: int = 500) -> 
 
     # Save images to Azure Blob Storage
     upload_images_to_azure(folder_dir)
+
+    # Process folder images
+    process_folder_images(folder_dir)
     
     print(f"Image context data saved to: {image_context_path}")
+
+
+def analyze_image(image_url=None):
+    """
+    Analyze an image using Azure OpenAI's vision model.
+    
+    Args:
+        image_url (str, optional): URL of the image to analyze. Defaults to a test image if none provided.
+    
+    Returns:
+        str: The analysis result from the vision model
+    """
+    # Initialize Azure OpenAI client
+    api_base = os.getenv('AZURE_OPENAI_ENDPOINT')
+    api_key = os.getenv('AZURE_OPENAI_KEY')
+    deployment_name = 'gpt-4o'
+    api_version = '2024-06-01'
+    
+    client = AzureOpenAI(
+        api_key=api_key,
+        api_version=api_version,
+        base_url=f"{api_base}openai/deployments/{deployment_name}"
+    )
+    
+    try:
+        # Create messages for the vision model
+        messages = [
+            {
+                "role": "system",
+                "content": "You are an professor helping students to understand images in a research paper. Please describe what you see in detail, and explain the research concept in an easy-to-understand manner."
+            },
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "Describe this picture:"
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": image_url,
+                            "detail": "high"
+                        }
+                    }
+                ]
+            }
+        ]
+        
+        # Generate response
+        response = client.chat.completions.create(
+            model=deployment_name,
+            messages=messages,
+            max_tokens=2000
+        )
+        
+        return response.choices[0].message.content
+        
+    except Exception as e:
+        print(f"Error occurred: {str(e)}")
+        raise
+
+
+def process_folder_images(folder_path):
+    """
+    Process all images in a folder that have contexts ending with <markdown>.
+    Updates the image_context.json file with analysis results.
+    
+    Args:
+        folder_path (str): Path to the folder containing image_context.json and image_urls.json
+        
+    Returns:
+        dict: Updated context dictionary with analysis results
+    """
+    try:
+        # Read image contexts
+        context_file = os.path.join(folder_path, 'image_context.json')
+        urls_file = os.path.join(folder_path, 'image_urls.json')
+        
+        with open(context_file, 'r') as f:
+            contexts = json.load(f)
+        
+        with open(urls_file, 'r') as f:
+            urls = json.load(f)
+            
+        # Process each image that has context ending with <markdown>
+        for image_name, context_list in contexts.items():
+            if image_name in urls:
+                for i, context in enumerate(context_list):
+                    if context.strip().endswith('<markdown>'):
+                        # Get image analysis
+                        image_url = urls[image_name]
+                        analysis = analyze_image(image_url)
+                        
+                        # Update context with analysis
+                        contexts[image_name][i] = f"{context}\nImage Analysis: {analysis}"
+        
+        # Save updated contexts back to file
+        with open(context_file, 'w') as f:
+            json.dump(contexts, f, indent=2)
+            
+        return contexts
+        
+    except Exception as e:
+        print(f"Error processing folder images: {str(e)}")
+        raise
+
 
 if __name__ == "__main__":
     # folder_dir = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/16005aaa19145334b5605c6bf61661a0/markdown/"

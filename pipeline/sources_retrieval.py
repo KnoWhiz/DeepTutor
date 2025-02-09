@@ -168,12 +168,12 @@ def refine_sources(_doc, _documents, sources_with_scores, markdown_dir, user_inp
         
         Organize your response in the following JSON format:
         ```json
-        {
+        {{
             "actual_figure_number": "<extracted figure number from descriptions, e.g. 'Figure 1', 'Fig. 2', etc.>",
             "is_relevant": <Boolean, True/False>,
             "relevance_score": <float between 0 and 1>,
             "explanation": "<brief explanation including actual figure number and why this image is or isn't relevant>"
-        }
+        }}
         ```
         
         Pay special attention to:
@@ -232,7 +232,7 @@ def refine_sources(_doc, _documents, sources_with_scores, markdown_dir, user_inp
         # Sort images by relevance score
         image_scores.sort(key=lambda x: x[1], reverse=True)
         
-        # Filter images with high relevance score
+        # Filter images with high relevance score (score > 0.2)
         filtered_images = {img: score for img, score, fig_num, expl in image_scores if score > 0.2}
         
         if filtered_images:
@@ -249,11 +249,17 @@ def refine_sources(_doc, _documents, sources_with_scores, markdown_dir, user_inp
                     if re.search(rf'(?:figure|fig)\.?\s*{user_figure_num}\b', fig_num, re.IGNORECASE)
                 }
                 if exact_matches:
-                    filtered_images = {list(exact_matches.keys())[0]: list(exact_matches.values())[0]}  # Take the highest scored exact match
-            
-            # If no specific figure was asked for or no exact match found, take the highest scored image
-            if not filtered_images:
-                filtered_images = {list(filtered_images.keys())[0]: list(filtered_images.values())[0]}
+                    # Take the highest scored exact match
+                    highest_match = max(exact_matches.items(), key=lambda x: x[1])
+                    filtered_images = {highest_match[0]: highest_match[1]}
+                else:
+                    # If no exact match found, take the highest scored image overall
+                    highest_match = max(filtered_images.items(), key=lambda x: x[1])
+                    filtered_images = {highest_match[0]: highest_match[1]}
+            else:
+                # If no specific figure was asked for, take the highest scored image
+                highest_match = max(filtered_images.items(), key=lambda x: x[1])
+                filtered_images = {highest_match[0]: highest_match[1]}
     
     # Process text sources as before
     for page in _doc:

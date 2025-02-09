@@ -253,13 +253,21 @@ def refine_sources(_doc, _documents, sources_with_scores, markdown_dir, user_inp
                     highest_match = max(exact_matches.items(), key=lambda x: x[1])
                     filtered_images = {highest_match[0]: highest_match[1]}
                 else:
-                    # If no exact match found, take the highest scored image overall
-                    highest_match = max(filtered_images.items(), key=lambda x: x[1])
-                    filtered_images = {highest_match[0]: highest_match[1]}
+                    # If no exact match found, include images with scores close to the highest score
+                    if filtered_images:
+                        # Get the highest score
+                        highest_score = max(filtered_images.values())
+                        # Keep images with scores within 10% of the highest score
+                        score_threshold = highest_score * 0.9
+                        filtered_images = {img: score for img, score in filtered_images.items() if score >= score_threshold}
             else:
-                # If no specific figure was asked for, take the highest scored image
-                highest_match = max(filtered_images.items(), key=lambda x: x[1])
-                filtered_images = {highest_match[0]: highest_match[1]}
+                # If no specific figure was asked for, include images with scores close to the highest score
+                if filtered_images:
+                    # Get the highest score
+                    highest_score = max(filtered_images.values())
+                    # Keep images with scores within 10% of the highest score
+                    score_threshold = highest_score * 0.9
+                    filtered_images = {img: score for img, score in filtered_images.items() if score >= score_threshold}
     
     # Process text sources as before
     for page in _doc:

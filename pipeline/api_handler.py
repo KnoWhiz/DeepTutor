@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_openai import AzureChatOpenAI
+from langchain_openai import AzureOpenAI
 from langchain_openai import OpenAIEmbeddings, AzureOpenAIEmbeddings
 from langchain_deepseek import ChatDeepSeek
 
@@ -75,7 +76,12 @@ class ApiHandler:
                 timeout=None,
                 # max_retries=2,
             )
-
+        elif host == 'azure_inference':
+            return AzureOpenAI(
+                deployment_name="o1-mini",  # Replace with your deployment name in Azure
+                api_version=os.environ["OPENAI_API_VERSION"],
+                # Optionally, set other parameters like max_completion_tokens if needed.
+            )
 
     def load_models(self):
         llm_basic = self.get_models(api_key=self.api_key,
@@ -99,6 +105,12 @@ class ApiHandler:
         llm_deepseek = self.get_models(api_key=self.deepseek_api_key,
                                        temperature=self.para['temperature'],
                                        host='deepseek')
+        llm_inference = self.get_models(api_key=self.api_key,
+                                       temperature=self.para['temperature'],
+                                       deployment_name='o1-mini',
+                                       endpoint=self.azure_endpoint,
+                                       api_version='2024-07-01-preview',
+                                       host='azure_inference')
 
         if self.para['llm_source'] == 'azure' or self.para['llm_source'] == 'openai':
             models = {

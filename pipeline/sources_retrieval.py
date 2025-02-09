@@ -39,7 +39,7 @@ def get_response_source(_doc, _documents, user_input, answer, chat_history, embe
         with open(image_context_path, 'w') as f:
             json.dump(image_context, f)
     
-    # Create reverse mapping from description to image name. But note that multiple descriptions can map to the same image name.
+    # Create reverse mapping from description to image name
     image_mapping = {}
     for image_name, descriptions in image_context.items():
         for desc in descriptions:
@@ -74,51 +74,59 @@ def get_response_source(_doc, _documents, user_input, answer, chat_history, embe
     # Configure retriever with search parameters from config
     retriever = db.as_retriever(search_kwargs={"k": config['sources_retriever']['k']})
 
-    # Get relevant chunks for both question and answer
-    # question_chunks = retriever.get_relevant_documents(user_input)
-    # answer_chunks = retriever.get_relevant_documents(answer)
-    question_chunks = retriever.invoke(user_input)
-    answer_chunks = retriever.invoke(answer)
+    # Get relevant chunks for both question and answer with scores
+    question_chunks_with_scores = db.similarity_search_with_score(user_input, k=config['sources_retriever']['k'])
+    answer_chunks_with_scores = db.similarity_search_with_score(answer, k=config['sources_retriever']['k'])
 
-    # Extract page content from chunks
-    sources_question = [chunk.page_content for chunk in question_chunks]
-    sources_answer = [chunk.page_content for chunk in answer_chunks]
+    # Extract page content and scores, normalize scores to 0-1 range
+    max_score = max(max(score for _, score in question_chunks_with_scores), 
+                   max(score for _, score in answer_chunks_with_scores))
+    min_score = min(min(score for _, score in question_chunks_with_scores), 
+                   min(score for _, score in answer_chunks_with_scores))
+    score_range = max_score - min_score if max_score != min_score else 1
 
-    # Combine sources from question and answer and remove duplicates
-    sources = list(set(sources_question + sources_answer))
+    sources_with_scores = {}
+    # Process question chunks
+    for chunk, score in question_chunks_with_scores:
+        normalized_score = 1 - (score - min_score) / score_range  # Invert because lower distance = higher relevance
+        sources_with_scores[chunk.page_content] = max(normalized_score, sources_with_scores.get(chunk.page_content, 0))
+    
+    # Process answer chunks
+    for chunk, score in answer_chunks_with_scores:
+        normalized_score = 1 - (score - min_score) / score_range  # Invert because lower distance = higher relevance
+        sources_with_scores[chunk.page_content] = max(normalized_score, sources_with_scores.get(chunk.page_content, 0))
 
-    # Replace matching sources with image names
-    sources = [image_mapping.get(source, source) for source in sources]
+    # Replace matching sources with image names while preserving scores
+    sources_with_scores = {image_mapping.get(source, source): score 
+                         for source, score in sources_with_scores.items()}
 
     # TEST
-    # Display the list of strings in a beautiful way
     print("sources before refine:")
-    pprint.pprint(sources)
-    print(f"length of sources before refine: {len(sources)}")
+    pprint.pprint(sources_with_scores)
+    print(f"length of sources before refine: {len(sources_with_scores)}")
 
-    # Refine and limit sources
+    # Refine and limit sources while preserving scores
     markdown_dir = os.path.join(embedding_folder, "markdown")
-    sources = refine_sources(_doc, _documents, sources, markdown_dir, user_input)
+    sources_with_scores = refine_sources(_doc, _documents, sources_with_scores, markdown_dir, user_input)
 
     # TEST
-    # Display the list of strings in a beautiful way
     print("sources after refine:")
-    for source in sources:
-        # pprint.pprint(source)
-        print(source)
-    print(f"length of sources after refine: {len(sources)}")
-    return sources
+    for source, score in sources_with_scores.items():
+        print(f"{source}: {score}")
+    print(f"length of sources after refine: {len(sources_with_scores)}")
+    
+    return sources_with_scores
 
 
-def refine_sources(_doc, _documents, sources, markdown_dir, user_input):
+def refine_sources(_doc, _documents, sources_with_scores, markdown_dir, user_input):
     """
     Refine sources by checking if they can be found in the document
     Only get first 20 sources
     Show them in the order they are found in the document
     Preserve image filenames but filter them based on context relevance using LLM
     """
-    refined_sources = []
-    image_sources = []
+    refined_sources = {}
+    image_sources = {}
     
     # Load image context
     image_context_path = os.path.join(markdown_dir, "image_context.json")
@@ -132,16 +140,16 @@ def refine_sources(_doc, _documents, sources, markdown_dir, user_input):
             json.dump(image_context, f)
     
     # First separate image sources from text sources
-    text_sources = []
-    for source in sources:
+    text_sources = {}
+    for source, score in sources_with_scores.items():
         # Check if source looks like an image filename (has image extension)
         if any(source.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.svg']):
-            image_sources.append(source)
+            image_sources[source] = score
         else:
-            text_sources.append(source)
+            text_sources[source] = score
     
     # Filter image sources based on LLM evaluation
-    filtered_images = []
+    filtered_images = {}
     if image_sources:
         # Initialize LLM for relevance evaluation
         config = load_config()
@@ -160,12 +168,12 @@ def refine_sources(_doc, _documents, sources, markdown_dir, user_input):
         
         Organize your response in the following JSON format:
         ```json
-        {{
+        {
             "actual_figure_number": "<extracted figure number from descriptions, e.g. 'Figure 1', 'Fig. 2', etc.>",
             "is_relevant": <Boolean, True/False>,
             "relevance_score": <float between 0 and 1>,
             "explanation": "<brief explanation including actual figure number and why this image is or isn't relevant>"
-        }}
+        }
         ```
         
         Pay special attention to:
@@ -192,7 +200,7 @@ def refine_sources(_doc, _documents, sources, markdown_dir, user_input):
         
         # Evaluate each image
         image_scores = []
-        for image in image_sources:
+        for image, score in image_sources.items():
             if image in image_context:
                 # Get all context descriptions for this image
                 descriptions = image_context[image]
@@ -207,9 +215,11 @@ def refine_sources(_doc, _documents, sources, markdown_dir, user_input):
                     
                     # Store both the actual figure number and score
                     if result["is_relevant"]:
+                        # Combine vector similarity score with LLM relevance score
+                        combined_score = (score + result["relevance_score"]) / 2
                         image_scores.append((
                             image,
-                            result["relevance_score"],
+                            combined_score,
                             result["actual_figure_number"],
                             result["explanation"]
                         ))
@@ -223,7 +233,7 @@ def refine_sources(_doc, _documents, sources, markdown_dir, user_input):
         image_scores.sort(key=lambda x: x[1], reverse=True)
         
         # Filter images with high relevance score
-        filtered_images = [(img, fig_num, expl) for img, score, fig_num, expl in image_scores if score > 0.2]
+        filtered_images = {img: score for img, score, fig_num, expl in image_scores if score > 0.2}
         
         if filtered_images:
             # If asking about a specific figure, prioritize exact figure number match
@@ -234,30 +244,30 @@ def refine_sources(_doc, _documents, sources, markdown_dir, user_input):
             if user_figure_match:
                 user_figure_num = user_figure_match.group(1)
                 # Look for exact figure number match first
-                exact_matches = [
-                    (img, fig_num, expl) for img, fig_num, expl in filtered_images 
+                exact_matches = {
+                    img: score for img, score, fig_num, expl in image_scores 
                     if re.search(rf'(?:figure|fig)\.?\s*{user_figure_num}\b', fig_num, re.IGNORECASE)
-                ]
+                }
                 if exact_matches:
-                    filtered_images = [exact_matches[0]]  # Take the highest scored exact match
+                    filtered_images = {list(exact_matches.keys())[0]: list(exact_matches.values())[0]}  # Take the highest scored exact match
             
             # If no specific figure was asked for or no exact match found, take the highest scored image
             if not filtered_images:
-                filtered_images = [filtered_images[0]]
-            
-            # Keep only the image filename for further processing
-            filtered_images = [img for img, _, _ in filtered_images]
+                filtered_images = {list(filtered_images.keys())[0]: list(filtered_images.values())[0]}
     
     # Process text sources as before
     for page in _doc:
-        for source in text_sources:
+        for source, score in text_sources.items():
             text_instances = robust_search_for(page, source)
             if text_instances:
-                refined_sources.append(source)
+                refined_sources[source] = score
     
     # Combine filtered image sources with refined text sources
-    final_sources = filtered_images + refined_sources
-    return final_sources[:20]
+    final_sources = {**filtered_images, **refined_sources}
+    
+    # Sort by score and limit to top 20
+    sorted_sources = dict(sorted(final_sources.items(), key=lambda x: x[1], reverse=True)[:20])
+    return sorted_sources
 
 def cosine_similarity(vec1, vec2):
     """Calculate cosine similarity between two vectors"""

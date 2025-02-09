@@ -84,6 +84,7 @@ from pipeline.utils import (
     extract_images_from_pdf,
     extract_pdf_content_to_markdown,
     extract_pdf_content_to_markdown_via_api,
+    create_searchable_chunks,
 )
 from pipeline.images_understanding import initialize_image_files
 
@@ -126,30 +127,48 @@ def generate_embedding(_documents, _doc, pdf_path, embedding_folder):
                 st.session_state.md_document = md_document
         except Exception as e:
             print(f"Error extracting content to markdown via API: {e}")
-            # Directly use the document content raw text as the markdown content
+            # Use _doc to extract searchable content
             st.session_state.md_document = ""
-            for doc in _documents:
-                st.session_state.md_document += doc.page_content.strip() + "\n"
+            texts = []
+            
+            # Process each page in the PDF document
+            for page_num in range(len(_doc)):
+                page = _doc[page_num]
+                # Get all text blocks that can be found via search
+                text_blocks = []
+                for block in page.get_text("blocks"):
+                    text = block[4]  # The text content is at index 4
+                    # Verify the text can be found via search
+                    search_results = page.search_for(text.strip())
+                    if search_results:
+                        text_blocks.append(text)
+                
+                # Join the searchable text blocks
+                page_content = "\n".join(text_blocks)
+                st.session_state.md_document += page_content.strip() + "\n"
+                texts.append(Document(
+                    page_content=page_content,
+                    metadata={"source": f"page_{page_num + 1}", "page": page_num + 1}
+                ))
 
-            # And save to markdown_dir
+            # Save to markdown_dir
             markdown_dir = os.path.join(embedding_folder, "markdown")
             os.makedirs(markdown_dir, exist_ok=True)
             md_path = os.path.join(markdown_dir, "content.md")
             with open(md_path, "w", encoding="utf-8") as f:
                 f.write(st.session_state.md_document)
             
-        # Split the documents into chunks
-        average_page_length = sum(len(doc.page_content) for doc in _documents) / len(_documents)
-        chunk_size = average_page_length // 3
-        print(f"Average page length: {average_page_length}")
-        print(f"Chunk size: {chunk_size}")
-        print("Creating new embeddings...")
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=chunk_size,
-            chunk_overlap=config['embedding']['chunk_overlap']
-        )
-        texts = text_splitter.split_documents(_documents)
-        print(f"length of document chunks generated for get_response_source:{len(texts)}")
+            # Use the texts directly instead of splitting again
+            print(f"Number of pages processed: {len(texts)}")
+        else:
+            # Split the documents into chunks when markdown extraction succeeded
+            average_page_length = sum(len(doc.page_content) for doc in _documents) / len(_documents)
+            chunk_size = int(average_page_length // 3)
+            print(f"Average page length: {average_page_length}")
+            print(f"Chunk size: {chunk_size}")
+            print("Creating new embeddings...")
+            texts = create_searchable_chunks(_doc, chunk_size)
+            print(f"length of document chunks generated for get_response_source:{len(texts)}")
 
         # Initialize image files and try to append image context to texts with error handling
         try:
@@ -177,8 +196,8 @@ def generate_embedding(_documents, _doc, pdf_path, embedding_folder):
         db.save_local(embedding_folder)
 
         try:
-            # Generate and save document summary
-            generate_document_summary(_documents, embedding_folder)
+            # Generate and save document summary using the texts we created
+            generate_document_summary(texts, embedding_folder)
         except Exception as e:
             print(f"Error generating document summary: {e}")
             print("Continuing without document summary...")

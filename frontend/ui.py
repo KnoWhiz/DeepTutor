@@ -129,6 +129,23 @@ def show_page_option():
         st.session_state.page = st.selectbox("🖥️ Page", menu)
 
 
+def get_relevance_color(score):
+    """Convert a relevance score to a shade of grey.
+    
+    Args:
+        score: Float between 0 and 1
+        
+    Returns:
+        Hex color code string for a shade of grey, where:
+        - High relevance (1.0) = Dark grey (#404040)
+        - Medium relevance (0.5) = Medium grey (#808080)
+        - Low relevance (0.0) = Light grey (#C0C0C0)
+    """
+    # Convert score to a grey value between 192 (C0) and 100 (40)
+    grey_value = int(192 - (score * 92))
+    return f"#{grey_value:02x}{grey_value:02x}{grey_value:02x}"
+
+
 # Function to display the chat interface
 def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agent):
     # Init float function for chat_input textbox
@@ -149,7 +166,7 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
         # Generate initial welcome message if chat history is empty
         if not st.session_state.chat_history:
             with st.spinner("Loading document summary..."):
-                initial_message, _ = tutor_agent(
+                initial_message, sources = tutor_agent(
                     mode=st.session_state.mode,
                     _doc=doc,
                     _documents=documents,
@@ -158,6 +175,10 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                     chat_history=[],
                     embedding_folder=embedding_folder
                 )
+                # Convert sources to dict if it's a list (for backward compatibility)
+                if isinstance(sources, list):
+                    sources = {source: 1.0 for source in sources}  # Assign max relevance to initial sources
+                
                 # Generate follow-up questions for initial message
                 follow_up_questions = generate_follow_up_questions(initial_message, [])
                 st.session_state.chat_history.append(
@@ -167,6 +188,21 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                         "follow_up_questions": follow_up_questions
                     }
                 )
+                
+                if sources:
+                    # Store source-to-page mapping
+                    source_pages = {}
+                    for source in sources.keys():
+                        pages_with_excerpts = find_pages_with_excerpts(doc, [source])
+                        if pages_with_excerpts:
+                            source_pages[source] = pages_with_excerpts[0] + 1
+                    
+                    st.session_state.chat_history.append({
+                        "role": "source_buttons",
+                        "sources": sources,
+                        "pages": source_pages,
+                        "timestamp": len(st.session_state.chat_history)
+                    })
 
         # Display chat history
         for idx, msg in enumerate(st.session_state.chat_history):
@@ -182,17 +218,40 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                     # First display source buttons if this message has associated sources
                     next_msg = st.session_state.chat_history[idx + 1] if idx + 1 < len(st.session_state.chat_history) else None
                     if next_msg and next_msg["role"] == "source_buttons":
-                        if next_msg["sources"] and len(next_msg["sources"]) > 0:
+                        sources = next_msg["sources"]
+                        # Convert sources to dict if it's a list (for backward compatibility)
+                        if isinstance(sources, list):
+                            sources = {source: 1.0 for source in sources}  # Assign max relevance to old sources
+                            next_msg["sources"] = sources
+                        
+                        if sources and len(sources) > 0:
                             st.write("\n\n**📚 Sources:**")
-                            cols = st.columns(len(next_msg["sources"]))
-                            for src_idx, (col, source) in enumerate(zip(cols, next_msg["sources"]), 1):
+                            cols = st.columns(len(sources))
+                            for src_idx, (col, (source, score)) in enumerate(zip(cols, sources.items()), 1):
                                 page_num = next_msg["pages"][source]
                                 with col:
-                                    if st.button(to_emoji_number(src_idx), key=f"source_btn_{idx}_{src_idx}", use_container_width=True):
-                                        st.session_state.current_page = page_num
-                                        st.session_state.annotations = get_highlight_info(doc, [source])
-                        # else:
-                        #     st.info("No sources were found for this response.")
+                                    # Create a stylable container for the button with custom color
+                                    button_color = get_relevance_color(score)
+                                    button_style = """
+                                    button {{
+                                        background-color: {button_color} !important;
+                                        border-color: {button_color} !important;
+                                        color: white !important;
+                                        transition: filter 0.2s !important;
+                                    }}
+                                    button:hover {{
+                                        background-color: {button_color} !important;
+                                        border-color: {button_color} !important;
+                                        filter: brightness(120%) !important;
+                                    }}
+                                    """
+                                    with stylable_container(
+                                        key=f"source_btn_container_{idx}_{src_idx}",
+                                        css_styles=button_style.format(button_color=button_color)
+                                    ):
+                                        if st.button(to_emoji_number(src_idx), key=f"source_btn_{idx}_{src_idx}", use_container_width=True):
+                                            st.session_state.current_page = page_num
+                                            st.session_state.annotations = get_highlight_info(doc, [source])
                     
                     # Then display follow-up questions
                     if "follow_up_questions" in msg:
@@ -225,12 +284,16 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                         chat_history=st.session_state.chat_history,
                         embedding_folder=embedding_folder
                     )
-                    # Validate sources
-                    sources = sources if all(isinstance(s, str) for s in sources) else []
+                    # Convert sources to dict if it's a list (for backward compatibility)
+                    if isinstance(sources, list):
+                        sources = {source: 1.0 for source in sources}  # Assign max relevance to old sources
+                    else:
+                        # Validate sources is a dictionary
+                        sources = sources if isinstance(sources, dict) else {}
                     
                     # Store source-to-page mapping
                     source_pages = {}
-                    for source in sources:
+                    for source in sources.keys():
                         pages_with_excerpts = find_pages_with_excerpts(doc, [source])
                         if pages_with_excerpts:
                             source_pages[source] = pages_with_excerpts[0] + 1
@@ -263,15 +326,32 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                         if sources and len(sources) > 0:
                             st.write("\n\n**📚 Sources:**")
                             cols = st.columns(len(sources))
-                            for idx, (col, source) in enumerate(zip(cols, sources), 1):
+                            for idx, (col, (source, score)) in enumerate(zip(cols, sources.items()), 1):
                                 page_num = source_pages.get(source)
                                 if page_num:
                                     with col:
-                                        if st.button(to_emoji_number(idx), key=f"source_btn_{idx}_current", use_container_width=True):
-                                            st.session_state.current_page = page_num
-                                            st.session_state.annotations = get_highlight_info(doc, [source])
-                        # else:
-                        #     st.info("No relevant sources found for this response.")
+                                        # Create a stylable container for the button with custom color
+                                        button_color = get_relevance_color(score)
+                                        button_style = """
+                                        button {{
+                                            background-color: {button_color} !important;
+                                            border-color: {button_color} !important;
+                                            color: white !important;
+                                            transition: filter 0.2s !important;
+                                        }}
+                                        button:hover {{
+                                            background-color: {button_color} !important;
+                                            border-color: {button_color} !important;
+                                            filter: brightness(120%) !important;
+                                        }}
+                                        """
+                                        with stylable_container(
+                                            key=f"source_btn_container_current_{idx}",
+                                            css_styles=button_style.format(button_color=button_color)
+                                        ):
+                                            if st.button(to_emoji_number(idx), key=f"source_btn_{idx}_current", use_container_width=True):
+                                                st.session_state.current_page = page_num
+                                                st.session_state.annotations = get_highlight_info(doc, [source])
                         
                         # Then display follow-up questions
                         st.write("\n\n**📝 Follow-up Questions:**")
@@ -290,7 +370,7 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                 if "current_page" not in st.session_state:
                     st.session_state.current_page = 1
                 if st.session_state.get("sources"):
-                    st.session_state.annotations = get_highlight_info(doc, st.session_state.sources)
+                    st.session_state.annotations = get_highlight_info(doc, list(st.session_state.sources.keys()))
 
 
 # Function to display the pdf viewer

@@ -19,32 +19,17 @@ from pipeline.config import load_config
 from pipeline.utils import get_embedding_models, robust_search_for
 from frontend.state import process_pdf_file, extract_documents_from_file
 
-def test_source_search(pdf_path: str, chunk_size: int = 512) -> None:
+def create_searchable_chunks(doc, chunk_size: int) -> list:
     """
-    Test source search functionality by:
-    1. Loading a PDF file
-    2. Processing it into documents and doc objects
-    3. Splitting content into chunks
-    4. Embedding the chunks
-    5. For each chunk, verify it can be found in the source PDF
+    Create searchable chunks from a PDF document.
     
     Args:
-        pdf_path: Path to the PDF file to test
-        chunk_size: Maximum size of each text chunk in characters (default: 512)
+        doc: The PDF document object
+        chunk_size: Maximum size of each text chunk in characters
+        
+    Returns:
+        list: A list of Document objects containing the chunks
     """
-    print(f"Testing source search for PDF: {pdf_path}")
-    
-    # Load the PDF file
-    with open(pdf_path, "rb") as f:
-        file_content = f.read()
-    
-    # Process the PDF file
-    filename = os.path.basename(pdf_path)
-    documents, doc, file_paths = process_pdf_file(file_content, filename)
-    
-    print(f"Loaded PDF with {len(documents)} document chunks")
-    
-    # Create chunks directly from the PDF content to ensure better matching
     chunks = []
     for page_num in range(len(doc)):
         page = doc[page_num]
@@ -109,6 +94,36 @@ def test_source_search(pdf_path: str, chunk_size: int = 512) -> None:
         x.metadata.get("page", 0),
         x.metadata.get("chunk_index", 0)
     ))
+    
+    return chunks
+
+def test_source_search(pdf_path: str, chunk_size: int = 512) -> None:
+    """
+    Test source search functionality by:
+    1. Loading a PDF file
+    2. Processing it into documents and doc objects
+    3. Splitting content into chunks
+    4. Embedding the chunks
+    5. For each chunk, verify it can be found in the source PDF
+    
+    Args:
+        pdf_path: Path to the PDF file to test
+        chunk_size: Maximum size of each text chunk in characters (default: 512)
+    """
+    print(f"Testing source search for PDF: {pdf_path}")
+    
+    # Load the PDF file
+    with open(pdf_path, "rb") as f:
+        file_content = f.read()
+    
+    # Process the PDF file
+    filename = os.path.basename(pdf_path)
+    documents, doc, file_paths = process_pdf_file(file_content, filename)
+    
+    print(f"Loaded PDF with {len(documents)} document chunks")
+    
+    # Create chunks directly from the PDF content to ensure better matching
+    chunks = create_searchable_chunks(doc, chunk_size)
     
     print(f"Created {len(chunks)} searchable chunks from PDF")
     

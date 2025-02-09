@@ -130,33 +130,20 @@ def show_page_option():
 
 
 def get_relevance_color(score):
-    """Convert a relevance score to a color using a gradient from red to green.
+    """Convert a relevance score to a shade of grey.
     
     Args:
         score: Float between 0 and 1
         
     Returns:
-        Hex color code string
+        Hex color code string for a shade of grey, where:
+        - High relevance (1.0) = Dark grey (#404040)
+        - Medium relevance (0.5) = Medium grey (#808080)
+        - Low relevance (0.0) = Light grey (#C0C0C0)
     """
-    # Convert score to RGB
-    # High relevance (1.0) = green (50, 205, 50)
-    # Medium relevance (0.5) = yellow (255, 255, 0)
-    # Low relevance (0.0) = red (255, 69, 0)
-    
-    if score >= 0.5:
-        # Green to yellow
-        ratio = (score - 0.5) * 2
-        r = int(255 + (50 - 255) * ratio)
-        g = int(255 + (205 - 255) * ratio)
-        b = int(0 + (50 - 0) * ratio)
-    else:
-        # Yellow to red
-        ratio = score * 2
-        r = 255
-        g = int(255 * ratio)
-        b = int(0 + 69 * (1 - ratio))
-    
-    return f"#{r:02x}{g:02x}{b:02x}"
+    # Convert score to a grey value between 192 (C0) and 64 (40)
+    grey_value = int(192 - (score * 128))
+    return f"#{grey_value:02x}{grey_value:02x}{grey_value:02x}"
 
 
 # Function to display the chat interface
@@ -245,20 +232,22 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                                 with col:
                                     # Create a stylable container for the button with custom color
                                     button_color = get_relevance_color(score)
+                                    button_style = """
+                                    button {{
+                                        background-color: {button_color} !important;
+                                        border-color: {button_color} !important;
+                                        color: white !important;
+                                        transition: filter 0.2s !important;
+                                    }}
+                                    button:hover {{
+                                        background-color: {button_color} !important;
+                                        border-color: {button_color} !important;
+                                        filter: brightness(120%) !important;
+                                    }}
+                                    """
                                     with stylable_container(
                                         key=f"source_btn_container_{idx}_{src_idx}",
-                                        css_styles=f"""
-                                        button {{
-                                            background-color: {button_color} !important;
-                                            border-color: {button_color} !important;
-                                            color: white !important;
-                                        }}
-                                        button:hover {{
-                                            background-color: {button_color} !important;
-                                            border-color: {button_color} !important;
-                                            filter: brightness(110%);
-                                        }}
-                                        """
+                                        css_styles=button_style.format(button_color=button_color)
                                     ):
                                         if st.button(to_emoji_number(src_idx), key=f"source_btn_{idx}_{src_idx}", use_container_width=True):
                                             st.session_state.current_page = page_num
@@ -343,20 +332,22 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                                     with col:
                                         # Create a stylable container for the button with custom color
                                         button_color = get_relevance_color(score)
+                                        button_style = """
+                                        button {{
+                                            background-color: {button_color} !important;
+                                            border-color: {button_color} !important;
+                                            color: white !important;
+                                            transition: filter 0.2s !important;
+                                        }}
+                                        button:hover {{
+                                            background-color: {button_color} !important;
+                                            border-color: {button_color} !important;
+                                            filter: brightness(120%) !important;
+                                        }}
+                                        """
                                         with stylable_container(
                                             key=f"source_btn_container_current_{idx}",
-                                            css_styles=f"""
-                                            button {{
-                                                background-color: {button_color} !important;
-                                                border-color: {button_color} !important;
-                                                color: white !important;
-                                            }}
-                                            button:hover {{
-                                                background-color: {button_color} !important;
-                                                border-color: {button_color} !important;
-                                                filter: brightness(110%);
-                                            }}
-                                            """
+                                            css_styles=button_style.format(button_color=button_color)
                                         ):
                                             if st.button(to_emoji_number(idx), key=f"source_btn_{idx}_current", use_container_width=True):
                                                 st.session_state.current_page = page_num

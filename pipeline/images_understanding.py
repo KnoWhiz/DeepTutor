@@ -200,7 +200,7 @@ def extract_image_context(folder_dir: str | Path, context_tokens: int = 500) -> 
                 # Get only the second line after this mention
                 context_window = get_context_window(md_lines, idx)
                 if context_window:  # Only add if we found a valid context line
-                    contexts.append(context_window[0])
+                    contexts.append(context_window[0] + " <markdown>")
         
         if contexts:
             image_context[image] = contexts

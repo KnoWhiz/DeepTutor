@@ -20,6 +20,7 @@ except ImportError:
     # If that fails, try importing directly
     from helper.azure_blob import AzureBlobHelper
 
+
 def count_tokens(text: str) -> int:
     """
     Estimate the number of tokens in a text string using a simple word-based approach.
@@ -33,6 +34,7 @@ def count_tokens(text: str) -> int:
     # This is a simple estimation - in practice you might want to use 
     # a proper tokenizer from transformers or tiktoken
     return len(text.split())
+
 
 def get_context_window(lines: List[str], target_line_idx: int) -> List[str]:
     """
@@ -55,6 +57,7 @@ def get_context_window(lines: List[str], target_line_idx: int) -> List[str]:
             context.append(next_line)
     
     return context
+
 
 def initialize_image_files(folder_dir: str | Path) -> tuple[str, str]:
     """
@@ -86,6 +89,7 @@ def initialize_image_files(folder_dir: str | Path) -> tuple[str, str]:
             json.dump({}, f)
     
     return str(image_context_path), str(image_urls_path)
+
 
 def upload_images_to_azure(folder_dir: str | Path) -> None:
     """
@@ -156,6 +160,7 @@ def upload_images_to_azure(folder_dir: str | Path) -> None:
         json.dump(image_urls, outfile, indent=2, ensure_ascii=False)
     
     print(f"Image URLs mapping saved to: {output_path}")
+
 
 def extract_image_context(folder_dir: str | Path, context_tokens: int = 500) -> None:
     """

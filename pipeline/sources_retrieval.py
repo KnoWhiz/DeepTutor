@@ -283,12 +283,14 @@ def refine_sources(_doc, _documents, sources_with_scores, markdown_dir, user_inp
     sorted_sources = dict(sorted(final_sources.items(), key=lambda x: x[1], reverse=True)[:20])
     return sorted_sources
 
+
 def cosine_similarity(vec1, vec2):
     """Calculate cosine similarity between two vectors"""
     dot_product = sum(a * b for a, b in zip(vec1, vec2))
     norm1 = sum(a * a for a in vec1) ** 0.5
     norm2 = sum(b * b for b in vec2) ** 0.5
     return dot_product / (norm1 * norm2) if norm1 * norm2 != 0 else 0
+
 
 class PageAwareTextSplitter(RecursiveCharacterTextSplitter):
     """Custom text splitter that respects page boundaries"""

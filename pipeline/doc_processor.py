@@ -163,7 +163,7 @@ def generate_embedding(_documents, _doc, pdf_path, embedding_folder):
         else:
             # Split the documents into chunks when markdown extraction succeeded
             average_page_length = sum(len(doc.page_content) for doc in _documents) / len(_documents)
-            chunk_size = average_page_length // 3
+            chunk_size = int(average_page_length // 3)
             print(f"Average page length: {average_page_length}")
             print(f"Chunk size: {chunk_size}")
             print("Creating new embeddings...")

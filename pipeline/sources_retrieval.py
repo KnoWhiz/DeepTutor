@@ -168,12 +168,12 @@ def refine_sources(_doc, _documents, sources_with_scores, markdown_dir, user_inp
         
         Organize your response in the following JSON format:
         ```json
-        {
+        {{
             "actual_figure_number": "<extracted figure number from descriptions, e.g. 'Figure 1', 'Fig. 2', etc.>",
             "is_relevant": <Boolean, True/False>,
             "relevance_score": <float between 0 and 1>,
             "explanation": "<brief explanation including actual figure number and why this image is or isn't relevant>"
-        }
+        }}
         ```
         
         Pay special attention to:

@@ -141,8 +141,8 @@ def get_relevance_color(score):
         - Medium relevance (0.5) = Medium grey (#808080)
         - Low relevance (0.0) = Light grey (#C0C0C0)
     """
-    # Convert score to a grey value between 192 (C0) and 64 (40)
-    grey_value = int(192 - (score * 128))
+    # Convert score to a grey value between 192 (C0) and 100 (40)
+    grey_value = int(192 - (score * 92))
     return f"#{grey_value:02x}{grey_value:02x}{grey_value:02x}"
 
 

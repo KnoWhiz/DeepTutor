@@ -186,6 +186,6 @@ if __name__ == "__main__":
     # args = parser.parse_args()
     
     test_source_search(
-        "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/input_files/RankRAG- Unifying Context Ranking with  Retrieval-Augmented Generation in LLMs.pdf",
-        chunk_size=1024
+        "/Users/bingranyou/Documents/GitHub_Mac_mini/DeepTutor/input_files/science.1189075.pdf",
+        chunk_size=2048
     )

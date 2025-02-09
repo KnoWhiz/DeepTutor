@@ -84,6 +84,7 @@ from pipeline.utils import (
     extract_images_from_pdf,
     extract_pdf_content_to_markdown,
     extract_pdf_content_to_markdown_via_api,
+    create_searchable_chunks,
 )
 from pipeline.images_understanding import initialize_image_files
 
@@ -166,11 +167,7 @@ def generate_embedding(_documents, _doc, pdf_path, embedding_folder):
             print(f"Average page length: {average_page_length}")
             print(f"Chunk size: {chunk_size}")
             print("Creating new embeddings...")
-            text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=chunk_size,
-                chunk_overlap=config['embedding']['chunk_overlap']
-            )
-            texts = text_splitter.split_documents(_documents)
+            texts = create_searchable_chunks(_doc, chunk_size)
             print(f"length of document chunks generated for get_response_source:{len(texts)}")
 
         # Initialize image files and try to append image context to texts with error handling

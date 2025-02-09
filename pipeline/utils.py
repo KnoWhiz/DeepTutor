@@ -21,6 +21,7 @@ from streamlit_float import *
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain.output_parsers import OutputFixingParser
+from langchain_core.documents import Document
 
 from pipeline.config import load_config
 from pipeline.api_handler import ApiHandler
@@ -570,3 +571,82 @@ def extract_pdf_content_to_markdown_via_api(
     extract_image_context(output_dir, chunk_size)
 
     return str(md_path), saved_images, markdown
+
+
+def create_searchable_chunks(doc, chunk_size: int) -> list:
+    """
+    Create searchable chunks from a PDF document.
+    
+    Args:
+        doc: The PDF document object
+        chunk_size: Maximum size of each text chunk in characters
+        
+    Returns:
+        list: A list of Document objects containing the chunks
+    """
+    chunks = []
+    for page_num in range(len(doc)):
+        page = doc[page_num]
+        text_blocks = []
+        
+        # Get text blocks that can be found via search
+        for block in page.get_text("blocks"):
+            text = block[4]  # The text content is at index 4
+            # Clean up the text
+            clean_text = text.strip()
+            
+            if clean_text:
+                # Remove hyphenation at line breaks
+                clean_text = clean_text.replace("-\n", "")
+                # Normalize spaces
+                clean_text = " ".join(clean_text.split())
+                # Replace special characters that might cause issues
+                replacements = {
+                    # "−": "-",  # Replace unicode minus with hyphen
+                    # "⊥": "_|_",  # Replace perpendicular symbol
+                    # "≫": ">>",  # Replace much greater than
+                    # "%": "",     # Remove percentage signs that might be formatting artifacts
+                    # "→": "->",   # Replace arrow
+                }
+                for old, new in replacements.items():
+                    clean_text = clean_text.replace(old, new)
+                
+                # Split into chunks of specified size
+                while len(clean_text) > 0:
+                    # Find a good break point near chunk_size characters
+                    end_pos = min(chunk_size, len(clean_text))
+                    if end_pos < len(clean_text):
+                        # Try to break at a sentence or period
+                        last_period = clean_text[:end_pos].rfind(". ")
+                        if last_period > 0:
+                            end_pos = last_period + 1
+                        else:
+                            # If no period, try to break at a space
+                            last_space = clean_text[:end_pos].rfind(" ")
+                            if last_space > 0:
+                                end_pos = last_space
+                    
+                    chunk_text = clean_text[:end_pos].strip()
+                    if chunk_text:
+                        text_blocks.append(Document(
+                            page_content=chunk_text,
+                            metadata={
+                                "page": page_num,
+                                "source": f"page_{page_num + 1}",
+                                "chunk_index": len(text_blocks),  # Track position within page
+                                "block_bbox": block[:4],  # Store block bounding box coordinates
+                                "total_blocks_in_page": len(page.get_text("blocks")),
+                                "relative_position": len(text_blocks) / len(page.get_text("blocks"))
+                            }
+                        ))
+                    clean_text = clean_text[end_pos:].strip()
+        
+        chunks.extend(text_blocks)
+    
+    # Sort chunks by page number and then by chunk index
+    chunks.sort(key=lambda x: (
+        x.metadata.get("page", 0),
+        x.metadata.get("chunk_index", 0)
+    ))
+    
+    return chunks

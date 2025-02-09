@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 from dotenv import load_dotenv
 from openai import AzureOpenAI
 load_dotenv()
@@ -69,11 +70,63 @@ def analyze_image(image_url=None):
         print(f"Error occurred: {str(e)}")
         raise
 
+def process_folder_images(folder_path):
+    """
+    Process all images in a folder that have contexts ending with <markdown>.
+    Updates the image_context.json file with analysis results.
+    
+    Args:
+        folder_path (str): Path to the folder containing image_context.json and image_urls.json
+        
+    Returns:
+        dict: Updated context dictionary with analysis results
+    """
+    try:
+        # Read image contexts
+        context_file = os.path.join(folder_path, 'image_context.json')
+        urls_file = os.path.join(folder_path, 'image_urls.json')
+        
+        with open(context_file, 'r') as f:
+            contexts = json.load(f)
+        
+        with open(urls_file, 'r') as f:
+            urls = json.load(f)
+            
+        # Process each image that has context ending with <markdown>
+        for image_name, context_list in contexts.items():
+            if image_name in urls:
+                for i, context in enumerate(context_list):
+                    if context.strip().endswith('<markdown>'):
+                        # Get image analysis
+                        image_url = urls[image_name]
+                        analysis = analyze_image(image_url)
+                        
+                        # Update context with analysis
+                        contexts[image_name][i] = f"{context}\nImage Analysis: {analysis}"
+        
+        # Save updated contexts back to file
+        with open(context_file, 'w') as f:
+            json.dump(contexts, f, indent=2)
+            
+        return contexts
+        
+    except Exception as e:
+        print(f"Error processing folder images: {str(e)}")
+        raise
+
 if __name__ == '__main__':
     # Example usage
     try:
-        result = analyze_image("https://knowhiztutorrag.blob.core.windows.net/knowhiztutorrag/file_appendix/3671da1e844b53ffbdccac7bc8c57341/images/_page_1_Figure_1.jpeg")
-        print("\nImage Analysis Result:")
-        print(result)
+        # Test single image analysis
+        # result = analyze_image("https://knowhiztutorrag.blob.core.windows.net/knowhiztutorrag/file_appendix/3671da1e844b53ffbdccac7bc8c57341/images/_page_1_Figure_1.jpeg")
+        # print("\nSingle Image Analysis Result:")
+        # print(result)
+        
+        # Test folder processing
+        folder_path = "/Users/bingranyou/Documents/GitHub_Mac_mini/DeepTutor/embedded_content/3671da1e844b53ffbdccac7bc8c57341/markdown"
+        print("\nProcessing folder images...")
+        updated_contexts = process_folder_images(folder_path)
+        print("Folder processing completed. Updated contexts saved.")
+        
     except Exception as e:
-        print(f"Failed to analyze image: {str(e)}")
+        print(f"Failed to process: {str(e)}")

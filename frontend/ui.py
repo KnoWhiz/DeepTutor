@@ -204,29 +204,6 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                         "timestamp": len(st.session_state.chat_history)
                     })
 
-        # Update the follow-up button style with enhanced hover effect
-        follow_up_button_style = """
-        button {
-            color: rgb(49, 51, 63) !important;
-            border: 1px solid rgba(49, 51, 63, 0.2) !important;
-            border-radius: 0.5rem !important;
-            background-color: transparent !important;
-            transition: all 0.2s ease-in-out !important;
-            padding: 0.5rem 1rem !important;
-        }
-        button:hover {
-            color: rgb(49, 51, 63) !important;
-            border-color: rgba(49, 51, 63, 0.8) !important;
-            background-color: rgba(49, 51, 63, 0.1) !important;
-            transform: translateY(-1px) !important;
-            box-shadow: 0 2px 4px rgba(49, 51, 63, 0.1) !important;
-        }
-        button:active {
-            transform: translateY(0px) !important;
-            box-shadow: none !important;
-        }
-        """
-
         # Display chat history
         for idx, msg in enumerate(st.session_state.chat_history):
             if msg["role"] == "user":
@@ -280,12 +257,8 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                     if "follow_up_questions" in msg:
                         st.write("\n\n**📝 Follow-up Questions:**")
                         for q_idx, question in enumerate(msg["follow_up_questions"], 1):
-                            with stylable_container(
-                                key=f"follow_up_btn_container_{idx}_{q_idx}",
-                                css_styles=follow_up_button_style
-                            ):
-                                if st.button(f"{q_idx}. {question}", key=f"follow_up_{idx}_{q_idx}"):
-                                    handle_follow_up_click(question)
+                            if st.button(f"{q_idx}. {question}", key=f"follow_up_{idx}_{q_idx}"):
+                                handle_follow_up_click(question)
             elif msg["role"] == "source_buttons":
                 # Skip source buttons here since we're showing them with the assistant message
                 pass
@@ -383,12 +356,8 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                         # Then display follow-up questions
                         st.write("\n\n**📝 Follow-up Questions:**")
                         for q_idx, question in enumerate(follow_up_questions, 1):
-                            with stylable_container(
-                                key=f"follow_up_btn_container_current_{q_idx}",
-                                css_styles=follow_up_button_style
-                            ):
-                                if st.button(f"{q_idx}. {question}", key=f"follow_up_current_{q_idx}"):
-                                    handle_follow_up_click(question)
+                            if st.button(f"{q_idx}. {question}", key=f"follow_up_current_{q_idx}"):
+                                handle_follow_up_click(question)
 
                     st.session_state.sources = sources
                     st.session_state.chat_occurred = True

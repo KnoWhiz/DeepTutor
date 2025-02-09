@@ -19,7 +19,7 @@ from pipeline.config import load_config
 from pipeline.utils import get_embedding_models, robust_search_for
 from frontend.state import process_pdf_file, extract_documents_from_file
 
-def test_source_search(pdf_path: str) -> None:
+def test_source_search(pdf_path: str, chunk_size: int = 512) -> None:
     """
     Test source search functionality by:
     1. Loading a PDF file
@@ -30,6 +30,7 @@ def test_source_search(pdf_path: str) -> None:
     
     Args:
         pdf_path: Path to the PDF file to test
+        chunk_size: Maximum size of each text chunk in characters (default: 512)
     """
     print(f"Testing source search for PDF: {pdf_path}")
     
@@ -71,10 +72,10 @@ def test_source_search(pdf_path: str) -> None:
                 for old, new in replacements.items():
                     clean_text = clean_text.replace(old, new)
                 
-                # Split into chunks of 512 characters
+                # Split into chunks of specified size
                 while len(clean_text) > 0:
-                    # Find a good break point near 512 characters
-                    end_pos = min(512, len(clean_text))
+                    # Find a good break point near chunk_size characters
+                    end_pos = min(chunk_size, len(clean_text))
                     if end_pos < len(clean_text):
                         # Try to break at a sentence or period
                         last_period = clean_text[:end_pos].rfind(". ")
@@ -90,11 +91,24 @@ def test_source_search(pdf_path: str) -> None:
                     if chunk_text:
                         text_blocks.append(Document(
                             page_content=chunk_text,
-                            metadata={"page": page_num, "source": f"page_{page_num + 1}"}
+                            metadata={
+                                "page": page_num,
+                                "source": f"page_{page_num + 1}",
+                                "chunk_index": len(text_blocks),  # Track position within page
+                                "block_bbox": block[:4],  # Store block bounding box coordinates
+                                "total_blocks_in_page": len(page.get_text("blocks")),
+                                "relative_position": len(text_blocks) / len(page.get_text("blocks"))
+                            }
                         ))
                     clean_text = clean_text[end_pos:].strip()
         
         chunks.extend(text_blocks)
+    
+    # Sort chunks by page number and then by chunk index
+    chunks.sort(key=lambda x: (
+        x.metadata.get("page", 0),
+        x.metadata.get("chunk_index", 0)
+    ))
     
     print(f"Created {len(chunks)} searchable chunks from PDF")
     
@@ -171,4 +185,7 @@ if __name__ == "__main__":
     # parser.add_argument("pdf_path", help="Path to the PDF file to test")
     # args = parser.parse_args()
     
-    test_source_search("/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/input_files/RankRAG- Unifying Context Ranking with  Retrieval-Augmented Generation in LLMs.pdf")
+    test_source_search(
+        "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/input_files/RankRAG- Unifying Context Ranking with  Retrieval-Augmented Generation in LLMs.pdf",
+        chunk_size=1024
+    )

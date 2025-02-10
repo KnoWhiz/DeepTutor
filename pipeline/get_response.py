@@ -371,6 +371,7 @@ def get_GraphRAG_global_response(_doc, _documents, user_input, chat_history, emb
     # Extract the content between <think> and </think> as answer_thinking, and the rest as answer_summary. but there is no <answer> tag in the answer, so after the answer_thinking extract the rest of the answer
     answer_thinking = answer.split("<think>")[1].split("</think>")[0]
     answer_summary = answer.split("<think>")[1].split("</think>")[1]
+    answer_summary = responses_refine(search_engine_result.response, answer_summary)
     answer = "### Here is my thinking process\n\n" + answer_thinking + "\n\n### Here is my summarized answer\n\n" + answer_summary
 
     return answer

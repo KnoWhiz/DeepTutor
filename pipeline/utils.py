@@ -662,7 +662,7 @@ def responses_refine(answer, reference=''):
         """
         You are a patient and honest professor helping a student reading a paper.
         Refine the answer that you have provided after a long thinking process: {answer}
-        Refer to the reference if it is helpful: {reference}
+        Refer to the reference: {reference}
         If the answer contains formulas, use LaTeX syntax in markdown
         For inline formulas, use single dollar sign: $a/b = c/d$
         For block formulas, use double dollar sign:

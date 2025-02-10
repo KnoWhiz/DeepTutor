@@ -84,7 +84,7 @@ def tutor_agent(mode, _doc, _documents, file_paths, user_input, chat_history, em
     # Get response
     answer = get_response(mode, _doc, _documents, file_paths, refined_user_input, context_chat_history, embedding_folder)
     # Get sources
-    sources = get_response_source(_doc, _documents, refined_user_input, answer, context_chat_history, embedding_folder)
+    sources = get_response_source(_doc, _documents, file_paths, refined_user_input, answer, context_chat_history, embedding_folder)
 
     images_sources = {}
     # If the sources have images, append the image URL (in image_urls.json mapping) to the end of the answer in markdown format

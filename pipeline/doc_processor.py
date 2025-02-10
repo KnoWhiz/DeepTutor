@@ -97,6 +97,15 @@ print(f"SKIP_MARKER_API: {SKIP_MARKER_API}")
 
 
 def generate_embedding(_documents, _doc, pdf_path, embedding_folder):
+    """
+    Generate embeddings for the documents
+    If the embeddings already exist, load them
+    Otherwise, extract content to markdown via API or local PDF extraction
+    Then, initialize image files and try to append image context to texts with error handling
+    Create the vector store to use as the index
+    Save the embeddings to the specified folder
+    Generate and save document summary using the texts we created
+    """
     config = load_config()
     para = config['llm']
     embeddings = get_embedding_models('default', para)

@@ -11,7 +11,7 @@ def deepseek_inference(
     stream: bool = False,
     temperature: float = 0.0,
     top_p: float = 0.1,
-    max_tokens: int = 10000
+    max_tokens: int = 20000
 ) -> Optional[str]:
     """
     Get completion from the DeepSeek model with optional streaming support.

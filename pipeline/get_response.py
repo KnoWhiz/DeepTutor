@@ -43,6 +43,7 @@ from pipeline.sources_retrieval import (
 from pipeline.utils import (
     detect_language
 )
+from pipeline.inference import deepseek_inference
 
 
 def tutor_agent(mode, _doc, _documents, file_paths, user_input, chat_history, embedding_folder):
@@ -169,58 +170,84 @@ def get_response(mode, _doc, _documents, file_paths, user_input, chat_history, e
     config = load_config()
     retriever = db.as_retriever(search_kwargs={"k": config['retriever']['k']})
 
-    # Create the RetrievalQA chain
-    system_prompt = (
-        """
-        You are a patient and honest professor helping a student reading a paper.
-        Use the given context to answer the question.
-        If you don't know the answer, say you don't know.
-        The previous conversation is: {chat_history} make sure your answer follow the previous conversation but not repetitive.
-        Reference context from the paper: ```{context}```
-        If the concept can be better explained by formulas, use LaTeX syntax in markdown
-        For inline formulas, use single dollar sign: $a/b = c/d$
-        FOr block formulas, use double dollar sign:
-        $$
-        \frac{{a}}{{b}} = \frac{{c}}{{d}}
-        $$
-        """
-    )
-    human_prompt = (
-        """
-        Student's query is: {input}
-        Answer the question based on the context provided.
-        Since I am a student with no related knowledge background, 
-        provide a concise answer and directly answer the question in easy to understand language.
-        Use markdown syntax for bold formatting to highlight important points or words.
-        Use emojis when suitable to make the answer more engaging and interesting.
-        """
-    )
-    prompt = ChatPromptTemplate.from_messages(
-        [
-            ("system", system_prompt),
-            ("human", human_prompt),
-        ]
-    )
+    deep_thinking = True
+    if not deep_thinking:
+        system_prompt = (
+            """
+            You are a patient and honest professor helping a student reading a paper.
+            Use the given context to answer the question.
+            If you don't know the answer, say you don't know.
+            The previous conversation is: {chat_history} make sure your answer follow the previous conversation but not repetitive.
+            Reference context from the paper: ```{context}```
+            If the concept can be better explained by formulas, use LaTeX syntax in markdown
+            For inline formulas, use single dollar sign: $a/b = c/d$
+            FOr block formulas, use double dollar sign:
+            $$
+            \frac{{a}}{{b}} = \frac{{c}}{{d}}
+            $$
+            """
+        )
+        human_prompt = (
+            """
+            Student's query is: {input}
+            Answer the question based on the context provided.
+            Since I am a student with no related knowledge background, 
+            provide a concise answer and directly answer the question in easy to understand language.
+            Use markdown syntax for bold formatting to highlight important points or words.
+            Use emojis when suitable to make the answer more engaging and interesting.
+            """
+        )
+        prompt = ChatPromptTemplate.from_messages(
+            [
+                ("system", system_prompt),
+                ("human", human_prompt),
+            ]
+        )
 
-    def format_docs(docs):
-        return "\n\n".join(doc.page_content for doc in docs)
-    rag_chain_from_docs = (
-        {
-            "input": lambda x: x["input"],  # input query
-            "chat_history": lambda x: x["chat_history"],  # chat history
-            "context": lambda x: format_docs(x["context"]),  # context
-        }
-        | prompt  # format query and context into prompt
-        | llm  # generate response
-        | error_parser  # parse response
-    )
-    # Pass input query to retriever
-    retrieve_docs = (lambda x: x["input"]) | retriever
-    chain = RunnablePassthrough.assign(context=retrieve_docs).assign(
-        answer=rag_chain_from_docs
-    )
-    parsed_result = chain.invoke({"input": user_input, "chat_history": truncate_chat_history(chat_history)})
-    answer = parsed_result['answer']
+        def format_docs(docs):
+            return "\n\n".join(doc.page_content for doc in docs)
+        rag_chain_from_docs = (
+            {
+                "input": lambda x: x["input"],  # input query
+                "chat_history": lambda x: x["chat_history"],  # chat history
+                "context": lambda x: format_docs(x["context"]),  # context
+            }
+            | prompt  # format query and context into prompt
+            | llm  # generate response
+            | error_parser  # parse response
+        )
+        # Pass input query to retriever
+        retrieve_docs = (lambda x: x["input"]) | retriever
+        chain = RunnablePassthrough.assign(context=retrieve_docs).assign(
+            answer=rag_chain_from_docs
+        )
+        parsed_result = chain.invoke({"input": user_input, "chat_history": truncate_chat_history(chat_history)})
+        answer = parsed_result['answer']
+    else:
+        chat_history_string = truncate_chat_history(chat_history)
+        user_input_string = str(user_input)
+        # Get relevant chunks for both question and answer with scores
+        question_chunks_with_scores = db.similarity_search_with_score(user_input, k=config['retriever']['k'])
+        # The total list of sources chunks
+        sources_chunks = []
+        for chunk in question_chunks_with_scores:
+            sources_chunks.append(chunk[0])
+        context = "\n\n".join([chunk.page_content for chunk in sources_chunks])
+
+        # system_message = """
+        # You are a deep thinking assistant.
+        # """
+        prompt = f"\
+        The previous conversation is: {chat_history_string}\
+        Reference context from the paper: {context}\
+        The user's query is: {user_input_string}\
+        """
+        print("prompt:", prompt)
+        print("prompt type:", type(prompt))
+        answer = deepseek_inference(prompt)
+        print("answer:", answer)
+        answer = str(answer)
+        print("answer string:", answer)
     return answer
 
 

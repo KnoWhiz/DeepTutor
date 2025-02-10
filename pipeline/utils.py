@@ -652,7 +652,7 @@ def create_searchable_chunks(doc, chunk_size: int) -> list:
     return chunks
 
 
-def responses_refine(answer, context=''):
+def responses_refine(answer, reference=''):
     config = load_config()
     para = config['llm']
     llm = get_llm(para["level"], para)
@@ -662,10 +662,10 @@ def responses_refine(answer, context=''):
         """
         You are a patient and honest professor helping a student reading a paper.
         Refine the answer that you have provided after a long thinking process: {answer}
-        You can re-refer to the context if it is helpful: {context}
+        Refer to the reference if it is helpful: {reference}
         If the answer contains formulas, use LaTeX syntax in markdown
         For inline formulas, use single dollar sign: $a/b = c/d$
-        FOr block formulas, use double dollar sign:
+        For block formulas, use double dollar sign:
         $$
         \frac{{a}}{{b}} = \frac{{c}}{{d}}
         $$
@@ -675,8 +675,10 @@ def responses_refine(answer, context=''):
     )
     human_prompt = (
         """
-        Refine the answer content. Make sure the response is loyal to the original answer.
-        You can refine the wording / markdown syntax / emojis to make the answer more readable, engaging and interesting.
+        Refine the answer content. Make sure the response is more educational and engaging.
+        You can refine the wording / markdown syntax / emojis to make the answer more readable and interesting.
+        You can use bold formatting to highlight important words.
+        You can use emojis to make the answer more engaging and interesting.
         """
     )
     prompt = ChatPromptTemplate.from_messages([
@@ -684,5 +686,5 @@ def responses_refine(answer, context=''):
         ("human", human_prompt),
     ])
     chain = prompt | llm | error_parser
-    response = chain.invoke({"answer": answer, "context": context})
+    response = chain.invoke({"answer": answer, "reference": reference})
     return response

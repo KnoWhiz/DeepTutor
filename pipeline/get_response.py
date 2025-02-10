@@ -250,9 +250,10 @@ def get_response(mode, _doc, _documents, file_paths, user_input, chat_history, e
         # answer = str(answer)
         # print("answer string:", answer)
 
-        # Replace the content between <think> and </think> to markdown format, add "### Here is my thinking process" as the title, and for the rest of the answer, add "### Here is my summarized answer" as the title
-        answer = answer.replace("<think>", "### Here is my thinking process\n\n")
-        answer = answer.replace("</think>", "\n\n### Here is my summarized answer\n\n")
+        # Extract the content between <think> and </think> as answer_thinking, and the rest as answer_summary. but there is no <answer> tag in the answer, so after the answer_thinking extract the rest of the answer
+        answer_thinking = answer.split("<think>")[1].split("</think>")[0]
+        answer_summary = answer.split("<think>")[1].split("</think>")[1]
+        answer = "### Here is my thinking process\n\n" + answer_thinking + "\n\n### Here is my summarized answer\n\n" + answer_summary
     return answer
 
 

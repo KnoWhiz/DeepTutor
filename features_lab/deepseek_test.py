@@ -1,54 +1,19 @@
-from langchain_deepseek import ChatDeepSeek
-
-import getpass
 import os
+import openai
+from dotenv import load_dotenv
 
-if not os.getenv("DEEPSEEK_API_KEY"):
-    os.environ["DEEPSEEK_API_KEY"] = getpass.getpass("Enter your DeepSeek API key: ")
+load_dotenv()
 
-llm = ChatDeepSeek(
-    model="deepseek-chat",
-    temperature=0,
-    max_tokens=None,
-    timeout=None,
-    # max_retries=2,
+client = openai.OpenAI(
+    api_key=os.environ.get("SAMBANOVA_API_KEY"),
+    base_url="https://api.sambanova.ai/v1",
 )
 
-messages = [
-    (
-        "system",
-        "You are a helpful assistant that translates English to French. Translate the user sentence.",
-    ),
-    ("human", "I love programming."),
-]
-ai_msg = llm.invoke(messages)
-ai_msg.content
-
-from langchain_core.prompts import ChatPromptTemplate
-
-prompt = ChatPromptTemplate(
-    [
-        (
-            "system",
-            "You are a helpful assistant that translates {input_language} to {output_language}.",
-        ),
-        ("human", "{input}"),
-    ]
+response = client.chat.completions.create(
+    model="DeepSeek-R1-Distill-Llama-70B",
+    messages=[{"role":"system","content":"You are a helpful assistant"},{"role":"user","content":"Hello"}],
+    temperature=0.0,
+    top_p=0.1
 )
 
-chain = prompt | llm
-chain.invoke(
-    {
-        "input_language": "English",
-        "output_language": "German",
-        "input": "I love programming.",
-    }
-)
-
-print(chain.invoke(
-    {
-        "input_language": "English",
-        "output_language": "German",
-        "input": "I love programming.",
-    }
-))
+print(response.choices[0].message.content)

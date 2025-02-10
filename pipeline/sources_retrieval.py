@@ -104,7 +104,12 @@ def get_response_source(_doc, _documents, pdf_path, user_input, answer, chat_his
     # Get source pages dictionary, which maps each source to the page number it is found in. the page number is in the metadata of the document chunks
     source_pages = {}
     for chunk in sources_chunks:
-        source_pages[chunk.page_content] = chunk.metadata['page']+1
+        try:
+            source_pages[chunk.page_content] = chunk.metadata['page']+1
+        except KeyError:
+            print(f"Error getting source pages for {chunk.page_content}")
+            print(f"Chunk metadata: {chunk.metadata}")
+            source_pages[chunk.page_content] = 1
 
     # Extract page content and scores, normalize scores to 0-1 range
     max_score = max(max(score for _, score in question_chunks_with_scores), 

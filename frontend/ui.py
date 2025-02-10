@@ -198,8 +198,8 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                     #     if pages_with_excerpts:
                     #         source_pages[source] = pages_with_excerpts[0] + 1
 
-                    # TEST
-                    print(f"Current source_pages: {source_pages}")
+                    # # TEST
+                    # print(f"Current source_pages: {source_pages}")
                     
                     st.session_state.chat_history.append({
                         "role": "source_buttons",
@@ -230,8 +230,10 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                         
                         if sources and len(sources) > 0:
                             st.write("\n\n**📚 Sources:**")
+                            # Sort sources by page numbers
+                            sorted_sources = sorted(sources.items(), key=lambda x: next_msg["pages"][x[0]])
                             cols = st.columns(len(sources))
-                            for src_idx, (col, (source, score)) in enumerate(zip(cols, sources.items()), 1):
+                            for src_idx, (col, (source, score)) in enumerate(zip(cols, sorted_sources), 1):
                                 page_num = next_msg["pages"][source]
                                 with col:
                                     # Create a stylable container for the button with custom color
@@ -303,8 +305,8 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                     #     if pages_with_excerpts:
                     #         source_pages[source] = pages_with_excerpts[0] + 1
 
-                    # TEST
-                    print(f"Current source_pages: {source_pages}")
+                    # # TEST
+                    # print(f"Current source_pages: {source_pages}")
                     
                     # Generate follow-up questions for new response
                     follow_up_questions = generate_follow_up_questions(answer, st.session_state.chat_history)
@@ -333,8 +335,10 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                         # First display source buttons
                         if sources and len(sources) > 0:
                             st.write("\n\n**📚 Sources:**")
+                            # Sort sources by page numbers
+                            sorted_sources = sorted(sources.items(), key=lambda x: source_pages.get(x[0], 0))
                             cols = st.columns(len(sources))
-                            for idx, (col, (source, score)) in enumerate(zip(cols, sources.items()), 1):
+                            for idx, (col, (source, score)) in enumerate(zip(cols, sorted_sources), 1):
                                 page_num = source_pages.get(source)
                                 if page_num:
                                     with col:

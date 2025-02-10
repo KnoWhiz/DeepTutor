@@ -219,8 +219,8 @@ def generate_embedding(_documents, _doc, pdf_path, embedding_folder):
                             }
                         ))
 
-                        # TEST
-                        print(f"for image {image}, found page {best_match_page}")
+                        # # TEST
+                        # print(f"for image {image}, found page {best_match_page}")
             else:
                 print("No image context found to process")
         except Exception as e:
@@ -330,8 +330,8 @@ def generate_document_summary(_documents, embedding_folder):
     para = config['llm']
     llm = get_llm(para["level"], para)  # Using advanced model for better quality
 
-    # TEST
-    print("Current model:", llm)
+    # # TEST
+    # print("Current model:", llm)
 
     # First try to get content from session state
     combined_content = ""

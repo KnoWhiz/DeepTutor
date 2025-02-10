@@ -5,6 +5,7 @@ import fitz
 import asyncio
 import pandas as pd
 import streamlit as st
+import re
 
 from pathlib import Path
 from dotenv import load_dotenv
@@ -96,6 +97,15 @@ print(f"SKIP_MARKER_API: {SKIP_MARKER_API}")
 
 
 def generate_embedding(_documents, _doc, pdf_path, embedding_folder):
+    """
+    Generate embeddings for the documents
+    If the embeddings already exist, load them
+    Otherwise, extract content to markdown via API or local PDF extraction
+    Then, initialize image files and try to append image context to texts with error handling
+    Create the vector store to use as the index
+    Save the embeddings to the specified folder
+    Generate and save document summary using the texts we created
+    """
     config = load_config()
     para = config['llm']
     embeddings = get_embedding_models('default', para)
@@ -181,9 +191,36 @@ def generate_embedding(_documents, _doc, pdf_path, embedding_folder):
             # Only process image context if there are actual images
             if image_context:
                 print(f"Found {len(image_context)} images with context")
+                
+                # Create a temporary FAISS index for similarity search
+                temp_db = FAISS.from_documents(texts, embeddings)
+                
                 for image, context in image_context.items():
                     for c in context:
-                        texts.append(Document(page_content=c, metadata={"source": image}))
+                        # Clean the context text for comparison
+                        clean_context = c.replace(" <markdown>", "").strip()
+                        
+                        # Use similarity search to find the most relevant chunk
+                        similar_chunks = temp_db.similarity_search_with_score(clean_context, k=1)
+                        
+                        if similar_chunks:
+                            best_match_chunk, score = similar_chunks[0]
+                            # Only use the page number if the similarity score is good enough
+                            # (score is distance, so lower is better)
+                            best_match_page = best_match_chunk.metadata.get("page", 0) if score < 1.0 else 0
+                        else:
+                            best_match_page = 0
+                        
+                        texts.append(Document(
+                            page_content=c, 
+                            metadata={
+                                "source": image,
+                                "page": best_match_page
+                            }
+                        ))
+
+                        # TEST
+                        print(f"for image {image}, found page {best_match_page}")
             else:
                 print("No image context found to process")
         except Exception as e:

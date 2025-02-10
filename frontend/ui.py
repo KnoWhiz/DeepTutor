@@ -166,7 +166,7 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
         # Generate initial welcome message if chat history is empty
         if not st.session_state.chat_history:
             with st.spinner("Loading document summary..."):
-                initial_message, sources = tutor_agent(
+                initial_message, sources, source_pages = tutor_agent(
                     mode=st.session_state.mode,
                     _doc=doc,
                     _documents=documents,
@@ -191,11 +191,15 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                 
                 if sources:
                     # Store source-to-page mapping
-                    source_pages = {}
-                    for source in sources.keys():
-                        pages_with_excerpts = find_pages_with_excerpts(doc, [source])
-                        if pages_with_excerpts:
-                            source_pages[source] = pages_with_excerpts[0] + 1
+                    source_pages = source_pages
+                    # source_pages = {}
+                    # for source in sources.keys():
+                    #     pages_with_excerpts = find_pages_with_excerpts(doc, [source])
+                    #     if pages_with_excerpts:
+                    #         source_pages[source] = pages_with_excerpts[0] + 1
+
+                    # TEST
+                    print(f"Current source_pages: {source_pages}")
                     
                     st.session_state.chat_history.append({
                         "role": "source_buttons",
@@ -275,7 +279,7 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
             with st.spinner("Generating response..."):
                 try:
                     # Get response
-                    answer, sources = tutor_agent(
+                    answer, sources, source_pages = tutor_agent(
                         mode=st.session_state.mode,
                         _doc=doc,
                         _documents=documents,
@@ -292,11 +296,15 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                         sources = sources if isinstance(sources, dict) else {}
                     
                     # Store source-to-page mapping
-                    source_pages = {}
-                    for source in sources.keys():
-                        pages_with_excerpts = find_pages_with_excerpts(doc, [source])
-                        if pages_with_excerpts:
-                            source_pages[source] = pages_with_excerpts[0] + 1
+                    source_pages = source_pages
+                    # source_pages = {}
+                    # for source in sources.keys():
+                    #     pages_with_excerpts = find_pages_with_excerpts(doc, [source])
+                    #     if pages_with_excerpts:
+                    #         source_pages[source] = pages_with_excerpts[0] + 1
+
+                    # TEST
+                    print(f"Current source_pages: {source_pages}")
                     
                     # Generate follow-up questions for new response
                     follow_up_questions = generate_follow_up_questions(answer, st.session_state.chat_history)

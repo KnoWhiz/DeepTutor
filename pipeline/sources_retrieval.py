@@ -21,9 +21,20 @@ from pipeline.utils import (
     get_embedding_models,
     robust_search_for
 )
+from pipeline.doc_processor import generate_embedding
 
 
-def get_response_source(_doc, _documents, user_input, answer, chat_history, embedding_folder):
+def get_response_source(_doc, _documents, pdf_path, user_input, answer, chat_history, embedding_folder):
+    """
+    Get the sources for the response
+    Return a dictionary of sources with scores and metadata
+    The scores are normalized to 0-1 range
+    The metadata includes the page number, chunk index, and block bounding box coordinates
+    The sources are refined by checking if they can be found in the document
+    Only get first 20 sources
+    Show them in the order they are found in the document
+    Preserve image filenames but filter them based on context relevance using LLM
+    """
     config = load_config()
     para = config['llm']
     embeddings = get_embedding_models('default', para)
@@ -57,19 +68,24 @@ def get_response_source(_doc, _documents, user_input, answer, chat_history, embe
             embedding_folder, embeddings, allow_dangerous_deserialization=True
         )
     else:
-        # Split the documents into chunks, respecting page boundaries
-        print("Creating new embeddings...")
-        text_splitter = PageAwareTextSplitter(
-            chunk_size=config['embedding']['chunk_size'],
-            chunk_overlap=0
+        print("No existing embeddings found, creating new ones...")
+        generate_embedding(_documents, _doc, pdf_path, embedding_folder)
+        db = FAISS.load_local(
+            embedding_folder, embeddings, allow_dangerous_deserialization=True
         )
-        texts = text_splitter.split_documents(_documents)
-        print(f"length of document chunks generated for get_response_source:{len(texts)}")
+        # # Split the documents into chunks, respecting page boundaries
+        # print("Creating new embeddings...")
+        # text_splitter = PageAwareTextSplitter(
+        #     chunk_size=config['embedding']['chunk_size'],
+        #     chunk_overlap=0
+        # )
+        # texts = text_splitter.split_documents(_documents)
+        # print(f"length of document chunks generated for get_response_source:{len(texts)}")
 
-        # Create the vector store to use as the index
-        db = FAISS.from_documents(texts, embeddings)
-        # Save the embeddings to the specified folder
-        db.save_local(embedding_folder)
+        # # Create the vector store to use as the index
+        # db = FAISS.from_documents(texts, embeddings)
+        # # Save the embeddings to the specified folder
+        # db.save_local(embedding_folder)
 
     # Configure retriever with search parameters from config
     retriever = db.as_retriever(search_kwargs={"k": config['sources_retriever']['k']})
@@ -78,6 +94,18 @@ def get_response_source(_doc, _documents, user_input, answer, chat_history, embe
     question_chunks_with_scores = db.similarity_search_with_score(user_input, k=config['sources_retriever']['k'])
     answer_chunks_with_scores = db.similarity_search_with_score(answer, k=config['sources_retriever']['k'])
 
+    # The total list of sources chunks
+    sources_chunks = []
+    for chunk in question_chunks_with_scores:
+        sources_chunks.append(chunk[0])
+    for chunk in answer_chunks_with_scores:
+        sources_chunks.append(chunk[0])
+
+    # Get source pages dictionary, which maps each source to the page number it is found in. the page number is in the metadata of the document chunks
+    source_pages = {}
+    for chunk in sources_chunks:
+        source_pages[chunk.page_content] = chunk.metadata['page']+1
+
     # Extract page content and scores, normalize scores to 0-1 range
     max_score = max(max(score for _, score in question_chunks_with_scores), 
                    max(score for _, score in answer_chunks_with_scores))
@@ -85,12 +113,12 @@ def get_response_source(_doc, _documents, user_input, answer, chat_history, embe
                    min(score for _, score in answer_chunks_with_scores))
     score_range = max_score - min_score if max_score != min_score else 1
 
+    # Get sources_with_scores dictionary, which maps each source to the score it has
     sources_with_scores = {}
     # Process question chunks
     for chunk, score in question_chunks_with_scores:
         normalized_score = 1 - (score - min_score) / score_range  # Invert because lower distance = higher relevance
         sources_with_scores[chunk.page_content] = max(normalized_score, sources_with_scores.get(chunk.page_content, 0))
-    
     # Process answer chunks
     for chunk, score in answer_chunks_with_scores:
         normalized_score = 1 - (score - min_score) / score_range  # Invert because lower distance = higher relevance
@@ -99,7 +127,9 @@ def get_response_source(_doc, _documents, user_input, answer, chat_history, embe
     # Replace matching sources with image names while preserving scores
     sources_with_scores = {image_mapping.get(source, source): score 
                          for source, score in sources_with_scores.items()}
-
+    source_pages = {image_mapping.get(source, source): page 
+                         for source, page in source_pages.items()}
+    
     # TEST
     print("sources before refine:")
     pprint.pprint(sources_with_scores)
@@ -115,7 +145,7 @@ def get_response_source(_doc, _documents, user_input, answer, chat_history, embe
         print(f"{source}: {score}")
     print(f"length of sources after refine: {len(sources_with_scores)}")
     
-    return sources_with_scores
+    return sources_with_scores, source_pages
 
 
 def refine_sources(_doc, _documents, sources_with_scores, markdown_dir, user_input):
@@ -253,13 +283,21 @@ def refine_sources(_doc, _documents, sources_with_scores, markdown_dir, user_inp
                     highest_match = max(exact_matches.items(), key=lambda x: x[1])
                     filtered_images = {highest_match[0]: highest_match[1]}
                 else:
-                    # If no exact match found, take the highest scored image overall
-                    highest_match = max(filtered_images.items(), key=lambda x: x[1])
-                    filtered_images = {highest_match[0]: highest_match[1]}
+                    # If no exact match found, include images with scores close to the highest score
+                    if filtered_images:
+                        # Get the highest score
+                        highest_score = max(filtered_images.values())
+                        # Keep images with scores within 10% of the highest score
+                        score_threshold = highest_score * 0.9
+                        filtered_images = {img: score for img, score in filtered_images.items() if score >= score_threshold}
             else:
-                # If no specific figure was asked for, take the highest scored image
-                highest_match = max(filtered_images.items(), key=lambda x: x[1])
-                filtered_images = {highest_match[0]: highest_match[1]}
+                # If no specific figure was asked for, include images with scores close to the highest score
+                if filtered_images:
+                    # Get the highest score
+                    highest_score = max(filtered_images.values())
+                    # Keep images with scores within 10% of the highest score
+                    score_threshold = highest_score * 0.9
+                    filtered_images = {img: score for img, score in filtered_images.items() if score >= score_threshold}
     
     # Process text sources as before
     for page in _doc:
@@ -275,12 +313,14 @@ def refine_sources(_doc, _documents, sources_with_scores, markdown_dir, user_inp
     sorted_sources = dict(sorted(final_sources.items(), key=lambda x: x[1], reverse=True)[:20])
     return sorted_sources
 
+
 def cosine_similarity(vec1, vec2):
     """Calculate cosine similarity between two vectors"""
     dot_product = sum(a * b for a, b in zip(vec1, vec2))
     norm1 = sum(a * a for a in vec1) ** 0.5
     norm2 = sum(b * b for b in vec2) ** 0.5
     return dot_product / (norm1 * norm2) if norm1 * norm2 != 0 else 0
+
 
 class PageAwareTextSplitter(RecursiveCharacterTextSplitter):
     """Custom text splitter that respects page boundaries"""

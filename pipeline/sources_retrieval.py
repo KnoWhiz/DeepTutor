@@ -263,7 +263,7 @@ def refine_sources(_doc, _documents, sources_with_scores, markdown_dir, user_inp
         image_scores.sort(key=lambda x: x[1], reverse=True)
         
         # Filter images with high relevance score (score > 0.2)
-        filtered_images = {img: score for img, score, fig_num, expl in image_scores if score > 0.2}
+        filtered_images = {img: score for img, score, fig_num, expl in image_scores if score > 0.5}
         
         if filtered_images:
             # If asking about a specific figure, prioritize exact figure number match

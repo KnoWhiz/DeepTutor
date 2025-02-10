@@ -94,6 +94,18 @@ def get_response_source(_doc, _documents, pdf_path, user_input, answer, chat_his
     question_chunks_with_scores = db.similarity_search_with_score(user_input, k=config['sources_retriever']['k'])
     answer_chunks_with_scores = db.similarity_search_with_score(answer, k=config['sources_retriever']['k'])
 
+    # The total list of sources chunks
+    sources_chunks = []
+    for chunk in question_chunks_with_scores:
+        sources_chunks.append(chunk[0])
+    for chunk in answer_chunks_with_scores:
+        sources_chunks.append(chunk[0])
+
+    # Get source pages dictionary, which maps each source to the page number it is found in. the page number is in the metadata of the document chunks
+    source_pages = {}
+    for chunk in sources_chunks:
+        source_pages[chunk.page_content] = chunk.metadata['page']+1
+
     # Extract page content and scores, normalize scores to 0-1 range
     max_score = max(max(score for _, score in question_chunks_with_scores), 
                    max(score for _, score in answer_chunks_with_scores))
@@ -101,12 +113,12 @@ def get_response_source(_doc, _documents, pdf_path, user_input, answer, chat_his
                    min(score for _, score in answer_chunks_with_scores))
     score_range = max_score - min_score if max_score != min_score else 1
 
+    # Get sources_with_scores dictionary, which maps each source to the score it has
     sources_with_scores = {}
     # Process question chunks
     for chunk, score in question_chunks_with_scores:
         normalized_score = 1 - (score - min_score) / score_range  # Invert because lower distance = higher relevance
         sources_with_scores[chunk.page_content] = max(normalized_score, sources_with_scores.get(chunk.page_content, 0))
-    
     # Process answer chunks
     for chunk, score in answer_chunks_with_scores:
         normalized_score = 1 - (score - min_score) / score_range  # Invert because lower distance = higher relevance
@@ -115,7 +127,9 @@ def get_response_source(_doc, _documents, pdf_path, user_input, answer, chat_his
     # Replace matching sources with image names while preserving scores
     sources_with_scores = {image_mapping.get(source, source): score 
                          for source, score in sources_with_scores.items()}
-
+    source_pages = {image_mapping.get(source, source): page 
+                         for source, page in source_pages.items()}
+    
     # TEST
     print("sources before refine:")
     pprint.pprint(sources_with_scores)
@@ -131,7 +145,7 @@ def get_response_source(_doc, _documents, pdf_path, user_input, answer, chat_his
         print(f"{source}: {score}")
     print(f"length of sources after refine: {len(sources_with_scores)}")
     
-    return sources_with_scores
+    return sources_with_scores, source_pages
 
 
 def refine_sources(_doc, _documents, sources_with_scores, markdown_dir, user_input):

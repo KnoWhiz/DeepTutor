@@ -7,7 +7,7 @@ load_dotenv()
 
 def deepseek_inference(
     prompt: str,
-    system_message: str = "You are a deep thinking assistant",
+    system_message: str = "You are a deep thinking researcher reading a paper. If you don't know the answer, say you don't know.",
     stream: bool = False,
     temperature: float = 0.0,
     top_p: float = 0.1,

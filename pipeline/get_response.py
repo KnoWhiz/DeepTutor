@@ -32,7 +32,8 @@ from pipeline.utils import (
     truncate_chat_history,
     get_llm,
     get_embedding_models,
-    translate_content
+    translate_content,
+    responses_refine
 )
 from pipeline.doc_processor import (
     generate_embedding,
@@ -135,7 +136,7 @@ def tutor_agent(mode, _doc, _documents, file_paths, user_input, chat_history, em
     return answer, sources, source_pages
 
 
-def get_response(mode, _doc, _documents, file_paths, user_input, chat_history, embedding_folder):
+def get_response(mode, _doc, _documents, file_paths, user_input, chat_history, embedding_folder, deep_thinking = True):
     # # TEST
     # print("Current language:", st.session_state.language)
 
@@ -170,7 +171,6 @@ def get_response(mode, _doc, _documents, file_paths, user_input, chat_history, e
     config = load_config()
     retriever = db.as_retriever(search_kwargs={"k": config['retriever']['k']})
 
-    deep_thinking = True
     if not deep_thinking:
         system_prompt = (
             """
@@ -253,6 +253,7 @@ def get_response(mode, _doc, _documents, file_paths, user_input, chat_history, e
         # Extract the content between <think> and </think> as answer_thinking, and the rest as answer_summary. but there is no <answer> tag in the answer, so after the answer_thinking extract the rest of the answer
         answer_thinking = answer.split("<think>")[1].split("</think>")[0]
         answer_summary = answer.split("<think>")[1].split("</think>")[1]
+        answer_summary = responses_refine(answer_summary, "")
         answer = "### Here is my thinking process\n\n" + answer_thinking + "\n\n### Here is my summarized answer\n\n" + answer_summary
     return answer
 

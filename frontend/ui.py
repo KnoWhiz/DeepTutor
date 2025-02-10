@@ -198,8 +198,8 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                     #     if pages_with_excerpts:
                     #         source_pages[source] = pages_with_excerpts[0] + 1
 
-                    # TEST
-                    print(f"Current source_pages: {source_pages}")
+                    # # TEST
+                    # print(f"Current source_pages: {source_pages}")
                     
                     st.session_state.chat_history.append({
                         "role": "source_buttons",
@@ -305,8 +305,8 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                     #     if pages_with_excerpts:
                     #         source_pages[source] = pages_with_excerpts[0] + 1
 
-                    # TEST
-                    print(f"Current source_pages: {source_pages}")
+                    # # TEST
+                    # print(f"Current source_pages: {source_pages}")
                     
                     # Generate follow-up questions for new response
                     follow_up_questions = generate_follow_up_questions(answer, st.session_state.chat_history)

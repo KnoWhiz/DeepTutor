@@ -136,8 +136,8 @@ def tutor_agent(mode, _doc, _documents, file_paths, user_input, chat_history, em
 
 
 def get_response(mode, _doc, _documents, file_paths, user_input, chat_history, embedding_folder):
-    # TEST
-    print("Current language:", st.session_state.language)
+    # # TEST
+    # print("Current language:", st.session_state.language)
 
     if mode == 'Advanced':
         try:
@@ -242,12 +242,17 @@ def get_response(mode, _doc, _documents, file_paths, user_input, chat_history, e
         Reference context from the paper: {context}\
         The user's query is: {user_input_string}\
         """
-        print("prompt:", prompt)
-        print("prompt type:", type(prompt))
-        answer = deepseek_inference(prompt)
-        print("answer:", answer)
-        answer = str(answer)
-        print("answer string:", answer)
+        # # TEST
+        # print("prompt:", prompt)
+        # print("prompt type:", type(prompt))
+        answer = str(deepseek_inference(prompt))
+        # print("answer:", answer)
+        # answer = str(answer)
+        # print("answer string:", answer)
+
+        # Replace the content between <think> and </think> to markdown format, add "### Here is my thinking process" as the title, and for the rest of the answer, add "### Here is my summarized answer" as the title
+        answer = answer.replace("<think>", "### Here is my thinking process\n\n")
+        answer = answer.replace("</think>", "\n\n### Here is my summarized answer\n\n")
     return answer
 
 

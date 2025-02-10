@@ -147,10 +147,10 @@ def test_source_search(pdf_path: str, chunk_size: int = 512) -> None:
         if similar_chunks:
             retrieved_chunks.append(similar_chunks[0])
     
-    # Test each retrieved chunk
-    total_chunks = len(retrieved_chunks)
-    found_chunks = 0
-    not_found_chunks = []
+    # # Test each retrieved chunk
+    # total_chunks = len(retrieved_chunks)
+    # found_chunks = 0
+    # not_found_chunks = []
     
     print("\nTesting each chunk...")
     for i, chunk in enumerate(retrieved_chunks, 1):

@@ -130,20 +130,20 @@ def get_response_source(_doc, _documents, pdf_path, user_input, answer, chat_his
     source_pages = {image_mapping.get(source, source): page 
                          for source, page in source_pages.items()}
     
-    # TEST
-    print("sources before refine:")
-    pprint.pprint(sources_with_scores)
-    print(f"length of sources before refine: {len(sources_with_scores)}")
+    # # TEST
+    # print("sources before refine:")
+    # pprint.pprint(sources_with_scores)
+    # print(f"length of sources before refine: {len(sources_with_scores)}")
 
     # Refine and limit sources while preserving scores
     markdown_dir = os.path.join(embedding_folder, "markdown")
     sources_with_scores = refine_sources(_doc, _documents, sources_with_scores, markdown_dir, user_input)
 
-    # TEST
-    print("sources after refine:")
-    for source, score in sources_with_scores.items():
-        print(f"{source}: {score}")
-    print(f"length of sources after refine: {len(sources_with_scores)}")
+    # # TEST
+    # print("sources after refine:")
+    # for source, score in sources_with_scores.items():
+    #     print(f"{source}: {score}")
+    # print(f"length of sources after refine: {len(sources_with_scores)}")
     
     return sources_with_scores, source_pages
 
@@ -253,8 +253,9 @@ def refine_sources(_doc, _documents, sources_with_scores, markdown_dir, user_inp
                             result["actual_figure_number"],
                             result["explanation"]
                         ))
-                    print(f"image_scores for {image}: {image_scores}")
-                    print(f"result for {image}: {result}")
+                        # # TEST
+                        # print(f"image_scores for {image}: {image_scores}")
+                        # print(f"result for {image}: {result}")
                 except Exception as e:
                     print(f"Error evaluating image {image}: {e}")
                     continue

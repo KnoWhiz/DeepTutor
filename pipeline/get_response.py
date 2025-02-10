@@ -32,7 +32,8 @@ from pipeline.utils import (
     truncate_chat_history,
     get_llm,
     get_embedding_models,
-    translate_content
+    translate_content,
+    responses_refine
 )
 from pipeline.doc_processor import (
     generate_embedding,
@@ -135,7 +136,7 @@ def tutor_agent(mode, _doc, _documents, file_paths, user_input, chat_history, em
     return answer, sources, source_pages
 
 
-def get_response(mode, _doc, _documents, file_paths, user_input, chat_history, embedding_folder):
+def get_response(mode, _doc, _documents, file_paths, user_input, chat_history, embedding_folder, deep_thinking = True):
     # # TEST
     # print("Current language:", st.session_state.language)
 
@@ -170,7 +171,6 @@ def get_response(mode, _doc, _documents, file_paths, user_input, chat_history, e
     config = load_config()
     retriever = db.as_retriever(search_kwargs={"k": config['retriever']['k']})
 
-    deep_thinking = True
     if not deep_thinking:
         system_prompt = (
             """
@@ -250,9 +250,11 @@ def get_response(mode, _doc, _documents, file_paths, user_input, chat_history, e
         # answer = str(answer)
         # print("answer string:", answer)
 
-        # Replace the content between <think> and </think> to markdown format, add "### Here is my thinking process" as the title, and for the rest of the answer, add "### Here is my summarized answer" as the title
-        answer = answer.replace("<think>", "### Here is my thinking process\n\n")
-        answer = answer.replace("</think>", "\n\n### Here is my summarized answer\n\n")
+        # Extract the content between <think> and </think> as answer_thinking, and the rest as answer_summary. but there is no <answer> tag in the answer, so after the answer_thinking extract the rest of the answer
+        answer_thinking = answer.split("<think>")[1].split("</think>")[0]
+        answer_summary = answer.split("<think>")[1].split("</think>")[1]
+        answer_summary = responses_refine(answer_summary, "")
+        answer = "### Here is my thinking process\n\n" + answer_thinking + "\n\n### Here is my summarized answer\n\n" + answer_summary
     return answer
 
 
@@ -347,7 +349,7 @@ def get_GraphRAG_global_response(_doc, _documents, user_input, chat_history, emb
         response_type="multiple paragraphs",  # free form text describing the response type and format, can be anything, e.g. prioritized list, single paragraph, multiple paragraphs, multiple-page report
     )
 
-    answer = search_engine.search(
+    search_engine_result = search_engine.search(
         f"""
         You are a patient and honest professor helping a student reading a paper.
         The student asked the following question:
@@ -357,8 +359,22 @@ def get_GraphRAG_global_response(_doc, _documents, user_input, chat_history, emb
         ```{chat_history_text}```
         """,
     )
+    context = search_engine_result.context_data["reports"]
+    context = str(context)
+    prompt = f"""
+    The previous conversation is: {chat_history_text}
+    Reference context from the paper: {context}
+    The user's query is: {user_input_text}
+    """
+    answer = str(deepseek_inference(prompt))
 
-    return answer.response
+    # Extract the content between <think> and </think> as answer_thinking, and the rest as answer_summary. but there is no <answer> tag in the answer, so after the answer_thinking extract the rest of the answer
+    answer_thinking = answer.split("<think>")[1].split("</think>")[0]
+    answer_summary = answer.split("<think>")[1].split("</think>")[1]
+    answer_summary = responses_refine(search_engine_result.response, answer_summary)
+    answer = "### Here is my thinking process\n\n" + answer_thinking + "\n\n### Here is my summarized answer\n\n" + answer_summary
+
+    return answer
 
 
 def get_query_helper(user_input, context_chat_history, embedding_folder):

@@ -7,11 +7,11 @@ load_dotenv()
 
 def deepseek_inference(
     prompt: str,
-    system_message: str = "You are a deep thinking assistant",
+    system_message: str = "You are a deep thinking researcher reading a paper. If you don't know the answer, say you don't know.",
     stream: bool = False,
     temperature: float = 0.0,
     top_p: float = 0.1,
-    max_tokens: int = 20000
+    max_tokens: int = 10000
 ) -> Optional[str]:
     """
     Get completion from the DeepSeek model with optional streaming support.

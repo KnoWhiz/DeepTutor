@@ -7,6 +7,13 @@ import streamlit as st
 
 from dotenv import load_dotenv
 from pipeline.utils import extract_documents_from_file
+from pipeline.chat_history_manager import (
+    create_session_id,
+    save_chat_history,
+    load_chat_history,
+    delete_chat_history,
+    cleanup_old_sessions
+)
 
 
 load_dotenv()
@@ -21,29 +28,41 @@ def initialize_session_state(embedding_folder):
     if "mode" not in st.session_state:
         st.session_state.mode = "Basic"
     
+    if "session_id" not in st.session_state:
+        st.session_state.session_id = create_session_id()
+    
     if "chat_history" not in st.session_state:
-        st.session_state.chat_history = []
-        st.session_state.show_chat_border = False
+        # Try to load existing chat history
+        loaded_history = load_chat_history(st.session_state.session_id)
+        st.session_state.chat_history = loaded_history if loaded_history else []
+        st.session_state.show_chat_border = bool(loaded_history)
     else:
         st.session_state.show_chat_border = True
+        # Save chat history after each update
+        save_chat_history(st.session_state.session_id, st.session_state.chat_history)
 
 
 # Function to handle file change
 def handle_file_change():
+    # Delete old chat history file if it exists
+    if "session_id" in st.session_state:
+        delete_chat_history(st.session_state.session_id)
+        del st.session_state.session_id
+    
     # Reset all relevant session states when a new file is uploaded
-    if 'chat_history' in st.session_state:
+    if "chat_history" in st.session_state:
         del st.session_state.chat_history
-    if 'annotations' in st.session_state:
+    if "annotations" in st.session_state:
         del st.session_state.annotations
-    if 'chat_occurred' in st.session_state:
+    if "chat_occurred" in st.session_state:
         del st.session_state.chat_occurred
-    if 'sources' in st.session_state:
+    if "sources" in st.session_state:
         del st.session_state.sources
-    if 'total_pages' in st.session_state:
+    if "total_pages" in st.session_state:
         del st.session_state.total_pages
-    if 'current_page' in st.session_state:
+    if "current_page" in st.session_state:
         del st.session_state.current_page
-    if 'doc' in st.session_state:
+    if "doc" in st.session_state:
         del st.session_state.doc
     
     # Clear Streamlit cache
@@ -52,6 +71,9 @@ def handle_file_change():
     
     # Reset uploaded file state
     st.session_state.is_uploaded_file = True
+    
+    # Clean up old chat history files
+    cleanup_old_sessions()
 
 
 # Function to process the PDF file

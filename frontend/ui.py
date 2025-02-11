@@ -14,6 +14,7 @@ from pipeline.utils import find_pages_with_excerpts, get_highlight_info, transla
 from frontend.forms.contact import contact_form
 from pipeline.config import load_config
 from pipeline.get_response import generate_follow_up_questions
+from pipeline.chat_history_manager import save_chat_history
 
 
 def to_emoji_number(num: int) -> str:
@@ -207,6 +208,8 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                         "pages": source_pages,
                         "timestamp": len(st.session_state.chat_history)
                     })
+                # Save chat history after initial message
+                save_chat_history(st.session_state.session_id, st.session_state.chat_history)
 
         # Display chat history
         for idx, msg in enumerate(st.session_state.chat_history):
@@ -327,6 +330,8 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                         "pages": source_pages,
                         "timestamp": len(st.session_state.chat_history)
                     })
+                    # Save chat history after assistant response
+                    save_chat_history(st.session_state.session_id, st.session_state.chat_history)
                     
                     # Display current response
                     with st.chat_message("assistant", avatar=tutor_avatar):

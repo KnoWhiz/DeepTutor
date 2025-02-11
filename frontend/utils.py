@@ -1,4 +1,5 @@
 import streamlit as st
+from pipeline.chat_history_manager import save_chat_history
 
 
 # Function to display the pdf
@@ -29,6 +30,8 @@ def chat_content():
     st.session_state.chat_history.append(
         {"role": "user", "content": st.session_state.user_input}
     )
+    # Save chat history after each new message
+    save_chat_history(st.session_state.session_id, st.session_state.chat_history)
 
 
 # Function to handle follow-up question clicks
@@ -56,3 +59,5 @@ def handle_follow_up_click(question: str):
     st.session_state.chat_history.append(
         {"role": "user", "content": question}
     )
+    # Save chat history after follow-up question
+    save_chat_history(st.session_state.session_id, st.session_state.chat_history)

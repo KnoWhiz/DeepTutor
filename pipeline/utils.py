@@ -25,7 +25,7 @@ from langchain_core.documents import Document
 
 from pipeline.config import load_config
 from pipeline.api_handler import ApiHandler
-from pipeline.images_understanding import extract_image_context
+from pipeline.images_understanding import extract_image_context, upload_markdown_to_azure, upload_images_to_azure
 
 
 load_dotenv()
@@ -440,6 +440,10 @@ def extract_pdf_content_to_markdown(
         else:
             print("No images found in the PDF")
 
+        # Save markdown file and images to Azure Blob Storage
+        upload_markdown_to_azure(output_dir)
+        upload_images_to_azure(output_dir)
+
         # Extract image context
         config = load_config()
         chunk_size = config['embedding']['chunk_size']
@@ -564,6 +568,10 @@ def extract_pdf_content_to_markdown_via_api(
                 print(f"Error saving image {filename}: {e}")
     else:
         print("No images were returned with the result")
+
+    # Save markdown file and images to Azure Blob Storage
+    upload_markdown_to_azure(output_dir)
+    upload_images_to_azure(output_dir)
 
     # Extract image context
     config = load_config()

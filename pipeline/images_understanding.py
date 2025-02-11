@@ -162,6 +162,25 @@ def upload_images_to_azure(folder_dir: str | Path) -> None:
     print(f"Image URLs mapping saved to: {output_path}")
 
 
+def upload_markdown_to_azure(folder_dir: str | Path) -> None:
+    """
+    Upload markdown file to Azure Blob storage.
+    """
+    folder_dir = Path(folder_dir)
+    course_id = folder_dir.parts[-2]
+    azure_blob = AzureBlobHelper()
+    container_name = "knowhiztutorrag"
+    # Upload all the md files in the folder
+    md_files = [f for f in os.listdir(folder_dir) if f.lower().endswith('.md')]
+    for md_file in md_files:
+        blob_name = f"file_appendix/{course_id}/images/{md_file}"
+        local_path = folder_dir / md_file
+        azure_blob.upload(str(local_path), blob_name, container_name)
+    
+    # TEST
+    print(f"Uploaded {(md_files)} markdown files to Azure Blob storage")
+
+
 def extract_image_context(folder_dir: str | Path, context_tokens: int = 500) -> None:
     """
     Extract context for each image in a folder and save to JSON.
@@ -216,9 +235,6 @@ def extract_image_context(folder_dir: str | Path, context_tokens: int = 500) -> 
     # Write the dictionary to a JSON file in the same folder
     with open(image_context_path, 'w', encoding='utf-8') as outfile:
         json.dump(image_context, outfile, indent=2, ensure_ascii=False)
-
-    # Save images to Azure Blob Storage
-    upload_images_to_azure(folder_dir)
 
     # Process folder images
     process_folder_images(folder_dir)

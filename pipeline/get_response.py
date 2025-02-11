@@ -86,7 +86,7 @@ def tutor_agent(mode, _doc, _documents, file_paths, user_input, chat_history, em
     # Get response
     answer = get_response(mode, _doc, _documents, file_paths, refined_user_input, context_chat_history, embedding_folder)
     # Get sources
-    sources, source_pages = get_response_source(_doc, _documents, file_paths, refined_user_input, answer, context_chat_history, embedding_folder)
+    sources, source_pages = get_response_source(mode,_doc, _documents, file_paths, refined_user_input, answer, context_chat_history, embedding_folder)
 
     images_sources = {}
     # If the sources have images, append the image URL (in image_urls.json mapping) to the end of the answer in markdown format
@@ -156,7 +156,7 @@ def get_response(mode, _doc, _documents, file_paths, user_input, chat_history, e
     embeddings = get_embedding_models('default', para)
 
     # Check if all necessary files exist to load the embeddings
-    generate_embedding(_documents, _doc, file_paths, embedding_folder)
+    generate_embedding(mode, _documents, _doc, file_paths, embedding_folder)
 
     # Load existing embeddings
     print("Loading existing embeddings...")

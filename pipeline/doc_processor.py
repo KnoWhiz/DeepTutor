@@ -96,7 +96,7 @@ SKIP_MARKER_API = True if os.getenv("ENVIRONMENT") == "local" else False
 print(f"SKIP_MARKER_API: {SKIP_MARKER_API}")
 
 
-def generate_embedding(_documents, _doc, pdf_path, embedding_folder):
+def generate_embedding(_mode, _documents, _doc, pdf_path, embedding_folder):
     """
     Generate embeddings for the documents
     If the embeddings already exist, load them
@@ -106,6 +106,9 @@ def generate_embedding(_documents, _doc, pdf_path, embedding_folder):
     Save the embeddings to the specified folder
     Generate and save document summary using the texts we created
     """
+    if _mode == "Advanced":
+        asyncio.run(generate_GraphRAG_embedding(_documents, embedding_folder))
+    
     config = load_config()
     para = config['llm']
     embeddings = get_embedding_models('default', para)

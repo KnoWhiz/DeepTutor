@@ -24,7 +24,7 @@ from pipeline.utils import (
 from pipeline.doc_processor import generate_embedding
 
 
-def get_response_source(_doc, _documents, pdf_path, user_input, answer, chat_history, embedding_folder):
+def get_response_source(mode, _doc, _documents, pdf_path, user_input, answer, chat_history, embedding_folder):
     """
     Get the sources for the response
     Return a dictionary of sources with scores and metadata
@@ -69,7 +69,7 @@ def get_response_source(_doc, _documents, pdf_path, user_input, answer, chat_his
         )
     else:
         print("No existing embeddings found, creating new ones...")
-        generate_embedding(_documents, _doc, pdf_path, embedding_folder)
+        generate_embedding(mode, _documents, _doc, pdf_path, embedding_folder)
         db = FAISS.load_local(
             embedding_folder, embeddings, allow_dangerous_deserialization=True
         )

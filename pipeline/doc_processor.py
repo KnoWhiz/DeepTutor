@@ -69,8 +69,6 @@ from graphrag.prompts.query.global_search_reduce_system_prompt import (
 from graphrag.prompts.query.local_search_system_prompt import LOCAL_SEARCH_SYSTEM_PROMPT
 from graphrag.prompts.query.question_gen_system_prompt import QUESTION_SYSTEM_PROMPT
 
-from streamlit_float import *
-
 from pipeline.api_handler import ApiHandler
 from pipeline.api_handler import create_env_file
 from pipeline.api_handler import ApiHandler, create_env_file

@@ -24,8 +24,6 @@ from graphrag.query.structured_search.global_search.community_context import (
 )
 from graphrag.query.structured_search.global_search.search import GlobalSearch
 
-from streamlit_float import *
-
 from pipeline.config import load_config
 from pipeline.utils import (
     tiktoken,
@@ -137,9 +135,6 @@ def tutor_agent(mode, _doc, _documents, file_paths, user_input, chat_history, em
 
 
 def get_response(mode, _doc, _documents, file_paths, user_input, chat_history, embedding_folder, deep_thinking = True):
-    # # TEST
-    # print("Current language:", st.session_state.language)
-
     if mode == 'Advanced':
         try:
             answer = get_GraphRAG_global_response(_doc, _documents, user_input, chat_history, embedding_folder)

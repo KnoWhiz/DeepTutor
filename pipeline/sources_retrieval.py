@@ -11,8 +11,6 @@ from langchain.output_parsers import OutputFixingParser
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema import Document
 
-from streamlit_float import *
-
 from pipeline.config import load_config
 from pipeline.utils import (
     tiktoken,

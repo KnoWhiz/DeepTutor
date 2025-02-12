@@ -6,7 +6,6 @@ import fitz
 import tiktoken
 import json
 import langid
-import streamlit as st
 import requests
 import base64
 import time
@@ -17,7 +16,6 @@ from pathlib import Path
 from PIL import Image
 
 from langchain_community.document_loaders import PyPDFLoader, PyMuPDFLoader
-from streamlit_float import *
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain.output_parsers import OutputFixingParser

@@ -94,6 +94,25 @@ SKIP_MARKER_API = True if os.getenv("ENVIRONMENT") == "local" else False
 print(f"SKIP_MARKER_API: {SKIP_MARKER_API}")
 
 
+class DocumentProcessor:
+    """
+    Class to handle document processing and maintain document state without Streamlit dependency.
+    """
+    def __init__(self):
+        self.md_document = ""
+        
+    def set_md_document(self, content: str):
+        """Set the markdown document content."""
+        self.md_document = content
+        
+    def append_md_document(self, content: str):
+        """Append content to the markdown document."""
+        self.md_document += content.strip() + "\n"
+        
+    def get_md_document(self) -> str:
+        """Get the current markdown document content."""
+        return self.md_document
+
 def generate_embedding(_mode, _documents, _doc, pdf_path, embedding_folder):
     """
     Generate embeddings for the documents
@@ -110,6 +129,7 @@ def generate_embedding(_mode, _documents, _doc, pdf_path, embedding_folder):
     config = load_config()
     para = config['llm']
     embeddings = get_embedding_models('default', para)
+    doc_processor = DocumentProcessor()
 
     # Define the default filenames used by FAISS when saving
     faiss_path = os.path.join(embedding_folder, "index.faiss")
@@ -130,16 +150,16 @@ def generate_embedding(_mode, _documents, _doc, pdf_path, embedding_folder):
                 print("Marker API is enabled. Using Marker API to extract content to markdown.")
                 markdown_dir = os.path.join(embedding_folder, "markdown")
                 md_path, saved_images, md_document = extract_pdf_content_to_markdown_via_api(pdf_path, markdown_dir)
-                st.session_state.md_document = md_document
+                doc_processor.set_md_document(md_document)
             else:
                 print("Marker API is disabled. Using local PDF extraction.")
                 markdown_dir = os.path.join(embedding_folder, "markdown")
                 md_path, saved_images, md_document = extract_pdf_content_to_markdown(pdf_path, markdown_dir)
-                st.session_state.md_document = md_document
+                doc_processor.set_md_document(md_document)
         except Exception as e:
             print(f"Error extracting content to markdown via API: {e}")
             # Use _doc to extract searchable content
-            st.session_state.md_document = ""
+            doc_processor.set_md_document("")
             texts = []
             
             # Process each page in the PDF document
@@ -156,7 +176,7 @@ def generate_embedding(_mode, _documents, _doc, pdf_path, embedding_folder):
                 
                 # Join the searchable text blocks
                 page_content = "\n".join(text_blocks)
-                st.session_state.md_document += page_content.strip() + "\n"
+                doc_processor.append_md_document(page_content)
                 texts.append(Document(
                     page_content=page_content,
                     metadata={"source": f"page_{page_num + 1}", "page": page_num + 1}
@@ -167,7 +187,7 @@ def generate_embedding(_mode, _documents, _doc, pdf_path, embedding_folder):
             os.makedirs(markdown_dir, exist_ok=True)
             md_path = os.path.join(markdown_dir, "content.md")
             with open(md_path, "w", encoding="utf-8") as f:
-                f.write(st.session_state.md_document)
+                f.write(doc_processor.get_md_document())
             
             # Use the texts directly instead of splitting again
             print(f"Number of pages processed: {len(texts)}")
@@ -220,8 +240,6 @@ def generate_embedding(_mode, _documents, _doc, pdf_path, embedding_folder):
                             }
                         ))
 
-                        # # TEST
-                        # print(f"for image {image}, found page {best_match_page}")
             else:
                 print("No image context found to process")
         except Exception as e:
@@ -235,7 +253,7 @@ def generate_embedding(_mode, _documents, _doc, pdf_path, embedding_folder):
 
         try:
             # Generate and save document summary using the texts we created
-            generate_document_summary(texts, embedding_folder)
+            generate_document_summary(texts, embedding_folder, doc_processor.get_md_document())
         except Exception as e:
             print(f"Error generating document summary: {e}")
             print("Continuing without document summary...")
@@ -322,7 +340,7 @@ async def generate_GraphRAG_embedding(_documents, embedding_folder):
     return
 
 
-def generate_document_summary(_documents, embedding_folder):
+def generate_document_summary(_documents, embedding_folder, md_document=None):
     """
     Generate a comprehensive markdown-formatted summary of the documents using multiple LLM calls.
     Documents can come from either processed PDFs or markdown files.
@@ -331,22 +349,19 @@ def generate_document_summary(_documents, embedding_folder):
     para = config['llm']
     llm = get_llm(para["level"], para)  # Using advanced model for better quality
 
-    # # TEST
-    # print("Current model:", llm)
-
-    # First try to get content from session state
+    # First try to get content from markdown document
     combined_content = ""
-    if hasattr(st.session_state, 'md_document') and st.session_state.md_document:
-        print("Using markdown content from session state...")
-        combined_content = st.session_state.md_document
+    if md_document:
+        print("Using provided markdown content...")
+        combined_content = md_document
     
-    # If no content in session state, fall back to document content
+    # If no content in markdown document, fall back to document content
     if not combined_content and _documents:
         print("Using document content as source...")
         combined_content = "\n\n".join(doc.page_content for doc in _documents)
     
     if not combined_content:
-        raise ValueError("No content available from either session state or documents")
+        raise ValueError("No content available from either markdown document or documents")
 
     # First generate the take-home message
     takehome_prompt = """

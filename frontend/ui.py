@@ -15,6 +15,7 @@ from frontend.forms.contact import contact_form
 from pipeline.config import load_config
 from pipeline.get_response import generate_follow_up_questions
 from pipeline.chat_history_manager import save_chat_history
+from pipeline.session_manager import ChatMode
 
 
 def to_emoji_number(num: int) -> str:
@@ -78,7 +79,16 @@ def show_header():
 def show_mode_option():
     with st.sidebar:
         mode_index = 0
-        st.session_state.mode = st.radio("Basic model (faster) or Advanced model (slower but more accurate)?", options=["Basic", "Advanced"], index=mode_index)
+        current_mode = st.radio(
+            "Basic model (faster) or Advanced model (slower but more accurate)?",
+            options=["Basic", "Advanced"],
+            index=mode_index
+        )
+        st.session_state.mode = current_mode
+        if 'chat_session' in st.session_state:
+            st.session_state.chat_session.set_mode(
+                ChatMode.ADVANCED if current_mode == "Advanced" else ChatMode.BASIC
+            )
 
 
 # Function to display the file uploader
@@ -118,8 +128,11 @@ def show_language_option():
             index=list(languages.values()).index(current_lang)
         )
         
-        # Update the session state with the selected language code
-        st.session_state.language = languages[selected_lang_display]
+        # Update both session state and chat session with the selected language
+        selected_lang = languages[selected_lang_display]
+        st.session_state.language = selected_lang
+        if 'chat_session' in st.session_state:
+            st.session_state.chat_session.set_language(selected_lang)
 
 
 # Function to display the chat interface
@@ -168,12 +181,11 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
         if not st.session_state.chat_history:
             with st.spinner("Loading document summary..."):
                 initial_message, sources, source_pages = tutor_agent(
-                    mode=st.session_state.mode,
+                    chat_session=st.session_state.chat_session,
                     _doc=doc,
                     _documents=documents,
                     file_paths=file_paths,
                     user_input=None,
-                    chat_history=[],
                     embedding_folder=embedding_folder
                 )
                 # Convert sources to dict if it's a list (for backward compatibility)
@@ -191,25 +203,14 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                 )
                 
                 if sources:
-                    # Store source-to-page mapping
-                    source_pages = source_pages
-                    # source_pages = {}
-                    # for source in sources.keys():
-                    #     pages_with_excerpts = find_pages_with_excerpts(doc, [source])
-                    #     if pages_with_excerpts:
-                    #         source_pages[source] = pages_with_excerpts[0] + 1
-
-                    # # TEST
-                    # print(f"Current source_pages: {source_pages}")
-                    
                     st.session_state.chat_history.append({
                         "role": "source_buttons",
                         "sources": sources,
                         "pages": source_pages,
                         "timestamp": len(st.session_state.chat_history)
                     })
-                # Save chat history after initial message
-                save_chat_history(st.session_state.session_id, st.session_state.chat_history)
+                # Save chat history
+                st.session_state.chat_session.chat_history = st.session_state.chat_history
 
         # Display chat history
         for idx, msg in enumerate(st.session_state.chat_history):
@@ -218,7 +219,7 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                 with st.chat_message(msg["role"], avatar=avatar):
                     st.write(msg["content"])
             elif msg["role"] == "assistant":
-                avatar = professor_avatar if st.session_state.mode == "Advanced" else tutor_avatar
+                avatar = professor_avatar if st.session_state.chat_session.mode == ChatMode.ADVANCED else tutor_avatar
                 with st.chat_message(msg["role"], avatar=avatar):
                     st.write(msg["content"])
                     
@@ -285,12 +286,11 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                 try:
                     # Get response
                     answer, sources, source_pages = tutor_agent(
-                        mode=st.session_state.mode,
+                        chat_session=st.session_state.chat_session,
                         _doc=doc,
                         _documents=documents,
                         file_paths=file_paths,
                         user_input=user_input,
-                        chat_history=st.session_state.chat_history,
                         embedding_folder=embedding_folder
                     )
                     # Convert sources to dict if it's a list (for backward compatibility)
@@ -302,14 +302,6 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                     
                     # Store source-to-page mapping
                     source_pages = source_pages
-                    # source_pages = {}
-                    # for source in sources.keys():
-                    #     pages_with_excerpts = find_pages_with_excerpts(doc, [source])
-                    #     if pages_with_excerpts:
-                    #         source_pages[source] = pages_with_excerpts[0] + 1
-
-                    # # TEST
-                    # print(f"Current source_pages: {source_pages}")
                     
                     # Generate follow-up questions for new response
                     follow_up_questions = generate_follow_up_questions(answer, st.session_state.chat_history)
@@ -331,7 +323,7 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                         "timestamp": len(st.session_state.chat_history)
                     })
                     # Save chat history after assistant response
-                    save_chat_history(st.session_state.session_id, st.session_state.chat_history)
+                    st.session_state.chat_session.chat_history = st.session_state.chat_history
                     
                     # Display current response
                     with st.chat_message("assistant", avatar=tutor_avatar):

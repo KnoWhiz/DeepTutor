@@ -14,6 +14,7 @@ from pipeline.chat_history_manager import (
     delete_chat_history,
     cleanup_old_sessions
 )
+from pipeline.session_manager import ChatSession, ChatMode
 
 
 load_dotenv()
@@ -23,57 +24,78 @@ print(f"SKIP_AUTH: {SKIP_AUTH}")
 
 
 # Function to initialize the session state
-def initialize_session_state(embedding_folder):
-    """Initialize session state variables"""
-    if "mode" not in st.session_state:
-        st.session_state.mode = "Basic"
-    
-    if "session_id" not in st.session_state:
+def initialize_session_state(embedding_folder=None):
+    """Initialize all session state variables."""
+    if 'session_id' not in st.session_state:
         st.session_state.session_id = create_session_id()
     
-    if "chat_history" not in st.session_state:
-        # Try to load existing chat history
-        loaded_history = load_chat_history(st.session_state.session_id)
-        st.session_state.chat_history = loaded_history if loaded_history else []
-        st.session_state.show_chat_border = bool(loaded_history)
+    if 'chat_session' not in st.session_state:
+        st.session_state.chat_session = ChatSession(
+            session_id=st.session_state.session_id
+        )
+        st.session_state.chat_session.initialize()
+    
+    if 'chat_history' not in st.session_state:
+        st.session_state.chat_history = st.session_state.chat_session.chat_history
+    
+    if 'mode' not in st.session_state:
+        st.session_state.mode = "Basic"
+        st.session_state.chat_session.set_mode(ChatMode.BASIC)
+    elif st.session_state.mode == "Advanced":
+        st.session_state.chat_session.set_mode(ChatMode.ADVANCED)
     else:
+        st.session_state.chat_session.set_mode(ChatMode.BASIC)
+    
+    if 'language' not in st.session_state:
+        st.session_state.language = "English"
+        st.session_state.chat_session.set_language("English")
+    elif st.session_state.language:
+        st.session_state.chat_session.set_language(st.session_state.language)
+    
+    if 'show_chat_border' not in st.session_state:
         st.session_state.show_chat_border = True
-        # Save chat history after each update
-        save_chat_history(st.session_state.session_id, st.session_state.chat_history)
+    
+    if 'page' not in st.session_state:
+        st.session_state.page = "📑 Document reading"
+    
+    if embedding_folder:
+        st.session_state.embedding_folder = embedding_folder
 
 
 # Function to handle file change
 def handle_file_change():
-    # Delete old chat history file if it exists
-    if "session_id" in st.session_state:
-        delete_chat_history(st.session_state.session_id)
-        del st.session_state.session_id
+    """Handle changes when a new file is uploaded."""
+    # Clear existing chat history
+    if 'chat_history' in st.session_state:
+        st.session_state.chat_history = []
     
-    # Reset all relevant session states when a new file is uploaded
-    if "chat_history" in st.session_state:
-        del st.session_state.chat_history
-    if "annotations" in st.session_state:
-        del st.session_state.annotations
-    if "chat_occurred" in st.session_state:
-        del st.session_state.chat_occurred
-    if "sources" in st.session_state:
-        del st.session_state.sources
-    if "total_pages" in st.session_state:
-        del st.session_state.total_pages
-    if "current_page" in st.session_state:
-        del st.session_state.current_page
-    if "doc" in st.session_state:
-        del st.session_state.doc
+    if 'chat_session' in st.session_state:
+        st.session_state.chat_session.clear_history()
     
-    # Clear Streamlit cache
-    st.cache_data.clear()
-    st.cache_resource.clear()
+    # Reset session ID
+    st.session_state.session_id = create_session_id()
     
-    # Reset uploaded file state
-    st.session_state.is_uploaded_file = True
+    # Create new chat session
+    st.session_state.chat_session = ChatSession(
+        session_id=st.session_state.session_id
+    )
+    st.session_state.chat_session.initialize()
     
-    # Clean up old chat history files
-    cleanup_old_sessions()
+    # Update mode
+    if 'mode' in st.session_state:
+        st.session_state.chat_session.set_mode(
+            ChatMode.ADVANCED if st.session_state.mode == "Advanced" else ChatMode.BASIC
+        )
+    
+    # Update language
+    if 'language' in st.session_state:
+        st.session_state.chat_session.set_language(st.session_state.language)
+    
+    # Clear other session state variables
+    keys_to_keep = {'session_id', 'chat_session', 'chat_history', 'mode', 'language', 'is_uploaded_file'}
+    for key in list(st.session_state.keys()):
+        if key not in keys_to_keep:
+            del st.session_state[key]
 
 
 # Function to process the PDF file

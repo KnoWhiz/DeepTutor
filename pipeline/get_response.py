@@ -1,7 +1,6 @@
 import os
 import json
 import pandas as pd
-import streamlit as st
 from dotenv import load_dotenv
 
 from langchain_community.vectorstores import FAISS
@@ -31,7 +30,8 @@ from pipeline.utils import (
     get_llm,
     get_embedding_models,
     translate_content,
-    responses_refine
+    responses_refine,
+    detect_language
 )
 from pipeline.doc_processor import (
     generate_embedding,
@@ -39,22 +39,22 @@ from pipeline.doc_processor import (
 from pipeline.sources_retrieval import (
     get_response_source,
 )
-from pipeline.utils import (
-    detect_language
-)
 from pipeline.inference import deepseek_inference
+from pipeline.session_manager import ChatSession, ChatMode
 
 
-def tutor_agent(mode, _doc, _documents, file_paths, user_input, chat_history, embedding_folder):
+def tutor_agent(chat_session: ChatSession, _doc, _documents, file_paths, user_input, embedding_folder):
     """
     Taking the user input, documents, and chat history, generate a response and sources.
     If user_input is None, generates the initial welcome message.
     """
+    chat_history = chat_session.chat_history
+    
     # Use temporary chat history for follow-up questions if available
-    if hasattr(st.session_state, 'temp_chat_history') and st.session_state.temp_chat_history:
-        context_chat_history = st.session_state.temp_chat_history
+    if hasattr(chat_session, 'temp_chat_history') and chat_session.temp_chat_history:
+        context_chat_history = chat_session.temp_chat_history
         # Clear the temporary chat history after using it
-        del st.session_state.temp_chat_history
+        chat_session.temp_chat_history = None
     else:
         context_chat_history = chat_history
 
@@ -72,7 +72,7 @@ def tutor_agent(mode, _doc, _documents, file_paths, user_input, chat_history, em
         # Translate the initial message to the selected language
         answer = translate_content(
             content=answer,
-            target_lang=st.session_state.language
+            target_lang=chat_session.current_language
         )
         sources = {}  # Return empty dictionary for sources
         source_pages = {}
@@ -80,11 +80,14 @@ def tutor_agent(mode, _doc, _documents, file_paths, user_input, chat_history, em
 
     # Regular chat flow
     # Refine user input
-    refined_user_input = get_query_helper(user_input, context_chat_history, embedding_folder)
+    refined_user_input = get_query_helper(chat_session, user_input, context_chat_history, embedding_folder)
     # Get response
-    answer = get_response(mode, _doc, _documents, file_paths, refined_user_input, context_chat_history, embedding_folder)
+    answer = get_response(chat_session, _doc, _documents, file_paths, refined_user_input, context_chat_history, embedding_folder)
     # Get sources
-    sources, source_pages = get_response_source(mode,_doc, _documents, file_paths, refined_user_input, answer, context_chat_history, embedding_folder)
+    sources, source_pages = get_response_source(
+        'Advanced' if chat_session.mode == ChatMode.ADVANCED else 'Basic',
+        _doc, _documents, file_paths, refined_user_input, answer, context_chat_history, embedding_folder
+    )
 
     images_sources = {}
     # If the sources have images, append the image URL (in image_urls.json mapping) to the end of the answer in markdown format
@@ -118,7 +121,7 @@ def tutor_agent(mode, _doc, _documents, file_paths, user_input, chat_history, em
     # Translate the answer to the selected language
     answer = translate_content(
         content=answer,
-        target_lang=st.session_state.language
+        target_lang=chat_session.current_language
     )
 
     # Append images URL in markdown format to the end of the answer
@@ -134,8 +137,8 @@ def tutor_agent(mode, _doc, _documents, file_paths, user_input, chat_history, em
     return answer, sources, source_pages
 
 
-def get_response(mode, _doc, _documents, file_paths, user_input, chat_history, embedding_folder, deep_thinking = True):
-    if mode == 'Advanced':
+def get_response(chat_session: ChatSession, _doc, _documents, file_paths, user_input, chat_history, embedding_folder, deep_thinking = True):
+    if chat_session.mode == ChatMode.ADVANCED:
         try:
             answer = get_GraphRAG_global_response(_doc, _documents, user_input, chat_history, embedding_folder)
             return answer
@@ -151,7 +154,10 @@ def get_response(mode, _doc, _documents, file_paths, user_input, chat_history, e
     embeddings = get_embedding_models('default', para)
 
     # Check if all necessary files exist to load the embeddings
-    generate_embedding(mode, _documents, _doc, file_paths, embedding_folder)
+    generate_embedding(
+        'Advanced' if chat_session.mode == ChatMode.ADVANCED else 'Basic',
+        _documents, _doc, file_paths, embedding_folder
+    )
 
     # Load existing embeddings
     print("Loading existing embeddings...")
@@ -159,10 +165,6 @@ def get_response(mode, _doc, _documents, file_paths, user_input, chat_history, e
         embedding_folder, embeddings, allow_dangerous_deserialization=True
     )
 
-    # Expose this index in a retriever interface
-    # retriever = db.as_retriever(
-    #     search_type="mmr", search_kwargs={"k": 2, "lambda_mult": 0.8}
-    # )
     config = load_config()
     retriever = db.as_retriever(search_kwargs={"k": config['retriever']['k']})
 
@@ -229,23 +231,14 @@ def get_response(mode, _doc, _documents, file_paths, user_input, chat_history, e
             sources_chunks.append(chunk[0])
         context = "\n\n".join([chunk.page_content for chunk in sources_chunks])
 
-        # system_message = """
-        # You are a deep thinking assistant.
-        # """
         prompt = f"\
         The previous conversation is: {chat_history_string}\
         Reference context from the paper: {context}\
         The user's query is: {user_input_string}\
-        """
-        # # TEST
-        # print("prompt:", prompt)
-        # print("prompt type:", type(prompt))
+        "
         answer = str(deepseek_inference(prompt))
-        # print("answer:", answer)
-        # answer = str(answer)
-        # print("answer string:", answer)
 
-        # Extract the content between <think> and </think> as answer_thinking, and the rest as answer_summary. but there is no <answer> tag in the answer, so after the answer_thinking extract the rest of the answer
+        # Extract the content between <think> and </think> as answer_thinking, and the rest as answer_summary
         answer_thinking = answer.split("<think>")[1].split("</think>")[0]
         answer_summary = answer.split("<think>")[1].split("</think>")[1]
         answer_summary = responses_refine(answer_summary, "")
@@ -372,7 +365,7 @@ def get_GraphRAG_global_response(_doc, _documents, user_input, chat_history, emb
     return answer
 
 
-def get_query_helper(user_input, context_chat_history, embedding_folder):
+def get_query_helper(chat_session: ChatSession, user_input, context_chat_history, embedding_folder):
     # If we have "documents_summary" in the embedding folder, we can use it to speed up the search
     documents_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
     if os.path.exists(documents_summary_path):
@@ -428,7 +421,7 @@ def get_query_helper(user_input, context_chat_history, embedding_folder):
     language = detect_language(user_input)
     print("language detected:", language)
 
-    st.session_state.language = language
+    chat_session.set_language(language)
 
     # # TEST
     # print("question rephrased:", question)

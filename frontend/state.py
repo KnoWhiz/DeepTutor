@@ -92,22 +92,55 @@ def handle_file_change():
         st.session_state.chat_session.set_language(st.session_state.language)
     
     # Clear other session state variables
-    keys_to_keep = {'session_id', 'chat_session', 'chat_history', 'mode', 'language', 'is_uploaded_file'}
+    keys_to_keep = {
+        'session_id', 'chat_session', 'chat_history', 'mode', 'language',
+        'is_uploaded_file', 'uploaded_file', 'page'
+    }
+    
+    # Clear all other session state variables
     for key in list(st.session_state.keys()):
         if key not in keys_to_keep:
             del st.session_state[key]
+    
+    # Reset document-related variables
+    st.session_state.documents = None
+    st.session_state.doc = None
+    st.session_state.file_paths = None
+    st.session_state.total_pages = 0
+    st.session_state.current_page = 1
+    st.session_state.annotations = []
+    st.session_state.chat_occurred = False
+    st.session_state.sources = {}
 
 
 # Function to process the PDF file
 def process_pdf_file(file, filename):
+    """Process uploaded PDF file and store all necessary information in session state.
+    
+    Args:
+        file: The uploaded PDF file content
+        filename: Name of the uploaded file
+        
+    Returns:
+        tuple: (documents, doc, file_paths) where:
+            - documents: Contains chunked/split text content optimized for embedding and retrieval
+            - doc: Contains the complete PDF structure including pages, formatting, and visual elements
+            - file_paths: List of file paths for the processed documents
     """
-    documents: Contains chunked/split text content optimized for embedding and retrieval
-    doc: Contains the complete PDF structure including pages, formatting, and visual elements
-    """
+    # Process the documents
     documents, file_paths = extract_documents_from_file(file, filename)
     doc = fitz.open(stream=io.BytesIO(file), filetype="pdf")
+    
+    # Store everything in session state
+    st.session_state.documents = documents
     st.session_state.doc = doc
+    st.session_state.file_paths = file_paths
     st.session_state.total_pages = len(doc)
+    st.session_state.current_page = 1  # Initialize current page
+    st.session_state.annotations = []  # Initialize annotations
+    st.session_state.chat_occurred = False  # Initialize chat state
+    st.session_state.sources = {}  # Initialize sources
+    
     return documents, doc, file_paths
 
 

@@ -24,7 +24,7 @@ class ChatMode(Enum):
 class ChatSession:
     """Class to manage all chat session related information.
     
-    This class replaces the need for Streamlit's session state by maintaining all
+    This class replaces the need for ST's session state by maintaining all
     chat-related information in a single place.
     
     Attributes:

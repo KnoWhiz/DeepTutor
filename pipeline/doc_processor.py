@@ -95,7 +95,7 @@ print(f"SKIP_MARKER_API: {SKIP_MARKER_API}")
 
 class DocumentProcessor:
     """
-    Class to handle document processing and maintain document state without Streamlit dependency.
+    Class to handle document processing and maintain document state without ST dependency.
     """
     def __init__(self):
         self.md_document = ""

@@ -40,3 +40,4 @@ amplifytools.xcconfig
 /test_notebooks/extracted_images
 /test_notebooks/images
 /test_notebooks/output
+/pipeline/chat_history

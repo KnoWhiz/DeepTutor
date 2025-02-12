@@ -117,8 +117,8 @@ if st.session_state['isAuth']:
             # Process file and create session states for documents and PDF object
             documents, doc, file_paths = process_pdf_file(file, st.session_state.uploaded_file.name)
 
-            if len(documents) > 30:
-                st.error("File contains more than 30 pages. Please upload a shorter document.")
+            if len(documents) > 50:
+                st.error("File contains more than 50 pages. Please upload a shorter document.")
                 st.stop()
                 
             # Generate embeddings based on the selected mode

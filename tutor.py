@@ -57,7 +57,7 @@ from frontend.state import (
     handle_file_change,
     initialize_session_state,
     process_pdf_file,
-    save_file_locally,
+    save_file_txt_locally,
 )
 
 
@@ -112,7 +112,7 @@ if st.session_state['isAuth']:
                 os.makedirs(embedding_folder)
 
             # Save the file locally
-            save_file_locally(file, filename=st.session_state.uploaded_file.name, embedding_folder=embedding_folder)
+            save_file_txt_locally(file, filename=st.session_state.uploaded_file.name, embedding_folder=embedding_folder)
 
             # Process file and create session states for documents and PDF object
             documents, doc, file_paths = process_pdf_file(file, st.session_state.uploaded_file.name)
@@ -128,14 +128,14 @@ if st.session_state['isAuth']:
                         print("GraphRAG index files are ready.")
                     else:
                         # Files are missing and have been cleaned up
-                        save_file_locally(file, filename=st.session_state.uploaded_file.name, embedding_folder=embedding_folder)
+                        save_file_txt_locally(file, filename=st.session_state.uploaded_file.name, embedding_folder=embedding_folder)
                         generate_embedding(st.session_state.mode, documents, doc, file_paths, embedding_folder=embedding_folder)
                         # asyncio.run(generate_GraphRAG_embedding(documents, embedding_folder=embedding_folder))
                         if(graphrag_index_files_compress(embedding_folder)):
                             print("GraphRAG index files are ready and uploaded to Azure Blob Storage.")
                         else:
                             # Retry once if first attempt fails
-                            save_file_locally(file, filename=st.session_state.uploaded_file.name, embedding_folder=embedding_folder)
+                            save_file_txt_locally(file, filename=st.session_state.uploaded_file.name, embedding_folder=embedding_folder)
                             generate_embedding(st.session_state.mode, documents, doc, file_paths, embedding_folder=embedding_folder)
                             # asyncio.run(generate_GraphRAG_embedding(documents, embedding_folder=embedding_folder))
                             if(graphrag_index_files_compress(embedding_folder)):
@@ -148,13 +148,13 @@ if st.session_state['isAuth']:
                         print("VectorRAG index files are ready.")
                     else:
                         # Files are missing and have been cleaned up
-                        save_file_locally(file, filename=st.session_state.uploaded_file.name, embedding_folder=embedding_folder)
+                        save_file_txt_locally(file, filename=st.session_state.uploaded_file.name, embedding_folder=embedding_folder)
                         generate_embedding(st.session_state.mode, documents, doc, file_paths, embedding_folder=embedding_folder)
                         if(vectorrag_index_files_compress(embedding_folder)):
                             print("VectorRAG index files are ready and uploaded to Azure Blob Storage.")
                         else:
                             # Retry once if first attempt fails
-                            save_file_locally(file, filename=st.session_state.uploaded_file.name, embedding_folder=embedding_folder)
+                            save_file_txt_locally(file, filename=st.session_state.uploaded_file.name, embedding_folder=embedding_folder)
                             generate_embedding(st.session_state.mode, documents, doc, file_paths, embedding_folder=embedding_folder)
                             if(vectorrag_index_files_compress(embedding_folder)):
                                 print("VectorRAG index files are ready and uploaded to Azure Blob Storage.")

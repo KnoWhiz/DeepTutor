@@ -145,7 +145,7 @@ def process_pdf_file(file, filename):
 
 
 # Function to save the file locally as a text file
-def save_file_locally(file, filename, embedding_folder):
+def save_file_txt_locally(file, filename, embedding_folder):
     """
     Save the file (e.g., PDF) loaded as text into the GraphRAG_embedding_input_folder.
     """

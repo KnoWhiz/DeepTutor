@@ -41,3 +41,4 @@ amplifytools.xcconfig
 /test_notebooks/images
 /test_notebooks/output
 /pipeline/chat_history
+logs/logs.json

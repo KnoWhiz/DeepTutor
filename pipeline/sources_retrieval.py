@@ -22,7 +22,7 @@ from pipeline.utils import (
 from pipeline.doc_processor import generate_embedding
 
 
-def get_response_source(mode, _doc, _documents, pdf_path, user_input, answer, chat_history, embedding_folder):
+def get_response_source(mode, _doc, _document, pdf_path, user_input, answer, chat_history, embedding_folder):
     """
     Get the sources for the response
     Return a dictionary of sources with scores and metadata
@@ -67,17 +67,17 @@ def get_response_source(mode, _doc, _documents, pdf_path, user_input, answer, ch
         )
     else:
         print("No existing embeddings found, creating new ones...")
-        generate_embedding(mode, _documents, _doc, pdf_path, embedding_folder)
+        generate_embedding(mode, _document, _doc, pdf_path, embedding_folder)
         db = FAISS.load_local(
             embedding_folder, embeddings, allow_dangerous_deserialization=True
         )
-        # # Split the documents into chunks, respecting page boundaries
+        # # Split the document into chunks, respecting page boundaries
         # print("Creating new embeddings...")
         # text_splitter = PageAwareTextSplitter(
         #     chunk_size=config['embedding']['chunk_size'],
         #     chunk_overlap=0
         # )
-        # texts = text_splitter.split_documents(_documents)
+        # texts = text_splitter.split_document(_document)
         # print(f"length of document chunks generated for get_response_source:{len(texts)}")
 
         # # Create the vector store to use as the index
@@ -140,7 +140,7 @@ def get_response_source(mode, _doc, _documents, pdf_path, user_input, answer, ch
 
     # Refine and limit sources while preserving scores
     markdown_dir = os.path.join(embedding_folder, "markdown")
-    sources_with_scores = refine_sources(_doc, _documents, sources_with_scores, markdown_dir, user_input)
+    sources_with_scores = refine_sources(_doc, _document, sources_with_scores, markdown_dir, user_input)
 
     # # TEST
     # print("sources after refine:")
@@ -151,7 +151,7 @@ def get_response_source(mode, _doc, _documents, pdf_path, user_input, answer, ch
     return sources_with_scores, source_pages
 
 
-def refine_sources(_doc, _documents, sources_with_scores, markdown_dir, user_input):
+def refine_sources(_doc, _document, sources_with_scores, markdown_dir, user_input):
     """
     Refine sources by checking if they can be found in the document
     Only get first 20 sources
@@ -329,11 +329,11 @@ def cosine_similarity(vec1, vec2):
 class PageAwareTextSplitter(RecursiveCharacterTextSplitter):
     """Custom text splitter that respects page boundaries"""
     
-    def split_documents(self, documents):
-        """Split documents while respecting page boundaries"""
+    def split_document(self, document):
+        """Split document while respecting page boundaries"""
         final_chunks = []
         
-        for doc in documents:
+        for doc in document:
             # Get the page number from the metadata
             page_num = doc.metadata.get("page", 0)
             text = doc.page_content
@@ -341,7 +341,7 @@ class PageAwareTextSplitter(RecursiveCharacterTextSplitter):
             # Use parent class's splitting logic first
             chunks = super().split_text(text)
             
-            # Create new documents for each chunk with original metadata
+            # Create new document for each chunk with original metadata
             for i, chunk in enumerate(chunks):
                 metadata = doc.metadata.copy()
                 # Update metadata to indicate chunk position

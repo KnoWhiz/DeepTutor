@@ -26,6 +26,7 @@ from pipeline.get_response import (
 
 from pipeline.utils import (
     generate_course_id,
+    save_file_txt_locally,
 )
 
 
@@ -56,8 +57,7 @@ from frontend.ui import (
 from frontend.state import (
     handle_file_change,
     initialize_session_state,
-    process_pdf_file,
-    save_file_txt_locally,
+    state_process_pdf_file,
 )
 
 
@@ -99,25 +99,19 @@ if st.session_state['isAuth']:
         if file_size > max_file_size:
             st.error("File size exceeds the 50 MB limit. Please upload a smaller file.")
         else:
-            file = st.session_state.uploaded_file.read()
-
-            # Compute hashed ID and prepare embedding folder
-            file_hash = generate_course_id(file)
-            course_id = file_hash
-            embedding_folder = os.path.join('embedded_content', course_id)
-            print(f"Embedding folder: {embedding_folder}")
-            if not os.path.exists('embedded_content'):
-                os.makedirs('embedded_content')
-            if not os.path.exists(embedding_folder):
-                os.makedirs(embedding_folder)
-
             # Save the file locally
-            save_file_txt_locally(file, filename=st.session_state.uploaded_file.name, embedding_folder=embedding_folder)
+            file = st.session_state.uploaded_file.read()
+            input_dir = './input_files/'
+            if not os.path.exists(input_dir):
+                os.makedirs(input_dir)
+            file_path = os.path.join(input_dir, st.session_state.uploaded_file.name)
+            with open(file_path, 'wb') as f:
+                f.write(file)
 
-            # Process file and create session states for documents and PDF object
-            documents, doc, file_paths = process_pdf_file(file, st.session_state.uploaded_file.name)
+            document, doc = state_process_pdf_file(file_path)
+            embedding_folder = os.path.join('embedded_content', generate_course_id(file_path))
 
-            if len(documents) > 30:
+            if len(document) > 30:
                 st.error("File contains more than 30 pages. Please upload a shorter document.")
                 st.stop()
 
@@ -128,16 +122,16 @@ if st.session_state['isAuth']:
                         print("GraphRAG index files are ready.")
                     else:
                         # Files are missing and have been cleaned up
-                        save_file_txt_locally(file, filename=st.session_state.uploaded_file.name, embedding_folder=embedding_folder)
-                        generate_embedding(st.session_state.mode, documents, doc, file_paths, embedding_folder=embedding_folder)
-                        # asyncio.run(generate_GraphRAG_embedding(documents, embedding_folder=embedding_folder))
+                        save_file_txt_locally(file_path, filename=st.session_state.uploaded_file.name, embedding_folder=embedding_folder)
+                        generate_embedding(st.session_state.mode, document, doc, file_path, embedding_folder=embedding_folder)
+                        # asyncio.run(generate_GraphRAG_embedding(document, embedding_folder=embedding_folder))
                         if(graphrag_index_files_compress(embedding_folder)):
                             print("GraphRAG index files are ready and uploaded to Azure Blob Storage.")
                         else:
                             # Retry once if first attempt fails
-                            save_file_txt_locally(file, filename=st.session_state.uploaded_file.name, embedding_folder=embedding_folder)
-                            generate_embedding(st.session_state.mode, documents, doc, file_paths, embedding_folder=embedding_folder)
-                            # asyncio.run(generate_GraphRAG_embedding(documents, embedding_folder=embedding_folder))
+                            save_file_txt_locally(file_path, filename=st.session_state.uploaded_file.name, embedding_folder=embedding_folder)
+                            generate_embedding(st.session_state.mode, document, doc, file_path, embedding_folder=embedding_folder)
+                            # asyncio.run(generate_GraphRAG_embedding(document, embedding_folder=embedding_folder))
                             if(graphrag_index_files_compress(embedding_folder)):
                                 print("GraphRAG index files are ready and uploaded to Azure Blob Storage.")
                             else:
@@ -148,14 +142,14 @@ if st.session_state['isAuth']:
                         print("VectorRAG index files are ready.")
                     else:
                         # Files are missing and have been cleaned up
-                        save_file_txt_locally(file, filename=st.session_state.uploaded_file.name, embedding_folder=embedding_folder)
-                        generate_embedding(st.session_state.mode, documents, doc, file_paths, embedding_folder=embedding_folder)
+                        save_file_txt_locally(file_path, filename=st.session_state.uploaded_file.name, embedding_folder=embedding_folder)
+                        generate_embedding(st.session_state.mode, document, doc, file_path, embedding_folder=embedding_folder)
                         if(vectorrag_index_files_compress(embedding_folder)):
                             print("VectorRAG index files are ready and uploaded to Azure Blob Storage.")
                         else:
                             # Retry once if first attempt fails
-                            save_file_txt_locally(file, filename=st.session_state.uploaded_file.name, embedding_folder=embedding_folder)
-                            generate_embedding(st.session_state.mode, documents, doc, file_paths, embedding_folder=embedding_folder)
+                            save_file_txt_locally(file_path, filename=st.session_state.uploaded_file.name, embedding_folder=embedding_folder)
+                            generate_embedding(st.session_state.mode, document, doc, file_path, embedding_folder=embedding_folder)
                             if(vectorrag_index_files_compress(embedding_folder)):
                                 print("VectorRAG index files are ready and uploaded to Azure Blob Storage.")
                             else:
@@ -165,15 +159,15 @@ if st.session_state['isAuth']:
             initialize_session_state(embedding_folder=embedding_folder)
             
 
-            # If documents are found, proceed to show chat interface and PDF viewer
-            if documents:
+            # If document are found, proceed to show chat interface and PDF viewer
+            if document:
                 outer_columns = st.columns([1, 1])
 
             with outer_columns[1]:
                 show_chat_interface(
                     doc=doc,
-                    documents=documents,
-                    file_paths=file_paths,
+                    document=document,
+                    file_path=file_path,
                     embedding_folder=embedding_folder,
                     tutor_agent=tutor_agent
                 )

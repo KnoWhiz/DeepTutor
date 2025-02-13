@@ -46,7 +46,7 @@ def check_index_file(index_file_path: str, pkl_file_path: str) -> None:
 
         # Display the information of the pkl file components
         print(f"\nPickle File Contents:")
-        print(f"Number of documents in docstore: {len(docstore._dict)}")
+        print(f"Number of document in docstore: {len(docstore._dict)}")
         print(f"Number of UUID mappings: {len(id_to_uuid_map)}")
         
         # Display sample of UUID mappings

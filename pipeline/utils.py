@@ -73,32 +73,85 @@ def robust_search_for(page, text, chunk_size=512):
 
 
 # Generate a unique course ID for the uploaded file
-def generate_course_id(file):
-    file_hash = hashlib.md5(file).hexdigest()
+def generate_course_id(file_path):
+    file = open(file_path, 'rb')
+    file_bytes = file.read()
+    file_hash = hashlib.md5(file_bytes).hexdigest()
     return file_hash
 
 
 # Custom function to extract document objects from uploaded file
-def extract_documents_from_file(file, filename):
-    input_dir = './input_files/'
-
-    # Create the input_files directory if it doesn't exist
-    if not os.path.exists(input_dir):
-        os.makedirs(input_dir)
-
-    # Save the file to the input_files directory with the original filename
-    file_path = os.path.join(input_dir, filename)
-    with open(file_path, 'wb') as f:
-        f.write(file)
-
+def extract_document_from_file(file_path):
     # Load the document
     loader = PyMuPDFLoader(file_path)
-    documents = loader.load()
+    document = loader.load()
+    return document
 
-    # file path
-    file_paths = os.path.join(input_dir, filename)
 
-    return documents, file_paths
+# Function to process the PDF file
+def process_pdf_file(file_path):
+    # Process the document
+    file = open(file_path, 'rb')
+    file_bytes = file.read()
+    document = extract_document_from_file(file_path)
+    doc = fitz.open(stream=io.BytesIO(file_bytes), filetype="pdf")
+    return document, doc
+
+
+# Function to save the file locally as a text file
+def save_file_txt_locally(file_path, filename, embedding_folder):
+    """
+    Save the file (e.g., PDF) loaded as text into the GraphRAG_embedding_input_folder.
+    """
+    file = open(file_path, 'rb')
+    file_bytes = file.read()
+
+    # Define folder structure
+    GraphRAG_embedding_folder = os.path.join(embedding_folder, "GraphRAG")
+    GraphRAG_embedding_input_folder = os.path.join(GraphRAG_embedding_folder, "input")
+
+    # Create folders if they do not exist
+    os.makedirs(GraphRAG_embedding_input_folder, exist_ok=True)
+
+    # Generate a shorter filename using hash, and it should be unique and consistent for the same file
+    base_name = os.path.splitext(filename)[0]
+    hashed_name = hashlib.md5(file_bytes).hexdigest()[:8]  # Use first 8 chars of hash
+    output_file_path = os.path.join(GraphRAG_embedding_input_folder, f"{hashed_name}.txt")
+
+    # Extract text from the PDF using the provided utility function
+    document = extract_document_from_file(file_path)
+
+    # Write the extracted text into a .txt file
+    # If the file does not exist, it will be created
+    if os.path.exists(output_file_path):
+        print(f"File already exists: {output_file_path}")
+        return
+    
+    try:
+        with open(output_file_path, "w", encoding="utf-8") as f:
+            for doc in document:
+                # Each doc is expected to have a `page_content` attribute if it's a Document object
+                if hasattr(doc, 'page_content') and doc.page_content:
+                    # Write the text, followed by a newline for clarity
+                    f.write(doc.page_content.strip() + "\n")
+        print(f"Text successfully saved to: {output_file_path}")
+    except OSError as e:
+        print(f"Error saving file: {e}")
+        # Create a mapping file to track original filenames if needed
+        mapping_file = os.path.join(GraphRAG_embedding_folder, "filename_mapping.json")
+        try:
+            if os.path.exists(mapping_file):
+                with open(mapping_file, 'r') as f:
+                    mapping = json.load(f)
+            else:
+                mapping = {}
+            mapping[hashed_name] = base_name
+            with open(mapping_file, 'w') as f:
+                json.dump(mapping, f, indent=2)
+        except Exception as e:
+            print(f"Error saving filename mapping: {e}")
+        raise
+    return
 
 
 # Find pages with the given excerpts in the document

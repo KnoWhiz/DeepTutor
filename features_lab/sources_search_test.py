@@ -17,7 +17,7 @@ from langchain_core.documents import Document
 
 from pipeline.config import load_config
 from pipeline.utils import get_embedding_models, robust_search_for
-from frontend.state import process_pdf_file, extract_documents_from_file
+from frontend.state import state_process_pdf_file, extract_document_from_file
 
 def create_searchable_chunks(doc, chunk_size: int) -> list:
     """
@@ -101,7 +101,7 @@ def test_source_search(pdf_path: str, chunk_size: int = 512) -> None:
     """
     Test source search functionality by:
     1. Loading a PDF file
-    2. Processing it into documents and doc objects
+    2. Processing it into document and doc objects
     3. Splitting content into chunks
     4. Embedding the chunks
     5. For each chunk, verify it can be found in the source PDF
@@ -117,10 +117,9 @@ def test_source_search(pdf_path: str, chunk_size: int = 512) -> None:
         file_content = f.read()
     
     # Process the PDF file
-    filename = os.path.basename(pdf_path)
-    documents, doc, file_paths = process_pdf_file(file_content, filename)
+    document, doc = state_process_pdf_file(pdf_path)
     
-    print(f"Loaded PDF with {len(documents)} document chunks")
+    print(f"Loaded PDF with {len(document)} document chunks")
     
     # Create chunks directly from the PDF content to ensure better matching
     chunks = create_searchable_chunks(doc, chunk_size)
@@ -147,10 +146,10 @@ def test_source_search(pdf_path: str, chunk_size: int = 512) -> None:
         if similar_chunks:
             retrieved_chunks.append(similar_chunks[0])
     
-    # # Test each retrieved chunk
-    # total_chunks = len(retrieved_chunks)
-    # found_chunks = 0
-    # not_found_chunks = []
+    # Test each retrieved chunk
+    total_chunks = len(retrieved_chunks)
+    found_chunks = 0
+    not_found_chunks = []
     
     print("\nTesting each chunk...")
     for i, chunk in enumerate(retrieved_chunks, 1):

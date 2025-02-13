@@ -40,11 +40,8 @@ def chat_content():
             # Get response
             answer, sources, source_pages = tutor_agent(
                 chat_session=st.session_state.chat_session,
-                _doc=st.session_state.doc,
-                _documents=st.session_state.documents,
-                file_paths=st.session_state.file_paths,
-                user_input=user_input,
-                embedding_folder=st.session_state.embedding_folder
+                file_path=st.session_state.file_path,
+                user_input=user_input
             )
             
             # Convert sources to dict if it's a list (for backward compatibility)

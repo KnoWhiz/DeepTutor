@@ -112,9 +112,9 @@ class DocumentProcessor:
         """Get the current markdown document content."""
         return self.md_document
 
-def generate_embedding(_mode, _documents, _doc, pdf_path, embedding_folder):
+def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder):
     """
-    Generate embeddings for the documents
+    Generate embeddings for the document
     If the embeddings already exist, load them
     Otherwise, extract content to markdown via API or local PDF extraction
     Then, initialize image files and try to append image context to texts with error handling
@@ -123,7 +123,7 @@ def generate_embedding(_mode, _documents, _doc, pdf_path, embedding_folder):
     Generate and save document summary using the texts we created
     """
     if _mode == "Advanced":
-        asyncio.run(generate_GraphRAG_embedding(_documents, embedding_folder))
+        asyncio.run(generate_GraphRAG_embedding(_document, embedding_folder))
     
     config = load_config()
     para = config['llm']
@@ -133,10 +133,10 @@ def generate_embedding(_mode, _documents, _doc, pdf_path, embedding_folder):
     # Define the default filenames used by FAISS when saving
     faiss_path = os.path.join(embedding_folder, "index.faiss")
     pkl_path = os.path.join(embedding_folder, "index.pkl")
-    documents_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
+    document_summary_path = os.path.join(embedding_folder, "document_summary.txt")
 
     # Check if all necessary files exist to load the embeddings
-    if os.path.exists(faiss_path) and os.path.exists(pkl_path) and os.path.exists(documents_summary_path):
+    if os.path.exists(faiss_path) and os.path.exists(pkl_path) and os.path.exists(document_summary_path):
         # Load existing embeddings
         print("Loading existing embeddings...")
         db = FAISS.load_local(
@@ -191,8 +191,8 @@ def generate_embedding(_mode, _documents, _doc, pdf_path, embedding_folder):
             # Use the texts directly instead of splitting again
             print(f"Number of pages processed: {len(texts)}")
         else:
-            # Split the documents into chunks when markdown extraction succeeded
-            average_page_length = sum(len(doc.page_content) for doc in _documents) / len(_documents)
+            # Split the document into chunks when markdown extraction succeeded
+            average_page_length = sum(len(doc.page_content) for doc in _document) / len(_document)
             chunk_size = int(average_page_length // 3)
             print(f"Average page length: {average_page_length}")
             print(f"Chunk size: {chunk_size}")
@@ -260,11 +260,11 @@ def generate_embedding(_mode, _documents, _doc, pdf_path, embedding_folder):
     return
 
 
-async def generate_GraphRAG_embedding(_documents, embedding_folder):
+async def generate_GraphRAG_embedding(_document, embedding_folder):
     GraphRAG_embedding_folder = os.path.join(embedding_folder, "GraphRAG/")
     create_final_community_reports_path = GraphRAG_embedding_folder + "output/create_final_community_reports.parquet"
     create_final_covariates_path = GraphRAG_embedding_folder + "output/create_final_covariates.parquet"
-    create_final_documents_path = GraphRAG_embedding_folder + "output/create_final_documents.parquet"
+    create_final_document_path = GraphRAG_embedding_folder + "output/create_final_documents.parquet"
     create_final_entities_path = GraphRAG_embedding_folder + "output/create_final_entities.parquet"
     create_final_nodes_path = GraphRAG_embedding_folder + "output/create_final_nodes.parquet"
     create_final_relationships_path = GraphRAG_embedding_folder + "output/create_final_relationships.parquet"
@@ -274,7 +274,7 @@ async def generate_GraphRAG_embedding(_documents, embedding_folder):
     path_list = [
         create_final_community_reports_path,
         create_final_covariates_path,
-        create_final_documents_path,
+        create_final_document_path,
         create_final_entities_path,
         create_final_nodes_path,
         create_final_relationships_path,
@@ -339,9 +339,9 @@ async def generate_GraphRAG_embedding(_documents, embedding_folder):
     return
 
 
-def generate_document_summary(_documents, embedding_folder, md_document=None):
+def generate_document_summary(_document, embedding_folder, md_document=None):
     """
-    Generate a comprehensive markdown-formatted summary of the documents using multiple LLM calls.
+    Generate a comprehensive markdown-formatted summary of the document using multiple LLM calls.
     Documents can come from either processed PDFs or markdown files.
     """
     config = load_config()
@@ -355,12 +355,12 @@ def generate_document_summary(_documents, embedding_folder, md_document=None):
         combined_content = md_document
     
     # If no content in markdown document, fall back to document content
-    if not combined_content and _documents:
+    if not combined_content and _document:
         print("Using document content as source...")
-        combined_content = "\n\n".join(doc.page_content for doc in _documents)
+        combined_content = "\n\n".join(doc.page_content for doc in _document)
     
     if not combined_content:
-        raise ValueError("No content available from either markdown document or documents")
+        raise ValueError("No content available from either markdown document or document")
 
     # First generate the take-home message
     takehome_prompt = """
@@ -520,8 +520,8 @@ I'm your AI tutor 🤖 ready to help you understand this document.
 Feel free to ask me any questions about the document! I'm here to help! ✨
 """
 
-    documents_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
-    with open(documents_summary_path, "w", encoding='utf-8') as f:
+    document_summary_path = os.path.join(embedding_folder, "document_summary.txt")
+    with open(document_summary_path, "w", encoding='utf-8') as f:
         f.write(markdown_summary)
 
     return markdown_summary

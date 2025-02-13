@@ -31,7 +31,10 @@ from pipeline.utils import (
     get_embedding_models,
     translate_content,
     responses_refine,
-    detect_language
+    detect_language,
+    generate_course_id,
+    save_file_txt_locally,
+    process_pdf_file,
 )
 from pipeline.doc_processor import (
     generate_embedding,
@@ -43,11 +46,28 @@ from pipeline.inference import deepseek_inference
 from pipeline.session_manager import ChatSession, ChatMode
 
 
-def tutor_agent(chat_session: ChatSession, _doc, _documents, file_paths, user_input, embedding_folder):
+def tutor_agent(chat_session: ChatSession, file_path, user_input):
     """
-    Taking the user input, documents, and chat history, generate a response and sources.
+    Taking the user input, document, and chat history, generate a response and sources.
     If user_input is None, generates the initial welcome message.
     """
+    # Compute hashed ID and prepare embedding folder
+    file_hash = generate_course_id(file_path)
+    course_id = file_hash
+    embedding_folder = os.path.join('embedded_content', course_id)
+    print(f"Embedding folder: {embedding_folder}")
+    if not os.path.exists('embedded_content'):
+        os.makedirs('embedded_content')
+    if not os.path.exists(embedding_folder):
+        os.makedirs(embedding_folder)
+    # Save the file txt content locally
+    file = open(file_path, 'rb')
+    file_bytes = file.read()
+    filename = os.path.basename(file_path)
+    save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
+    # Process file and create session states for document and PDF object
+    _document, _doc = process_pdf_file(file_path)
+    
     chat_history = chat_session.chat_history
     
     # Use temporary chat history for follow-up questions if available
@@ -62,8 +82,8 @@ def tutor_agent(chat_session: ChatSession, _doc, _documents, file_paths, user_in
     if not chat_history:
         try:
             # Try to load existing document summary
-            documents_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
-            with open(documents_summary_path, "r") as f:
+            document_summary_path = os.path.join(embedding_folder, "document_summary.txt")
+            with open(document_summary_path, "r") as f:
                 initial_message = f.read()
         except FileNotFoundError:
             initial_message = "Hello! How can I assist you today?"
@@ -82,11 +102,11 @@ def tutor_agent(chat_session: ChatSession, _doc, _documents, file_paths, user_in
     # Refine user input
     refined_user_input = get_query_helper(chat_session, user_input, context_chat_history, embedding_folder)
     # Get response
-    answer = get_response(chat_session, _doc, _documents, file_paths, refined_user_input, context_chat_history, embedding_folder)
+    answer = get_response(chat_session, _doc, _document, file_path, refined_user_input, context_chat_history, embedding_folder)
     # Get sources
     sources, source_pages = get_response_source(
         'Advanced' if chat_session.mode == ChatMode.ADVANCED else 'Basic',
-        _doc, _documents, file_paths, refined_user_input, answer, context_chat_history, embedding_folder
+        _doc, _document, file_path, refined_user_input, answer, context_chat_history, embedding_folder
     )
 
     images_sources = {}
@@ -137,10 +157,10 @@ def tutor_agent(chat_session: ChatSession, _doc, _documents, file_paths, user_in
     return answer, sources, source_pages
 
 
-def get_response(chat_session: ChatSession, _doc, _documents, file_paths, user_input, chat_history, embedding_folder, deep_thinking = True):
+def get_response(chat_session: ChatSession, _doc, _document, file_path, user_input, chat_history, embedding_folder, deep_thinking = True):
     if chat_session.mode == ChatMode.ADVANCED:
         try:
-            answer = get_GraphRAG_global_response(_doc, _documents, user_input, chat_history, embedding_folder)
+            answer = get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embedding_folder)
             return answer
         except Exception as e:
             print("Error getting response from GraphRAG:", e)
@@ -156,7 +176,7 @@ def get_response(chat_session: ChatSession, _doc, _documents, file_paths, user_i
     # Check if all necessary files exist to load the embeddings
     generate_embedding(
         'Advanced' if chat_session.mode == ChatMode.ADVANCED else 'Basic',
-        _documents, _doc, file_paths, embedding_folder
+        _document, _doc, file_path, embedding_folder
     )
 
     # Load existing embeddings
@@ -246,12 +266,12 @@ def get_response(chat_session: ChatSession, _doc, _documents, file_paths, user_i
     return answer
 
 
-def get_GraphRAG_global_response(_doc, _documents, user_input, chat_history, embedding_folder):
+def get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embedding_folder):
     # Chat history and user input
     chat_history_text = truncate_chat_history(chat_history)
     user_input_text = str(user_input)
 
-    # Search for the documents in the GraphRAG embedding
+    # Search for the document in the GraphRAG embedding
     try:
         load_dotenv(".env")
     except Exception as e:
@@ -366,13 +386,13 @@ def get_GraphRAG_global_response(_doc, _documents, user_input, chat_history, emb
 
 
 def get_query_helper(chat_session: ChatSession, user_input, context_chat_history, embedding_folder):
-    # If we have "documents_summary" in the embedding folder, we can use it to speed up the search
-    documents_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
-    if os.path.exists(documents_summary_path):
-        with open(documents_summary_path, "r") as f:
-            documents_summary = f.read()
+    # If we have "document_summary" in the embedding folder, we can use it to speed up the search
+    document_summary_path = os.path.join(embedding_folder, "document_summary.txt")
+    if os.path.exists(document_summary_path):
+        with open(document_summary_path, "r") as f:
+            document_summary = f.read()
     else:
-        documents_summary = " "
+        document_summary = " "
 
     # Load languages from config
     config = load_config()
@@ -414,7 +434,7 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
     )
     chain = prompt | llm | error_parser
     parsed_result = chain.invoke({"input": user_input,
-                                  "context": documents_summary,
+                                  "context": document_summary,
                                   "chat_history": truncate_chat_history(context_chat_history)})
     question = parsed_result['question']
     question_type = parsed_result['question_type']

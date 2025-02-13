@@ -161,7 +161,7 @@ def get_relevance_color(score):
 
 
 # Function to display the chat interface
-def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agent):
+def show_chat_interface(doc, document, file_path, embedding_folder, tutor_agent):
     # Init float function for chat_input textbox
     learner_avatar = "frontend/images/learner.svg"
     tutor_avatar = "frontend/images/tutor.svg"
@@ -182,11 +182,8 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
             with st.spinner("Loading document summary..."):
                 initial_message, sources, source_pages = tutor_agent(
                     chat_session=st.session_state.chat_session,
-                    _doc=doc,
-                    _documents=documents,
-                    file_paths=file_paths,
-                    user_input=None,
-                    embedding_folder=embedding_folder
+                    file_path=file_path,
+                    user_input=None
                 )
                 # Convert sources to dict if it's a list (for backward compatibility)
                 if isinstance(sources, list):
@@ -287,11 +284,8 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                     # Get response
                     answer, sources, source_pages = tutor_agent(
                         chat_session=st.session_state.chat_session,
-                        _doc=doc,
-                        _documents=documents,
-                        file_paths=file_paths,
-                        user_input=user_input,
-                        embedding_folder=embedding_folder
+                        file_path=file_path,
+                        user_input=user_input
                     )
                     # Convert sources to dict if it's a list (for backward compatibility)
                     if isinstance(sources, list):

@@ -37,7 +37,7 @@ class ChatSession:
     """
     
     session_id: str = field(default_factory=create_session_id)
-    mode: ChatMode = ChatMode.BASIC
+    mode: ChatMode = ChatMode.BASIC #   ChatMode.BASIC or ChatMode.ADVANCED
     chat_history: List[Dict] = field(default_factory=list)
     uploaded_files: Set[str] = field(default_factory=set)
     current_language: Optional[str] = None

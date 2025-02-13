@@ -44,6 +44,12 @@ from pipeline.sources_retrieval import (
 )
 from pipeline.inference import deepseek_inference
 from pipeline.session_manager import ChatSession, ChatMode
+from pipeline.helper.index_files_saving import (
+    vectorrag_index_files_decompress,
+    vectorrag_index_files_compress,
+    graphrag_index_files_decompress,
+    graphrag_index_files_compress,
+)
 
 
 def tutor_agent(chat_session: ChatSession, file_path, user_input):
@@ -67,6 +73,48 @@ def tutor_agent(chat_session: ChatSession, file_path, user_input):
     save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
     # Process file and create session states for document and PDF object
     _document, _doc = process_pdf_file(file_path)
+
+    if chat_session.mode == ChatMode.BASIC:
+        print("Basic (VectorRAG) mode")
+        # Doc processing
+        if(vectorrag_index_files_decompress(embedding_folder)):
+            print("VectorRAG index files are ready.")
+        else:
+            # Files are missing and have been cleaned up
+            save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
+            generate_embedding(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder)
+            if(vectorrag_index_files_compress(embedding_folder)):
+                print("VectorRAG index files are ready and uploaded to Azure Blob Storage.")
+            else:
+                # Retry once if first attempt fails
+                save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
+                generate_embedding(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder)
+                if(vectorrag_index_files_compress(embedding_folder)):
+                    print("VectorRAG index files are ready and uploaded to Azure Blob Storage.")
+                else:
+                    print("Error compressing and uploading VectorRAG index files to Azure Blob Storage.")
+    elif chat_session.mode == ChatMode.ADVANCED:
+        print("Advanced (GraphRAG) mode")
+        if(graphrag_index_files_decompress(embedding_folder)):
+            print("GraphRAG index files are ready.")
+        else:
+            # Files are missing and have been cleaned up
+            save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
+            generate_embedding(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder)
+            # asyncio.run(generate_GraphRAG_embedding(document, embedding_folder=embedding_folder))
+            if(graphrag_index_files_compress(embedding_folder)):
+                print("GraphRAG index files are ready and uploaded to Azure Blob Storage.")
+            else:
+                # Retry once if first attempt fails
+                save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
+                generate_embedding(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder)
+                # asyncio.run(generate_GraphRAG_embedding(document, embedding_folder=embedding_folder))
+                if(graphrag_index_files_compress(embedding_folder)):
+                    print("GraphRAG index files are ready and uploaded to Azure Blob Storage.")
+                else:
+                    print("Error compressing and uploading GraphRAG index files to Azure Blob Storage.")
+    else:
+        print("Error: Invalid mode")
     
     chat_history = chat_session.chat_history
     

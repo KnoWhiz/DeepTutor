@@ -13,7 +13,7 @@ def graphrag_index_files_check(embedding_folder):
     GraphRAG_embedding_folder = os.path.join(embedding_folder, "GraphRAG/")
     create_final_community_reports_path = GraphRAG_embedding_folder + "output/create_final_community_reports.parquet"
     create_final_covariates_path = GraphRAG_embedding_folder + "output/create_final_covariates.parquet"
-    create_final_document_path = GraphRAG_embedding_folder + "output/create_final_document.parquet"
+    create_final_document_path = GraphRAG_embedding_folder + "output/create_final_documents.parquet"
     create_final_entities_path = GraphRAG_embedding_folder + "output/create_final_entities.parquet"
     create_final_nodes_path = GraphRAG_embedding_folder + "output/create_final_nodes.parquet"
     create_final_relationships_path = GraphRAG_embedding_folder + "output/create_final_relationships.parquet"

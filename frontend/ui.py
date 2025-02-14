@@ -169,7 +169,9 @@ def show_chat_interface(doc, document, file_path, embedding_folder, tutor_agent)
 
     with st.container():
         float_init(theme=True, include_unstable_primary=False)
-        user_input = st.chat_input(key='user_input', on_submit=chat_content)
+        user_input = st.chat_input(key='user_input')
+        if user_input:
+            chat_content()
         button_b_pos = "1.2rem"
         button_css = float_css_helper(width="1.2rem", bottom=button_b_pos, transition=0)
         float_parent(css=button_css)

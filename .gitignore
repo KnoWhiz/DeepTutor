@@ -8,7 +8,6 @@ pipeline/__pycache__/api_handler.cpython-312.pyc
 *.jpg
 *.png
 *.pdf
-*.txt
 *.csv
 *.log
 *.ipynb

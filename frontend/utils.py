@@ -1,6 +1,6 @@
 import streamlit as st
-from pipeline.chat_history_manager import save_chat_history
-from pipeline.get_response import tutor_agent, generate_follow_up_questions
+from pipeline.science.pipeline.chat_history_manager import save_chat_history
+from pipeline.science.pipeline.get_response import tutor_agent, generate_follow_up_questions
 
 
 # Function to display the pdf

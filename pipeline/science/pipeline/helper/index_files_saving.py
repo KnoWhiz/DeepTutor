@@ -1,6 +1,6 @@
 import os
 import shutil
-from pipeline.helper.azure_blob import AzureBlobHelper
+from pipeline.science.pipeline.helper.azure_blob import AzureBlobHelper
 
 
 def graphrag_index_files_check(embedding_folder):

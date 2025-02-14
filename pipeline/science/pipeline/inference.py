@@ -15,7 +15,7 @@ def deepseek_inference(
 ) -> Optional[str]:
     """
     Get completion from the DeepSeek model with optional streaming support.
-    
+
     Args:
         prompt: The user's input prompt
         system_message: The system message to set the AI's behavior
@@ -23,7 +23,7 @@ def deepseek_inference(
         temperature: Controls randomness (0.0 = deterministic, 1.0 = creative)
         top_p: Controls diversity via nucleus sampling
         max_tokens: Maximum number of tokens to generate
-        
+
     Returns:
         The generated text if streaming is False, None if streaming is True
     """
@@ -68,7 +68,7 @@ if __name__ == "__main__":
     # Example with streaming
     print("Streaming response:")
     deepseek_inference("what is 1+1?", stream=True)
-    
+
     print("\nNon-streaming response:")
     response = deepseek_inference("what is 1+1?", stream=False)
     if response:

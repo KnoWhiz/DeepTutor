@@ -14,16 +14,16 @@ def extract_pdf_content_to_markdown_via_api(
 ) -> Tuple[str, Dict[str, Image.Image]]:
     """
     Extract text and images from a PDF file using the Marker API and save them to the specified directory.
-    
+
     Args:
         pdf_path: Path to the input PDF file
         output_dir: Directory where images and markdown will be saved
-    
+
     Returns:
         Tuple containing:
         - Path to the saved markdown file
         - Dictionary of image names and their PIL Image objects
-    
+
     Raises:
         FileNotFoundError: If PDF file doesn't exist
         OSError: If output directory cannot be created
@@ -45,7 +45,7 @@ def extract_pdf_content_to_markdown_via_api(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     API_URL = "https://www.datalab.to/api/v1/marker"
-    
+
     # Submit the file to API
     with open(pdf_path, "rb") as f:
         form_data = {
@@ -73,7 +73,7 @@ def extract_pdf_content_to_markdown_via_api(
     max_polls = 300
     poll_interval = 2
     result = None
-    
+
     for i in range(max_polls):
         time.sleep(poll_interval)
         poll_response = requests.get(request_check_url, headers=headers)
@@ -99,7 +99,7 @@ def extract_pdf_content_to_markdown_via_api(
     # Process and save images
     saved_images: Dict[str, Image.Image] = {}
     images = result.get("images", {})
-    
+
     if images:
         print(f"Processing {len(images)} images...")
         for filename, b64data in images.items():
@@ -107,11 +107,11 @@ def extract_pdf_content_to_markdown_via_api(
                 # Create PIL Image from base64 data
                 image_data = base64.b64decode(b64data)
                 img = Image.open(io.BytesIO(image_data))
-                
+
                 # Create a valid filename
                 safe_filename = "".join(c for c in filename if c.isalnum() or c in ('-', '_', '.'))
                 output_path = output_dir / safe_filename
-                
+
                 # Save the image
                 img.save(output_path)
                 saved_images[filename] = img
@@ -127,7 +127,7 @@ if __name__ == "__main__":
     # Example usage
     pdf_path = "/Users/bingran_you/Library/Mobile Documents/com~apple~CloudDocs/Downloads/papers/science.1189075.pdf"
     output_dir = "markdown_output"
-    
+
     try:
         md_path, saved_images = extract_pdf_content_to_markdown_via_api(pdf_path, output_dir)
         print(f"Successfully processed PDF. Markdown saved to: {md_path}")

@@ -68,12 +68,10 @@ from graphrag.prompts.query.global_search_reduce_system_prompt import (
 from graphrag.prompts.query.local_search_system_prompt import LOCAL_SEARCH_SYSTEM_PROMPT
 from graphrag.prompts.query.question_gen_system_prompt import QUESTION_SYSTEM_PROMPT
 
-from pipeline.api_handler import ApiHandler
-from pipeline.api_handler import create_env_file
-from pipeline.api_handler import ApiHandler, create_env_file
-from pipeline.helper.index_files_saving import graphrag_index_files_check, graphrag_index_files_compress, graphrag_index_files_decompress
-from pipeline.config import load_config
-from pipeline.utils import (
+from pipeline.science.pipeline.api_handler import create_env_file
+from pipeline.science.pipeline.api_handler import ApiHandler, create_env_file
+from pipeline.science.pipeline.config import load_config
+from pipeline.science.pipeline.utils import (
     count_tokens,
     truncate_chat_history,
     truncate_document,
@@ -84,7 +82,7 @@ from pipeline.utils import (
     extract_pdf_content_to_markdown_via_api,
     create_searchable_chunks,
 )
-from pipeline.images_understanding import initialize_image_files
+from pipeline.science.pipeline.images_understanding import initialize_image_files
 
 
 load_dotenv()
@@ -99,15 +97,15 @@ class DocumentProcessor:
     """
     def __init__(self):
         self.md_document = ""
-        
+
     def set_md_document(self, content: str):
         """Set the markdown document content."""
         self.md_document = content
-        
+
     def append_md_document(self, content: str):
         """Append content to the markdown document."""
         self.md_document += content.strip() + "\n"
-        
+
     def get_md_document(self) -> str:
         """Get the current markdown document content."""
         return self.md_document
@@ -124,7 +122,7 @@ def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder):
     """
     if _mode == "Advanced":
         asyncio.run(generate_GraphRAG_embedding(_document, embedding_folder))
-    
+
     config = load_config()
     para = config['llm']
     embeddings = get_embedding_models('default', para)
@@ -160,7 +158,7 @@ def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder):
             # Use _doc to extract searchable content
             doc_processor.set_md_document("")
             texts = []
-            
+
             # Process each page in the PDF document
             for page_num in range(len(_doc)):
                 page = _doc[page_num]
@@ -172,7 +170,7 @@ def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder):
                     search_results = page.search_for(text.strip())
                     if search_results:
                         text_blocks.append(text)
-                
+
                 # Join the searchable text blocks
                 page_content = "\n".join(text_blocks)
                 doc_processor.append_md_document(page_content)
@@ -187,7 +185,7 @@ def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder):
             md_path = os.path.join(markdown_dir, "content.md")
             with open(md_path, "w", encoding="utf-8") as f:
                 f.write(doc_processor.get_md_document())
-            
+
             # Use the texts directly instead of splitting again
             print(f"Number of pages processed: {len(texts)}")
         else:
@@ -204,25 +202,25 @@ def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder):
         try:
             markdown_dir = os.path.join(embedding_folder, "markdown")
             image_context_path, _ = initialize_image_files(markdown_dir)
-            
+
             with open(image_context_path, "r") as f:
                 image_context = json.load(f)
-            
+
             # Only process image context if there are actual images
             if image_context:
                 print(f"Found {len(image_context)} images with context")
-                
+
                 # Create a temporary FAISS index for similarity search
                 temp_db = FAISS.from_documents(texts, embeddings)
-                
+
                 for image, context in image_context.items():
                     for c in context:
                         # Clean the context text for comparison
                         clean_context = c.replace(" <markdown>", "").strip()
-                        
+
                         # Use similarity search to find the most relevant chunk
                         similar_chunks = temp_db.similarity_search_with_score(clean_context, k=1)
-                        
+
                         if similar_chunks:
                             best_match_chunk, score = similar_chunks[0]
                             # Only use the page number if the similarity score is good enough
@@ -230,7 +228,7 @@ def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder):
                             best_match_page = best_match_chunk.metadata.get("page", 0) if score < 1.0 else 0
                         else:
                             best_match_page = 0
-                        
+
                         texts.append(Document(
                             page_content=c, 
                             metadata={
@@ -353,19 +351,19 @@ def generate_document_summary(_document, embedding_folder, md_document=None):
     if md_document:
         print("Using provided markdown content...")
         combined_content = md_document
-    
+
     # If no content in markdown document, fall back to document content
     if not combined_content and _document:
         print("Using document content as source...")
         combined_content = "\n\n".join(doc.page_content for doc in _document)
-    
+
     if not combined_content:
         raise ValueError("No content available from either markdown document or document")
 
     # First generate the take-home message
     takehome_prompt = """
     Provide a single, impactful sentence that captures the most important takeaway from this document.
-    
+
     Guidelines:
     - Be extremely concise and specific
     - Focus on the main contribution or finding
@@ -377,7 +375,7 @@ def generate_document_summary(_document, embedding_folder, md_document=None):
       $$
       F = ma (just an example, may not be a real formula in the doc)
       $$
-    
+
     Document: {document}
     """
     takehome_prompt = ChatPromptTemplate.from_template(takehome_prompt)
@@ -389,15 +387,15 @@ def generate_document_summary(_document, embedding_folder, md_document=None):
     topics_prompt = """
     Identify only the most essential topics/sections from this document.
     Be extremely selective and concise - only include major components.
-    
+
     Return format:
     {{"topics": ["topic1", "topic2", ...]}}
-    
+
     Guidelines:
     - Include maximum 4-5 topics
     - Focus only on critical sections
     - Use short, descriptive names
-    
+
     Document: {document}
     """
     topics_prompt = ChatPromptTemplate.from_template(topics_prompt)
@@ -425,7 +423,7 @@ def generate_document_summary(_document, embedding_folder, md_document=None):
       $$
       F = ma (just an example, may not be a real formula in the doc)
       $$
-    
+
     Document: {document}
     """
     overview_prompt = ChatPromptTemplate.from_template(overview_prompt)
@@ -437,7 +435,7 @@ def generate_document_summary(_document, embedding_folder, md_document=None):
     for topic in topics:
         topic_prompt = """
         Provide an engaging summary for the topic "{topic}" using bullet points.
-        
+
         Guidelines:
         - Use 2-3 bullet points
         - Each bullet point should be one short sentence
@@ -449,7 +447,7 @@ def generate_document_summary(_document, embedding_folder, md_document=None):
           $$
           F = ma (just an example, may not be a real formula in the doc)
           $$
-        
+
         Document: {document}
         """
         topic_prompt = ChatPromptTemplate.from_template(topic_prompt)
@@ -461,7 +459,7 @@ def generate_document_summary(_document, embedding_folder, md_document=None):
         summaries.append((topic, topic_summary))
 
     # Combine everything into markdown format with welcome message and take-home message
-    markdown_summary = f"""### 👋 Welcome to DeepTutor! 
+    markdown_summary = f"""### 👋 Welcome to DeepTutor!
 
 I'm your AI tutor 🤖 ready to help you understand this document.
 
@@ -472,7 +470,7 @@ I'm your AI tutor 🤖 ready to help you understand this document.
 {overview}
 
 """
-    
+
     # Add emojis for common topic titles
     topic_emojis = {
         "introduction": "📖",
@@ -508,7 +506,7 @@ I'm your AI tutor 🤖 ready to help you understand this document.
         # Get emoji based on topic, defaulting to 📌 if not found
         topic_lower = topic.lower()
         emoji = next((v for k, v in topic_emojis.items() if k in topic_lower), topic_emojis["default"])
-        
+
         markdown_summary += f"""### {emoji} {topic}
 {summary}
 

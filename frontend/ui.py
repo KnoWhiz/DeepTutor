@@ -10,12 +10,12 @@ import streamlit.components.v1 as components
 from streamlit_js_eval import streamlit_js_eval
 
 from frontend.utils import previous_page, next_page, close_pdf, chat_content, handle_follow_up_click
-from pipeline.utils import find_pages_with_excerpts, get_highlight_info, translate_content
+from pipeline.science.pipeline.utils import find_pages_with_excerpts, get_highlight_info, translate_content
 from frontend.forms.contact import contact_form
-from pipeline.config import load_config
-from pipeline.get_response import generate_follow_up_questions
-from pipeline.chat_history_manager import save_chat_history
-from pipeline.session_manager import ChatMode
+from pipeline.science.pipeline.config import load_config
+from pipeline.science.pipeline.get_response import generate_follow_up_questions
+from pipeline.science.pipeline.chat_history_manager import save_chat_history
+from pipeline.science.pipeline.session_manager import ChatMode
 
 
 def to_emoji_number(num: int) -> str:

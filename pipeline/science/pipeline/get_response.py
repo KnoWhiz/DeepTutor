@@ -23,8 +23,8 @@ from graphrag.query.structured_search.global_search.community_context import (
 )
 from graphrag.query.structured_search.global_search.search import GlobalSearch
 
-from pipeline.config import load_config
-from pipeline.utils import (
+from pipeline.science.pipeline.config import load_config
+from pipeline.science.pipeline.utils import (
     tiktoken,
     truncate_chat_history,
     get_llm,
@@ -36,21 +36,23 @@ from pipeline.utils import (
     save_file_txt_locally,
     process_pdf_file,
 )
-from pipeline.doc_processor import (
+from pipeline.science.pipeline.doc_processor import (
     generate_embedding,
 )
-from pipeline.sources_retrieval import (
+from pipeline.science.pipeline.sources_retrieval import (
     get_response_source,
 )
-from pipeline.inference import deepseek_inference
-from pipeline.session_manager import ChatSession, ChatMode
-from pipeline.helper.index_files_saving import (
+from pipeline.science.pipeline.inference import deepseek_inference
+from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
+from pipeline.science.pipeline.helper.index_files_saving import (
     vectorrag_index_files_decompress,
     vectorrag_index_files_compress,
     graphrag_index_files_decompress,
     graphrag_index_files_compress,
 )
 
+import logging
+logger = logging.getLogger("tutorpipeline.science.get_response")
 
 def tutor_agent(chat_session: ChatSession, file_path, user_input):
     """
@@ -115,9 +117,9 @@ def tutor_agent(chat_session: ChatSession, file_path, user_input):
                     print("Error compressing and uploading GraphRAG index files to Azure Blob Storage.")
     else:
         print("Error: Invalid mode")
-    
+
     chat_history = chat_session.chat_history
-    
+
     # Use temporary chat history for follow-up questions if available
     if hasattr(chat_session, 'temp_chat_history') and chat_session.temp_chat_history:
         context_chat_history = chat_session.temp_chat_history
@@ -127,6 +129,7 @@ def tutor_agent(chat_session: ChatSession, file_path, user_input):
         context_chat_history = chat_history
 
     # Handle initial welcome message when chat history is empty
+    # FIXME: uncomment this block after chat history is implemented
     if not chat_history:
         try:
             # Try to load existing document summary
@@ -149,6 +152,7 @@ def tutor_agent(chat_session: ChatSession, file_path, user_input):
     # Regular chat flow
     # Refine user input
     refined_user_input = get_query_helper(chat_session, user_input, context_chat_history, embedding_folder)
+    logger.info(f"Refined user input: {refined_user_input}")
     # Get response
     answer = get_response(chat_session, _doc, _document, file_path, refined_user_input, context_chat_history, embedding_folder)
     # Get sources
@@ -169,7 +173,7 @@ def tutor_agent(chat_session: ChatSession, file_path, user_input):
             image_url_mapping = {}
             with open(image_url_path, 'w') as f:
                 json.dump(image_url_mapping, f)
-        
+
         # Process each source and check if it's an image
         sources_to_remove = []
         for source, score in sources.items():
@@ -178,7 +182,7 @@ def tutor_agent(chat_session: ChatSession, file_path, user_input):
                 if image_url:
                     images_sources[source] = score
                     sources_to_remove.append(source)
-        
+
         # Remove processed image sources from the main sources dict
         for source in sources_to_remove:
             del sources[source]
@@ -199,7 +203,7 @@ def tutor_agent(chat_session: ChatSession, file_path, user_input):
             if image_url:
                 answer += "\n"
                 answer += f"![]({image_url})"
-    
+
     # Combine regular sources with image sources
     sources.update(images_sources)
     return answer, sources, source_pages

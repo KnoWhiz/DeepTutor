@@ -9,10 +9,10 @@ from datetime import datetime
 
 def get_chat_history_path(session_id: str) -> str:
     """Get the full path for a chat history file.
-    
+
     Args:
         session_id: Unique identifier for the chat session
-        
+
     Returns:
         str: Full path to the chat history JSON file
     """
@@ -22,7 +22,7 @@ def get_chat_history_path(session_id: str) -> str:
 
 def create_session_id() -> str:
     """Create a unique session ID using timestamp and UUID.
-    
+
     Returns:
         str: Unique session identifier
     """
@@ -33,17 +33,17 @@ def create_session_id() -> str:
 
 def save_chat_history(session_id: str, chat_history: List[Dict]) -> None:
     """Save chat history to a JSON file.
-    
+
     Args:
         session_id: Unique identifier for the chat session
         chat_history: List of chat messages with their metadata
     """
     if not chat_history:
         return
-        
+
     file_path = get_chat_history_path(session_id)
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
-    
+
     try:
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump({
@@ -57,18 +57,18 @@ def save_chat_history(session_id: str, chat_history: List[Dict]) -> None:
 
 def load_chat_history(session_id: str) -> Optional[List[Dict]]:
     """Load chat history from a JSON file.
-    
+
     Args:
         session_id: Unique identifier for the chat session
-        
+
     Returns:
         Optional[List[Dict]]: List of chat messages if file exists, None otherwise
     """
     file_path = get_chat_history_path(session_id)
-    
+
     if not os.path.exists(file_path):
         return None
-        
+
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -80,18 +80,18 @@ def load_chat_history(session_id: str) -> Optional[List[Dict]]:
 
 def delete_chat_history(session_id: str) -> bool:
     """Delete a chat history file.
-    
+
     Args:
         session_id: Unique identifier for the chat session
-        
+
     Returns:
         bool: True if deletion was successful, False otherwise
     """
     file_path = get_chat_history_path(session_id)
-    
+
     if not os.path.exists(file_path):
         return False
-        
+
     try:
         os.remove(file_path)
         return True
@@ -105,13 +105,13 @@ def cleanup_old_sessions() -> None:
     base_dir = os.path.join(os.path.dirname(__file__), "chat_history")
     if not os.path.exists(base_dir):
         return
-        
+
     current_time = datetime.now()
-    
+
     for filename in os.listdir(base_dir):
         if not filename.endswith(".json"):
             continue
-            
+
         file_path = os.path.join(base_dir, filename)
         try:
             # Check file modification time
@@ -120,4 +120,4 @@ def cleanup_old_sessions() -> None:
             if (current_time - file_time).total_seconds() > 86400:  # 24 hours in seconds
                 os.remove(file_path)
         except Exception as e:
-            print(f"Error cleaning up old session {filename}: {e}") 
+            print(f"Error cleaning up old session {filename}: {e}")

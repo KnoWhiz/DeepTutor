@@ -11,15 +11,15 @@ from langchain.output_parsers import OutputFixingParser
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema import Document
 
-from pipeline.config import load_config
-from pipeline.utils import (
+from pipeline.science.pipeline.config import load_config
+from pipeline.science.pipeline.utils import (
     tiktoken,
     truncate_chat_history,
     get_llm,
     get_embedding_models,
     robust_search_for
 )
-from pipeline.doc_processor import generate_embedding
+from pipeline.science.pipeline.doc_processor import generate_embedding
 
 
 def get_response_source(mode, _doc, _document, pdf_path, user_input, answer, chat_history, embedding_folder):
@@ -47,7 +47,7 @@ def get_response_source(mode, _doc, _document, pdf_path, user_input, answer, cha
         image_context = {}
         with open(image_context_path, 'w') as f:
             json.dump(image_context, f)
-    
+
     # Create reverse mapping from description to image name
     image_mapping = {}
     for image_name, descriptions in image_context.items():
@@ -132,7 +132,7 @@ def get_response_source(mode, _doc, _document, pdf_path, user_input, answer, cha
                          for source, score in sources_with_scores.items()}
     source_pages = {image_mapping.get(source, source): page 
                          for source, page in source_pages.items()}
-    
+
     # # TEST
     # print("sources before refine:")
     # pprint.pprint(sources_with_scores)
@@ -147,7 +147,7 @@ def get_response_source(mode, _doc, _document, pdf_path, user_input, answer, cha
     # for source, score in sources_with_scores.items():
     #     print(f"{source}: {score}")
     # print(f"length of sources after refine: {len(sources_with_scores)}")
-    
+
     return sources_with_scores, source_pages
 
 
@@ -160,7 +160,7 @@ def refine_sources(_doc, _document, sources_with_scores, markdown_dir, user_inpu
     """
     refined_sources = {}
     image_sources = {}
-    
+
     # Load image context
     image_context_path = os.path.join(markdown_dir, "image_context.json")
     if os.path.exists(image_context_path):
@@ -171,7 +171,7 @@ def refine_sources(_doc, _document, sources_with_scores, markdown_dir, user_inpu
         image_context = {}
         with open(image_context_path, 'w') as f:
             json.dump(image_context, f)
-    
+
     # First separate image sources from text sources
     text_sources = {}
     for source, score in sources_with_scores.items():
@@ -180,7 +180,7 @@ def refine_sources(_doc, _document, sources_with_scores, markdown_dir, user_inpu
             image_sources[source] = score
         else:
             text_sources[source] = score
-    
+
     # Filter image sources based on LLM evaluation
     filtered_images = {}
     if image_sources:
@@ -195,10 +195,10 @@ def refine_sources(_doc, _document, sources_with_scores, markdown_dir, user_inpu
         system_prompt = """
         You are an expert at evaluating the relevance between a user's question and image descriptions.
         Given a user's question and descriptions of an image, determine if the image is relevant and provide a relevance score.
-        
+
         First, analyze the image descriptions to identify the actual figure number in the document (e.g., "Figure 1", "Fig. 2", etc.).
         Then evaluate the relevance considering both the actual figure number and the content.
-        
+
         Organize your response in the following JSON format:
         ```json
         {{
@@ -208,29 +208,29 @@ def refine_sources(_doc, _document, sources_with_scores, markdown_dir, user_inpu
             "explanation": "<brief explanation including actual figure number and why this image is or isn't relevant>"
         }}
         ```
-        
+
         Pay special attention to:
         1. If the user asks about a specific figure number (e.g., "Figure 1"), prioritize matching the ACTUAL figure number from descriptions, NOT the filename
         2. The semantic meaning and context of both the question and image descriptions
         3. Whether the image would help answer the user's question
         4. Look for figure number mentions in the descriptions like "Figure X", "Fig. X", "Figure-X", etc.
         """
-        
+
         human_prompt = """
         User's question: {question}
         Image descriptions:
         {descriptions}
-        
+
         Note: The image filename may not reflect the actual figure number in the document. Please extract the actual figure number from the descriptions.
         """
-        
+
         prompt = ChatPromptTemplate.from_messages([
             ("system", system_prompt),
             ("human", human_prompt),
         ])
-        
+
         chain = prompt | llm | error_parser
-        
+
         # Evaluate each image
         image_scores = []
         for image, score in image_sources.items():
@@ -238,14 +238,14 @@ def refine_sources(_doc, _document, sources_with_scores, markdown_dir, user_inpu
                 # Get all context descriptions for this image
                 descriptions = image_context[image]
                 descriptions_text = "\n".join([f"- {desc}" for desc in descriptions])
-                
+
                 # Evaluate relevance using LLM
                 try:
                     result = chain.invoke({
                         "question": user_input,
                         "descriptions": descriptions_text
                     })
-                    
+
                     # Store both the actual figure number and score
                     if result["is_relevant"]:
                         # Combine vector similarity score with LLM relevance score
@@ -262,19 +262,19 @@ def refine_sources(_doc, _document, sources_with_scores, markdown_dir, user_inpu
                 except Exception as e:
                     print(f"Error evaluating image {image}: {e}")
                     continue
-        
+
         # Sort images by relevance score
         image_scores.sort(key=lambda x: x[1], reverse=True)
-        
+
         # Filter images with high relevance score (score > 0.2)
         filtered_images = {img: score for img, score, fig_num, expl in image_scores if score > 0.5}
-        
+
         if filtered_images:
             # If asking about a specific figure, prioritize exact figure number match
             import re
             figure_pattern = re.compile(r'fig(?:ure)?\.?\s*(\d+)', re.IGNORECASE)
             user_figure_match = figure_pattern.search(user_input)
-            
+
             if user_figure_match:
                 user_figure_num = user_figure_match.group(1)
                 # Look for exact figure number match first
@@ -302,17 +302,17 @@ def refine_sources(_doc, _document, sources_with_scores, markdown_dir, user_inpu
                     # Keep images with scores within 10% of the highest score
                     score_threshold = highest_score * 0.9
                     filtered_images = {img: score for img, score in filtered_images.items() if score >= score_threshold}
-    
+
     # Process text sources as before
     for page in _doc:
         for source, score in text_sources.items():
             text_instances = robust_search_for(page, source)
             if text_instances:
                 refined_sources[source] = score
-    
+
     # Combine filtered image sources with refined text sources
     final_sources = {**filtered_images, **refined_sources}
-    
+
     # Sort by score and limit to top 20
     sorted_sources = dict(sorted(final_sources.items(), key=lambda x: x[1], reverse=True)[:20])
     return sorted_sources
@@ -328,19 +328,19 @@ def cosine_similarity(vec1, vec2):
 
 class PageAwareTextSplitter(RecursiveCharacterTextSplitter):
     """Custom text splitter that respects page boundaries"""
-    
+
     def split_document(self, document):
         """Split document while respecting page boundaries"""
         final_chunks = []
-        
+
         for doc in document:
             # Get the page number from the metadata
             page_num = doc.metadata.get("page", 0)
             text = doc.page_content
-            
+
             # Use parent class's splitting logic first
             chunks = super().split_text(text)
-            
+
             # Create new document for each chunk with original metadata
             for i, chunk in enumerate(chunks):
                 metadata = doc.metadata.copy()
@@ -350,11 +350,11 @@ class PageAwareTextSplitter(RecursiveCharacterTextSplitter):
                     page_content=chunk,
                     metadata=metadata
                 ))
-                
+
         # Sort chunks by page number and then by chunk index
         final_chunks.sort(key=lambda x: (
             x.metadata.get("page", 0),
             x.metadata.get("chunk_index", 0)
         ))
-        
+
         return final_chunks

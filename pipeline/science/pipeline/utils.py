@@ -1,7 +1,7 @@
 import os
 import io
 import hashlib
-import shutil
+# import shutil
 import fitz
 import tiktoken
 import json
@@ -21,10 +21,13 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain.output_parsers import OutputFixingParser
 from langchain_core.documents import Document
 
-from pipeline.config import load_config
-from pipeline.api_handler import ApiHandler
-from pipeline.images_understanding import extract_image_context, upload_markdown_to_azure, upload_images_to_azure
+from pipeline.science.pipeline.config import load_config
+from pipeline.science.pipeline.api_handler import ApiHandler
+from pipeline.science.pipeline.images_understanding import extract_image_context, upload_markdown_to_azure, upload_images_to_azure
 
+import logging
+
+logger = logging.getLogger("tutorpipeline.science.utils")
 
 load_dotenv()
 # Control whether to use Marker API or not. Only for local environment we skip Marker API.
@@ -42,9 +45,9 @@ if SKIP_MARKER_API:
 def robust_search_for(page, text, chunk_size=512):
     """
     A more robust search routine:
-    1) Splits text into chunks of up to 'chunk_size' tokens 
+    1) Splits text into chunks of up to 'chunk_size' tokens
        so that extremely large strings don't fail.
-    2) Uses PyMuPDF search flags to handle hyphens/spaces 
+    2) Uses PyMuPDF search flags to handle hyphens/spaces
        (still an exact match, but more flexible about formatting).
     """
     flags = fitz.TEXT_DEHYPHENATE | fitz.TEXT_INHIBIT_SPACES
@@ -74,6 +77,7 @@ def robust_search_for(page, text, chunk_size=512):
 
 # Generate a unique course ID for the uploaded file
 def generate_course_id(file_path):
+    # logger.info(f"Generating course ID for file: {file_path}")
     file = open(file_path, 'rb')
     file_bytes = file.read()
     file_hash = hashlib.md5(file_bytes).hexdigest()
@@ -126,7 +130,7 @@ def save_file_txt_locally(file_path, filename, embedding_folder):
     if os.path.exists(output_file_path):
         print(f"File already exists: {output_file_path}")
         return
-    
+
     try:
         with open(output_file_path, "w", encoding="utf-8") as f:
             for doc in document:
@@ -295,11 +299,11 @@ def detect_language(text):
 def translate_content(content: str, target_lang: str) -> str:
     """
     Translates content from source language to target language using the LLM.
-    
+
     Args:
         content (str): The text content to translate
         target_lang (str): Target language code (e.g. "en", "zh") 
-    
+
     Returns:
         str: Translated content
     """
@@ -321,7 +325,7 @@ def translate_content(content: str, target_lang: str) -> str:
     Maintain the meaning and original formatting, including markdown syntax, LaTeX formulas, and emojis.
     Only translate the text content - do not modify any formatting, code, or special syntax.
     """
-    
+
     human_prompt = """
     Content to translate:
     {content}
@@ -334,7 +338,7 @@ def translate_content(content: str, target_lang: str) -> str:
 
     # Create and execute translation chain
     translation_chain = prompt | llm | error_parser
-    
+
     translated_content = translation_chain.invoke({
         "target_lang": target_lang,
         "content": content
@@ -350,15 +354,15 @@ def extract_images_from_pdf(
 ) -> List[str]:
     """
     Extract images from a PDF file and save them to the specified directory.
-    
+
     Args:
         pdf_doc: fitz.Document object
         output_dir: Directory where images will be saved
         min_size: Minimum dimensions (width, height) for images to be extracted
-    
+
     Returns:
         List of paths to the extracted image files. But currently only supports png or jpg.
-    
+
     Raises:
         FileNotFoundError: If PDF file doesn't exist
         PermissionError: If output directory can't be created/accessed
@@ -366,58 +370,58 @@ def extract_images_from_pdf(
     """
     # Convert paths to Path objects for better handling
     output_dir = Path(output_dir)
-    
+
     # Create output directory if it doesn't exist
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # List to store paths of extracted images
     extracted_images: List[str] = []
-    
+
     try:
         # Open the PDF
         pdf_document = pdf_doc
-        
+
         # Counter for naming images
         image_counter = 1
-        
+
         # Iterate through each page
         for page_num in range(pdf_document.page_count):
             page = pdf_document[page_num]
-            
+
             # Get images from page
             images = page.get_images()
-            
+
             # Process each image
             for image_index, image in enumerate(images):
                 # Get image data
                 base_image = pdf_document.extract_image(image[0])
                 image_bytes = base_image["image"]
                 image_ext = base_image["ext"]
-                
+
                 # Get image size
                 img_xref = image[0]
                 pix = fitz.Pixmap(pdf_document, img_xref)
-                
+
                 # Skip images smaller than min_size
                 if pix.width < min_size[0] or pix.height < min_size[1]:
                     continue
-                
+
                 # Generate image filename
                 image_filename = f"{image_counter}.{image_ext}"
                 image_path = output_dir / image_filename
-                
+
                 # Save image
                 with open(image_path, "wb") as img_file:
                     img_file.write(image_bytes)
-                
+
                 extracted_images.append(str(image_path))
                 image_counter += 1
-        
+
         return extracted_images
-    
+
     except Exception as e:
         raise ValueError(f"Error processing PDF: {str(e)}")
-    
+
     finally:
         if 'pdf_document' in locals():
             pdf_document.close()
@@ -429,16 +433,16 @@ def extract_pdf_content_to_markdown(
 ) -> Tuple[str, Dict[str, Image.Image]]:
     """
     Extract text and images from a PDF file and save them to the specified directory.
-    
+
     Args:
         pdf_path: Path to the input PDF file
         output_dir: Directory where images and markdown will be saved
-    
+
     Returns:
         Tuple containing:
         - Path to the saved markdown file
         - Dictionary of image names and their PIL Image objects
-    
+
     Raises:
         FileNotFoundError: If PDF file doesn't exist
         OSError: If output directory cannot be created
@@ -481,7 +485,7 @@ def extract_pdf_content_to_markdown(
                     # Create a valid filename from the image name
                     safe_filename = "".join(c for c in img_name if c.isalnum() or c in ('-', '_', '.'))
                     output_path = output_dir / safe_filename
-                    
+
                     # Save the image
                     img.save(output_path)
                     saved_images[img_name] = img
@@ -504,7 +508,7 @@ def extract_pdf_content_to_markdown(
 
     except Exception as e:
         raise Exception(f"Error processing PDF: {str(e)}")
-    
+
 
 def extract_pdf_content_to_markdown_via_api(
     pdf_path: str | Path,
@@ -512,17 +516,17 @@ def extract_pdf_content_to_markdown_via_api(
 ) -> Tuple[str, Dict[str, Image.Image], str]:
     """
     Extract text and images from a PDF file using the Marker API and save them to the specified directory.
-    
+
     Args:
         pdf_path: Path to the input PDF file
         output_dir: Directory where images and markdown will be saved
-    
+
     Returns:
         Tuple containing:
         - Path to the saved markdown file
         - Dictionary of image names and their PIL Image objects
         - Markdown content (str)
-    
+
     Raises:
         FileNotFoundError: If PDF file doesn't exist
         OSError: If output directory cannot be created
@@ -544,7 +548,7 @@ def extract_pdf_content_to_markdown_via_api(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     API_URL = "https://www.datalab.to/api/v1/marker"
-    
+
     # Submit the file to API
     with open(pdf_path, "rb") as f:
         form_data = {
@@ -572,7 +576,7 @@ def extract_pdf_content_to_markdown_via_api(
     max_polls = 300
     poll_interval = 2
     result = None
-    
+
     for i in range(max_polls):
         time.sleep(poll_interval)
         poll_response = requests.get(request_check_url, headers=headers)
@@ -598,7 +602,7 @@ def extract_pdf_content_to_markdown_via_api(
     # Process and save images
     saved_images: Dict[str, Image.Image] = {}
     images = result.get("images", {})
-    
+
     if images:
         print(f"Processing {len(images)} images...")
         for filename, b64data in images.items():
@@ -606,11 +610,11 @@ def extract_pdf_content_to_markdown_via_api(
                 # Create PIL Image from base64 data
                 image_data = base64.b64decode(b64data)
                 img = Image.open(io.BytesIO(image_data))
-                
+
                 # Create a valid filename
                 safe_filename = "".join(c for c in filename if c.isalnum() or c in ('-', '_', '.'))
                 output_path = output_dir / safe_filename
-                
+
                 # Save the image
                 img.save(output_path)
                 saved_images[filename] = img
@@ -635,11 +639,11 @@ def extract_pdf_content_to_markdown_via_api(
 def create_searchable_chunks(doc, chunk_size: int) -> list:
     """
     Create searchable chunks from a PDF document.
-    
+
     Args:
         doc: The PDF document object
         chunk_size: Maximum size of each text chunk in characters
-        
+
     Returns:
         list: A list of Document objects containing the chunks
     """
@@ -647,13 +651,13 @@ def create_searchable_chunks(doc, chunk_size: int) -> list:
     for page_num in range(len(doc)):
         page = doc[page_num]
         text_blocks = []
-        
+
         # Get text blocks that can be found via search
         for block in page.get_text("blocks"):
             text = block[4]  # The text content is at index 4
             # Clean up the text
             clean_text = text.strip()
-            
+
             if clean_text:
                 # Remove hyphenation at line breaks
                 clean_text = clean_text.replace("-\n", "")
@@ -669,7 +673,7 @@ def create_searchable_chunks(doc, chunk_size: int) -> list:
                 }
                 for old, new in replacements.items():
                     clean_text = clean_text.replace(old, new)
-                
+
                 # Split into chunks of specified size
                 while len(clean_text) > 0:
                     # Find a good break point near chunk_size characters
@@ -684,7 +688,7 @@ def create_searchable_chunks(doc, chunk_size: int) -> list:
                             last_space = clean_text[:end_pos].rfind(" ")
                             if last_space > 0:
                                 end_pos = last_space
-                    
+
                     chunk_text = clean_text[:end_pos].strip()
                     if chunk_text:
                         text_blocks.append(Document(
@@ -699,15 +703,15 @@ def create_searchable_chunks(doc, chunk_size: int) -> list:
                             }
                         ))
                     clean_text = clean_text[end_pos:].strip()
-        
+
         chunks.extend(text_blocks)
-    
+
     # Sort chunks by page number and then by chunk index
     chunks.sort(key=lambda x: (
         x.metadata.get("page", 0),
         x.metadata.get("chunk_index", 0)
     ))
-    
+
     return chunks
 
 

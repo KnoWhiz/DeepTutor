@@ -33,7 +33,7 @@ class ApiHandler:
     def get_models(self, api_key, temperature=0, deployment_name=None, endpoint=None, api_version=None, host='azure'):
         """
         Get language model instances based on the specified host platform.
-        
+
         Args:
             api_key (str): API key for authentication
             endpoint (str): API endpoint URL
@@ -41,7 +41,7 @@ class ApiHandler:
             deployment_name (str): Model deployment name/identifier
             temperature (float): Temperature parameter for model responses
             host (str): Host platform ('azure', 'openai', 'sambanova', or 'deepseek')
-            
+
         Returns:
             Language model instance configured for the specified platform
         """
@@ -123,7 +123,7 @@ class ApiHandler:
             openai_api_key =os.getenv('OPENAI_API_KEY_EMBEDDINGS'),
             openai_api_type="azure",
             chunk_size=1)
-        
+
         models = {
             'default': {'instance': embedding_model},
         }

@@ -24,7 +24,7 @@ def graphrag_index_files_check(embedding_folder):
     # Define the index files path for VectorRAG embedding
     faiss_path = os.path.join(embedding_folder, "index.faiss")
     pkl_path = os.path.join(embedding_folder, "index.pkl")
-    document_summary_path = os.path.join(embedding_folder, "document_summary.txt")
+    document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
 
     path_list = [
         create_final_community_reports_path,
@@ -151,7 +151,7 @@ def vectorrag_index_files_check(embedding_folder):
     # Define the index files path for VectorRAG embedding
     faiss_path = os.path.join(embedding_folder, "index.faiss")
     pkl_path = os.path.join(embedding_folder, "index.pkl")
-    document_summary_path = os.path.join(embedding_folder, "document_summary.txt")
+    document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
 
     path_list = [
         faiss_path,
@@ -226,7 +226,7 @@ def vectorrag_index_files_decompress(embedding_folder):
         # CLEANUP: Clear the existing files if they're not complete
         faiss_path = os.path.join(embedding_folder, "index.faiss")
         pkl_path = os.path.join(embedding_folder, "index.pkl")
-        document_summary_path = os.path.join(embedding_folder, "document_summary.txt")
+        document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
         
         for path in [faiss_path, pkl_path, document_summary_path]:
             if os.path.exists(path):

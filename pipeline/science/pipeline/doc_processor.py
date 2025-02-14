@@ -131,7 +131,7 @@ def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder):
     # Define the default filenames used by FAISS when saving
     faiss_path = os.path.join(embedding_folder, "index.faiss")
     pkl_path = os.path.join(embedding_folder, "index.pkl")
-    document_summary_path = os.path.join(embedding_folder, "document_summary.txt")
+    document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
 
     # Check if all necessary files exist to load the embeddings
     if os.path.exists(faiss_path) and os.path.exists(pkl_path) and os.path.exists(document_summary_path):
@@ -518,7 +518,7 @@ I'm your AI tutor 🤖 ready to help you understand this document.
 Feel free to ask me any questions about the document! I'm here to help! ✨
 """
 
-    document_summary_path = os.path.join(embedding_folder, "document_summary.txt")
+    document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
     with open(document_summary_path, "w", encoding='utf-8') as f:
         f.write(markdown_summary)
 

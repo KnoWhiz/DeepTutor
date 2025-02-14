@@ -133,7 +133,7 @@ def tutor_agent(chat_session: ChatSession, file_path, user_input):
     if not chat_history:
         try:
             # Try to load existing document summary
-            document_summary_path = os.path.join(embedding_folder, "document_summary.txt")
+            document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
             with open(document_summary_path, "r") as f:
                 initial_message = f.read()
         except FileNotFoundError:
@@ -438,13 +438,13 @@ def get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embe
 
 
 def get_query_helper(chat_session: ChatSession, user_input, context_chat_history, embedding_folder):
-    # If we have "document_summary" in the embedding folder, we can use it to speed up the search
-    document_summary_path = os.path.join(embedding_folder, "document_summary.txt")
+    # If we have "documents_summary" in the embedding folder, we can use it to speed up the search
+    document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
     if os.path.exists(document_summary_path):
         with open(document_summary_path, "r") as f:
-            document_summary = f.read()
+            documents_summary = f.read()
     else:
-        document_summary = " "
+        documents_summary = " "
 
     # Load languages from config
     config = load_config()
@@ -486,7 +486,7 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
     )
     chain = prompt | llm | error_parser
     parsed_result = chain.invoke({"input": user_input,
-                                  "context": document_summary,
+                                  "context": documents_summary,
                                   "chat_history": truncate_chat_history(context_chat_history)})
     question = parsed_result['question']
     question_type = parsed_result['question_type']

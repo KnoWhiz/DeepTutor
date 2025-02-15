@@ -136,7 +136,7 @@ def tutor_agent(mode, _doc, _documents, file_paths, user_input, chat_history, em
     return answer, sources, source_pages
 
 
-def get_response(mode, _doc, _documents, file_paths, user_input, chat_history, embedding_folder, deep_thinking = True):
+def get_response(mode, _doc, _documents, file_paths, user_input, chat_history, embedding_folder, deep_thinking = False):
     # # TEST
     # print("Current language:", st.session_state.language)
 

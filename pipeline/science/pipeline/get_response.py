@@ -115,7 +115,7 @@ def tutor_agent(chat_session: ChatSession, file_path, user_input):
 
     # Handle initial welcome message when chat history is empty
     # FIXME: uncomment this block after chat history is implemented
-    if user_input == "Can you give me a summary of this document?":
+    if user_input == "Can you give me a summary of this document?" or not chat_history:
         try:
             # Try to load existing document summary
             document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
@@ -133,7 +133,7 @@ def tutor_agent(chat_session: ChatSession, file_path, user_input):
         sources = {}  # Return empty dictionary for sources
         source_pages = {}
         refined_source_pages = {}
-        follow_up_questions = []
+        follow_up_questions = generate_follow_up_questions(answer, [])
         return answer, sources, source_pages, refined_source_pages, follow_up_questions
 
     # Regular chat flow

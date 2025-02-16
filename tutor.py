@@ -6,12 +6,6 @@ from frontend.ui import setup_page_config
 # Set page configuration
 setup_page_config()
 
-# def css_style():
-#     with open("frontend/style.css") as f:
-#         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
-
-# css_style()
-
 from pipeline.science.pipeline.get_response import (
     tutor_agent,
 )
@@ -19,19 +13,7 @@ from pipeline.science.pipeline.get_response import (
 
 from pipeline.science.pipeline.utils import (
     generate_course_id,
-    save_file_txt_locally,
 )
-
-
-from pipeline.science.pipeline.helper.index_files_saving import (
-    graphrag_index_files_check,
-    graphrag_index_files_compress,
-    graphrag_index_files_decompress,
-    vectorrag_index_files_check,
-    vectorrag_index_files_compress,
-    vectorrag_index_files_decompress,
-)
-
 
 from frontend.ui import (
     show_auth_top,

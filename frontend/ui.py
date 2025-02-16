@@ -258,7 +258,8 @@ def show_chat_interface(doc, document, file_path, embedding_folder, tutor_agent)
                                     ):
                                         if st.button(to_emoji_number(src_idx), key=f"source_btn_{idx}_{src_idx}", use_container_width=True):
                                             st.session_state.current_page = page_num
-                                            st.session_state.annotations = get_highlight_info(doc, [source])
+                                            # Display the highlight info for that single source button
+                                            st.session_state.annotations, st.session_state.react_annotations = get_highlight_info(doc, [source])
                     
                     # Then display follow-up questions
                     if "follow_up_questions" in msg:
@@ -348,7 +349,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder, tutor_agent)
                                         ):
                                             if st.button(to_emoji_number(idx), key=f"source_btn_{idx}_current", use_container_width=True):
                                                 st.session_state.current_page = page_num
-                                                st.session_state.annotations = get_highlight_info(doc, [source])
+                                                st.session_state.annotations, st.session_state.react_annotations = get_highlight_info(doc, [source])
                         
                         # Then display follow-up questions
                         st.write("\n\n**📝 Follow-up Questions:**")
@@ -367,7 +368,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder, tutor_agent)
                 if "current_page" not in st.session_state:
                     st.session_state.current_page = 1
                 if st.session_state.get("sources"):
-                    st.session_state.annotations = get_highlight_info(doc, list(st.session_state.sources.keys()))
+                    st.session_state.annotations, st.session_state.react_annotations = get_highlight_info(doc, list(st.session_state.sources.keys()))
 
 
 # Function to display the pdf viewer

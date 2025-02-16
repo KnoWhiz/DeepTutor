@@ -174,9 +174,11 @@ def find_pages_with_excerpts(doc, excerpts):
 # Get the highlight information for the given excerpts
 def get_highlight_info(doc, excerpts):
     annotations = []
+    react_annotations = []
     for page_num, page in enumerate(doc):
         for excerpt in excerpts:
             text_instances = robust_search_for(page, excerpt)
+            # print(f"text_instances: {text_instances}")
             if text_instances:
                 for inst in text_instances:
                     annotations.append({
@@ -187,7 +189,26 @@ def get_highlight_info(doc, excerpts):
                         "height": inst.y1 - inst.y0,
                         "color": "red",
                     })
-    return annotations
+                    react_annotations.append(
+                        {
+                            "content": {
+                                "text": excerpt,
+                            },
+                            "rects": [
+                                {
+                                    "x1": inst.x0,
+                                    "y1": inst.y0,
+                                    "x2": inst.x1,
+                                    "y2": inst.y1,
+                                    "width": inst.x1 - inst.x0,
+                                "height": inst.y1 - inst.y0,
+                                }
+                            ],
+                            "pageNumber": page_num + 1,
+                        }
+                    )
+    # print(f"annotations: {annotations}")
+    return annotations, react_annotations
 
 
 # Add new helper functions

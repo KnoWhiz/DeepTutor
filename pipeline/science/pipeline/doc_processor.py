@@ -33,6 +33,8 @@ from pipeline.science.pipeline.images_understanding import initialize_image_file
 from pipeline.science.pipeline.graphrag_doc_processor import generate_GraphRAG_embedding
 from pipeline.science.pipeline.session_manager import ChatMode
 
+import logging
+logger = logging.getLogger("tutorpipeline.science.doc_processor")
 
 load_dotenv()
 # Control whether to use Marker API or not. Only for local environment we skip Marker API.
@@ -92,7 +94,8 @@ def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder):
     # Check if all necessary files exist to load the embeddings
     if os.path.exists(faiss_path) and os.path.exists(pkl_path) and os.path.exists(document_summary_path):
         # Load existing embeddings
-        print("Loading existing embeddings...")
+        # print("Loading existing embeddings...")
+        logger.info("Loading existing embeddings...")
         db = FAISS.load_local(
             embedding_folder, embeddings, allow_dangerous_deserialization=True
         )

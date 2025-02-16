@@ -115,7 +115,7 @@ def tutor_agent(chat_session: ChatSession, file_path, user_input):
 
     # Handle initial welcome message when chat history is empty
     # FIXME: uncomment this block after chat history is implemented
-    if not chat_history:
+    if user_input == "Can you give me a summary of this document?":
         try:
             # Try to load existing document summary
             document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
@@ -132,7 +132,9 @@ def tutor_agent(chat_session: ChatSession, file_path, user_input):
         )
         sources = {}  # Return empty dictionary for sources
         source_pages = {}
-        return answer, sources, source_pages
+        refined_source_pages = {}
+        follow_up_questions = []
+        return answer, sources, source_pages, refined_source_pages, follow_up_questions
 
     # Regular chat flow
     # Refine user input
@@ -141,7 +143,7 @@ def tutor_agent(chat_session: ChatSession, file_path, user_input):
     # Get response
     answer = get_response(chat_session, _doc, _document, file_path, refined_user_input, context_chat_history, embedding_folder)
     # Get sources
-    sources, source_pages = get_response_source(
+    sources, source_pages, refined_source_pages = get_response_source(
         chat_session.mode,
         _doc, _document, file_path, refined_user_input, answer, context_chat_history, embedding_folder
     )
@@ -172,8 +174,8 @@ def tutor_agent(chat_session: ChatSession, file_path, user_input):
         for source in sources_to_remove:
             del sources[source]
 
-    answer = f"""Are you asking: **{refined_user_input}**
-    """ + "\n" + answer
+    # answer = f"""Are you asking: **{refined_user_input}**
+    # """ + "\n" + answer
 
     # Translate the answer to the selected language
     answer = translate_content(
@@ -191,10 +193,13 @@ def tutor_agent(chat_session: ChatSession, file_path, user_input):
 
     # Combine regular sources with image sources
     sources.update(images_sources)
-    return answer, sources, source_pages
+
+    # Generate follow-up questions
+    follow_up_questions = generate_follow_up_questions(answer, chat_history)
+    return answer, sources, source_pages, refined_source_pages, follow_up_questions
 
 
-def get_response(chat_session: ChatSession, _doc, _document, file_path, user_input, chat_history, embedding_folder, deep_thinking = True):
+def get_response(chat_session: ChatSession, _doc, _document, file_path, user_input, chat_history, embedding_folder, deep_thinking = False):
     if chat_session.mode == ChatMode.ADVANCED:
         try:
             answer = get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embedding_folder)
@@ -217,7 +222,8 @@ def get_response(chat_session: ChatSession, _doc, _document, file_path, user_inp
     )
 
     # Load existing embeddings
-    print("Loading existing embeddings...")
+    # print("Loading existing embeddings...")
+    logger.info("Loading existing embeddings...")
     db = FAISS.load_local(
         embedding_folder, embeddings, allow_dangerous_deserialization=True
     )
@@ -226,6 +232,7 @@ def get_response(chat_session: ChatSession, _doc, _document, file_path, user_inp
     retriever = db.as_retriever(search_kwargs={"k": config['retriever']['k']})
 
     if not deep_thinking:
+        logger.info("not deep thinking ...")
         system_prompt = (
             """
             You are a patient and honest professor helping a student reading a paper.
@@ -245,7 +252,7 @@ def get_response(chat_session: ChatSession, _doc, _document, file_path, user_inp
             """
             Student's query is: {input}
             Answer the question based on the context provided.
-            Since I am a student with no related knowledge background, 
+            Since I am a student with no related knowledge background,
             provide a concise answer and directly answer the question in easy to understand language.
             Use markdown syntax for bold formatting to highlight important points or words.
             Use emojis when suitable to make the answer more engaging and interesting.
@@ -278,6 +285,7 @@ def get_response(chat_session: ChatSession, _doc, _document, file_path, user_inp
         parsed_result = chain.invoke({"input": user_input, "chat_history": truncate_chat_history(chat_history)})
         answer = parsed_result['answer']
     else:
+        logger.info("deep thinking ...")
         chat_history_string = truncate_chat_history(chat_history)
         user_input_string = str(user_input)
         # Get relevant chunks for both question and answer with scores
@@ -293,13 +301,17 @@ def get_response(chat_session: ChatSession, _doc, _document, file_path, user_inp
         Reference context from the paper: {context}\
         The user's query is: {user_input_string}\
         "
+        logger.info("before deepseek_inference ...")
         answer = str(deepseek_inference(prompt))
+        logger.info("after deepseek_inference ...")
 
         # Extract the content between <think> and </think> as answer_thinking, and the rest as answer_summary
         answer_thinking = answer.split("<think>")[1].split("</think>")[0]
         answer_summary = answer.split("<think>")[1].split("</think>")[1]
         answer_summary = responses_refine(answer_summary, "")
-        answer = "### Here is my thinking process\n\n" + answer_thinking + "\n\n### Here is my summarized answer\n\n" + answer_summary
+        # answer = "### Here is my thinking process\n\n" + answer_thinking + "\n\n### Here is my summarized answer\n\n" + answer_summary
+        answer = answer_summary
+    logger.info("get_response done ...")
     return answer
 
 
@@ -356,8 +368,12 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
                                   "chat_history": truncate_chat_history(context_chat_history)})
     question = parsed_result['question']
     question_type = parsed_result['question_type']
-    language = detect_language(user_input)
-    print("language detected:", language)
+    try:
+        language = detect_language(user_input)
+        print("language detected:", language)
+    except Exception as e:
+        print("Error detecting language:", e)
+        language = "English"
 
     chat_session.set_language(language)
 

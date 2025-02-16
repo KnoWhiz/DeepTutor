@@ -19,6 +19,9 @@ from pipeline.science.pipeline.utils import (
 from pipeline.science.pipeline.doc_processor import generate_embedding
 
 
+import logging
+logger = logging.getLogger("tutorpipeline.science.sources_retrieval")
+
 def get_response_source(mode, _doc, _document, pdf_path, user_input, answer, chat_history, embedding_folder):
     """
     Get the sources for the response
@@ -58,7 +61,8 @@ def get_response_source(mode, _doc, _document, pdf_path, user_input, answer, cha
     # Check if all necessary files exist to load the embeddings
     if os.path.exists(faiss_path) and os.path.exists(pkl_path):
         # Load existing embeddings
-        print("Loading existing embeddings...")
+        # print("Loading existing embeddings...")
+        logger.info("Loading existing embeddings...")
         db = FAISS.load_local(
             embedding_folder, embeddings, allow_dangerous_deserialization=True
         )
@@ -100,7 +104,7 @@ def get_response_source(mode, _doc, _document, pdf_path, user_input, answer, cha
     source_pages = {}
     for chunk in sources_chunks:
         try:
-            source_pages[chunk.page_content] = chunk.metadata['page']+1
+            source_pages[chunk.page_content] = chunk.metadata['page']
         except KeyError:
             print(f"Error getting source pages for {chunk.page_content}")
             print(f"Chunk metadata: {chunk.metadata}")
@@ -139,13 +143,19 @@ def get_response_source(mode, _doc, _document, pdf_path, user_input, answer, cha
     markdown_dir = os.path.join(embedding_folder, "markdown")
     sources_with_scores = refine_sources(_doc, _document, sources_with_scores, markdown_dir, user_input)
 
+    # Refine source pages while preserving scores
+    refined_source_pages = {}
+    for source, page in source_pages.items():
+        if source in sources_with_scores:
+            refined_source_pages[source] = page + 1
+
     # # TEST
     # print("sources after refine:")
     # for source, score in sources_with_scores.items():
     #     print(f"{source}: {score}")
     # print(f"length of sources after refine: {len(sources_with_scores)}")
 
-    return sources_with_scores, source_pages
+    return sources_with_scores, source_pages, refined_source_pages
 
 
 def refine_sources(_doc, _document, sources_with_scores, markdown_dir, user_input):

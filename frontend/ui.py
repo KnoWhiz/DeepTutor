@@ -182,7 +182,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder, tutor_agent)
         # Generate initial welcome message if chat history is empty
         if not st.session_state.chat_history:
             with st.spinner("Loading document summary..."):
-                initial_message, sources, source_pages = tutor_agent(
+                initial_message, sources, source_pages, refined_source_pages, follow_up_questions = tutor_agent(
                     chat_session=st.session_state.chat_session,
                     file_path=file_path,
                     user_input=None
@@ -191,8 +191,6 @@ def show_chat_interface(doc, document, file_path, embedding_folder, tutor_agent)
                 if isinstance(sources, list):
                     sources = {source: 1.0 for source in sources}  # Assign max relevance to initial sources
                 
-                # Generate follow-up questions for initial message
-                follow_up_questions = generate_follow_up_questions(initial_message, [])
                 st.session_state.chat_history.append(
                     {
                         "role": "assistant", 
@@ -205,7 +203,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder, tutor_agent)
                     st.session_state.chat_history.append({
                         "role": "source_buttons",
                         "sources": sources,
-                        "pages": source_pages,
+                        "pages": refined_source_pages,
                         "timestamp": len(st.session_state.chat_history)
                     })
                 # Save chat history
@@ -284,7 +282,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder, tutor_agent)
             with st.spinner("Generating response..."):
                 try:
                     # Get response
-                    answer, sources, source_pages = tutor_agent(
+                    answer, sources, source_pages, refined_source_pages, follow_up_questions = tutor_agent(
                         chat_session=st.session_state.chat_session,
                         file_path=file_path,
                         user_input=user_input
@@ -295,12 +293,6 @@ def show_chat_interface(doc, document, file_path, embedding_folder, tutor_agent)
                     else:
                         # Validate sources is a dictionary
                         sources = sources if isinstance(sources, dict) else {}
-                    
-                    # Store source-to-page mapping
-                    source_pages = source_pages
-                    
-                    # Generate follow-up questions for new response
-                    follow_up_questions = generate_follow_up_questions(answer, st.session_state.chat_history)
                     
                     # Add response with follow-up questions to chat history
                     st.session_state.chat_history.append(
@@ -315,7 +307,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder, tutor_agent)
                     st.session_state.chat_history.append({
                         "role": "source_buttons",
                         "sources": sources,
-                        "pages": source_pages,
+                        "pages": refined_source_pages,
                         "timestamp": len(st.session_state.chat_history)
                     })
                     # Save chat history after assistant response
@@ -329,10 +321,10 @@ def show_chat_interface(doc, document, file_path, embedding_folder, tutor_agent)
                         if sources and len(sources) > 0:
                             st.write("\n\n**📚 Sources:**")
                             # Sort sources by page numbers
-                            sorted_sources = sorted(sources.items(), key=lambda x: source_pages.get(x[0], 0))
+                            sorted_sources = sorted(sources.items(), key=lambda x: refined_source_pages.get(x[0], 0))
                             cols = st.columns(len(sources))
                             for idx, (col, (source, score)) in enumerate(zip(cols, sorted_sources), 1):
-                                page_num = source_pages.get(source)
+                                page_num = refined_source_pages.get(source)
                                 if page_num:
                                     with col:
                                         # Create a stylable container for the button with custom color
@@ -388,10 +380,6 @@ def show_pdf_viewer(file):
         # Get total pages from the PDF file
         pdf = PyPDF2.PdfReader(file)
         st.session_state.total_pages = len(pdf.pages)
-        
-    # # TEST
-    # page_height = streamlit_js_eval(js_expressions='window.innerHeight', key='HEIGHT', want_output=True)
-    # print(f"Page height is {page_height} pixels.")
 
     with st.container():
         st.markdown("""
@@ -459,8 +447,6 @@ def show_pdf_viewer(file):
             st.button("→", key='→', on_click=next_page)
             button_css = float_css_helper(width="1.2rem", bottom="1.2rem", transition=0)
             float_parent(css=button_css)
-    # viewer_css = float_css_helper(transition=0)
-    # float_parent(css=viewer_css)
 
 
 # Function to display the footer

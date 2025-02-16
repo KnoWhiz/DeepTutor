@@ -12,12 +12,6 @@ setup_page_config()
 
 # css_style()
 
-from pipeline.science.pipeline.doc_processor import (
-    generate_embedding,
-    generate_GraphRAG_embedding,
-)
-
-
 from pipeline.science.pipeline.get_response import (
     tutor_agent,
 )

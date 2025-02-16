@@ -81,13 +81,13 @@ def show_mode_option():
         mode_index = 0
         current_mode = st.radio(
             "Basic model (faster) or Advanced model (slower but more accurate)?",
-            options=["Basic", "Advanced"],
+            options=["basic", "advanced"],
             index=mode_index
         )
         st.session_state.mode = current_mode
         if 'chat_session' in st.session_state:
             st.session_state.chat_session.set_mode(
-                ChatMode.ADVANCED if current_mode == "Advanced" else ChatMode.BASIC
+                ChatMode.ADVANCED if current_mode == "advanced" else ChatMode.BASIC
             )
 
 

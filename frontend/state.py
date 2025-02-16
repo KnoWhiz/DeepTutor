@@ -39,9 +39,9 @@ def initialize_session_state(embedding_folder=None):
         st.session_state.chat_history = st.session_state.chat_session.chat_history
     
     if 'mode' not in st.session_state:
-        st.session_state.mode = "Basic"
+        st.session_state.mode = "basic"
         st.session_state.chat_session.set_mode(ChatMode.BASIC)
-    elif st.session_state.mode == "Advanced":
+    elif st.session_state.mode == "advanced":
         st.session_state.chat_session.set_mode(ChatMode.ADVANCED)
     else:
         st.session_state.chat_session.set_mode(ChatMode.BASIC)
@@ -84,7 +84,7 @@ def handle_file_change():
     # Update mode
     if 'mode' in st.session_state:
         st.session_state.chat_session.set_mode(
-            ChatMode.ADVANCED if st.session_state.mode == "Advanced" else ChatMode.BASIC
+            ChatMode.ADVANCED if st.session_state.mode == "advanced" else ChatMode.BASIC
         )
     
     # Update language

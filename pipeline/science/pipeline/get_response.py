@@ -103,14 +103,14 @@ def tutor_agent(chat_session: ChatSession, file_path, user_input):
             # Files are missing and have been cleaned up
             save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
             generate_embedding(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder)
-            # asyncio.run(generate_GraphRAG_embedding(document, embedding_folder=embedding_folder))
+            # asyncio.run(generate_GraphRAG_embedding(embedding_folder=embedding_folder))
             if(graphrag_index_files_compress(embedding_folder)):
                 print("GraphRAG index files are ready and uploaded to Azure Blob Storage.")
             else:
                 # Retry once if first attempt fails
                 save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
                 generate_embedding(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder)
-                # asyncio.run(generate_GraphRAG_embedding(document, embedding_folder=embedding_folder))
+                # asyncio.run(generate_GraphRAG_embedding(embedding_folder=embedding_folder))
                 if(graphrag_index_files_compress(embedding_folder)):
                     print("GraphRAG index files are ready and uploaded to Azure Blob Storage.")
                 else:

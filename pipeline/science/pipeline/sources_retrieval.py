@@ -1,7 +1,6 @@
 import os
 import pprint
 import json
-from dotenv import load_dotenv
 
 from langchain_community.vectorstores import FAISS
 from langchain_core.runnables import RunnablePassthrough
@@ -13,8 +12,6 @@ from langchain.schema import Document
 
 from pipeline.science.pipeline.config import load_config
 from pipeline.science.pipeline.utils import (
-    tiktoken,
-    truncate_chat_history,
     get_llm,
     get_embedding_models,
     robust_search_for

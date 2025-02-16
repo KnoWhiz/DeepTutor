@@ -76,6 +76,8 @@ def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder):
         asyncio.run(generate_GraphRAG_embedding(embedding_folder))
     elif _mode == ChatMode.BASIC:
         print("Mode: Basic. Generating VectorRAG embeddings...")
+    else:
+        raise ValueError("Invalid mode")
 
     config = load_config()
     para = config['llm']

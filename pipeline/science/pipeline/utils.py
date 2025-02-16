@@ -201,7 +201,7 @@ def get_highlight_info(doc, excerpts):
                                     "x2": inst.x1,
                                     "y2": inst.y1,
                                     "width": inst.x1 - inst.x0,
-                                "height": inst.y1 - inst.y0,
+                                    "height": inst.y1 - inst.y0,
                                 }
                             ],
                             "pageNumber": page_num + 1,

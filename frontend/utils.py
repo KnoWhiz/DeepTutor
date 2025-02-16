@@ -38,7 +38,7 @@ def chat_content():
         
         try:
             # Get response
-            answer, sources, source_pages = tutor_agent(
+            answer, sources, source_pages, source_react_annotations, refined_source_pages, follow_up_questions = tutor_agent(
                 chat_session=st.session_state.chat_session,
                 file_path=st.session_state.file_path,
                 user_input=user_input

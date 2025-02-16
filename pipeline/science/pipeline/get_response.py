@@ -19,6 +19,7 @@ from pipeline.science.pipeline.utils import (
     generate_course_id,
     save_file_txt_locally,
     process_pdf_file,
+    get_highlight_info,
 )
 from pipeline.science.pipeline.doc_processor import (
     generate_embedding,
@@ -132,9 +133,10 @@ def tutor_agent(chat_session: ChatSession, file_path, user_input):
         )
         sources = {}  # Return empty dictionary for sources
         source_pages = {}
+        source_react_annotations = []
         refined_source_pages = {}
         follow_up_questions = generate_follow_up_questions(answer, [])
-        return answer, sources, source_pages, refined_source_pages, follow_up_questions
+        return answer, sources, source_pages, source_react_annotations, refined_source_pages, follow_up_questions
 
     # Regular chat flow
     # Refine user input
@@ -191,12 +193,17 @@ def tutor_agent(chat_session: ChatSession, file_path, user_input):
                 answer += "\n"
                 answer += f"![]({image_url})"
 
+    source_react_annotations = []
+    for source, _ in sources.items():
+        react_annotations = get_highlight_info(_doc, [source])
+        source_react_annotations.extend(react_annotations)
+
     # Combine regular sources with image sources
     sources.update(images_sources)
 
     # Generate follow-up questions
     follow_up_questions = generate_follow_up_questions(answer, chat_history)
-    return answer, sources, source_pages, refined_source_pages, follow_up_questions
+    return answer, sources, source_pages, source_react_annotations, refined_source_pages, follow_up_questions
 
 
 def get_response(chat_session: ChatSession, _doc, _document, file_path, user_input, chat_history, embedding_folder, deep_thinking = False):

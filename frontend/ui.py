@@ -182,7 +182,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder, tutor_agent)
         # Generate initial welcome message if chat history is empty
         if not st.session_state.chat_history:
             with st.spinner("Loading document summary..."):
-                initial_message, sources, source_pages, refined_source_pages, follow_up_questions = tutor_agent(
+                initial_message, sources, source_pages, source_react_annotations, refined_source_pages, follow_up_questions = tutor_agent(
                     chat_session=st.session_state.chat_session,
                     file_path=file_path,
                     user_input=None
@@ -204,6 +204,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder, tutor_agent)
                         "role": "source_buttons",
                         "sources": sources,
                         "pages": refined_source_pages,
+                        "react_annotations": source_react_annotations,
                         "timestamp": len(st.session_state.chat_history)
                     })
                 # Save chat history
@@ -283,7 +284,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder, tutor_agent)
             with st.spinner("Generating response..."):
                 try:
                     # Get response
-                    answer, sources, source_pages, refined_source_pages, follow_up_questions = tutor_agent(
+                    answer, sources, source_pages, source_react_annotations, refined_source_pages, follow_up_questions = tutor_agent(
                         chat_session=st.session_state.chat_session,
                         file_path=file_path,
                         user_input=user_input
@@ -309,6 +310,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder, tutor_agent)
                         "role": "source_buttons",
                         "sources": sources,
                         "pages": refined_source_pages,
+                        "react_annotations": source_react_annotations,
                         "timestamp": len(st.session_state.chat_history)
                     })
                     # Save chat history after assistant response

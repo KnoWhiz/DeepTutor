@@ -43,6 +43,7 @@ environs==11.2.1
 executing==2.2.0
 faiss-cpu==1.8.0.post1
 Faker==36.1.0
+fastapi==0.115.8
 fastembed==0.4.2
 favicon==0.7.0
 filelock==3.17.0
@@ -245,6 +246,7 @@ tzdata==2025.1
 umap-learn==0.5.7
 uritemplate==4.1.1
 urllib3==2.2.3
+uvicorn==0.34.0
 validators==0.34.0
 wcwidth==0.2.13
 Werkzeug==3.1.3

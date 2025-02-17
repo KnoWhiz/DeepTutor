@@ -54,30 +54,11 @@ from graphrag.prompts.query.question_gen_system_prompt import QUESTION_SYSTEM_PR
 
 from pipeline.science.pipeline.api_handler import create_env_file
 from pipeline.science.pipeline.api_handler import ApiHandler
+from pipeline.science.pipeline.utils import file_check_list
 
 
 async def generate_GraphRAG_embedding(embedding_folder):
-    GraphRAG_embedding_folder = os.path.join(embedding_folder, "GraphRAG/")
-    create_final_community_reports_path = GraphRAG_embedding_folder + "output/create_final_community_reports.parquet"
-    create_final_covariates_path = GraphRAG_embedding_folder + "output/create_final_covariates.parquet"
-    create_final_document_path = GraphRAG_embedding_folder + "output/create_final_documents.parquet"
-    create_final_entities_path = GraphRAG_embedding_folder + "output/create_final_entities.parquet"
-    create_final_nodes_path = GraphRAG_embedding_folder + "output/create_final_nodes.parquet"
-    create_final_relationships_path = GraphRAG_embedding_folder + "output/create_final_relationships.parquet"
-    create_final_text_units_path = GraphRAG_embedding_folder + "output/create_final_text_units.parquet"
-    create_final_communities_path = GraphRAG_embedding_folder + "output/create_final_communities.parquet"
-    lancedb_path = GraphRAG_embedding_folder + "output/lancedb/"
-    path_list = [
-        create_final_community_reports_path,
-        create_final_covariates_path,
-        create_final_document_path,
-        create_final_entities_path,
-        create_final_nodes_path,
-        create_final_relationships_path,
-        create_final_text_units_path,
-        create_final_communities_path,
-        lancedb_path
-    ]
+    GraphRAG_embedding_folder, path_list = file_check_list(embedding_folder)
 
     # Check if all necessary paths in path_list exist
     if all([os.path.exists(path) for path in path_list]):

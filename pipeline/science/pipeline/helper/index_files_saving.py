@@ -1,6 +1,7 @@
 import os
 import shutil
 from pipeline.science.pipeline.helper.azure_blob import AzureBlobHelper
+from pipeline.science.pipeline.utils import file_check_list
 
 
 def graphrag_index_files_check(embedding_folder):
@@ -10,36 +11,18 @@ def graphrag_index_files_check(embedding_folder):
     :return: True if all necessary files exist, False otherwise
     """
     # Define the index files path for GraphRAG embedding
-    GraphRAG_embedding_folder = os.path.join(embedding_folder, "GraphRAG/")
-    create_final_community_reports_path = GraphRAG_embedding_folder + "output/create_final_community_reports.parquet"
-    create_final_covariates_path = GraphRAG_embedding_folder + "output/create_final_covariates.parquet"
-    create_final_document_path = GraphRAG_embedding_folder + "output/create_final_documents.parquet"
-    create_final_entities_path = GraphRAG_embedding_folder + "output/create_final_entities.parquet"
-    create_final_nodes_path = GraphRAG_embedding_folder + "output/create_final_nodes.parquet"
-    create_final_relationships_path = GraphRAG_embedding_folder + "output/create_final_relationships.parquet"
-    create_final_text_units_path = GraphRAG_embedding_folder + "output/create_final_text_units.parquet"
-    create_final_communities_path = GraphRAG_embedding_folder + "output/create_final_communities.parquet"
-    lancedb_path = GraphRAG_embedding_folder + "output/lancedb/"
+    GraphRAG_embedding_folder, path_list = file_check_list(embedding_folder)
 
     # Define the index files path for VectorRAG embedding
     faiss_path = os.path.join(embedding_folder, "index.faiss")
     pkl_path = os.path.join(embedding_folder, "index.pkl")
     document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
 
-    path_list = [
-        create_final_community_reports_path,
-        create_final_covariates_path,
-        create_final_document_path,
-        create_final_entities_path,
-        create_final_nodes_path,
-        create_final_relationships_path,
-        create_final_text_units_path,
-        create_final_communities_path,
-        lancedb_path,
+    path_list.extend([
         faiss_path,
         pkl_path,
         document_summary_path
-    ]
+    ])
 
     # Check if all necessary files exist to load the embeddings and print the directories that are missing
     all_files_exist = True

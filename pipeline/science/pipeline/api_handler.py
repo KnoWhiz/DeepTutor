@@ -6,15 +6,15 @@ from langchain_openai import OpenAIEmbeddings, AzureOpenAIEmbeddings
 from langchain_deepseek import ChatDeepSeek
 
 
-def create_env_file(root_path):
+def create_env_file(GraphRAG_embedding_folder):
     api_key = str(os.getenv("AZURE_OPENAI_API_KEY"))
     env_content = \
         f"""
 GRAPHRAG_API_KEY={api_key}
 """
-    if not os.path.exists(root_path):
-        os.makedirs(root_path)
-    with open(os.path.join(root_path, '.env'), 'w') as env_file:
+    if not os.path.exists(GraphRAG_embedding_folder):
+        os.makedirs(GraphRAG_embedding_folder)
+    with open(os.path.join(GraphRAG_embedding_folder, '.env'), 'w') as env_file:
         env_file.write(env_content)
 
 

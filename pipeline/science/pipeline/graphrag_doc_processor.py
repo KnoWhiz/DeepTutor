@@ -104,12 +104,17 @@ async def generate_GraphRAG_embedding(embedding_folder):
         except Exception as e:
             print("Initialization error:", e)
         settings = yaml.safe_load(open("./pipeline/science/pipeline/graphrag_settings.yaml"))
+        # print(f"root_dir: {GraphRAG_embedding_folder}")
         graphrag_config = create_graphrag_config(
             values=settings, root_dir=GraphRAG_embedding_folder
         )
+        graphrag_config["storage"]["base_dir"] = os.path.join(GraphRAG_embedding_folder, "output")
+        graphrag_config["reporting"]["base_dir"] = os.path.join(GraphRAG_embedding_folder, "logs")
+        print(f"graphrag_config before build: {graphrag_config}")
 
         try:
             await api.build_index(config=graphrag_config)
+            # print(f"graphrag_config after build: {graphrag_config}")
         except Exception as e:
             print("Index building error:", e)
 

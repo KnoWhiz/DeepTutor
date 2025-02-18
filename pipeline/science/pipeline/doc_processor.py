@@ -62,7 +62,7 @@ class DocumentProcessor:
         return self.md_document
 
 
-def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder):
+async def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder):
     """
     Generate embeddings for the document
     If the embeddings already exist, load them
@@ -75,7 +75,8 @@ def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder):
     print("Current mode: ", _mode)
     if _mode == ChatMode.ADVANCED:
         print("Mode: ChatMode.ADVANCED. Generating GraphRAG embeddings...")
-        asyncio.run(generate_GraphRAG_embedding(embedding_folder))
+        # asyncio.run(generate_GraphRAG_embedding(embedding_folder))
+        await generate_GraphRAG_embedding(embedding_folder)
     elif _mode == ChatMode.BASIC:
         print("Mode: ChatMode.BASIC. Generating VectorRAG embeddings...")
     else:

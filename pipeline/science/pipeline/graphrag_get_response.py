@@ -20,9 +20,8 @@ from pipeline.science.pipeline.utils import (
     truncate_chat_history,
     responses_refine,
 )
-from pipeline.science.pipeline.inference import deepseek_inference
 
-def get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embedding_folder):
+def get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embedding_folder, deep_thinking = True):
     # Chat history and user input
     chat_history_text = truncate_chat_history(chat_history)
     user_input_text = str(user_input)
@@ -130,12 +129,16 @@ def get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embe
     Reference context from the paper: {context}
     The user's query is: {user_input_text}
     """
-    answer = str(deepseek_inference(prompt))
 
-    # Extract the content between <think> and </think> as answer_thinking, and the rest as answer_summary. but there is no <answer> tag in the answer, so after the answer_thinking extract the rest of the answer
-    answer_thinking = answer.split("<think>")[1].split("</think>")[0]
-    answer_summary = answer.split("<think>")[1].split("</think>")[1]
-    answer_summary = responses_refine(search_engine_result.response, answer_summary)
-    answer = "### Here is my thinking process\n\n" + answer_thinking + "\n\n### Here is my summarized answer\n\n" + answer_summary
+    if deep_thinking:
+        from pipeline.science.pipeline.inference import deepseek_inference
+        answer = str(deepseek_inference(prompt))
+        # Extract the content between <think> and </think> as answer_thinking, and the rest as answer_summary. but there is no <answer> tag in the answer, so after the answer_thinking extract the rest of the answer
+        answer_thinking = answer.split("<think>")[1].split("</think>")[0]
+        answer_summary = answer.split("<think>")[1].split("</think>")[1]
+        answer_summary = responses_refine(search_engine_result.response, answer_summary)
+        answer = "### Here is my thinking process\n\n" + answer_thinking + "\n\n### Here is my summarized answer\n\n" + answer_summary
+    else:
+        answer = responses_refine(search_engine_result.response)
 
     return answer

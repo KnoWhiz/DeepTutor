@@ -1,4 +1,5 @@
 import streamlit as st
+import asyncio
 from pipeline.science.pipeline.chat_history_manager import save_chat_history
 from pipeline.science.pipeline.get_response import tutor_agent, generate_follow_up_questions
 
@@ -38,11 +39,16 @@ def chat_content():
         
         try:
             # Get response
-            answer, sources, source_pages, source_react_annotations, refined_source_pages, follow_up_questions = tutor_agent(
+            answer,\
+            sources,\
+            source_pages,\
+            source_react_annotations,\
+            refined_source_pages,\
+            follow_up_questions = asyncio.run(tutor_agent(
                 chat_session=st.session_state.chat_session,
                 file_path=st.session_state.file_path,
                 user_input=user_input
-            )
+            ))
             
             # Convert sources to dict if it's a list (for backward compatibility)
             if isinstance(sources, list):

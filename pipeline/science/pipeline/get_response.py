@@ -40,7 +40,7 @@ import logging
 logger = logging.getLogger("tutorpipeline.science.get_response")
 
 
-def tutor_agent(chat_session: ChatSession, file_path, user_input):
+async def tutor_agent(chat_session: ChatSession, file_path, user_input):
     """
     Taking the user input, document, and chat history, generate a response and sources.
     If user_input is None, generates the initial welcome message.
@@ -70,13 +70,13 @@ def tutor_agent(chat_session: ChatSession, file_path, user_input):
         else:
             # Files are missing and have been cleaned up
             save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
-            generate_embedding(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder)
+            await generate_embedding(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder)
             if(vectorrag_index_files_compress(embedding_folder)):
                 print("VectorRAG index files are ready and uploaded to Azure Blob Storage.")
             else:
                 # Retry once if first attempt fails
                 save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
-                generate_embedding(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder)
+                await generate_embedding(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder)
                 if(vectorrag_index_files_compress(embedding_folder)):
                     print("VectorRAG index files are ready and uploaded to Azure Blob Storage.")
                 else:
@@ -88,14 +88,14 @@ def tutor_agent(chat_session: ChatSession, file_path, user_input):
         else:
             # Files are missing and have been cleaned up
             save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
-            generate_embedding(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder)
+            await generate_embedding(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder)
             # asyncio.run(generate_GraphRAG_embedding(embedding_folder=embedding_folder))
             if(graphrag_index_files_compress(embedding_folder)):
                 print("GraphRAG index files are ready and uploaded to Azure Blob Storage.")
             else:
                 # Retry once if first attempt fails
                 save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
-                generate_embedding(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder)
+                await generate_embedding(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder)
                 # asyncio.run(generate_GraphRAG_embedding(embedding_folder=embedding_folder))
                 if(graphrag_index_files_compress(embedding_folder)):
                     print("GraphRAG index files are ready and uploaded to Azure Blob Storage.")
@@ -143,7 +143,7 @@ def tutor_agent(chat_session: ChatSession, file_path, user_input):
     refined_user_input = get_query_helper(chat_session, user_input, context_chat_history, embedding_folder)
     logger.info(f"Refined user input: {refined_user_input}")
     # Get response
-    answer = get_response(chat_session, _doc, _document, file_path, refined_user_input, context_chat_history, embedding_folder)
+    answer = await get_response(chat_session, _doc, _document, file_path, refined_user_input, context_chat_history, embedding_folder)
     # Get sources
     sources, source_pages, refined_source_pages = get_response_source(
         chat_session.mode,
@@ -206,7 +206,7 @@ def tutor_agent(chat_session: ChatSession, file_path, user_input):
     return answer, sources, source_pages, source_react_annotations, refined_source_pages, follow_up_questions
 
 
-def get_response(chat_session: ChatSession, _doc, _document, file_path, user_input, chat_history, embedding_folder, deep_thinking = False):
+async def get_response(chat_session: ChatSession, _doc, _document, file_path, user_input, chat_history, embedding_folder, deep_thinking = True):
     if chat_session.mode == ChatMode.ADVANCED:
         try:
             answer = get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embedding_folder)
@@ -223,7 +223,7 @@ def get_response(chat_session: ChatSession, _doc, _document, file_path, user_inp
     embeddings = get_embedding_models('default', para)
 
     # Check if all necessary files exist to load the embeddings
-    generate_embedding(
+    await generate_embedding(
         chat_session.mode,
         _document, _doc, file_path, embedding_folder
     )

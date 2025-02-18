@@ -2,6 +2,7 @@ import json
 import base64
 import PyPDF2
 import pprint
+import asyncio
 import streamlit as st
 from streamlit_pdf_viewer import pdf_viewer
 from streamlit_float import float_init, float_parent, float_css_helper
@@ -182,11 +183,16 @@ def show_chat_interface(doc, document, file_path, embedding_folder, tutor_agent)
         # Generate initial welcome message if chat history is empty
         if not st.session_state.chat_history:
             with st.spinner("Loading document summary..."):
-                initial_message, sources, source_pages, source_react_annotations, refined_source_pages, follow_up_questions = tutor_agent(
+                initial_message,\
+                sources,\
+                source_pages,\
+                source_react_annotations,\
+                refined_source_pages,\
+                follow_up_questions = asyncio.run(tutor_agent(
                     chat_session=st.session_state.chat_session,
                     file_path=file_path,
                     user_input=None
-                )
+                ))
                 # Convert sources to dict if it's a list (for backward compatibility)
                 if isinstance(sources, list):
                     sources = {source: 1.0 for source in sources}  # Assign max relevance to initial sources
@@ -284,11 +290,16 @@ def show_chat_interface(doc, document, file_path, embedding_folder, tutor_agent)
             with st.spinner("Generating response..."):
                 try:
                     # Get response
-                    answer, sources, source_pages, source_react_annotations, refined_source_pages, follow_up_questions = tutor_agent(
+                    answer,\
+                    sources,\
+                    source_pages,\
+                    source_react_annotations,\
+                    refined_source_pages,\
+                    follow_up_questions = asyncio.run(tutor_agent(
                         chat_session=st.session_state.chat_session,
                         file_path=file_path,
                         user_input=user_input
-                    )
+                    ))
                     # Convert sources to dict if it's a list (for backward compatibility)
                     if isinstance(sources, list):
                         sources = {source: 1.0 for source in sources}  # Assign max relevance to old sources

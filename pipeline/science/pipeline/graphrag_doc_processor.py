@@ -108,9 +108,9 @@ async def generate_GraphRAG_embedding(embedding_folder):
         graphrag_config = create_graphrag_config(
             values=settings, root_dir=GraphRAG_embedding_folder
         )
-        graphrag_config["storage"]["base_dir"] = os.path.join(GraphRAG_embedding_folder, "output")
-        graphrag_config["reporting"]["base_dir"] = os.path.join(GraphRAG_embedding_folder, "logs")
-        print(f"graphrag_config before build: {graphrag_config}")
+        graphrag_config.storage.base_dir = os.path.join(GraphRAG_embedding_folder, "output")
+        graphrag_config.reporting.base_dir = os.path.join(GraphRAG_embedding_folder, "logs")
+        # print(f"graphrag_config before build: {graphrag_config}")
 
         try:
             await api.build_index(config=graphrag_config)

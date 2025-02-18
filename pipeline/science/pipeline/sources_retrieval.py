@@ -320,8 +320,15 @@ def refine_sources(_doc, _document, sources_with_scores, markdown_dir, user_inpu
     # Combine filtered image sources with refined text sources
     final_sources = {**filtered_images, **refined_sources}
 
-    # Sort by score and limit to top 20
-    sorted_sources = dict(sorted(final_sources.items(), key=lambda x: x[1], reverse=True)[:20])
+    # Sort by score
+    sorted_sources = dict(sorted(final_sources.items(), key=lambda x: x[1], reverse=True))
+    
+    # Keep only the top 50% of sources by score
+    num_sources_to_keep = max(1, len(sorted_sources) // 2)  # Keep at least 1 source
+    sorted_sources = dict(list(sorted_sources.items())[:num_sources_to_keep])
+    
+    # Further limit to top 20 if needed
+    sorted_sources = dict(list(sorted_sources.items())[:20])
     return sorted_sources
 
 

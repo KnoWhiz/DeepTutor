@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import tiktoken
+import asyncio
 from dotenv import load_dotenv
 
 # GraphRAG imports
@@ -21,6 +22,15 @@ from pipeline.science.pipeline.utils import (
     responses_refine,
 )
 
+def get_existing_event_loop():
+    """Get the existing event loop or create a new one if none exists."""
+    try:
+        return asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        return loop
+
 def get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embedding_folder, deep_thinking = True):
     # Chat history and user input
     chat_history_text = truncate_chat_history(chat_history)
@@ -36,14 +46,12 @@ def get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embe
     api_base = os.getenv("GRAPHRAG_API_BASE")
     api_version = os.getenv("GRAPHRAG_API_VERSION")
 
-    # print("api_key", api_key)
-
     llm = ChatOpenAI(
         api_key=api_key,
         api_base=api_base,
         api_version=api_version,
         model=llm_model,
-        api_type=OpenaiApiType.AzureOpenAI,  # OpenaiApiType.OpenAI or OpenaiApiType.AzureOpenAI
+        api_type=OpenaiApiType.AzureOpenAI,
         max_retries=20,
     )
     token_encoder = tiktoken.encoding_for_model(llm_model)
@@ -55,7 +63,6 @@ def get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embe
     ENTITY_EMBEDDING_TABLE = "create_final_entities"
 
     # community level in the Leiden community hierarchy from which we will load the community reports
-    # higher value means we use reports from more fine-grained communities (at the cost of higher computation cost)
     COMMUNITY_LEVEL = 2
     community_df = pd.read_parquet(f"{INPUT_DIR}/{COMMUNITY_TABLE}.parquet")
     entity_df = pd.read_parquet(f"{INPUT_DIR}/{ENTITY_TABLE}.parquet")
@@ -68,16 +75,15 @@ def get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embe
     print(
         f"Report count after filtering by community level {COMMUNITY_LEVEL}: {len(reports)}"
     )
-    report_df.head()
 
     context_builder = GlobalCommunityContext(
         community_reports=reports,
         communities=communities,
-        entities=entities,  # default to None if you don't want to use community weights for ranking
+        entities=entities,
         token_encoder=token_encoder,
     )
     context_builder_params = {
-        "use_community_summary": False,  # False means using full community reports. True means using community short summaries.
+        "use_community_summary": False,
         "shuffle_data": True,
         "include_community_rank": True,
         "min_community_rank": 0,
@@ -85,7 +91,7 @@ def get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embe
         "include_community_weight": True,
         "community_weight_name": "occurrence weight",
         "normalize_community_weight": True,
-        "max_tokens": 12_000,  # change this based on the token limit you have on your model (if you are using a model with 8k limit, a good setting could be 5000)
+        "max_tokens": 12_000,
         "context_name": "Reports",
     }
     map_llm_params = {
@@ -94,7 +100,7 @@ def get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embe
         "response_format": {"type": "json_object"},
     }
     reduce_llm_params = {
-        "max_tokens": 2000,  # change this based on the token limit you have on your model (if you are using a model with 8k limit, a good setting could be 1000-1500)
+        "max_tokens": 2000,
         "temperature": 0.0,
     }
 
@@ -102,17 +108,21 @@ def get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embe
         llm=llm,
         context_builder=context_builder,
         token_encoder=token_encoder,
-        max_data_tokens=12_000,  # change this based on the token limit you have on your model (if you are using a model with 8k limit, a good setting could be 5000)
+        max_data_tokens=12_000,
         map_llm_params=map_llm_params,
         reduce_llm_params=reduce_llm_params,
-        allow_general_knowledge=False,  # set this to True will add instruction to encourage the LLM to incorporate general knowledge in the response, which may increase hallucinations, but could be useful in some use cases.
-        json_mode=True,  # set this to False if your LLM model does not support JSON mode.
+        allow_general_knowledge=False,
+        json_mode=True,
         context_builder_params=context_builder_params,
         concurrent_coroutines=32,
-        response_type="multiple paragraphs",  # free form text describing the response type and format, can be anything, e.g. prioritized list, single paragraph, multiple paragraphs, multiple-page report
+        response_type="multiple paragraphs",
     )
 
-    search_engine_result = search_engine.search(
+    # Get the existing event loop or create a new one
+    loop = get_existing_event_loop()
+    
+    # Run the search in the event loop
+    search_engine_result = loop.run_until_complete(search_engine.search(
         f"""
         You are a patient and honest professor helping a student reading a paper.
         The student asked the following question:
@@ -121,7 +131,8 @@ def get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embe
         Previous conversation history:
         ```{chat_history_text}```
         """,
-    )
+    ))
+    
     context = search_engine_result.context_data["reports"]
     context = str(context)
     prompt = f"""
@@ -133,7 +144,6 @@ def get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embe
     if deep_thinking:
         from pipeline.science.pipeline.inference import deepseek_inference
         answer = str(deepseek_inference(prompt))
-        # Extract the content between <think> and </think> as answer_thinking, and the rest as answer_summary. but there is no <answer> tag in the answer, so after the answer_thinking extract the rest of the answer
         answer_thinking = answer.split("<think>")[1].split("</think>")[0]
         answer_summary = answer.split("<think>")[1].split("</think>")[1]
         answer_summary = responses_refine(search_engine_result.response, answer_summary)

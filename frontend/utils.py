@@ -4,6 +4,20 @@ from pipeline.science.pipeline.chat_history_manager import save_chat_history
 from pipeline.science.pipeline.get_response import tutor_agent, generate_follow_up_questions
 
 
+def streamlit_tutor_agent(chat_session, file_path, user_input):
+    initial_message,\
+    sources,\
+    source_pages,\
+    source_react_annotations,\
+    refined_source_pages,\
+    follow_up_questions = asyncio.run(tutor_agent(
+        chat_session=chat_session,
+        file_path=file_path,
+        user_input=user_input
+    ))
+    return initial_message, sources, source_pages, source_react_annotations, refined_source_pages, follow_up_questions
+
+
 # Function to display the pdf
 def previous_page():
     if st.session_state.current_page > 1:
@@ -44,11 +58,11 @@ def chat_content():
             source_pages,\
             source_react_annotations,\
             refined_source_pages,\
-            follow_up_questions = asyncio.run(tutor_agent(
+            follow_up_questions = streamlit_tutor_agent(
                 chat_session=st.session_state.chat_session,
                 file_path=st.session_state.file_path,
                 user_input=user_input
-            ))
+            )
             
             # Convert sources to dict if it's a list (for backward compatibility)
             if isinstance(sources, list):

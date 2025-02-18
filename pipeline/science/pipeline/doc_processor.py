@@ -75,7 +75,11 @@ async def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder)
     print("Current mode: ", _mode)
     if _mode == ChatMode.ADVANCED:
         print("Mode: ChatMode.ADVANCED. Generating GraphRAG embeddings...")
-        # asyncio.run(generate_GraphRAG_embedding(embedding_folder))
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
         await generate_GraphRAG_embedding(embedding_folder)
     elif _mode == ChatMode.BASIC:
         print("Mode: ChatMode.BASIC. Generating VectorRAG embeddings...")

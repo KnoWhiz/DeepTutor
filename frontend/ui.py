@@ -14,9 +14,10 @@ from frontend.utils import previous_page, next_page, close_pdf, chat_content, ha
 from pipeline.science.pipeline.utils import find_pages_with_excerpts, get_highlight_info, translate_content
 from frontend.forms.contact import contact_form
 from pipeline.science.pipeline.config import load_config
-from pipeline.science.pipeline.get_response import generate_follow_up_questions
+from pipeline.science.pipeline.get_response import generate_follow_up_questions, tutor_agent
 from pipeline.science.pipeline.chat_history_manager import save_chat_history
 from pipeline.science.pipeline.session_manager import ChatMode
+from frontend.utils import streamlit_tutor_agent
 
 
 def to_emoji_number(num: int) -> str:
@@ -188,11 +189,11 @@ def show_chat_interface(doc, document, file_path, embedding_folder, tutor_agent)
                 source_pages,\
                 source_react_annotations,\
                 refined_source_pages,\
-                follow_up_questions = asyncio.run(tutor_agent(
+                follow_up_questions = streamlit_tutor_agent(
                     chat_session=st.session_state.chat_session,
                     file_path=file_path,
                     user_input=None
-                ))
+                )
                 # Convert sources to dict if it's a list (for backward compatibility)
                 if isinstance(sources, list):
                     sources = {source: 1.0 for source in sources}  # Assign max relevance to initial sources
@@ -295,11 +296,11 @@ def show_chat_interface(doc, document, file_path, embedding_folder, tutor_agent)
                     source_pages,\
                     source_react_annotations,\
                     refined_source_pages,\
-                    follow_up_questions = asyncio.run(tutor_agent(
+                    follow_up_questions = streamlit_tutor_agent(
                         chat_session=st.session_state.chat_session,
                         file_path=file_path,
                         user_input=user_input
-                    ))
+                    )
                     # Convert sources to dict if it's a list (for backward compatibility)
                     if isinstance(sources, list):
                         sources = {source: 1.0 for source in sources}  # Assign max relevance to old sources

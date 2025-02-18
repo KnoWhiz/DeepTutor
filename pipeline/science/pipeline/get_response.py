@@ -209,10 +209,13 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input):
 async def get_response(chat_session: ChatSession, _doc, _document, file_path, user_input, chat_history, embedding_folder, deep_thinking = True):
     if chat_session.mode == ChatMode.ADVANCED:
         try:
-            answer = get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embedding_folder)
+            # Convert the synchronous call to await the response
+            answer = await get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embedding_folder)
             return answer
         except Exception as e:
             print("Error getting response from GraphRAG:", e)
+            import traceback
+            traceback.print_exc()  # Print full traceback for debugging
 
     config = load_config()
     para = config['llm']

@@ -31,7 +31,7 @@ def get_existing_event_loop():
         asyncio.set_event_loop(loop)
         return loop
 
-def get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embedding_folder, deep_thinking = True):
+async def get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embedding_folder, deep_thinking = True):
     # Chat history and user input
     chat_history_text = truncate_chat_history(chat_history)
     user_input_text = str(user_input)
@@ -41,6 +41,8 @@ def get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embe
         load_dotenv(".env")
     except Exception as e:
         print("Error loading .env file:", e)
+        raise
+        
     api_key = os.getenv("GRAPHRAG_API_KEY")
     llm_model = os.getenv("GRAPHRAG_LLM_MODEL")
     api_base = os.getenv("GRAPHRAG_API_BASE")
@@ -118,11 +120,8 @@ def get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embe
         response_type="multiple paragraphs",
     )
 
-    # Get the existing event loop or create a new one
-    loop = get_existing_event_loop()
-    
-    # Run the search in the event loop
-    search_engine_result = loop.run_until_complete(search_engine.search(
+    # Directly await the search operation
+    search_engine_result = await search_engine.asearch(
         f"""
         You are a patient and honest professor helping a student reading a paper.
         The student asked the following question:
@@ -131,7 +130,7 @@ def get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embe
         Previous conversation history:
         ```{chat_history_text}```
         """,
-    ))
+    )
     
     context = search_engine_result.context_data["reports"]
     context = str(context)

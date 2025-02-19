@@ -32,6 +32,7 @@ from pipeline.science.pipeline.utils import (
 from pipeline.science.pipeline.images_understanding import initialize_image_files
 from pipeline.science.pipeline.graphrag_doc_processor import generate_GraphRAG_embedding
 from pipeline.science.pipeline.session_manager import ChatMode
+from pipeline.science.pipeline.utils import generate_course_id
 
 import logging
 logger = logging.getLogger("tutorpipeline.science.doc_processor")
@@ -96,13 +97,21 @@ async def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder)
     pkl_path = os.path.join(embedding_folder, "index.pkl")
     document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
 
+    markdown_embedding_folder = os.path.join(embedding_folder, "markdown")
+    markdown_faiss_path = os.path.join(markdown_embedding_folder, "markdown_index.faiss")
+    markdown_pkl_path = os.path.join(markdown_embedding_folder, "markdown_index.pkl")
+
     # Check if all necessary files exist to load the embeddings
-    if os.path.exists(faiss_path) and os.path.exists(pkl_path) and os.path.exists(document_summary_path):
+    if os.path.exists(faiss_path) and os.path.exists(pkl_path) and os.path.exists(document_summary_path) \
+        and os.path.exists(markdown_faiss_path) and os.path.exists(markdown_pkl_path):
         # Load existing embeddings
         # print("Loading existing embeddings...")
         logger.info("Loading existing embeddings...")
         db = FAISS.load_local(
             embedding_folder, embeddings, allow_dangerous_deserialization=True
+        )
+        db_markdown = FAISS.load_local(
+            markdown_embedding_folder, embeddings, allow_dangerous_deserialization=True
         )
     else:
         try:
@@ -118,8 +127,8 @@ async def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder)
                 md_path, saved_images, md_document = extract_pdf_content_to_markdown(pdf_path, markdown_dir)
                 doc_processor.set_md_document(md_document)
         except Exception as e:
-            print(f"Error extracting content to markdown via API: {e}")
-            # Use _doc to extract searchable content
+            print(f"Error extracting content to markdown, using _doc to extract searchable content as save as markdown file: {e}")
+            # Use _doc to extract searchable content as save as markdown file
             doc_processor.set_md_document("")
             texts = []
 
@@ -146,7 +155,8 @@ async def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder)
             # Save to markdown_dir
             markdown_dir = os.path.join(embedding_folder, "markdown")
             os.makedirs(markdown_dir, exist_ok=True)
-            md_path = os.path.join(markdown_dir, "content.md")
+            file_hash = generate_course_id(pdf_path)
+            md_path = os.path.join(markdown_dir, f"{file_hash}.md")
             with open(md_path, "w", encoding="utf-8") as f:
                 f.write(doc_processor.get_md_document())
 
@@ -211,6 +221,8 @@ async def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder)
         db = FAISS.from_documents(texts, embeddings)
         # Save the embeddings to the specified folder
         db.save_local(embedding_folder)
+
+        # Save the markdown embeddings to the specified folder
 
         try:
             # Generate and save document summary using the texts we created

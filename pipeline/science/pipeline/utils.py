@@ -509,6 +509,9 @@ def extract_pdf_content_to_markdown(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     try:
+        # Generate file hash for consistent naming
+        file_hash = generate_course_id(pdf_path)
+
         # Initialize converter and process PDF
         converter = PdfConverter(
             artifact_dict=create_model_dict(),
@@ -516,21 +519,21 @@ def extract_pdf_content_to_markdown(
         rendered = converter(str(pdf_path))
         text, _, images = text_from_rendered(rendered)
 
-        # Save markdown content
-        md_path = output_dir / f"{pdf_path.stem}.md"
+        # Save markdown content with hashed filename
+        md_path = output_dir / f"{file_hash}.md"
         with open(md_path, "w", encoding="utf-8") as f:
             f.write(text)
         print(f"Saved markdown to: {md_path}")
 
-        # Save images
+        # Save images with hash prefix
         saved_images = {}
         if images:
             print(f"Saving {len(images)} images to {output_dir}")
             for img_name, img in images.items():
                 try:
-                    # Create a valid filename from the image name
+                    # Create a valid filename from the image name with hash prefix
                     safe_filename = "".join(c for c in img_name if c.isalnum() or c in ('-', '_', '.'))
-                    output_path = output_dir / safe_filename
+                    output_path = output_dir / f"{file_hash}_{safe_filename}"
 
                     # Save the image
                     img.save(output_path)
@@ -593,6 +596,9 @@ def extract_pdf_content_to_markdown_via_api(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # Generate file hash for consistent naming
+    file_hash = generate_course_id(pdf_path)
+
     API_URL = "https://www.datalab.to/api/v1/marker"
 
     # Submit the file to API
@@ -640,35 +646,31 @@ def extract_pdf_content_to_markdown_via_api(
 
     # Save markdown content
     markdown = result.get("markdown", "")
-    md_path = output_dir / f"{pdf_path.stem}.md"
+    md_path = output_dir / f"{file_hash}.md"
     with open(md_path, "w", encoding="utf-8") as md_file:
         md_file.write(markdown)
     print(f"Saved markdown to: {md_path}")
 
     # Process and save images
     saved_images: Dict[str, Image.Image] = {}
-    images = result.get("images", {})
-
-    if images:
-        print(f"Processing {len(images)} images...")
-        for filename, b64data in images.items():
+    if "images" in result:
+        for img_data in result["images"]:
             try:
-                # Create PIL Image from base64 data
-                image_data = base64.b64decode(b64data)
-                img = Image.open(io.BytesIO(image_data))
-
-                # Create a valid filename
-                safe_filename = "".join(c for c in filename if c.isalnum() or c in ('-', '_', '.'))
-                output_path = output_dir / safe_filename
-
+                img_content = base64.b64decode(img_data["content"])
+                img = Image.open(io.BytesIO(img_content))
+                
+                # Create a valid filename with hash prefix
+                safe_filename = "".join(c for c in img_data["name"] if c.isalnum() or c in ('-', '_', '.'))
+                output_path = output_dir / f"{file_hash}_{safe_filename}"
+                
                 # Save the image
                 img.save(output_path)
-                saved_images[filename] = img
+                saved_images[img_data["name"]] = img
                 print(f"Saved image: {output_path}")
             except Exception as e:
-                print(f"Error saving image {filename}: {e}")
+                print(f"Error saving image {img_data.get('name', 'unknown')}: {str(e)}")
     else:
-        print("No images were returned with the result")
+        print("No images found in the PDF")
 
     # Save markdown file and images to Azure Blob Storage
     upload_markdown_to_azure(output_dir)

@@ -131,15 +131,21 @@ def vectorrag_index_files_check(embedding_folder):
     :param embedding_folder: The path to the embedding folder
     :return: True if all necessary files exist, False otherwise
     """
+    markdown_embedding_folder = os.path.join(embedding_folder, "markdown")
+    
     # Define the index files path for VectorRAG embedding
     faiss_path = os.path.join(embedding_folder, "index.faiss")
     pkl_path = os.path.join(embedding_folder, "index.pkl")
     document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
+    markdown_faiss_path = os.path.join(markdown_embedding_folder, "index.faiss")
+    markdown_pkl_path = os.path.join(markdown_embedding_folder, "index.pkl")
 
     path_list = [
         faiss_path,
         pkl_path,
-        document_summary_path
+        document_summary_path,
+        markdown_faiss_path,
+        markdown_pkl_path
     ]
 
     # Check if all necessary files exist to load the embeddings and print the directories that are missing
@@ -191,6 +197,8 @@ def vectorrag_index_files_decompress(embedding_folder):
     :param embedding_folder: The path to the embedding folder
     :return: True if the index files are ready now in embedding_folder, False otherwise
     """
+    markdown_embedding_folder = os.path.join(embedding_folder, "markdown")
+
     # Prepare paths
     if embedding_folder.endswith("/"):
         folder = embedding_folder[:-1]
@@ -210,8 +218,10 @@ def vectorrag_index_files_decompress(embedding_folder):
         faiss_path = os.path.join(embedding_folder, "index.faiss")
         pkl_path = os.path.join(embedding_folder, "index.pkl")
         document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
+        markdown_faiss_path = os.path.join(markdown_embedding_folder, "index.faiss")
+        markdown_pkl_path = os.path.join(markdown_embedding_folder, "index.pkl")
         
-        for path in [faiss_path, pkl_path, document_summary_path]:
+        for path in [faiss_path, pkl_path, document_summary_path, markdown_faiss_path, markdown_pkl_path]:
             if os.path.exists(path):
                 os.remove(path)
         print("VectorRAG index files are not locally ready yet!")

@@ -15,12 +15,13 @@ from typing import List, Tuple, Dict
 from pathlib import Path
 from PIL import Image
 
+from langchain_community.vectorstores import FAISS
 from langchain_community.document_loaders import PyPDFLoader, PyMuPDFLoader
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain.output_parsers import OutputFixingParser
 from langchain_core.documents import Document
-
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pipeline.science.pipeline.config import load_config
 from pipeline.science.pipeline.api_handler import ApiHandler
 from pipeline.science.pipeline.images_understanding import extract_image_context, upload_markdown_to_azure, upload_images_to_azure
@@ -805,3 +806,45 @@ def responses_refine(answer, reference=''):
     chain = prompt | llm | error_parser
     response = chain.invoke({"answer": answer, "reference": reference})
     return response
+
+
+# Create markdown embeddings
+def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_size: int = 1000, chunk_overlap: int = 200):
+    """
+    Create markdown embeddings from a markdown document and save them to the specified directory.
+
+    Args:
+        md_document: Markdown document
+        output_dir: Directory where embeddings will be saved
+
+    Returns:
+        None
+    """
+    # Load the markdown file
+    # Create and save markdown embeddings
+    config = load_config()
+    para = config['llm']
+    embeddings = get_embedding_models('default', para)
+
+    print("Creating markdown embeddings...")
+    if md_document:
+        # Create markdown directory if it doesn't exist
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Split markdown content into chunks
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            separators=["\n## ", "\n### ", "\n#### ", "\n", " ", ""]
+        )
+        markdown_texts = [
+            Document(page_content=chunk, metadata={"source": "markdown"})
+            for chunk in text_splitter.split_text(md_document)
+        ]
+        
+        # Create and save markdown embeddings
+        db_markdown = FAISS.from_documents(markdown_texts, embeddings)
+        db_markdown.save_local(output_dir)
+        print(f"Saved {len(markdown_texts)} markdown chunks to {output_dir}")
+    else:
+        print("No markdown content available to create markdown embeddings")

@@ -28,6 +28,7 @@ from pipeline.science.pipeline.utils import (
     extract_pdf_content_to_markdown,
     extract_pdf_content_to_markdown_via_api,
     create_searchable_chunks,
+    create_markdown_embeddings,
 )
 from pipeline.science.pipeline.images_understanding import initialize_image_files
 from pipeline.science.pipeline.graphrag_doc_processor import generate_GraphRAG_embedding
@@ -98,21 +99,21 @@ async def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder)
     document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
 
     markdown_embedding_folder = os.path.join(embedding_folder, "markdown")
-    markdown_faiss_path = os.path.join(markdown_embedding_folder, "markdown_index.faiss")
-    markdown_pkl_path = os.path.join(markdown_embedding_folder, "markdown_index.pkl")
+    markdown_faiss_path = os.path.join(markdown_embedding_folder, "index.faiss")
+    markdown_pkl_path = os.path.join(markdown_embedding_folder, "index.pkl")
 
     # Check if all necessary files exist to load the embeddings
     if os.path.exists(faiss_path) and os.path.exists(pkl_path) and os.path.exists(document_summary_path) \
         and os.path.exists(markdown_faiss_path) and os.path.exists(markdown_pkl_path):
         # Load existing embeddings
         # print("Loading existing embeddings...")
-        logger.info("Loading existing embeddings...")
-        db = FAISS.load_local(
-            embedding_folder, embeddings, allow_dangerous_deserialization=True
-        )
-        db_markdown = FAISS.load_local(
-            markdown_embedding_folder, embeddings, allow_dangerous_deserialization=True
-        )
+        logger.info("Embedding already exists. Loading existing embeddings...")
+        # db = FAISS.load_local(
+        #     embedding_folder, embeddings, allow_dangerous_deserialization=True
+        # )
+        # db_markdown = FAISS.load_local(
+        #     markdown_embedding_folder, embeddings, allow_dangerous_deserialization=True
+        # )
     else:
         try:
             # Extract content to markdown via API
@@ -223,10 +224,12 @@ async def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder)
         db.save_local(embedding_folder)
 
         # Save the markdown embeddings to the specified folder
+        create_markdown_embeddings(doc_processor.get_md_document(), markdown_embedding_folder)
 
         try:
             # Generate and save document summary using the texts we created
             print("Generating document summary...")
+            # By default, use the markdown document to generate the summary
             generate_document_summary(texts, embedding_folder, doc_processor.get_md_document())
             print("Document summary generated and saved successfully.")
         except Exception as e:

@@ -509,6 +509,10 @@ def extract_pdf_content_to_markdown(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     try:
+        # Generate hash ID for the file
+        with open(pdf_path, 'rb') as f:
+            file_hash = hashlib.md5(f.read()).hexdigest()
+
         # Initialize converter and process PDF
         converter = PdfConverter(
             artifact_dict=create_model_dict(),
@@ -516,8 +520,8 @@ def extract_pdf_content_to_markdown(
         rendered = converter(str(pdf_path))
         text, _, images = text_from_rendered(rendered)
 
-        # Save markdown content
-        md_path = output_dir / f"{pdf_path.stem}.md"
+        # Save markdown content with hash ID
+        md_path = output_dir / f"{file_hash}.md"
         with open(md_path, "w", encoding="utf-8") as f:
             f.write(text)
         print(f"Saved markdown to: {md_path}")
@@ -589,6 +593,10 @@ def extract_pdf_content_to_markdown_via_api(
     if not pdf_path.exists():
         raise FileNotFoundError(f"PDF file not found: {pdf_path}")
 
+    # Generate hash ID for the file
+    with open(pdf_path, 'rb') as f:
+        file_hash = hashlib.md5(f.read()).hexdigest()
+
     # Create output directory
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -638,9 +646,9 @@ def extract_pdf_content_to_markdown_via_api(
     if not result.get("success"):
         raise Exception(f"Processing failed: {result.get('error')}")
 
-    # Save markdown content
+    # Save markdown content with hash ID
     markdown = result.get("markdown", "")
-    md_path = output_dir / f"{pdf_path.stem}.md"
+    md_path = output_dir / f"{file_hash}.md"
     with open(md_path, "w", encoding="utf-8") as md_file:
         md_file.write(markdown)
     print(f"Saved markdown to: {md_path}")

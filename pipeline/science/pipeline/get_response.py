@@ -236,11 +236,13 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, us
     logger.info("Loading existing embeddings...")
     try:
         # Load markdown embeddings
+        print(f"Loading markdown embeddings from {os.path.join(embedding_folder, 'markdown')}")
         db = FAISS.load_local(
             os.path.join(embedding_folder, "markdown"), embeddings, allow_dangerous_deserialization=True
         )
     except Exception as e:
         # If markdown embeddings are not found, load the default embeddings
+        logger.info("Markdown embeddings not found. Loading default embeddings...")
         print(f"Error loading markdown embeddings: {e}")
         db = FAISS.load_local(
             embedding_folder, embeddings, allow_dangerous_deserialization=True

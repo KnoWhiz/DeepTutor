@@ -44,7 +44,7 @@ SKIP_MARKER_API = True if os.getenv("ENVIRONMENT") == "local" else False
 print(f"SKIP_MARKER_API: {SKIP_MARKER_API}")
 
 
-class DocumentProcessor:
+class mdDocumentProcessor:
     """
     Class to handle document processing and maintain document state without ST dependency.
     """
@@ -91,7 +91,7 @@ async def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder)
     config = load_config()
     para = config['llm']
     embeddings = get_embedding_models('default', para)
-    doc_processor = DocumentProcessor()
+    doc_processor = mdDocumentProcessor()
 
     # Define the default filenames used by FAISS when saving
     faiss_path = os.path.join(embedding_folder, "index.faiss")

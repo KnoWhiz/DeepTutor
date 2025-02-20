@@ -104,13 +104,15 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input):
         else:
             # Files are missing and have been cleaned up
             save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
-            await generate_embedding(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder)
+            time_tracking = await generate_embedding(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
+            logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
             if(vectorrag_index_files_compress(embedding_folder)):
                 logger.info("VectorRAG index files are ready and uploaded to Azure Blob Storage.")
             else:
                 # Retry once if first attempt fails
                 save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
-                await generate_embedding(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder)
+                time_tracking = await generate_embedding(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
+                logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
                 if(vectorrag_index_files_compress(embedding_folder)):
                     logger.info("VectorRAG index files are ready and uploaded to Azure Blob Storage.")
                 else:
@@ -125,14 +127,16 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input):
         else:
             # Files are missing and have been cleaned up
             save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
-            await generate_embedding(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder)
+            time_tracking = await generate_embedding(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
+            logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
             # asyncio.run(generate_GraphRAG_embedding(embedding_folder=embedding_folder))
             if(graphrag_index_files_compress(embedding_folder)):
                 logger.info("GraphRAG index files are ready and uploaded to Azure Blob Storage.")
             else:
                 # Retry once if first attempt fails
                 save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
-                await generate_embedding(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder)
+                time_tracking = await generate_embedding(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
+                logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
                 # asyncio.run(generate_GraphRAG_embedding(embedding_folder=embedding_folder))
                 if(graphrag_index_files_compress(embedding_folder)):
                     logger.info("GraphRAG index files are ready and uploaded to Azure Blob Storage.")
@@ -142,7 +146,6 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input):
         logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
     else:
         logger.info("Error: Invalid chat mode.")
-        return
 
     chat_history = chat_session.chat_history
     # Use temporary chat history for follow-up questions if available
@@ -293,7 +296,7 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, us
     # Check if all necessary files exist to load the embeddings
     await generate_embedding(
         chat_session.mode,
-        _document, _doc, file_path, embedding_folder
+        _document, _doc, file_path, embedding_folder,
     )
 
     # Load existing embeddings

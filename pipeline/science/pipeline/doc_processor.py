@@ -4,7 +4,7 @@ import fitz
 import asyncio
 import pandas as pd
 import re
-
+from typing import Dict
 from dotenv import load_dotenv
 
 from langchain_community.vectorstores import FAISS
@@ -64,7 +64,7 @@ class mdDocumentProcessor:
         return self.md_document
 
 
-async def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder):
+async def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder, time_tracking: Dict[str, float] = {}):
     """
     Generate embeddings for the document
     If the embeddings already exist, load them
@@ -236,7 +236,7 @@ async def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder)
             print(f"Error generating document summary: {e}")
             print("Continuing without document summary...")
 
-    return
+    return time_tracking
 
 
 def generate_document_summary(_document, embedding_folder, md_document=None):

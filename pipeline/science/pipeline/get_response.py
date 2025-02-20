@@ -48,7 +48,6 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input):
     If user_input is None, generates the initial welcome message.
     """
     time_tracking: Dict[str, float] = {}
-    logger.info(f"File id: {file_hash} Time tracking: {time_tracking}")
 
     # Compute hashed ID and prepare embedding folder
     hashing_start_time = time.time()

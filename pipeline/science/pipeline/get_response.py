@@ -42,6 +42,28 @@ import logging
 logger = logging.getLogger("tutorpipeline.science.get_response")
 
 
+def format_time_tracking(time_tracking: Dict[str, float]) -> str:
+    """
+    Format time tracking dictionary into a readable string with appropriate units.
+    
+    Args:
+        time_tracking: Dictionary of operation names and their durations in seconds
+        
+    Returns:
+        Formatted string with times converted to appropriate units
+    """
+    formatted_times = []
+    for operation, seconds in time_tracking.items():
+        if seconds >= 60:
+            minutes = int(seconds // 60)
+            remaining_seconds = seconds % 60
+            formatted_times.append(f"{operation}: {minutes}m {remaining_seconds:.2f}s")
+        else:
+            formatted_times.append(f"{operation}: {seconds:.2f}s")
+    
+    return "\n".join(formatted_times)
+
+
 async def tutor_agent(chat_session: ChatSession, file_path, user_input):
     """
     Taking the user input, document, and chat history, generate a response and sources.
@@ -60,7 +82,7 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input):
     if not os.path.exists(embedding_folder):
         os.makedirs(embedding_folder)
     time_tracking['file_hashing_setup_dirs'] = time.time() - hashing_start_time
-    logger.info(f"File id: {file_hash} Time tracking: {time_tracking}")
+    logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Save the file txt content locally
     save_file_start_time = time.time()
@@ -71,7 +93,7 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input):
     # Process file and create session states for document and PDF object
     _document, _doc = process_pdf_file(file_path)
     time_tracking['file_loading_save_text'] = time.time() - save_file_start_time
-    logger.info(f"File id: {file_hash} Time tracking: {time_tracking}")
+    logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     if chat_session.mode == ChatMode.BASIC:
         vectorrag_start_time = time.time()
@@ -94,7 +116,7 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input):
                 else:
                     print("Error compressing and uploading VectorRAG index files to Azure Blob Storage.")
         time_tracking['vectorrag_generate_embedding'] = time.time() - vectorrag_start_time
-        logger.info(f"File id: {file_hash} Time tracking: {time_tracking}")
+        logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
     elif chat_session.mode == ChatMode.ADVANCED:
         graphrag_start_time = time.time()
         print("Advanced (GraphRAG) mode")
@@ -117,7 +139,7 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input):
                 else:
                     print("Error compressing and uploading GraphRAG index files to Azure Blob Storage.")
         time_tracking['graphrag_generate_embedding'] = time.time() - graphrag_start_time
-        logger.info(f"File id: {file_hash} Time tracking: {time_tracking}")
+        logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
     else:
         print("Error: Invalid chat mode.")
         return
@@ -157,7 +179,7 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input):
         return answer, sources, source_pages, source_react_annotations, refined_source_pages, follow_up_questions
     
     time_tracking['summary_message'] = time.time() - initial_message_start_time
-    logger.info(f"File id: {file_hash} Time tracking: {time_tracking}")
+    logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Regular chat flow
     # Refine user input
@@ -165,13 +187,13 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input):
     refined_user_input = get_query_helper(chat_session, user_input, context_chat_history, embedding_folder)
     logger.info(f"Refined user input: {refined_user_input}")
     time_tracking['query_refinement'] = time.time() - query_start
-    logger.info(f"File id: {file_hash} Time tracking: {time_tracking}")
+    logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Get response
     response_start = time.time()
     answer = await get_response(chat_session, _doc, _document, file_path, refined_user_input, context_chat_history, embedding_folder)
     time_tracking['response_generation'] = time.time() - response_start
-    logger.info(f"File id: {file_hash} Time tracking: {time_tracking}")
+    logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Get sources
     sources_start = time.time()
@@ -180,7 +202,7 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input):
         _doc, _document, file_path, refined_user_input, answer, context_chat_history, embedding_folder
     )
     time_tracking['source_retrieval'] = time.time() - sources_start
-    logger.info(f"File id: {file_hash} Time tracking: {time_tracking}")
+    logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # If the sources have images, append the image URL (in image_urls.json mapping) to the end of the answer in markdown format
     # Process image sources
@@ -209,7 +231,7 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input):
         for source in sources_to_remove:
             del sources[source]
     time_tracking['image_processing'] = time.time() - images_processing_start
-    logger.info(f"File id: {file_hash} Time tracking: {time_tracking}")
+    logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
     
     # Refine and translate the answer to the selected language
     translation_start = time.time()
@@ -220,7 +242,7 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input):
         target_lang=chat_session.current_language
     )
     time_tracking['translation'] = time.time() - translation_start
-    logger.info(f"File id: {file_hash} Time tracking: {time_tracking}")
+    logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Append images URL in markdown format to the end of the answer
     annotations_start = time.time()
@@ -236,7 +258,7 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input):
         react_annotations = get_highlight_info(_doc, [source])
         source_react_annotations.extend(react_annotations)
     time_tracking['annotations'] = time.time() - annotations_start
-    logger.info(f"File id: {file_hash} Time tracking: {time_tracking}")
+    logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Combine regular sources with image sources
     sources.update(images_sources)
@@ -245,7 +267,7 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input):
     followup_start = time.time()
     follow_up_questions = generate_follow_up_questions(answer, chat_history)
     time_tracking['followup_questions'] = time.time() - followup_start
-    logger.info(f"File id: {file_hash} Time tracking: {time_tracking}")
+    logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
     return answer, sources, source_pages, source_react_annotations, refined_source_pages, follow_up_questions
 
 

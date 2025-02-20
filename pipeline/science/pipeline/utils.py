@@ -43,6 +43,28 @@ if SKIP_MARKER_API:
     from marker.settings import settings
 
 
+def format_time_tracking(time_tracking: Dict[str, float]) -> str:
+    """
+    Format time tracking dictionary into a readable string with appropriate units.
+    
+    Args:
+        time_tracking: Dictionary of operation names and their durations in seconds
+        
+    Returns:
+        Formatted string with times converted to appropriate units
+    """
+    formatted_times = []
+    for operation, seconds in time_tracking.items():
+        if seconds >= 60:
+            minutes = int(seconds // 60)
+            remaining_seconds = seconds % 60
+            formatted_times.append(f"{operation}: {minutes}m {remaining_seconds:.2f}s")
+        else:
+            formatted_times.append(f"{operation}: {seconds:.2f}s")
+    
+    return "\n".join(formatted_times)
+
+
 def file_check_list(embedding_folder) -> list:
     GraphRAG_embedding_folder = os.path.join(embedding_folder, "GraphRAG/")
     create_final_community_reports_path = GraphRAG_embedding_folder + "output/create_final_community_reports.parquet"

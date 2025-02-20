@@ -22,6 +22,7 @@ from pipeline.science.pipeline.utils import (
     save_file_txt_locally,
     process_pdf_file,
     get_highlight_info,
+    format_time_tracking,
 )
 from pipeline.science.pipeline.doc_processor import (
     generate_embedding,
@@ -40,28 +41,6 @@ from pipeline.science.pipeline.helper.index_files_saving import (
 from pipeline.science.pipeline.graphrag_get_response import get_GraphRAG_global_response
 import logging
 logger = logging.getLogger("tutorpipeline.science.get_response")
-
-
-def format_time_tracking(time_tracking: Dict[str, float]) -> str:
-    """
-    Format time tracking dictionary into a readable string with appropriate units.
-    
-    Args:
-        time_tracking: Dictionary of operation names and their durations in seconds
-        
-    Returns:
-        Formatted string with times converted to appropriate units
-    """
-    formatted_times = []
-    for operation, seconds in time_tracking.items():
-        if seconds >= 60:
-            minutes = int(seconds // 60)
-            remaining_seconds = seconds % 60
-            formatted_times.append(f"{operation}: {minutes}m {remaining_seconds:.2f}s")
-        else:
-            formatted_times.append(f"{operation}: {seconds:.2f}s")
-    
-    return "\n".join(formatted_times)
 
 
 async def tutor_agent(chat_session: ChatSession, file_path, user_input):
@@ -117,7 +96,7 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input):
                     logger.info("VectorRAG index files are ready and uploaded to Azure Blob Storage.")
                 else:
                     logger.info("Error compressing and uploading VectorRAG index files to Azure Blob Storage.")
-        time_tracking['vectorrag_generate_embedding'] = time.time() - vectorrag_start_time
+        time_tracking['vectorrag_generate_embedding_total'] = time.time() - vectorrag_start_time
         logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
     elif chat_session.mode == ChatMode.ADVANCED:
         graphrag_start_time = time.time()

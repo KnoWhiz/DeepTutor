@@ -1,5 +1,7 @@
 import os
 import json
+import time
+from typing import Dict
 
 from langchain_community.vectorstores import FAISS
 from langchain_core.runnables import RunnablePassthrough
@@ -45,6 +47,9 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input):
     Taking the user input, document, and chat history, generate a response and sources.
     If user_input is None, generates the initial welcome message.
     """
+    time_tracking: Dict[str, float] = {}
+    start_time = time.time()
+
     # Compute hashed ID and prepare embedding folder
     file_hash = generate_course_id(file_path)
     course_id = file_hash
@@ -54,6 +59,10 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input):
         os.makedirs('embedded_content')
     if not os.path.exists(embedding_folder):
         os.makedirs(embedding_folder)
+
+    time_tracking['setup'] = time.time() - start_time
+    start_time = time.time()
+
     # Save the file txt content locally
     file = open(file_path, 'rb')
     file_bytes = file.read()
@@ -61,6 +70,9 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input):
     save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
     # Process file and create session states for document and PDF object
     _document, _doc = process_pdf_file(file_path)
+
+    time_tracking['file_processing'] = time.time() - start_time
+    start_time = time.time()
 
     if chat_session.mode == ChatMode.BASIC:
         print("Basic (VectorRAG) mode")
@@ -102,7 +114,11 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input):
                 else:
                     print("Error compressing and uploading GraphRAG index files to Azure Blob Storage.")
     else:
-        print("Error: Invalid mode")
+        print("Error: Invalid chat mode.")
+        return
+
+    time_tracking['embedding_processing'] = time.time() - start_time
+    start_time = time.time()
 
     chat_history = chat_session.chat_history
 
@@ -115,7 +131,6 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input):
         context_chat_history = chat_history
 
     # Handle initial welcome message when chat history is empty
-    # FIXME: uncomment this block after chat history is implemented
     if user_input == "Can you give me a summary of this document?" or not chat_history:
         try:
             # Try to load existing document summary
@@ -136,29 +151,43 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input):
         source_react_annotations = []
         refined_source_pages = {}
         follow_up_questions = generate_follow_up_questions(answer, [])
+
+        time_tracking['initial_message'] = time.time() - start_time
+        logger.info(f"Time tracking: {time_tracking}")
         return answer, sources, source_pages, source_react_annotations, refined_source_pages, follow_up_questions
 
     # Regular chat flow
     # Refine user input
+    query_start = time.time()
     refined_user_input = get_query_helper(chat_session, user_input, context_chat_history, embedding_folder)
     logger.info(f"Refined user input: {refined_user_input}")
+    time_tracking['query_refinement'] = time.time() - query_start
+
     # Get response
+    response_start = time.time()
     answer = await get_response(chat_session, _doc, _document, file_path, refined_user_input, context_chat_history, embedding_folder)
+    time_tracking['response_generation'] = time.time() - response_start
+
     # Get sources
+    sources_start = time.time()
     sources, source_pages, refined_source_pages = get_response_source(
         chat_session.mode,
         _doc, _document, file_path, refined_user_input, answer, context_chat_history, embedding_folder
     )
+    time_tracking['source_retrieval'] = time.time() - sources_start
 
+    images_start = time.time()
     images_sources = {}
+
     # If the sources have images, append the image URL (in image_urls.json mapping) to the end of the answer in markdown format
+    # Process image sources
     if sources:
         image_url_path = os.path.join(embedding_folder, "markdown/image_urls.json")
         if os.path.exists(image_url_path):
             with open(image_url_path, 'r') as f:
                 image_url_mapping = json.load(f)
         else:
-            print("image_url_path does not exist")
+            logger.info("Image URL mapping file not found. Creating a new one.")
             image_url_mapping = {}
             with open(image_url_path, 'w') as f:
                 json.dump(image_url_mapping, f)
@@ -178,12 +207,15 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input):
 
     # answer = f"""Are you asking: **{refined_user_input}**
     # """ + "\n" + answer
+    time_tracking['image_processing'] = time.time() - images_start
 
     # Translate the answer to the selected language
+    translation_start = time.time()
     answer = translate_content(
         content=answer,
         target_lang=chat_session.current_language
     )
+    time_tracking['translation'] = time.time() - translation_start
 
     # Append images URL in markdown format to the end of the answer
     if images_sources:
@@ -193,20 +225,26 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input):
                 answer += "\n"
                 answer += f"![]({image_url})"
 
+    annotations_start = time.time()
     source_react_annotations = []
     for source, _ in sources.items():
         react_annotations = get_highlight_info(_doc, [source])
         source_react_annotations.extend(react_annotations)
+    time_tracking['annotations'] = time.time() - annotations_start
 
     # Combine regular sources with image sources
     sources.update(images_sources)
 
     # Generate follow-up questions
+    followup_start = time.time()
     follow_up_questions = generate_follow_up_questions(answer, chat_history)
+    time_tracking['followup_questions'] = time.time() - followup_start
+
+    logger.info(f"Time tracking: {time_tracking}")
     return answer, sources, source_pages, source_react_annotations, refined_source_pages, follow_up_questions
 
 
-async def get_response(chat_session: ChatSession, _doc, _document, file_path, user_input, chat_history, embedding_folder, deep_thinking = True):
+async def get_response(chat_session: ChatSession, _doc, _document, file_path, user_input, chat_history, embedding_folder, deep_thinking = False):
     if chat_session.mode == ChatMode.ADVANCED:
         try:
             # Convert the synchronous call to await the response

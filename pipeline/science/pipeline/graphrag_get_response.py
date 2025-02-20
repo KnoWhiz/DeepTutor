@@ -31,7 +31,7 @@ def get_existing_event_loop():
         asyncio.set_event_loop(loop)
         return loop
 
-async def get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embedding_folder, deep_thinking = True):
+async def get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embedding_folder, deep_thinking = False):
     # Chat history and user input
     chat_history_text = truncate_chat_history(chat_history)
     user_input_text = str(user_input)

@@ -76,7 +76,7 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input):
     file_hash = generate_course_id(file_path)
     course_id = file_hash
     embedding_folder = os.path.join('embedded_content', course_id)
-    print(f"Embedding folder: {embedding_folder}")
+    logger.info(f"Embedding folder: {embedding_folder}")
     if not os.path.exists('embedded_content'):
         os.makedirs('embedded_content')
     if not os.path.exists(embedding_folder):
@@ -97,51 +97,51 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input):
 
     if chat_session.mode == ChatMode.BASIC:
         vectorrag_start_time = time.time()
-        print("Basic (VectorRAG) mode")
+        logger.info("Basic (VectorRAG) mode")
         # Doc processing
         if(vectorrag_index_files_decompress(embedding_folder)):
-            print("VectorRAG index files are ready.")
+            logger.info("VectorRAG index files are ready.")
         else:
             # Files are missing and have been cleaned up
             save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
             await generate_embedding(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder)
             if(vectorrag_index_files_compress(embedding_folder)):
-                print("VectorRAG index files are ready and uploaded to Azure Blob Storage.")
+                logger.info("VectorRAG index files are ready and uploaded to Azure Blob Storage.")
             else:
                 # Retry once if first attempt fails
                 save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
                 await generate_embedding(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder)
                 if(vectorrag_index_files_compress(embedding_folder)):
-                    print("VectorRAG index files are ready and uploaded to Azure Blob Storage.")
+                    logger.info("VectorRAG index files are ready and uploaded to Azure Blob Storage.")
                 else:
-                    print("Error compressing and uploading VectorRAG index files to Azure Blob Storage.")
+                    logger.info("Error compressing and uploading VectorRAG index files to Azure Blob Storage.")
         time_tracking['vectorrag_generate_embedding'] = time.time() - vectorrag_start_time
         logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
     elif chat_session.mode == ChatMode.ADVANCED:
         graphrag_start_time = time.time()
-        print("Advanced (GraphRAG) mode")
+        logger.info("Advanced (GraphRAG) mode")
         if(graphrag_index_files_decompress(embedding_folder)):
-            print("GraphRAG index files are ready.")
+            logger.info("GraphRAG index files are ready.")
         else:
             # Files are missing and have been cleaned up
             save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
             await generate_embedding(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder)
             # asyncio.run(generate_GraphRAG_embedding(embedding_folder=embedding_folder))
             if(graphrag_index_files_compress(embedding_folder)):
-                print("GraphRAG index files are ready and uploaded to Azure Blob Storage.")
+                logger.info("GraphRAG index files are ready and uploaded to Azure Blob Storage.")
             else:
                 # Retry once if first attempt fails
                 save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
                 await generate_embedding(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder)
                 # asyncio.run(generate_GraphRAG_embedding(embedding_folder=embedding_folder))
                 if(graphrag_index_files_compress(embedding_folder)):
-                    print("GraphRAG index files are ready and uploaded to Azure Blob Storage.")
+                    logger.info("GraphRAG index files are ready and uploaded to Azure Blob Storage.")
                 else:
-                    print("Error compressing and uploading GraphRAG index files to Azure Blob Storage.")
+                    logger.info("Error compressing and uploading GraphRAG index files to Azure Blob Storage.")
         time_tracking['graphrag_generate_embedding'] = time.time() - graphrag_start_time
         logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
     else:
-        print("Error: Invalid chat mode.")
+        logger.info("Error: Invalid chat mode.")
         return
 
     chat_history = chat_session.chat_history

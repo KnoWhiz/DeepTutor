@@ -1,5 +1,9 @@
 import os
 import streamlit as st
+from pipeline.science.pipeline.logging_config import setup_logging
+
+# Set up logging configuration
+setup_logging()
 
 from frontend.ui import setup_page_config
 

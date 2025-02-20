@@ -121,7 +121,7 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input):
                     logger.info("GraphRAG index files are ready and uploaded to Azure Blob Storage.")
                 else:
                     logger.info("Error compressing and uploading GraphRAG index files to Azure Blob Storage.")
-        time_tracking['graphrag_generate_embedding'] = time.time() - graphrag_start_time
+        time_tracking['graphrag_generate_embedding_total'] = time.time() - graphrag_start_time
         logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
     else:
         logger.info("Error: Invalid chat mode.")

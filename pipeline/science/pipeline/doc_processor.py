@@ -87,7 +87,7 @@ async def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder,
         except RuntimeError:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-        await generate_GraphRAG_embedding(embedding_folder)
+        time_tracking = await generate_GraphRAG_embedding(embedding_folder, time_tracking)
     elif _mode == ChatMode.BASIC:
         logger.info("Mode: ChatMode.BASIC. Generating VectorRAG embeddings...")
     else:

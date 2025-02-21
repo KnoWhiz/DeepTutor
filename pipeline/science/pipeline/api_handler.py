@@ -67,14 +67,14 @@ class ApiHandler:
                 base_url=endpoint,
                 streaming=False,
             )
-        elif host == 'deepseek':
-            return ChatDeepSeek(
-                model="deepseek-chat",
-                temperature=0,
-                max_tokens=None,
-                timeout=None,
-                # max_retries=2,
-            )
+        # elif host == 'deepseek':
+        #     return ChatDeepSeek(
+        #         model="deepseek-chat",
+        #         temperature=0,
+        #         max_tokens=None,
+        #         timeout=None,
+        #         # max_retries=2,
+        #     )
 
 
     def load_models(self):
@@ -96,9 +96,9 @@ class ApiHandler:
                                       endpoint=self.azure_endpoint,
                                       api_version='2024-06-01',
                                       host='azure')
-        llm_deepseek = self.get_models(api_key=self.deepseek_api_key,
-                                       temperature=self.para['temperature'],
-                                       host='deepseek')
+        # llm_deepseek = self.get_models(api_key=self.deepseek_api_key,
+        #                                temperature=self.para['temperature'],
+        #                                host='deepseek')
 
         if self.para['llm_source'] == 'azure' or self.para['llm_source'] == 'openai':
             models = {
@@ -106,12 +106,12 @@ class ApiHandler:
                 'advance': {'instance': llm_advance, 'context_window': 128000},
                 'creative': {'instance': llm_creative, 'context_window': 128000},
             }
-        elif self.para['llm_source'] == 'deepseek':
-            models = {
-                'basic': {'instance': llm_deepseek, 'context_window': 65536},
-                'advance': {'instance': llm_deepseek, 'context_window': 65536},
-                'creative': {'instance': llm_deepseek, 'context_window': 65536},
-            }
+        # elif self.para['llm_source'] == 'deepseek':
+        #     models = {
+        #         'basic': {'instance': llm_deepseek, 'context_window': 65536},
+        #         'advance': {'instance': llm_deepseek, 'context_window': 65536},
+        #         'creative': {'instance': llm_deepseek, 'context_window': 65536},
+        #     }
         return models
 
 

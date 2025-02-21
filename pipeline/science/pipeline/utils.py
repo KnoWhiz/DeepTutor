@@ -9,6 +9,7 @@ import langid
 import requests
 import base64
 import time
+from datetime import datetime, UTC
 
 from dotenv import load_dotenv
 from typing import List, Tuple, Dict
@@ -46,22 +47,34 @@ if SKIP_MARKER_API:
 def format_time_tracking(time_tracking: Dict[str, float]) -> str:
     """
     Format time tracking dictionary into a readable string with appropriate units.
-    
+
     Args:
         time_tracking: Dictionary of operation names and their durations in seconds
-        
+
     Returns:
         Formatted string with times converted to appropriate units
     """
     formatted_times = []
-    for operation, seconds in time_tracking.items():
-        if seconds >= 60:
-            minutes = int(seconds // 60)
-            remaining_seconds = seconds % 60
-            formatted_times.append(f"{operation}: {minutes}m {remaining_seconds:.2f}s")
+    for key, value in time_tracking.items():
+        if key == "0. session_id":
+            formatted_times.append(f"{key}: {value}")
+            continue
+        if key == "0. start_time":
+            datetime_str = datetime.fromtimestamp(time.time(), UTC).strftime("%Y-%m-%d %H:%M:%S")
+            formatted_times.append(f"{key}: {datetime_str}")
+            continue
+        if key == "0. end_time" and "0. start_time" in time_tracking:
+            total_time_cost = value - time_tracking["0. start_time"]
+            formatted_times.append(f"0. total time cost: {total_time_cost:.2f}s")
+            continue
+
+        if value >= 60:
+            minutes = int(value // 60)
+            remaining_seconds = value % 60
+            formatted_times.append(f"{key}: {minutes}m {remaining_seconds:.2f}s")
         else:
-            formatted_times.append(f"{operation}: {seconds:.2f}s")
-    
+            formatted_times.append(f"{key}: {value:.2f}s")
+
     return "\n".join(formatted_times)
 
 
@@ -852,7 +865,7 @@ def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_s
     if md_document:
         # Create markdown directory if it doesn't exist
         os.makedirs(output_dir, exist_ok=True)
-        
+
         # Split markdown content into chunks
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size,
@@ -863,7 +876,7 @@ def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_s
             Document(page_content=chunk, metadata={"source": "markdown"})
             for chunk in text_splitter.split_text(md_document)
         ]
-        
+
         # Create and save markdown embeddings
         db_markdown = FAISS.from_documents(markdown_texts, embeddings)
         db_markdown.save_local(output_dir)

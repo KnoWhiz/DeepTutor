@@ -94,7 +94,7 @@ async def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder,
         raise ValueError("Invalid mode")
     time_tracking['graphrag_generate_embedding'] = time.time() - graphrag_start_time
     logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-    
+
     config = load_config()
     para = config['llm']
     embeddings = get_embedding_models('default', para)

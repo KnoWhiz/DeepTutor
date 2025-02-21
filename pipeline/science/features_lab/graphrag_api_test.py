@@ -36,13 +36,13 @@ from pipeline.science.pipeline.helper.index_files_saving import (
 
 def setup_graphrag_environment(embedding_folder: str) -> None:
     """Set up the GraphRAG environment with necessary configurations.
-    
+
     Args:
         embedding_folder: Path to the folder where embeddings will be stored
     """
     # Load environment variables
     load_dotenv()
-    
+
     # Create GraphRAG folder structure
     graphrag_folder = os.path.join(embedding_folder, "GraphRAG")
     os.makedirs(graphrag_folder, exist_ok=True)
@@ -51,11 +51,11 @@ def setup_graphrag_environment(embedding_folder: str) -> None:
 
 async def generate_embeddings(document_text: str, embedding_folder: str) -> bool:
     """Generate GraphRAG embeddings for the given document.
-    
+
     Args:
         document_text: Text content to generate embeddings for
         embedding_folder: Path to store the embeddings
-        
+
     Returns:
         bool: True if embedding generation was successful
     """
@@ -101,7 +101,7 @@ async def generate_embeddings(document_text: str, embedding_folder: str) -> bool
             "file_pattern": ".*\\.txt$"
         }
     }
-    
+
     graphrag_config = create_graphrag_config(
         values=settings,
         root_dir=os.path.join(embedding_folder, "GraphRAG")
@@ -116,12 +116,12 @@ async def generate_embeddings(document_text: str, embedding_folder: str) -> bool
 
 def get_response(query: str, chat_history: str, embedding_folder: str) -> str:
     """Get response using GraphRAG's global search functionality.
-    
+
     Args:
         query: User's question
         chat_history: Previous conversation history
         embedding_folder: Path to the embeddings folder
-        
+
     Returns:
         str: Generated response
     """
@@ -155,7 +155,7 @@ def get_response(query: str, chat_history: str, embedding_folder: str) -> str:
         entities=entities,
         token_encoder=token_encoder,
     )
-    
+
     context_builder_params = {
         "use_community_summary": False,
         "shuffle_data": True,
@@ -206,7 +206,7 @@ def get_response(query: str, chat_history: str, embedding_folder: str) -> str:
         ```{chat_history}```
         """
     )
-    
+
     # Process and format response
     context = str(search_result.context_data["reports"])
     prompt = f"""
@@ -219,7 +219,7 @@ def get_response(query: str, chat_history: str, embedding_folder: str) -> str:
     # Extract thinking process and summary
     answer_thinking = answer.split("<think>")[1].split("</think>")[0]
     answer_summary = answer.split("<think>")[1].split("</think>")[1]
-    
+
     return f"### Here is my thinking process\n\n{answer_thinking}\n\n### Here is my summarized answer\n\n{answer_summary}"
 
 async def main():
@@ -231,19 +231,19 @@ async def main():
     It contains information about machine learning and natural language processing.
     GraphRAG uses a graph-based approach for better context understanding.
     """
-    
+
     # Set up environment
     setup_graphrag_environment(embedding_folder)
-    
+
     # Generate embeddings
     success = await generate_embeddings(document_text, embedding_folder)
     if success:
         print("Successfully generated embeddings")
-        
+
         # Test response generation
         query = "How does GraphRAG improve context understanding?"
         chat_history = "Previous conversation about NLP models."
-        
+
         response = get_response(query, chat_history, embedding_folder)
         print("\nGenerated Response:")
         print(response)

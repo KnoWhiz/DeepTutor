@@ -43,12 +43,13 @@ import logging
 logger = logging.getLogger("tutorpipeline.science.get_response")
 
 
-async def tutor_agent(chat_session: ChatSession, file_path, user_input):
+async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tracking=None):
     """
     Taking the user input, document, and chat history, generate a response and sources.
     If user_input is None, generates the initial welcome message.
     """
-    time_tracking: Dict[str, float] = {}
+    if time_tracking is None:
+        time_tracking: Dict = {}
 
     # Compute hashed ID and prepare embedding folder
     hashing_start_time = time.time()
@@ -159,7 +160,7 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input):
         follow_up_questions = generate_follow_up_questions(answer, [])
 
         return answer, sources, source_pages, source_react_annotations, refined_source_pages, follow_up_questions
-    
+
     time_tracking['summary_message'] = time.time() - initial_message_start_time
     logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
@@ -214,7 +215,7 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input):
             del sources[source]
     time_tracking['image_processing'] = time.time() - images_processing_start
     logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-    
+
     # Refine and translate the answer to the selected language
     translation_start = time.time()
     answer = f"""**{refined_user_input}**

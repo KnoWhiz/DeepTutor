@@ -43,3 +43,4 @@ amplifytools.xcconfig
 logs/logs.json
 /output
 *.pem
+~/.ssh/config

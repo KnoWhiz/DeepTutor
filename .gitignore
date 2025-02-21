@@ -42,3 +42,4 @@ amplifytools.xcconfig
 /pipeline/chat_history
 logs/logs.json
 /output
+*.pem

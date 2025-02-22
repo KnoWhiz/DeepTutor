@@ -13,7 +13,8 @@ def streamlit_tutor_agent(chat_session, file_path, user_input):
     follow_up_questions = asyncio.run(tutor_agent(
         chat_session=chat_session,
         file_path=file_path,
-        user_input=user_input
+        user_input=user_input,
+        deep_thinking=True
     ))
     return initial_message, sources, source_pages, source_react_annotations, refined_source_pages, follow_up_questions
 

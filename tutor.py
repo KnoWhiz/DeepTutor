@@ -107,7 +107,6 @@ if st.session_state['isAuth']:
                     document=document,
                     file_path=file_path,
                     embedding_folder=embedding_folder,
-                    tutor_agent=tutor_agent
                 )
 
                 with outer_columns[0]:

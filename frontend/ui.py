@@ -14,7 +14,7 @@ from frontend.utils import previous_page, next_page, close_pdf, chat_content, ha
 from pipeline.science.pipeline.utils import find_pages_with_excerpts, get_highlight_info, translate_content
 from frontend.forms.contact import contact_form
 from pipeline.science.pipeline.config import load_config
-from pipeline.science.pipeline.get_response import generate_follow_up_questions, tutor_agent
+from pipeline.science.pipeline.get_response import generate_follow_up_questions
 from pipeline.science.pipeline.chat_history_manager import save_chat_history
 from pipeline.science.pipeline.session_manager import ChatMode
 from frontend.utils import streamlit_tutor_agent
@@ -163,7 +163,7 @@ def get_relevance_color(score):
 
 
 # Function to display the chat interface
-def show_chat_interface(doc, document, file_path, embedding_folder, tutor_agent):
+def show_chat_interface(doc, document, file_path, embedding_folder):
     # Init float function for chat_input textbox
     learner_avatar = "frontend/images/learner.svg"
     tutor_avatar = "frontend/images/tutor.svg"

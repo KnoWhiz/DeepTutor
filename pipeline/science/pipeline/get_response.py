@@ -43,7 +43,7 @@ import logging
 logger = logging.getLogger("tutorpipeline.science.get_response")
 
 
-async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tracking=None):
+async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tracking=None, deep_thinking=False):
     """
     Taking the user input, document, and chat history, generate a response and sources.
     If user_input is None, generates the initial welcome message.
@@ -174,7 +174,7 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
 
     # Get response
     response_start = time.time()
-    answer = await get_response(chat_session, _doc, _document, file_path, refined_user_input, context_chat_history, embedding_folder)
+    answer = await get_response(chat_session, _doc, _document, file_path, refined_user_input, context_chat_history, embedding_folder, deep_thinking=deep_thinking)
     time_tracking['response_generation'] = time.time() - response_start
     logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
@@ -377,8 +377,8 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, us
         answer_thinking = answer.split("<think>")[1].split("</think>")[0]
         answer_summary = answer.split("<think>")[1].split("</think>")[1]
         answer_summary = responses_refine(answer_summary, "")
-        # answer = "### Here is my thinking process\n\n" + answer_thinking + "\n\n### Here is my summarized answer\n\n" + answer_summary
-        answer = answer_summary
+        answer = "### Here is my thinking process\n\n" + answer_thinking + "\n\n### Here is my summarized answer\n\n" + answer_summary
+        # answer = answer_summary
     logger.info("get_response done ...")
     return answer
 

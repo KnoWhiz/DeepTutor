@@ -37,6 +37,8 @@ from pipeline.science.pipeline.helper.index_files_saving import (
     vectorrag_index_files_compress,
     graphrag_index_files_decompress,
     graphrag_index_files_compress,
+    literag_index_files_decompress,
+    literag_index_files_compress
 )
 from pipeline.science.pipeline.graphrag_get_response import get_GraphRAG_global_response
 import logging
@@ -75,7 +77,22 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
     time_tracking['file_loading_save_text'] = time.time() - save_file_start_time
     logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
-    if chat_session.mode == ChatMode.BASIC:
+    if chat_session.mode == ChatMode.LITE:
+        logger.info("Lite mode - using raw text only")
+        if(literag_index_files_decompress(embedding_folder)):
+            # Check if the LiteRAG index files are ready locally
+            logger.info("LiteRAG embedding index files are ready.")
+        else:
+            # Files are missing and have been cleaned up
+            save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
+            lite_embedding_start_time = time.time()
+            logger.info("Lite embedding ...")
+            await generate_embedding(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder)
+        time_tracking['lite_embedding_total'] = time.time() - lite_embedding_start_time
+        logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+        logger.info("Lite embedding done ...")
+
+    elif chat_session.mode == ChatMode.BASIC:
         vectorrag_start_time = time.time()
         logger.info("Basic (VectorRAG) mode")
         # Doc processing
@@ -139,13 +156,16 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
     # Handle initial welcome message when chat history is empty
     initial_message_start_time = time.time()
     if user_input == "Can you give me a summary of this document?" or not chat_history:
-        try:
-            # Try to load existing document summary
-            document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
-            with open(document_summary_path, "r") as f:
-                initial_message = f.read()
-        except FileNotFoundError:
+        if chat_session.mode == ChatMode.LITE:
             initial_message = "Hello! How can I assist you today?"
+        else:
+            try:
+                # Try to load existing document summary
+                document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
+                with open(document_summary_path, "r") as f:
+                    initial_message = f.read()
+            except FileNotFoundError:
+                initial_message = "Hello! How can I assist you today?"
 
         answer = initial_message
         # Translate the initial message to the selected language
@@ -157,7 +177,10 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
         source_pages = {}
         source_react_annotations = []
         refined_source_pages = {}
-        follow_up_questions = generate_follow_up_questions(answer, [])
+        if chat_session.mode != ChatMode.LITE:
+            follow_up_questions = generate_follow_up_questions(answer, [])
+        else:
+            follow_up_questions = []
 
         return answer, sources, source_pages, source_react_annotations, refined_source_pages, follow_up_questions
 
@@ -179,6 +202,9 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
     logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Get sources
+    sources = {}
+    source_pages = {}
+    refined_source_pages = {}
     sources_start = time.time()
     sources, source_pages, refined_source_pages = get_response_source(
         chat_session.mode,
@@ -255,16 +281,88 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
 
 
 async def get_response(chat_session: ChatSession, _doc, _document, file_path, user_input, chat_history, embedding_folder, deep_thinking = False):
+    # Handle lite mode first
+    if chat_session.mode == ChatMode.LITE:
+        config = load_config()
+        para = config['llm']
+        llm = get_llm('basic', para)
+        parser = StrOutputParser()
+        error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
+        embeddings = get_embedding_models('lite', para)
+        lite_embedding_folder = os.path.join(embedding_folder, 'lite_embedding')
+
+        # Create or load text chunks for RAG
+        try:
+            db = FAISS.load_local(lite_embedding_folder, embeddings, allow_dangerous_deserialization=True)
+        except Exception as e:
+            # If embeddings don't exist, create them from raw text
+            text_splitter = RecursiveCharacterTextSplitter(
+                chunk_size=1000,
+                chunk_overlap=200,
+                separators=["\n\n", "\n", " ", ""]
+            )
+            raw_text = "\n\n".join([page.get_text() for page in _doc])
+            chunks = text_splitter.create_documents([raw_text])
+            db = FAISS.from_documents(chunks, embeddings)
+            db.save_local(lite_embedding_folder)
+
+        # Set up RAG retriever
+        retriever = db.as_retriever(search_kwargs={"k": config['retriever']['k']})
+
+        # Create prompt for lite mode
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", """You are a helpful tutor assisting with document understanding.
+                Use the given context to answer the question.
+                If you don't know the answer, say so.
+                Previous conversation: {chat_history}
+                Reference context: {context}
+                
+                Please provide a clear and concise answer that:
+                1. Directly addresses the question
+                2. Uses simple language
+                3. Highlights key points in bold
+                4. Uses emojis when appropriate to make the response engaging"""),
+            ("human", "{input}")
+        ])
+
+        def format_docs(docs):
+            return "\n\n".join(doc.page_content for doc in docs)
+
+        rag_chain = (
+            {
+                "context": lambda x: format_docs(x["context"]),
+                "input": lambda x: x["input"],
+                "chat_history": lambda x: x["chat_history"]
+            }
+            | prompt
+            | llm
+            | error_parser
+        )
+
+        # Pass input query to retriever
+        retrieve_docs = (lambda x: x["input"]) | retriever
+        chain = RunnablePassthrough.assign(context=retrieve_docs).assign(
+            answer=rag_chain
+        )
+
+        # Get response
+        parsed_result = chain.invoke({
+            "input": user_input,
+            "chat_history": truncate_chat_history(chat_history)
+        })
+        return parsed_result['answer']
+
+    # Handle advanced mode
     if chat_session.mode == ChatMode.ADVANCED:
         try:
-            # Convert the synchronous call to await the response
             answer = await get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embedding_folder)
             return answer
         except Exception as e:
             print("Error getting response from GraphRAG:", e)
             import traceback
-            traceback.print_exc()  # Print full traceback for debugging
+            traceback.print_exc()
 
+    # Handle basic mode
     config = load_config()
     para = config['llm']
     llm = get_llm(para["level"], para)

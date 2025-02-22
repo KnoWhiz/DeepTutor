@@ -334,8 +334,11 @@ def get_embedding_models(embedding_model_type, para):
     para = para
     api = ApiHandler(para)
     embedding_model_default = api.embedding_models['default']['instance']
+    embedding_model_lite = api.embedding_models['lite']['instance']
     if embedding_model_type == 'default':
         return embedding_model_default
+    elif embedding_model_type == 'lite':
+        return embedding_model_lite
     else:
         return embedding_model_default
 

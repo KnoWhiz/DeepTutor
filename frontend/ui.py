@@ -82,15 +82,23 @@ def show_mode_option():
     with st.sidebar:
         mode_index = 0
         current_mode = st.radio(
-            "Basic model (faster) or Advanced model (slower but more accurate)?",
-            options=["basic", "advanced"],
+            "Choose a mode:",
+            options=["lite", "basic", "advanced"],
+            help="""
+            - Lite: Process raw text only (fastest)
+            - Basic: Standard processing (faster)
+            - Advanced: Enhanced processing (slower but more accurate)
+            """,
             index=mode_index
         )
         st.session_state.mode = current_mode
         if 'chat_session' in st.session_state:
-            st.session_state.chat_session.set_mode(
-                ChatMode.ADVANCED if current_mode == "advanced" else ChatMode.BASIC
-            )
+            if current_mode == "advanced":
+                st.session_state.chat_session.set_mode(ChatMode.ADVANCED)
+            elif current_mode == "basic":
+                st.session_state.chat_session.set_mode(ChatMode.BASIC)
+            else:
+                st.session_state.chat_session.set_mode(ChatMode.LITE)
 
 
 # Function to display the file uploader

@@ -123,8 +123,17 @@ class ApiHandler:
             openai_api_key =os.getenv('OPENAI_API_KEY_EMBEDDINGS'),
             openai_api_type="azure",
             chunk_size=1)
+        
+        lite_embedding_model = AzureOpenAIEmbeddings(
+            deployment="text-embedding-ada-002",
+            model="text-embedding-ada-002",
+            azure_endpoint=os.getenv('AZURE_OPENAI_ENDPOINT_EMBEDDINGS'),
+            openai_api_key =os.getenv('OPENAI_API_KEY_EMBEDDINGS'),
+            openai_api_type="azure",
+            chunk_size=1)
 
         models = {
             'default': {'instance': embedding_model},
+            'lite': {'instance': lite_embedding_model},
         }
         return models

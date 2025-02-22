@@ -82,14 +82,11 @@ async def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder,
     logger.info(f"Current mode: {_mode}")
     if _mode == ChatMode.ADVANCED:
         logger.info("Mode: ChatMode.ADVANCED. Generating GraphRAG embeddings...")
-        # try:
-        #     loop = asyncio.get_event_loop()
-        # except RuntimeError:
-        #     loop = asyncio.new_event_loop()
-        #     asyncio.set_event_loop(loop)
         time_tracking = await generate_GraphRAG_embedding(embedding_folder, time_tracking)
     elif _mode == ChatMode.BASIC:
         logger.info("Mode: ChatMode.BASIC. Generating VectorRAG embeddings...")
+    elif _mode == ChatMode.LITE:
+        logger.info("Mode: ChatMode.LITE. Generating LiteRAG embeddings...")
     else:
         raise ValueError("Invalid mode")
     time_tracking['graphrag_generate_embedding'] = time.time() - graphrag_start_time

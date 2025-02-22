@@ -16,6 +16,7 @@ from .chat_history_manager import (
 
 class ChatMode(Enum):
     """Enum for different chat modes."""
+    LITE = "lite"
     BASIC = "basic"
     ADVANCED = "advanced"
 

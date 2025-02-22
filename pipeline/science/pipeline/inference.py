@@ -2,8 +2,11 @@ import os
 import openai
 from dotenv import load_dotenv
 from typing import Optional
+import logging
 
 load_dotenv()
+
+logger = logging.getLogger("tutorpipeline.science.inference")
 
 def deepseek_inference(
     prompt: str,
@@ -57,10 +60,10 @@ def deepseek_inference(
             return response.choices[0].message.content
 
     except openai.APIError as e:
-        print(f"API Error: {str(e)}")
+        logger.exception(f"API Error: {str(e)}")
         return None
     except Exception as e:
-        print(f"An error occurred: {str(e)}")
+        logger.exception(f"An error occurred: {str(e)}")
         return None
 
 # Example usage

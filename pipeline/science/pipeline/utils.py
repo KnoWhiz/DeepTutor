@@ -60,7 +60,7 @@ def format_time_tracking(time_tracking: Dict[str, float]) -> str:
             formatted_times.append(f"{key}: {value}")
             continue
         if key == "0. start_time":
-            datetime_str = datetime.fromtimestamp(time.time(), UTC).strftime("%Y-%m-%d %H:%M:%S")
+            datetime_str = datetime.fromtimestamp(value, UTC).strftime("%Y-%m-%d %H:%M:%S")
             formatted_times.append(f"{key}: {datetime_str}")
             continue
         if key == "0. end_time" and "0. start_time" in time_tracking:
@@ -214,7 +214,7 @@ def save_file_txt_locally(file_path, filename, embedding_folder):
             with open(mapping_file, 'w') as f:
                 json.dump(mapping, f, indent=2)
         except Exception as e:
-            print(f"Error saving filename mapping: {e}")
+            logger.exception(f"Error saving filename mapping: {e}")
         raise
     return
 
@@ -502,7 +502,8 @@ def extract_images_from_pdf(
         return extracted_images
 
     except Exception as e:
-        raise ValueError(f"Error processing PDF: {str(e)}")
+        logger.exception(f"Error processing images from PDF: {str(e)}")
+        raise ValueError(f"Error processing images from PDF: {str(e)}")
 
     finally:
         if 'pdf_document' in locals():
@@ -577,7 +578,7 @@ def extract_pdf_content_to_markdown(
                     saved_images[img_name] = img
                     print(f"Saved image: {output_path}")
                 except Exception as e:
-                    print(f"Error saving image {img_name}: {str(e)}")
+                    logger.exception(f"Error saving image {img_name}: {str(e)}")
         else:
             print("No images found in the PDF")
 
@@ -593,6 +594,7 @@ def extract_pdf_content_to_markdown(
         return str(md_path), saved_images, text
 
     except Exception as e:
+        logger.exception(f"Error processing PDF: {str(e)}")
         raise Exception(f"Error processing PDF: {str(e)}")
 
 
@@ -710,7 +712,7 @@ def extract_pdf_content_to_markdown_via_api(
                 saved_images[filename] = img
                 print(f"Saved image: {output_path}")
             except Exception as e:
-                print(f"Error saving image {filename}: {e}")
+                logger.exception(f"Error saving image {filename}: {e}")
     else:
         print("No images were returned with the result")
 

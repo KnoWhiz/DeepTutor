@@ -267,7 +267,7 @@ def refine_sources(_doc, _document, sources_with_scores, markdown_dir, user_inpu
                         # print(f"image_scores for {image}: {image_scores}")
                         # print(f"result for {image}: {result}")
                 except Exception as e:
-                    print(f"Error evaluating image {image}: {e}")
+                    logger.exception(f"Error evaluating image {image}: {e}")
                     continue
 
         # Sort images by relevance score

@@ -117,7 +117,7 @@ async def generate_GraphRAG_embedding(embedding_folder, time_tracking: Dict[str,
             time_tracking['graphrag_initialize_project'] = time.time() - initialize_project_start_time
             logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
         except Exception as e:
-            logger.error(f"Initialization error: {e}")
+            logger.exception(f"Initialization error: {e}")
 
         create_graphrag_config_start_time = time.time()
         settings = yaml.safe_load(open("./pipeline/science/pipeline/graphrag_settings.yaml"))
@@ -138,6 +138,6 @@ async def generate_GraphRAG_embedding(embedding_folder, time_tracking: Dict[str,
             logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
             # print(f"graphrag_config after build: {graphrag_config}")
         except Exception as e:
-            logger.error(f"Index building error: {e}")
+            logger.exception(f"Index building error: {e}")
 
     return time_tracking

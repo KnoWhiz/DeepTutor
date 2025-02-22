@@ -22,14 +22,14 @@ from pipeline.science.pipeline.utils import (
     responses_refine,
 )
 
-def get_existing_event_loop():
-    """Get the existing event loop or create a new one if none exists."""
-    try:
-        return asyncio.get_event_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        return loop
+# def get_existing_event_loop():
+#     """Get the existing event loop or create a new one if none exists."""
+#     try:
+#         return asyncio.get_event_loop()
+#     except RuntimeError:
+#         loop = asyncio.new_event_loop()
+#         asyncio.set_event_loop(loop)
+#         return loop
 
 async def get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embedding_folder, deep_thinking = False):
     # Chat history and user input

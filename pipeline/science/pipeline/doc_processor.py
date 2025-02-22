@@ -82,11 +82,11 @@ async def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder,
     logger.info(f"Current mode: {_mode}")
     if _mode == ChatMode.ADVANCED:
         logger.info("Mode: ChatMode.ADVANCED. Generating GraphRAG embeddings...")
-        try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+        # try:
+        #     loop = asyncio.get_event_loop()
+        # except RuntimeError:
+        #     loop = asyncio.new_event_loop()
+        #     asyncio.set_event_loop(loop)
         time_tracking = await generate_GraphRAG_embedding(embedding_folder, time_tracking)
     elif _mode == ChatMode.BASIC:
         logger.info("Mode: ChatMode.BASIC. Generating VectorRAG embeddings...")
@@ -130,7 +130,7 @@ async def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder,
             time_tracking['markdown_extraction'] = time.time() - markdown_extraction_start_time
             logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
         except Exception as e:
-            logger.error(f"Error extracting content to markdown, using _doc to extract searchable content as save as markdown file: {e}")
+            logger.exception(f"Error extracting content to markdown, using _doc to extract searchable content as save as markdown file: {e}")
             # Use _doc to extract searchable content as save as markdown file
             fake_markdown_extraction_start_time = time.time()
             doc_processor.set_md_document("")
@@ -222,7 +222,7 @@ async def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder,
             else:
                 logger.info("No image context found to process")
         except Exception as e:
-            logger.error(f"Error processing image context: {e}")
+            logger.exception(f"Error processing image context: {e}")
             logger.info("Continuing without image context...")
         time_tracking['process_image_files'] = time.time() - process_image_files_start_time
         logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
@@ -251,7 +251,7 @@ async def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder,
             logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
             logger.info("Document summary generated and saved successfully.")
         except Exception as e:
-            logger.error(f"Error generating document summary: {e}")
+            logger.exception(f"Error generating document summary: {e}")
             logger.info("Continuing without document summary...")
 
     return time_tracking

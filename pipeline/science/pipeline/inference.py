@@ -12,7 +12,7 @@ def deepseek_inference(
     prompt: str,
     system_message: str = "You are a deep thinking researcher reading a paper. If you don't know the answer, say you don't know.",
     stream: bool = False,
-    temperature: float = 0.0,
+    temperature: float = 0.4,
     top_p: float = 0.1,
     max_tokens: int = 10000
 ) -> Optional[str]:
@@ -37,6 +37,7 @@ def deepseek_inference(
 
     try:
         response = client.chat.completions.create(
+            # model="DeepSeek-R1-Distill-Llama-70B",
             model="DeepSeek-R1-Distill-Llama-70B",
             messages=[
                 {"role": "system", "content": system_message},

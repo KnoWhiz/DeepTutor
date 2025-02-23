@@ -295,16 +295,8 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, us
         try:
             db = FAISS.load_local(lite_embedding_folder, embeddings, allow_dangerous_deserialization=True)
         except Exception as e:
-            # If embeddings don't exist, create them from raw text
-            text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=1000,
-                chunk_overlap=200,
-                separators=["\n\n", "\n", " ", ""]
-            )
-            raw_text = "\n\n".join([page.get_text() for page in _doc])
-            chunks = text_splitter.create_documents([raw_text])
-            db = FAISS.from_documents(chunks, embeddings)
-            db.save_local(lite_embedding_folder)
+            await generate_embedding(chat_session.mode, _doc, _document, file_path, embedding_folder=embedding_folder)
+            db = FAISS.load_local(lite_embedding_folder, embeddings, allow_dangerous_deserialization=True)
 
         # Set up RAG retriever
         retriever = db.as_retriever(search_kwargs={"k": config['retriever']['k']})

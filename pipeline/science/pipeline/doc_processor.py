@@ -87,6 +87,11 @@ async def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder,
         logger.info("Mode: ChatMode.BASIC. Generating VectorRAG embeddings...")
     elif _mode == ChatMode.LITE:
         logger.info("Mode: ChatMode.LITE. Generating LiteRAG embeddings...")
+        lite_embedding_start_time = time.time()
+        await generate_LiteRAG_embedding(pdf_path, embedding_folder)
+        time_tracking['lite_embedding_total'] = time.time() - lite_embedding_start_time
+        logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+        return time_tracking
     else:
         raise ValueError("Invalid mode")
     time_tracking['graphrag_generate_embedding'] = time.time() - graphrag_start_time
@@ -252,6 +257,34 @@ async def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder,
             logger.info("Continuing without document summary...")
 
     return time_tracking
+
+
+def generate_LiteRAG_embedding(_doc, pdf_path, embedding_folder):
+    """
+    Generate LiteRAG embeddings for the document
+    """
+    config = load_config()
+    para = config['llm']
+    file_hash = generate_course_id(pdf_path)
+    lite_embedding_folder = os.path.join(embedding_folder, 'lite_embedding')
+    # Check if all necessary files exist to load the embeddings
+    faiss_path = os.path.join(lite_embedding_folder, "index.faiss")
+    pkl_path = os.path.join(lite_embedding_folder, "index.pkl")
+    embeddings = get_embedding_models('lite', para)
+    if os.path.exists(faiss_path) and os.path.exists(pkl_path):
+        # Try to load existing txt file in graphrag_embedding folder
+        logger.info("LiteRAG embedding already exists. We can load existing embeddings...")
+    else:
+        # If embeddings don't exist, create them from raw text
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=1000,
+            chunk_overlap=200,
+            separators=["\n\n", "\n", " ", ""]
+        )
+        raw_text = "\n\n".join([page.get_text() for page in _doc])
+        chunks = text_splitter.create_documents([raw_text])
+        db = FAISS.from_documents(chunks, embeddings)
+        db.save_local(lite_embedding_folder)
 
 
 def generate_document_summary(_document, embedding_folder, md_document=None):

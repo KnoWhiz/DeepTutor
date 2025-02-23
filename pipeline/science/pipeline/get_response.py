@@ -90,6 +90,7 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
         time_tracking['lite_embedding_total'] = time.time() - lite_embedding_start_time
         logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
         logger.info("Lite embedding done ...")
+        
     elif chat_session.mode == ChatMode.BASIC:
         vectorrag_start_time = time.time()
         logger.info("Basic (VectorRAG) mode")
@@ -197,7 +198,8 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
 
     # Get response
     response_start = time.time()
-    answer = await get_response(chat_session, _doc, _document, file_path, refined_user_input, context_chat_history, embedding_folder, deep_thinking=deep_thinking)
+    response = await get_response(chat_session, _doc, _document, file_path, refined_user_input, context_chat_history, embedding_folder, deep_thinking=deep_thinking)
+    answer = response[0] if isinstance(response, tuple) else response
     time_tracking['response_generation'] = time.time() - response_start
     logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
@@ -206,10 +208,11 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
     source_pages = {}
     refined_source_pages = {}
     sources_start = time.time()
-    sources, source_pages, refined_source_pages = get_response_source(
-        chat_session.mode,
-        _doc, _document, file_path, refined_user_input, answer, context_chat_history, embedding_folder
-    )
+    if chat_session.mode != ChatMode.LITE:
+        sources, source_pages, refined_source_pages = get_response_source(
+            chat_session.mode,
+            _doc, _document, file_path, refined_user_input, answer, context_chat_history, embedding_folder
+        )
     time_tracking['source_retrieval'] = time.time() - sources_start
     logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
@@ -342,7 +345,16 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, us
             "input": user_input,
             "chat_history": truncate_chat_history(chat_history)
         })
-        return parsed_result['answer']
+        answer = parsed_result['answer']
+        
+        # For lite mode, we return empty containers for sources and follow-up questions
+        sources = {}
+        source_pages = {}
+        source_react_annotations = []
+        refined_source_pages = {}
+        follow_up_questions = []
+        
+        return answer, sources, source_pages, source_react_annotations, refined_source_pages, follow_up_questions
 
     # Handle advanced mode
     if chat_session.mode == ChatMode.ADVANCED:

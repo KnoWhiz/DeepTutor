@@ -1,4 +1,5 @@
 import os
+import copy
 from dotenv import load_dotenv
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
@@ -137,6 +138,10 @@ def generate_document_summary(file_path, embedding_folder, md_document=None):
             logger.exception("Warning: Failed to get topics. Using default topics.")
             topics = ["Overview", "Methods", "Results", "Discussion"]
 
+        if len(topics) >= 10:
+            logger.info("Number of topics is greater than 10, using only the first 10 topics...")
+            topics = topics[:10]
+
         # Generate overview
         overview_prompt = ChatPromptTemplate.from_template(overview_prompt)
         overview_chain = overview_prompt | llm | str_parser
@@ -145,8 +150,9 @@ def generate_document_summary(file_path, embedding_folder, md_document=None):
         # Generate summaries for each topic
         summaries = []
         for topic in topics:
-            topic_prompt = ChatPromptTemplate.from_template(topic_prompt)
-            topic_chain = topic_prompt | llm | str_parser
+            topic_prompt_copy = copy.deepcopy(topic_prompt)
+            topic_prompt_template = ChatPromptTemplate.from_template(topic_prompt_copy)
+            topic_chain = topic_prompt_template | llm | str_parser
             topic_summary = topic_chain.invoke({
                 "topic": topic,
                 "document": truncate_document(combined_content)
@@ -156,15 +162,15 @@ def generate_document_summary(file_path, embedding_folder, md_document=None):
         # Combine everything into markdown format with welcome message and take-home message
         markdown_summary = f"""### 👋 Welcome to DeepTutor!
 
-    I'm your AI tutor 🤖 ready to help you understand this document.
+I'm your AI tutor 🤖 ready to help you understand this document.
 
-    ### 💡 Key Takeaway
-    {takehome}
+### 💡 Key Takeaway
+{takehome}
 
-    ### 📚 Document Overview
-    {overview}
+### 📚 Document Overview
+{overview}
 
-    """
+"""
 
         # Add emojis for common topic titles
         topic_emojis = config['topic_emojis']
@@ -175,15 +181,15 @@ def generate_document_summary(file_path, embedding_folder, md_document=None):
             emoji = next((v for k, v in topic_emojis.items() if k in topic_lower), topic_emojis["default"])
 
             markdown_summary += f"""### {emoji} {topic}
-    {summary}
+{summary}
 
-    """
+"""
 
         markdown_summary += """
-    ---
-    ### 💬 Ask Me Anything!
-    Feel free to ask me any questions about the document! I'm here to help! ✨
-    """
+---
+### 💬 Ask Me Anything!
+Feel free to ask me any questions about the document! I'm here to help! ✨
+"""
 
         document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
         with open(document_summary_path, "w", encoding='utf-8') as f:

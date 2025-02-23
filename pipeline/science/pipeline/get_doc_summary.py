@@ -10,7 +10,7 @@ from pipeline.science.pipeline.utils import (
     get_llm,
     process_pdf_file,
 )
-from pipeline.science.pipeline.get_response import get_standard_rag_response
+from pipeline.science.pipeline.get_rag_response import get_standard_rag_response
 from pipeline.science.pipeline.api_handler import ApiHandler
 import logging
 logger = logging.getLogger("tutorpipeline.science.get_doc_summary")

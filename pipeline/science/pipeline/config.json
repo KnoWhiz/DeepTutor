@@ -55,5 +55,6 @@
         "limitations": "⚠️",
         "applications": "💡",
         "default": "📌"
-    }
+    },
+    "default_topics": ["Overview", "Methods", "Results", "Discussion"]
 }

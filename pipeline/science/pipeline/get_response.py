@@ -25,69 +25,125 @@ import logging
 logger = logging.getLogger("tutorpipeline.science.get_response")
 
 
+async def get_standard_rag_response(
+    prompt_string: str,
+    user_input: str,
+    chat_history: str,
+    embedding_folder: str,
+    embedding_type: str = 'default',
+    chat_session: ChatSession = None,
+    doc: dict = None,
+    document: dict = None,
+    file_path: str = None
+):
+    """
+    Standard function for RAG-based response generation.
+    
+    Args:
+        prompt_string: The system prompt to use
+        user_input: The user's query
+        chat_history: The conversation history (can be empty string)
+        embedding_folder: Path to the folder containing embeddings
+        embedding_type: Type of embedding model to use ('default' or 'lite')
+        chat_session: Optional ChatSession object for generating embeddings if needed
+        doc: Optional document dict for generating embeddings if needed
+        document: Optional document dict for generating embeddings if needed
+        file_path: Optional file path for generating embeddings if needed
+        
+    Returns:
+        str: The generated response
+    """
+    config = load_config()
+    para = config['llm']
+    llm = get_llm('basic', para)
+    parser = StrOutputParser()
+    error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
+    embeddings = get_embedding_models(embedding_type, para)
+
+    # Handle different embedding folders based on type
+    actual_embedding_folder = os.path.join(embedding_folder, 'lite_embedding') if embedding_type == 'lite' else embedding_folder
+
+    try:
+        db = FAISS.load_local(actual_embedding_folder, embeddings, allow_dangerous_deserialization=True)
+    except Exception as e:
+        if embedding_type == 'lite':
+            # For lite mode, try to generate embeddings if loading fails
+            if chat_session and doc and document and file_path:
+                await generate_embedding(chat_session.mode, doc, document, file_path, embedding_folder=embedding_folder)
+                db = FAISS.load_local(actual_embedding_folder, embeddings, allow_dangerous_deserialization=True)
+            else:
+                raise Exception(f"Failed to load lite embeddings and missing parameters to generate them: {str(e)}")
+        else:
+            # For default mode, try markdown embeddings as fallback
+            try:
+                db = FAISS.load_local(
+                    os.path.join(embedding_folder, "markdown"), 
+                    embeddings, 
+                    allow_dangerous_deserialization=True
+                )
+            except Exception as e:
+                raise Exception(f"Failed to load embeddings: {str(e)}")
+
+    retriever = db.as_retriever(search_kwargs={"k": config['retriever']['k']})
+    
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", prompt_string),
+        ("human", "{input}")
+    ])
+
+    def format_docs(docs):
+        return "\n\n".join(doc.page_content for doc in docs)
+
+    rag_chain = (
+        {
+            "context": lambda x: format_docs(x["context"]),
+            "input": lambda x: x["input"],
+            "chat_history": lambda x: x["chat_history"]
+        }
+        | prompt
+        | llm
+        | error_parser
+    )
+
+    retrieve_docs = (lambda x: x["input"]) | retriever
+    chain = RunnablePassthrough.assign(context=retrieve_docs).assign(
+        answer=rag_chain
+    )
+
+    parsed_result = chain.invoke({
+        "input": user_input,
+        "chat_history": truncate_chat_history(chat_history) if chat_history else ""
+    })
+    
+    return parsed_result['answer']
+
+
 async def get_response(chat_session: ChatSession, _doc, _document, file_path, user_input, chat_history, embedding_folder, deep_thinking = False):
     # Handle lite mode first
     if chat_session.mode == ChatMode.LITE:
-        config = load_config()
-        para = config['llm']
-        llm = get_llm('basic', para)
-        parser = StrOutputParser()
-        error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
-        embeddings = get_embedding_models('lite', para)
-        lite_embedding_folder = os.path.join(embedding_folder, 'lite_embedding')
+        lite_prompt = """You are a helpful tutor assisting with document understanding.
+            Use the given context to answer the question.
+            If you don't know the answer, say so.
+            Previous conversation: {chat_history}
+            Reference context: {context}
+            
+            Please provide a clear and concise answer that:
+            1. Directly addresses the question
+            2. Uses simple language
+            3. Highlights key points in bold
+            4. Uses emojis when appropriate to make the response engaging"""
 
-        # Create or load text chunks for RAG
-        try:
-            db = FAISS.load_local(lite_embedding_folder, embeddings, allow_dangerous_deserialization=True)
-        except Exception as e:
-            await generate_embedding(chat_session.mode, _doc, _document, file_path, embedding_folder=embedding_folder)
-            db = FAISS.load_local(lite_embedding_folder, embeddings, allow_dangerous_deserialization=True)
-
-        # Set up RAG retriever
-        retriever = db.as_retriever(search_kwargs={"k": config['retriever']['k']})
-
-        # Create prompt for lite mode
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are a helpful tutor assisting with document understanding.
-                Use the given context to answer the question.
-                If you don't know the answer, say so.
-                Previous conversation: {chat_history}
-                Reference context: {context}
-                
-                Please provide a clear and concise answer that:
-                1. Directly addresses the question
-                2. Uses simple language
-                3. Highlights key points in bold
-                4. Uses emojis when appropriate to make the response engaging"""),
-            ("human", "{input}")
-        ])
-
-        def format_docs(docs):
-            return "\n\n".join(doc.page_content for doc in docs)
-
-        rag_chain = (
-            {
-                "context": lambda x: format_docs(x["context"]),
-                "input": lambda x: x["input"],
-                "chat_history": lambda x: x["chat_history"]
-            }
-            | prompt
-            | llm
-            | error_parser
+        answer = await get_standard_rag_response(
+            prompt_string=lite_prompt,
+            user_input=user_input,
+            chat_history=chat_history,
+            embedding_folder=embedding_folder,
+            embedding_type='lite',
+            chat_session=chat_session,
+            doc=_doc,
+            document=_document,
+            file_path=file_path
         )
-
-        # Pass input query to retriever
-        retrieve_docs = (lambda x: x["input"]) | retriever
-        chain = RunnablePassthrough.assign(context=retrieve_docs).assign(
-            answer=rag_chain
-        )
-
-        # Get response
-        parsed_result = chain.invoke({
-            "input": user_input,
-            "chat_history": truncate_chat_history(chat_history)
-        })
-        answer = parsed_result['answer']
         
         # For lite mode, we return empty containers for sources and follow-up questions
         sources = {}
@@ -109,44 +165,9 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, us
             traceback.print_exc()
 
     # Handle basic mode
-    config = load_config()
-    para = config['llm']
-    llm = get_llm(para["level"], para)
-    parser = StrOutputParser()
-    error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
-
-    embeddings = get_embedding_models('default', para)
-
-    # Check if all necessary files exist to load the embeddings
-    await generate_embedding(
-        chat_session.mode,
-        _document, _doc, file_path, embedding_folder,
-    )
-
-    # Load existing embeddings
-    # print("Loading existing embeddings...")
-    logger.info("Loading existing embeddings...")
-    try:
-        # Load markdown embeddings
-        print(f"Loading markdown embeddings from {os.path.join(embedding_folder, 'markdown')}")
-        db = FAISS.load_local(
-            os.path.join(embedding_folder, "markdown"), embeddings, allow_dangerous_deserialization=True
-        )
-    except Exception as e:
-        # If markdown embeddings are not found, load the default embeddings
-        logger.info("Markdown embeddings not found. Loading default embeddings...")
-        print(f"Error loading markdown embeddings: {e}")
-        db = FAISS.load_local(
-            embedding_folder, embeddings, allow_dangerous_deserialization=True
-        )
-
-    config = load_config()
-    retriever = db.as_retriever(search_kwargs={"k": config['retriever']['k']})
-
     if not deep_thinking:
         logger.info("not deep thinking ...")
-        system_prompt = (
-            """
+        basic_prompt = """
             You are a patient and honest professor helping a student reading a paper.
             Use the given context to answer the question.
             If you don't know the answer, say you don't know.
@@ -159,45 +180,33 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, us
             \frac{{a}}{{b}} = \frac{{c}}{{d}}
             $$
             """
-        )
-        human_prompt = (
-            """
-            Student's query is: {input}
-            Answer the question based on the context provided.
-            Since I am a student with no related knowledge background,
-            provide a concise answer and directly answer the question in easy to understand language.
-            Use markdown syntax for bold formatting to highlight important points or words.
-            Use emojis when suitable to make the answer more engaging and interesting.
-            """
-        )
-        prompt = ChatPromptTemplate.from_messages(
-            [
-                ("system", system_prompt),
-                ("human", human_prompt),
-            ]
-        )
 
-        def format_docs(docs):
-            return "\n\n".join(doc.page_content for doc in docs)
-        rag_chain_from_docs = (
-            {
-                "input": lambda x: x["input"],  # input query
-                "chat_history": lambda x: x["chat_history"],  # chat history
-                "context": lambda x: format_docs(x["context"]),  # context
-            }
-            | prompt  # format query and context into prompt
-            | llm  # generate response
-            | error_parser  # parse response
+        answer = await get_standard_rag_response(
+            prompt_string=basic_prompt,
+            user_input=user_input,
+            chat_history=chat_history,
+            embedding_folder=embedding_folder
         )
-        # Pass input query to retriever
-        retrieve_docs = (lambda x: x["input"]) | retriever
-        chain = RunnablePassthrough.assign(context=retrieve_docs).assign(
-            answer=rag_chain_from_docs
-        )
-        parsed_result = chain.invoke({"input": user_input, "chat_history": truncate_chat_history(chat_history)})
-        answer = parsed_result['answer']
+        return answer
     else:
         logger.info("deep thinking ...")
+        # Load config and embeddings for deep thinking mode
+        config = load_config()
+        para = config['llm']
+        embeddings = get_embedding_models('default', para)
+        
+        try:
+            db = FAISS.load_local(embedding_folder, embeddings, allow_dangerous_deserialization=True)
+        except Exception as e:
+            try:
+                db = FAISS.load_local(
+                    os.path.join(embedding_folder, "markdown"),
+                    embeddings,
+                    allow_dangerous_deserialization=True
+                )
+            except Exception as e:
+                raise Exception(f"Failed to load embeddings for deep thinking: {str(e)}")
+
         chat_history_string = truncate_chat_history(chat_history)
         user_input_string = str(user_input)
         # Get relevant chunks for both question and answer with scores
@@ -222,9 +231,9 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, us
         answer_summary = answer.split("<think>")[1].split("</think>")[1]
         answer_summary = responses_refine(answer_summary, "")
         answer = "### Here is my thinking process\n\n" + answer_thinking + "\n\n### Here is my summarized answer\n\n" + answer_summary
-        # answer = answer_summary
-    logger.info("get_response done ...")
-    return answer
+        
+        logger.info("get_response done ...")
+        return answer
 
 
 def get_query_helper(chat_session: ChatSession, user_input, context_chat_history, embedding_folder):

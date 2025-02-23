@@ -10,6 +10,7 @@ from pipeline.science.pipeline.utils import (
     get_llm,
     process_pdf_file,
 )
+from pipeline.science.pipeline.get_response import get_standard_rag_response
 from pipeline.science.pipeline.api_handler import ApiHandler
 import logging
 logger = logging.getLogger("tutorpipeline.science.get_doc_summary")
@@ -60,13 +61,12 @@ def generate_document_summary(file_path, embedding_folder, md_document=None):
     F = ma (just an example, may not be a real formula in the doc)
     $$
 
-    Document: {document}
+    Document: {context}
     """
 
     # Topics extraction
     topics_prompt = """
-    Identify only the most essential topics/sections from this document.
-    Be extremely selective and concise - only include major components.
+    Identify only the most essential topics/sections from this document. Be extremely selective and concise - only include major components.
 
     Return format:
     {{"topics": ["topic1", "topic2", ...]}}
@@ -76,7 +76,7 @@ def generate_document_summary(file_path, embedding_folder, md_document=None):
     - Focus only on critical sections
     - Use short, descriptive names
 
-    Document: {document}
+    Document: {context}
     """
 
     # Generate overview
@@ -93,7 +93,7 @@ def generate_document_summary(file_path, embedding_folder, md_document=None):
     F = ma (just an example, may not be a real formula in the doc)
     $$
 
-    Document: {document}
+    Document: {context}
     """
 
     # Generate summaries for each topic
@@ -112,7 +112,7 @@ def generate_document_summary(file_path, embedding_folder, md_document=None):
     F = ma (just an example, may not be a real formula in the doc)
     $$
 
-    Document: {document}
+    Document: {context}
     """
 
     # If the document length is within the token limit, we can directly use the document content
@@ -123,14 +123,14 @@ def generate_document_summary(file_path, embedding_folder, md_document=None):
         takehome_prompt = ChatPromptTemplate.from_template(takehome_prompt)
         str_parser = StrOutputParser()
         takehome_chain = takehome_prompt | llm | str_parser
-        takehome = takehome_chain.invoke({"document": truncate_document(combined_content)})
+        takehome = takehome_chain.invoke({"context": truncate_document(combined_content)})
 
         # Topics extraction
         topics_prompt = ChatPromptTemplate.from_template(topics_prompt)
         parser = JsonOutputParser()
         error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
         topics_chain = topics_prompt | llm | error_parser
-        topics_result = topics_chain.invoke({"document": truncate_document(combined_content)})
+        topics_result = topics_chain.invoke({"context": truncate_document(combined_content)})
 
         try:
             topics = topics_result.get("topics", [])
@@ -145,7 +145,7 @@ def generate_document_summary(file_path, embedding_folder, md_document=None):
         # Generate overview
         overview_prompt = ChatPromptTemplate.from_template(overview_prompt)
         overview_chain = overview_prompt | llm | str_parser
-        overview = overview_chain.invoke({"document": truncate_document(combined_content)})
+        overview = overview_chain.invoke({"context": truncate_document(combined_content)})
 
         # Generate summaries for each topic
         summaries = []
@@ -155,7 +155,7 @@ def generate_document_summary(file_path, embedding_folder, md_document=None):
             topic_chain = topic_prompt_template | llm | str_parser
             topic_summary = topic_chain.invoke({
                 "topic": topic,
-                "document": truncate_document(combined_content)
+                "context": truncate_document(combined_content)
             })
             summaries.append((topic, topic_summary))
 
@@ -201,11 +201,51 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
         # If the document length is beyond the token limit, we need to do RAG for each query
         logger.info("Document length is beyond the token limit, doing RAG for each query...")
 
-        # First generate the take-home message
-        takehome_prompt = ChatPromptTemplate.from_template(takehome_prompt)
-        str_parser = StrOutputParser()
-        takehome_chain = takehome_prompt | llm | str_parser
-        takehome = takehome_chain.invoke({"document": truncate_document(combined_content)})
+        # First generate the take-home message, user input is the prompt's first line
+        takehome = get_standard_rag_response(takehome_prompt, takehome_prompt.split("\n")[0], "", embedding_folder)
 
         # Generate overview
-        
+        overview = get_standard_rag_response(overview_prompt, overview_prompt.split("\n")[0], "", embedding_folder)
+
+        # Generate summaries for each topic
+        summaries = []
+        for topic in topics:
+            topic_prompt_copy = copy.deepcopy(topic_prompt)
+            # Fill in the topic in the prompt
+            topic_prompt_copy = topic_prompt_copy.format(topic=topic)
+            
+            logger.info(f"Generating summary for topic: {topic}")
+            logger.info(f"Prompt: {topic_prompt_copy}")
+            summary = get_standard_rag_response(topic_prompt_copy, topic_prompt_copy.split("\n")[0], "", embedding_folder)
+            summaries.append((topic, summary))
+
+        # Combine everything into markdown format with welcome message and take-home message
+        markdown_summary = f"""### 👋 Welcome to DeepTutor!
+
+I'm your AI tutor 🤖 ready to help you understand this document.
+
+### 💡 Key Takeaway
+{takehome}
+
+### 📚 Document Overview
+{overview}
+
+"""
+
+        for topic, summary in summaries:
+            markdown_summary += f"""### {emoji} {topic}
+{summary}
+
+"""
+
+        markdown_summary += """
+---
+### 💬 Ask Me Anything!
+Feel free to ask me any questions about the document! I'm here to help! ✨
+"""
+
+        document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
+        with open(document_summary_path, "w", encoding='utf-8') as f:
+            f.write(markdown_summary)
+
+        return markdown_summary

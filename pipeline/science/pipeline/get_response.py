@@ -11,11 +11,13 @@ from pipeline.science.pipeline.config import load_config
 from pipeline.science.pipeline.utils import (
     truncate_chat_history,
     get_llm,
-    get_embedding_models,
     responses_refine,
     detect_language,
 )
-from pipeline.science.pipeline.embeddings import generate_embedding
+from pipeline.science.pipeline.embeddings import (
+    get_embedding_models,
+    load_embeddings,
+)
 from pipeline.science.pipeline.inference import deepseek_inference
 from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
 from pipeline.science.pipeline.graphrag_get_response import get_GraphRAG_global_response
@@ -66,7 +68,7 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, us
             answer = await get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embedding_folder)
             return answer
         except Exception as e:
-            print("Error getting response from GraphRAG:", e)
+            logger.exception("Error getting response from GraphRAG:", e)
             import traceback
             traceback.print_exc()
 
@@ -102,16 +104,11 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, us
         embeddings = get_embedding_models('default', para)
         
         try:
-            db = FAISS.load_local(embedding_folder, embeddings, allow_dangerous_deserialization=True)
+            logger.info(f"Loading markdown embeddings from {os.path.join(embedding_folder, 'markdown')}")
+            db = load_embeddings(os.path.join(embedding_folder, 'markdown'), 'default')
         except Exception as e:
-            try:
-                db = FAISS.load_local(
-                    os.path.join(embedding_folder, "markdown"),
-                    embeddings,
-                    allow_dangerous_deserialization=True
-                )
-            except Exception as e:
-                raise Exception(f"Failed to load embeddings for deep thinking: {str(e)}")
+            logger.exception(f"Failed to load markdown embeddings for deep thinking: {str(e)}")
+            db = load_embeddings(embedding_folder, 'default')
 
         chat_history_string = truncate_chat_history(chat_history)
         user_input_string = str(user_input)

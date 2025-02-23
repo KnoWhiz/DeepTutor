@@ -7,10 +7,12 @@ from pipeline.science.pipeline.config import load_config
 from pipeline.science.pipeline.utils import (
     translate_content,
     generate_course_id,
+    format_time_tracking,
+)
+from pipeline.science.pipeline.doc_processor import (
     save_file_txt_locally,
     process_pdf_file,
     get_highlight_info,
-    format_time_tracking,
 )
 from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
 from pipeline.science.pipeline.helper.index_files_saving import (
@@ -20,9 +22,7 @@ from pipeline.science.pipeline.helper.index_files_saving import (
     graphrag_index_files_compress,
     literag_index_files_decompress,
 )
-from pipeline.science.pipeline.doc_processor import (
-    generate_embedding,
-)
+from pipeline.science.pipeline.embeddings import generate_embedding
 from pipeline.science.pipeline.get_response import (
     get_query_helper,
     get_response,

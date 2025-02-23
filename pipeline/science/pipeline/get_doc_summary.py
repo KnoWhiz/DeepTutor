@@ -8,10 +8,12 @@ from pipeline.science.pipeline.config import load_config
 from pipeline.science.pipeline.utils import (
     truncate_document,
     get_llm,
-    process_pdf_file,
+    count_tokens,
 )
+from pipeline.science.pipeline.doc_processor import process_pdf_file
 from pipeline.science.pipeline.get_rag_response import get_standard_rag_response
 from pipeline.science.pipeline.api_handler import ApiHandler
+from pipeline.science.pipeline.embeddings import get_embedding_models
 import logging
 logger = logging.getLogger("tutorpipeline.science.get_doc_summary")
 load_dotenv()
@@ -29,6 +31,7 @@ def generate_document_summary(file_path, embedding_folder, md_document=None):
     llm = get_llm(para["level"], para)  # Using advanced model for better quality
     api = ApiHandler(para)
     max_tokens = int(api.models['advance']['context_window']/1.2)
+    embeddings = get_embedding_models('default', para)
 
     # First try to get content from markdown document
     combined_content = ""
@@ -116,7 +119,9 @@ def generate_document_summary(file_path, embedding_folder, md_document=None):
     """
 
     # If the document length is within the token limit, we can directly use the document content
-    if len(combined_content) < 2 * max_tokens:
+    token_length = count_tokens(combined_content, llm.model)
+    logger.info(f"Document token length: {token_length}")
+    if token_length < max_tokens:
         logger.info("Document length is within the token limit, using the document content directly...")
 
         # First generate the take-home message
@@ -202,10 +207,18 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
         logger.info("Document length is beyond the token limit, doing RAG for each query...")
 
         # First generate the take-home message, user input is the prompt's first line
-        takehome = get_standard_rag_response(takehome_prompt, takehome_prompt.split("\n")[0], "", embedding_folder)
+        try:
+            takehome = get_standard_rag_response(takehome_prompt, takehome_prompt.split("\n")[0], "", os.path.join(embedding_folder, 'markdown'), 'default')
+        except Exception as e:
+            logger.exception(f"Failed to generate take-home message: {str(e)}")
+            takehome = get_standard_rag_response(takehome_prompt, takehome_prompt.split("\n")[0], "", embedding_folder)
 
         # Generate overview
-        overview = get_standard_rag_response(overview_prompt, overview_prompt.split("\n")[0], "", embedding_folder)
+        try:
+            overview = get_standard_rag_response(overview_prompt, overview_prompt.split("\n")[0], "", os.path.join(embedding_folder, 'markdown'), 'default')
+        except Exception as e:
+            logger.exception(f"Failed to generate overview: {str(e)}")
+            overview = get_standard_rag_response(overview_prompt, overview_prompt.split("\n")[0], "", embedding_folder)
 
         # Generate summaries for each topic
         summaries = []
@@ -216,7 +229,11 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
             
             logger.info(f"Generating summary for topic: {topic}")
             logger.info(f"Prompt: {topic_prompt_copy}")
-            summary = get_standard_rag_response(topic_prompt_copy, topic_prompt_copy.split("\n")[0], "", embedding_folder)
+            try:
+                summary = get_standard_rag_response(topic_prompt_copy, topic_prompt_copy.split("\n")[0], "", os.path.join(embedding_folder, 'markdown'), 'default')
+            except Exception as e:
+                logger.exception(f"Failed to generate summary for topic: {topic}, error: {str(e)}")
+                summary = get_standard_rag_response(topic_prompt_copy, topic_prompt_copy.split("\n")[0], "", embedding_folder)
             summaries.append((topic, summary))
 
         # Combine everything into markdown format with welcome message and take-home message

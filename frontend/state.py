@@ -6,7 +6,7 @@ import hashlib
 import streamlit as st
 
 from dotenv import load_dotenv
-from pipeline.science.pipeline.utils import extract_document_from_file
+from pipeline.science.pipeline.doc_processor import extract_document_from_file
 from pipeline.science.pipeline.chat_history_manager import (
     create_session_id,
     save_chat_history,

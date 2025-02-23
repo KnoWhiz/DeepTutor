@@ -1,26 +1,28 @@
 import os
+import io
+import hashlib
+import fitz
 import json
+import requests
+import base64
 import time
-from typing import Dict
+from datetime import datetime, UTC
+
 from dotenv import load_dotenv
-from langchain_community.vectorstores import FAISS
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_core.documents import Document
+from typing import Tuple, Dict
+from pathlib import Path
+from PIL import Image
+
+from langchain_community.document_loaders import PyMuPDFLoader
+
 from pipeline.science.pipeline.config import load_config
-from pipeline.science.pipeline.utils import (
-    get_embedding_models,
-    extract_pdf_content_to_markdown,
-    extract_pdf_content_to_markdown_via_api,
-    create_searchable_chunks,
-    create_markdown_embeddings,
-    format_time_tracking,
-    generate_course_id,
+from pipeline.science.pipeline.images_understanding import (
+    extract_image_context,
+    upload_markdown_to_azure,
+    upload_images_to_azure,
 )
-from pipeline.science.pipeline.images_understanding import initialize_image_files
-from pipeline.science.pipeline.graphrag_doc_processor import generate_GraphRAG_embedding
-from pipeline.science.pipeline.session_manager import ChatMode
-from pipeline.science.pipeline.get_doc_summary import generate_document_summary
-from pipeline.science.pipeline.embeddings import generate_embedding, mdDocumentProcessor
+from pipeline.science.pipeline.utils import robust_search_for
+
 import logging
 logger = logging.getLogger("tutorpipeline.science.doc_processor")
 load_dotenv()
@@ -28,7 +30,132 @@ load_dotenv()
 SKIP_MARKER_API = True if os.getenv("ENVIRONMENT") == "local" else False
 print(f"SKIP_MARKER_API: {SKIP_MARKER_API}")
 
-__all__ = ['generate_embedding', 'mdDocumentProcessor']
+
+# Custom function to extract document objects from uploaded file
+def extract_document_from_file(file_path):
+    # Load the document
+    loader = PyMuPDFLoader(file_path)
+    document = loader.load()
+    return document
+
+
+# Function to process the PDF file
+def process_pdf_file(file_path):
+    # Process the document
+    file = open(file_path, 'rb')
+    file_bytes = file.read()
+    document = extract_document_from_file(file_path)
+    doc = fitz.open(stream=io.BytesIO(file_bytes), filetype="pdf")
+    return document, doc
+
+
+# Function to save the file locally as a text file
+def save_file_txt_locally(file_path, filename, embedding_folder):
+    """
+    Save the file (e.g., PDF) loaded as text into the GraphRAG_embedding_input_folder.
+    """
+    file = open(file_path, 'rb')
+    file_bytes = file.read()
+
+    # Define folder structure
+    GraphRAG_embedding_folder = os.path.join(embedding_folder, "GraphRAG")
+    GraphRAG_embedding_input_folder = os.path.join(GraphRAG_embedding_folder, "input")
+
+    # Create folders if they do not exist
+    os.makedirs(GraphRAG_embedding_input_folder, exist_ok=True)
+
+    # Generate a shorter filename using hash, and it should be unique and consistent for the same file
+    base_name = os.path.splitext(filename)[0]
+    hashed_name = hashlib.md5(file_bytes).hexdigest()[:8]  # Use first 8 chars of hash
+    output_file_path = os.path.join(GraphRAG_embedding_input_folder, f"{hashed_name}.txt")
+
+    # Extract text from the PDF using the provided utility function
+    document = extract_document_from_file(file_path)
+
+    # Write the extracted text into a .txt file
+    # If the file does not exist, it will be created
+    if os.path.exists(output_file_path):
+        print(f"File already exists: {output_file_path}")
+        return
+
+    try:
+        with open(output_file_path, "w", encoding="utf-8") as f:
+            for doc in document:
+                # Each doc is expected to have a `page_content` attribute if it's a Document object
+                if hasattr(doc, 'page_content') and doc.page_content:
+                    # Write the text, followed by a newline for clarity
+                    f.write(doc.page_content.strip() + "\n")
+        print(f"Text successfully saved to: {output_file_path}")
+    except OSError as e:
+        print(f"Error saving file: {e}")
+        # Create a mapping file to track original filenames if needed
+        mapping_file = os.path.join(GraphRAG_embedding_folder, "filename_mapping.json")
+        try:
+            if os.path.exists(mapping_file):
+                with open(mapping_file, 'r') as f:
+                    mapping = json.load(f)
+            else:
+                mapping = {}
+            mapping[hashed_name] = base_name
+            with open(mapping_file, 'w') as f:
+                json.dump(mapping, f, indent=2)
+        except Exception as e:
+            logger.exception(f"Error saving filename mapping: {e}")
+        raise
+    return
+
+
+# Find pages with the given excerpts in the document
+def find_pages_with_excerpts(doc, excerpts):
+    pages_with_excerpts = []
+    for page_num in range(len(doc)):
+        page = doc.load_page(page_num)
+        for excerpt in excerpts:
+            text_instances = robust_search_for(page, excerpt)
+            if text_instances:
+                pages_with_excerpts.append(page_num)
+                break
+    return pages_with_excerpts if pages_with_excerpts else [0]
+
+
+# Get the highlight information for the given excerpts
+def get_highlight_info(doc, excerpts):
+    annotations = []
+    react_annotations = []
+    for page_num, page in enumerate(doc):
+        for excerpt in excerpts:
+            text_instances = robust_search_for(page, excerpt)
+            # print(f"text_instances: {text_instances}")
+            if text_instances:
+                for inst in text_instances:
+                    annotations.append({
+                        "page": page_num + 1,
+                        "x": inst.x0,
+                        "y": inst.y0,
+                        "width": inst.x1 - inst.x0,
+                        "height": inst.y1 - inst.y0,
+                        "color": "red",
+                    })
+                    react_annotations.append(
+                        {
+                            "content": {
+                                "text": excerpt,
+                            },
+                            "rects": [
+                                {
+                                    "x1": inst.x0,
+                                    "y1": inst.y0,
+                                    "x2": inst.x1,
+                                    "y2": inst.y1,
+                                    "width": inst.x1 - inst.x0,
+                                    "height": inst.y1 - inst.y0,
+                                }
+                            ],
+                            "pageNumber": page_num + 1,
+                        }
+                    )
+    # print(f"annotations: {annotations}")
+    return annotations, react_annotations
 
 
 class mdDocumentProcessor:
@@ -51,221 +178,219 @@ class mdDocumentProcessor:
         return self.md_document
 
 
-async def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder, time_tracking: Dict[str, float] = {}):
+def extract_pdf_content_to_markdown_via_api(
+    pdf_path: str | Path,
+    output_dir: str | Path,
+) -> Tuple[str, Dict[str, Image.Image], str]:
     """
-    Generate embeddings for the document
-    If the embeddings already exist, load them
-    Otherwise, extract content to markdown via API or local PDF extraction
-    Then, initialize image files and try to append image context to texts with error handling
-    Create the vector store to use as the index
-    Save the embeddings to the specified folder
-    Generate and save document summary using the texts we created
-    """
-    file_hash = generate_course_id(pdf_path)
-    graphrag_start_time = time.time()
-    logger.info(f"Current mode: {_mode}")
-    if _mode == ChatMode.ADVANCED:
-        logger.info("Mode: ChatMode.ADVANCED. Generating GraphRAG embeddings...")
-        time_tracking = await generate_GraphRAG_embedding(embedding_folder, time_tracking)
-    elif _mode == ChatMode.BASIC:
-        logger.info("Mode: ChatMode.BASIC. Generating VectorRAG embeddings...")
-    elif _mode == ChatMode.LITE:
-        logger.info("Mode: ChatMode.LITE. Generating LiteRAG embeddings...")
-        lite_embedding_start_time = time.time()
-        await generate_LiteRAG_embedding(_doc, pdf_path, embedding_folder)
-        time_tracking['lite_embedding_total'] = time.time() - lite_embedding_start_time
-        logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-        return time_tracking
-    else:
-        raise ValueError("Invalid mode")
-    time_tracking['graphrag_generate_embedding'] = time.time() - graphrag_start_time
-    logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    Extract text and images from a PDF file using the Marker API and save them to the specified directory.
 
+    Args:
+        pdf_path: Path to the input PDF file
+        output_dir: Directory where images and markdown will be saved
+
+    Returns:
+        Tuple containing:
+        - Path to the saved markdown file
+        - Dictionary of image names and their PIL Image objects
+        - Markdown content (str)
+
+    Raises:
+        FileNotFoundError: If PDF file doesn't exist
+        OSError: If output directory cannot be created
+        Exception: For API errors or processing failures
+    """
+    # Load environment variables and validate input
+    load_dotenv()
+    API_KEY = os.getenv("MARKER_API_KEY")
+    if not API_KEY:
+        raise ValueError("MARKER_API_KEY not found in environment variables")
+
+    # Validate input PDF exists
+    pdf_path = Path(pdf_path)
+    if not pdf_path.exists():
+        raise FileNotFoundError(f"PDF file not found: {pdf_path}")
+
+    # Generate hash ID for the file
+    with open(pdf_path, 'rb') as f:
+        file_hash = hashlib.md5(f.read()).hexdigest()
+
+    # Create output directory
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    API_URL = "https://www.datalab.to/api/v1/marker"
+
+    # Submit the file to API
+    with open(pdf_path, "rb") as f:
+        form_data = {
+            "file": (str(pdf_path), f, "application/pdf"),
+            "langs": (None, "English"),
+            "force_ocr": (None, False),
+            "paginate": (None, False),
+            "output_format": (None, "markdown"),
+            "use_llm": (None, False),
+            "strip_existing_ocr": (None, False),
+            "disable_image_extraction": (None, False),
+        }
+        headers = {"X-Api-Key": API_KEY}
+        response = requests.post(API_URL, files=form_data, headers=headers)
+
+    # Check initial response
+    data = response.json()
+    if not data.get("success"):
+        raise Exception(f"API request failed: {data.get('error')}")
+
+    request_check_url = data.get("request_check_url")
+    print("Submitted request. Polling for results...")
+
+    # Poll until processing is complete
+    max_polls = 300
+    poll_interval = 2
+    result = None
+
+    for i in range(max_polls):
+        time.sleep(poll_interval)
+        poll_response = requests.get(request_check_url, headers=headers)
+        result = poll_response.json()
+        status = result.get("status")
+        print(f"Poll {i+1}: status = {status}")
+        if status == "complete":
+            break
+    else:
+        raise Exception("The request did not complete within the expected time.")
+
+    # Process and save results
+    if not result.get("success"):
+        raise Exception(f"Processing failed: {result.get('error')}")
+
+    # Save markdown content with hash ID
+    markdown = result.get("markdown", "")
+    md_path = output_dir / f"{file_hash}.md"
+    with open(md_path, "w", encoding="utf-8") as md_file:
+        md_file.write(markdown)
+    print(f"Saved markdown to: {md_path}")
+
+    # Process and save images
+    saved_images: Dict[str, Image.Image] = {}
+    images = result.get("images", {})
+
+    if images:
+        print(f"Processing {len(images)} images...")
+        for filename, b64data in images.items():
+            try:
+                # Create PIL Image from base64 data
+                image_data = base64.b64decode(b64data)
+                img = Image.open(io.BytesIO(image_data))
+
+                # Create a valid filename
+                safe_filename = "".join(c for c in filename if c.isalnum() or c in ('-', '_', '.'))
+                output_path = output_dir / safe_filename
+
+                # Save the image
+                img.save(output_path)
+                saved_images[filename] = img
+                print(f"Saved image: {output_path}")
+            except Exception as e:
+                logger.exception(f"Error saving image {filename}: {e}")
+    else:
+        print("No images were returned with the result")
+
+    # Save markdown file and images to Azure Blob Storage
+    upload_markdown_to_azure(output_dir)
+    upload_images_to_azure(output_dir)
+
+    # Extract image context
     config = load_config()
-    para = config['llm']
-    embeddings = get_embedding_models('default', para)
-    doc_processor = mdDocumentProcessor()
+    chunk_size = config['embedding']['chunk_size']
+    extract_image_context(output_dir, chunk_size)
 
-    # Define the default filenames used by FAISS when saving
-    faiss_path = os.path.join(embedding_folder, "index.faiss")
-    pkl_path = os.path.join(embedding_folder, "index.pkl")
-    document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
-
-    markdown_embedding_folder = os.path.join(embedding_folder, "markdown")
-    markdown_faiss_path = os.path.join(markdown_embedding_folder, "index.faiss")
-    markdown_pkl_path = os.path.join(markdown_embedding_folder, "index.pkl")
-
-    # Check if all necessary files exist to load the embeddings
-    if os.path.exists(faiss_path) and os.path.exists(pkl_path) and os.path.exists(document_summary_path) \
-        and os.path.exists(markdown_faiss_path) and os.path.exists(markdown_pkl_path):
-        logger.info("Embedding already exists. We can load existing embeddings...")
-    else:
-        try:
-            markdown_extraction_start_time = time.time()
-            # Extract content to markdown via API
-            if not SKIP_MARKER_API:
-                logger.info("Marker API is enabled. Using Marker API to extract content to markdown.")
-                markdown_dir = os.path.join(embedding_folder, "markdown")
-                md_path, saved_images, md_document = extract_pdf_content_to_markdown_via_api(pdf_path, markdown_dir)
-                doc_processor.set_md_document(md_document)
-            else:
-                logger.info("Marker API is disabled. Using local PDF extraction.")
-                markdown_dir = os.path.join(embedding_folder, "markdown")
-                md_path, saved_images, md_document = extract_pdf_content_to_markdown(pdf_path, markdown_dir)
-                doc_processor.set_md_document(md_document)
-            time_tracking['markdown_extraction'] = time.time() - markdown_extraction_start_time
-            logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-        except Exception as e:
-            logger.exception(f"Error extracting content to markdown, using _doc to extract searchable content as save as markdown file: {e}")
-            # Use _doc to extract searchable content as save as markdown file
-            fake_markdown_extraction_start_time = time.time()
-            doc_processor.set_md_document("")
-            texts = []
-            # Process each page in the PDF document
-            for page_num in range(len(_doc)):
-                page = _doc[page_num]
-                # Get all text blocks that can be found via search
-                text_blocks = []
-                for block in page.get_text("blocks"):
-                    text = block[4]  # The text content is at index 4
-                    # Verify the text can be found via search
-                    search_results = page.search_for(text.strip())
-                    if search_results:
-                        text_blocks.append(text)
-
-                # Join the searchable text blocks
-                page_content = "\n".join(text_blocks)
-                doc_processor.append_md_document(page_content)
-                texts.append(Document(
-                    page_content=page_content,
-                    metadata={"source": f"page_{page_num + 1}", "page": page_num + 1}
-                ))
-
-            # Save to markdown_dir
-            markdown_dir = os.path.join(embedding_folder, "markdown")
-            os.makedirs(markdown_dir, exist_ok=True)
-            file_hash = generate_course_id(pdf_path)
-            md_path = os.path.join(markdown_dir, f"{file_hash}.md")
-            with open(md_path, "w", encoding="utf-8") as f:
-                f.write(doc_processor.get_md_document())
-
-            # Use the texts directly instead of splitting again
-            logger.info(f"Number of pages processed: {len(texts)}")
-            time_tracking['fake_markdown_extraction'] = time.time() - fake_markdown_extraction_start_time
-            logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-        else:
-            # Split the document into chunks when markdown extraction succeeded
-            create_searchable_chunks_start_time = time.time()
-            average_page_length = sum(len(doc.page_content) for doc in _document) / len(_document)
-            chunk_size = int(average_page_length // 3)
-            logger.info(f"Average page length: {average_page_length}")
-            logger.info(f"Chunk size: {chunk_size}")
-            logger.info("Creating new embeddings...")
-            texts = create_searchable_chunks(_doc, chunk_size)
-            logger.info(f"length of document chunks generated for get_response_source:{len(texts)}")
-            time_tracking['create_searchable_chunks'] = time.time() - create_searchable_chunks_start_time
-            logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-
-        # Initialize image files and try to append image context to texts with error handling
-        process_image_files_start_time = time.time()
-        try:
-            markdown_dir = os.path.join(embedding_folder, "markdown")
-            image_context_path, _ = initialize_image_files(markdown_dir)
-            with open(image_context_path, "r") as f:
-                image_context = json.load(f)
-
-            # Only process image context if there are actual images
-            if image_context:
-                logger.info(f"Found {len(image_context)} images with context")
-
-                # Create a temporary FAISS index for similarity search
-                temp_db = FAISS.from_documents(texts, embeddings)
-
-                for image, context in image_context.items():
-                    for c in context:
-                        # Clean the context text for comparison
-                        clean_context = c.replace(" <markdown>", "").strip()
-
-                        # Use similarity search to find the most relevant chunk
-                        similar_chunks = temp_db.similarity_search_with_score(clean_context, k=1)
-
-                        if similar_chunks:
-                            best_match_chunk, score = similar_chunks[0]
-                            # Only use the page number if the similarity score is good enough
-                            # (score is distance, so lower is better)
-                            best_match_page = best_match_chunk.metadata.get("page", 0) if score < 1.0 else 0
-                        else:
-                            best_match_page = 0
-
-                        texts.append(Document(
-                            page_content=c, 
-                            metadata={
-                                "source": image,
-                                "page": best_match_page
-                            }
-                        ))
-
-            else:
-                logger.info("No image context found to process")
-        except Exception as e:
-            logger.exception(f"Error processing image context: {e}")
-            logger.info("Continuing without image context...")
-        time_tracking['process_image_files'] = time.time() - process_image_files_start_time
-        logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-
-        # Create the vector store to use as the index
-        create_vector_store_start_time = time.time()
-        db = FAISS.from_documents(texts, embeddings)
-        # Save the embeddings to the specified folder
-        db.save_local(embedding_folder)
-        time_tracking['vectorrag_create_vector_store'] = time.time() - create_vector_store_start_time
-        logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-
-        # Save the markdown embeddings to the specified folder
-        create_markdown_embeddings_start_time = time.time()
-        create_markdown_embeddings(doc_processor.get_md_document(), markdown_embedding_folder)
-        time_tracking['vectorrag_create_markdown_embeddings'] = time.time() - create_markdown_embeddings_start_time
-        logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-
-        try:
-            # Generate and save document summary using the texts we created
-            logger.info("Generating document summary...")
-            generate_document_summary_start_time = time.time()
-            # By default, use the markdown document to generate the summary
-            generate_document_summary(texts, embedding_folder, doc_processor.get_md_document())
-            time_tracking['generate_document_summary'] = time.time() - generate_document_summary_start_time
-            logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-            logger.info("Document summary generated and saved successfully.")
-        except Exception as e:
-            logger.exception(f"Error generating document summary: {e}")
-            logger.info("Continuing without document summary...")
-
-    return time_tracking
+    return str(md_path), saved_images, markdown
 
 
-async def generate_LiteRAG_embedding(_doc, pdf_path, embedding_folder):
+def extract_pdf_content_to_markdown(
+    pdf_path: str | Path,
+    output_dir: str | Path,
+) -> Tuple[str, Dict[str, Image.Image]]:
     """
-    Generate LiteRAG embeddings for the document
+    Extract text and images from a PDF file and save them to the specified directory.
+
+    Args:
+        pdf_path: Path to the input PDF file
+        output_dir: Directory where images and markdown will be saved
+
+    Returns:
+        Tuple containing:
+        - Path to the saved markdown file
+        - Dictionary of image names and their PIL Image objects
+
+    Raises:
+        FileNotFoundError: If PDF file doesn't exist
+        OSError: If output directory cannot be created
+        Exception: For other processing errors
     """
-    config = load_config()
-    para = config['llm']
-    # file_hash = generate_course_id(pdf_path)
-    lite_embedding_folder = os.path.join(embedding_folder, 'lite_embedding')
-    # Check if all necessary files exist to load the embeddings
-    faiss_path = os.path.join(lite_embedding_folder, "index.faiss")
-    pkl_path = os.path.join(lite_embedding_folder, "index.pkl")
-    embeddings = get_embedding_models('lite', para)
-    if os.path.exists(faiss_path) and os.path.exists(pkl_path):
-        # Try to load existing txt file in graphrag_embedding folder
-        logger.info("LiteRAG embedding already exists. We can load existing embeddings...")
-    else:
-        # If embeddings don't exist, create them from raw text
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000,
-            chunk_overlap=200,
-            separators=["\n\n", "\n", " ", ""]
+    from marker.converters.pdf import PdfConverter
+    from marker.models import create_model_dict
+    from marker.output import text_from_rendered
+    from marker.settings import settings
+
+    # Validate input PDF exists
+    pdf_path = Path(pdf_path)
+    if not pdf_path.exists():
+        raise FileNotFoundError(f"PDF file not found: {pdf_path}")
+
+    # Create output directory
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        # Generate hash ID for the file
+        with open(pdf_path, 'rb') as f:
+            file_hash = hashlib.md5(f.read()).hexdigest()
+
+        # Initialize converter and process PDF
+        converter = PdfConverter(
+            artifact_dict=create_model_dict(),
         )
-        raw_text = "\n\n".join([page.get_text() for page in _doc])
-        chunks = text_splitter.create_documents([raw_text])
-        db = FAISS.from_documents(chunks, embeddings)
-        db.save_local(lite_embedding_folder)
+        rendered = converter(str(pdf_path))
+        text, _, images = text_from_rendered(rendered)
+
+        # Save markdown content with hash ID
+        md_path = output_dir / f"{file_hash}.md"
+        with open(md_path, "w", encoding="utf-8") as f:
+            f.write(text)
+        print(f"Saved markdown to: {md_path}")
+
+        # Save images
+        saved_images = {}
+        if images:
+            print(f"Saving {len(images)} images to {output_dir}")
+            for img_name, img in images.items():
+                try:
+                    # Create a valid filename from the image name
+                    safe_filename = "".join(c for c in img_name if c.isalnum() or c in ('-', '_', '.'))
+                    output_path = output_dir / safe_filename
+
+                    # Save the image
+                    img.save(output_path)
+                    saved_images[img_name] = img
+                    print(f"Saved image: {output_path}")
+                except Exception as e:
+                    logger.exception(f"Error saving image {img_name}: {str(e)}")
+        else:
+            print("No images found in the PDF")
+
+        # Save markdown file and images to Azure Blob Storage
+        upload_markdown_to_azure(output_dir)
+        upload_images_to_azure(output_dir)
+
+        # Extract image context
+        config = load_config()
+        chunk_size = config['embedding']['chunk_size']
+        extract_image_context(output_dir, chunk_size)
+
+        return str(md_path), saved_images, text
+
+    except Exception as e:
+        logger.exception(f"Error processing PDF: {str(e)}")
+        raise Exception(f"Error processing PDF: {str(e)}")

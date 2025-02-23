@@ -13,10 +13,12 @@ from langchain.schema import Document
 from pipeline.science.pipeline.config import load_config
 from pipeline.science.pipeline.utils import (
     get_llm,
-    get_embedding_models,
-    robust_search_for
+    robust_search_for,
 )
-from pipeline.science.pipeline.doc_processor import generate_embedding
+from pipeline.science.pipeline.embeddings import (
+    generate_embedding,
+    load_embeddings,
+)
 
 
 import logging
@@ -35,7 +37,6 @@ def get_response_source(mode, _doc, _document, pdf_path, user_input, answer, cha
     """
     config = load_config()
     para = config['llm']
-    embeddings = get_embedding_models('default', para)
 
     # Load image context
     image_context_path = os.path.join(embedding_folder, "markdown/image_context.json")
@@ -63,15 +64,11 @@ def get_response_source(mode, _doc, _document, pdf_path, user_input, answer, cha
         # Load existing embeddings
         # print("Loading existing embeddings...")
         logger.info("Loading existing embeddings...")
-        db = FAISS.load_local(
-            embedding_folder, embeddings, allow_dangerous_deserialization=True
-        )
+        db = load_embeddings(embedding_folder, 'default')
     else:
         print("No existing embeddings found, creating new ones...")
         generate_embedding(mode, _document, _doc, pdf_path, embedding_folder)
-        db = FAISS.load_local(
-            embedding_folder, embeddings, allow_dangerous_deserialization=True
-        )
+        db = load_embeddings(embedding_folder, 'default')
         # # Split the document into chunks, respecting page boundaries
         # print("Creating new embeddings...")
         # text_splitter = PageAwareTextSplitter(

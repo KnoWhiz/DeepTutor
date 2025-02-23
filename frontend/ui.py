@@ -11,7 +11,11 @@ import streamlit.components.v1 as components
 from streamlit_js_eval import streamlit_js_eval
 
 from frontend.utils import previous_page, next_page, close_pdf, chat_content, handle_follow_up_click
-from pipeline.science.pipeline.utils import find_pages_with_excerpts, get_highlight_info, translate_content
+from pipeline.science.pipeline.doc_processor import (
+    find_pages_with_excerpts,
+    get_highlight_info,
+)
+from pipeline.science.pipeline.utils import translate_content
 from frontend.forms.contact import contact_form
 from pipeline.science.pipeline.config import load_config
 from pipeline.science.pipeline.get_response import generate_follow_up_questions

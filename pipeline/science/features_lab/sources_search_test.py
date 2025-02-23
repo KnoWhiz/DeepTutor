@@ -16,7 +16,8 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 
 from pipeline.science.pipeline.config import load_config
-from pipeline.science.pipeline.utils import get_embedding_models, robust_search_for
+from pipeline.science.pipeline.utils import robust_search_for
+from pipeline.science.pipeline.embeddings import get_embedding_models
 # from frontend.state import state_process_pdf_file, extract_document_from_file
 
 def create_searchable_chunks(doc, chunk_size: int) -> list:

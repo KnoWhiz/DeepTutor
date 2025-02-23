@@ -78,19 +78,18 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
 
     if chat_session.mode == ChatMode.LITE:
         logger.info("Lite mode - using raw text only")
+        lite_embedding_start_time = time.time()
         if(literag_index_files_decompress(embedding_folder)):
             # Check if the LiteRAG index files are ready locally
             logger.info("LiteRAG embedding index files are ready.")
         else:
             # Files are missing and have been cleaned up
             save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
-            lite_embedding_start_time = time.time()
             logger.info("Lite embedding ...")
             await generate_embedding(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder)
         time_tracking['lite_embedding_total'] = time.time() - lite_embedding_start_time
         logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
         logger.info("Lite embedding done ...")
-
     elif chat_session.mode == ChatMode.BASIC:
         vectorrag_start_time = time.time()
         logger.info("Basic (VectorRAG) mode")
@@ -188,11 +187,13 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
 
     # Regular chat flow
     # Refine user input
-    query_start = time.time()
-    refined_user_input = get_query_helper(chat_session, user_input, context_chat_history, embedding_folder)
-    logger.info(f"Refined user input: {refined_user_input}")
-    time_tracking['query_refinement'] = time.time() - query_start
-    logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    refined_user_input = user_input
+    if chat_session.mode != ChatMode.LITE:
+        query_start = time.time()
+        refined_user_input = get_query_helper(chat_session, user_input, context_chat_history, embedding_folder)
+        logger.info(f"Refined user input: {refined_user_input}")
+        time_tracking['query_refinement'] = time.time() - query_start
+        logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Get response
     response_start = time.time()

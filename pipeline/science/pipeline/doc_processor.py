@@ -259,7 +259,7 @@ async def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder,
     return time_tracking
 
 
-def generate_LiteRAG_embedding(_doc, pdf_path, embedding_folder):
+async def generate_LiteRAG_embedding(_doc, pdf_path, embedding_folder):
     """
     Generate LiteRAG embeddings for the document
     """

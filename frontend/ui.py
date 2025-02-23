@@ -278,7 +278,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                                             st.session_state.annotations, st.session_state.react_annotations = get_highlight_info(doc, [source])
                     
                     # Then display follow-up questions
-                    if "follow_up_questions" in msg:
+                    if "follow_up_questions" in msg and msg["follow_up_questions"] != []:
                         st.write("\n\n**📝 Follow-up Questions:**")
                         for q_idx, question in enumerate(msg["follow_up_questions"], 1):
                             if st.button(f"{q_idx}. {question}", key=f"follow_up_{idx}_{q_idx}"):

@@ -38,7 +38,6 @@ from pipeline.science.pipeline.helper.index_files_saving import (
     graphrag_index_files_decompress,
     graphrag_index_files_compress,
     literag_index_files_decompress,
-    literag_index_files_compress
 )
 from pipeline.science.pipeline.graphrag_get_response import get_GraphRAG_global_response
 import logging

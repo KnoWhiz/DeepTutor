@@ -2,6 +2,26 @@ import os
 import shutil
 from pipeline.science.pipeline.helper.azure_blob import AzureBlobHelper
 from pipeline.science.pipeline.utils import file_check_list
+import logging
+logger = logging.getLogger("tutorpipeline.science.helper.index_files_saving")
+
+
+def literag_index_files_decompress(embedding_folder):
+    """
+    Function to decompress the LiteRAG index files and download them from Azure Blob Storage
+    :param embedding_folder: The path to the embedding folder
+    :return: True if the index files are ready now in embedding_folder, False otherwise
+    """
+    lite_embedding_folder = os.path.join(embedding_folder, "lite_embedding")
+    faiss_path = os.path.join(lite_embedding_folder, "index.faiss")
+    pkl_path = os.path.join(lite_embedding_folder, "index.pkl")
+    path_list = [faiss_path, pkl_path]
+    all_files_exist = True
+    for path in path_list:
+        if not os.path.exists(path):
+            all_files_exist = False
+            logger.info(f"Missing directory: {path}")
+    return all_files_exist
 
 
 def graphrag_index_files_check(embedding_folder):

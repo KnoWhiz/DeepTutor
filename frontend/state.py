@@ -43,6 +43,8 @@ def initialize_session_state(embedding_folder=None):
         st.session_state.chat_session.set_mode(ChatMode.BASIC)
     elif st.session_state.mode == "advanced":
         st.session_state.chat_session.set_mode(ChatMode.ADVANCED)
+    elif st.session_state.mode == "lite":
+        st.session_state.chat_session.set_mode(ChatMode.LITE)
     else:
         st.session_state.chat_session.set_mode(ChatMode.BASIC)
     

@@ -88,7 +88,7 @@ async def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder,
     elif _mode == ChatMode.LITE:
         logger.info("Mode: ChatMode.LITE. Generating LiteRAG embeddings...")
         lite_embedding_start_time = time.time()
-        await generate_LiteRAG_embedding(pdf_path, embedding_folder)
+        await generate_LiteRAG_embedding(_doc, pdf_path, embedding_folder)
         time_tracking['lite_embedding_total'] = time.time() - lite_embedding_start_time
         logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
         return time_tracking

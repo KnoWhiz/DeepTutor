@@ -1,31 +1,14 @@
 import os
 import json
-import fitz
-import asyncio
-import pandas as pd
-import re
 import time
 from typing import Dict
 from dotenv import load_dotenv
-
 from langchain_community.vectorstores import FAISS
-from langchain_core.runnables import RunnablePassthrough
-from langchain.chains import RetrievalQA, create_retrieval_chain
-from langchain_core.prompts import ChatPromptTemplate
-from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
-from langchain.output_parsers import OutputFixingParser
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
-
 from pipeline.science.pipeline.config import load_config
 from pipeline.science.pipeline.utils import (
-    count_tokens,
-    truncate_chat_history,
-    truncate_document,
-    get_llm,
     get_embedding_models,
-    extract_images_from_pdf,
     extract_pdf_content_to_markdown,
     extract_pdf_content_to_markdown_via_api,
     create_searchable_chunks,
@@ -36,11 +19,9 @@ from pipeline.science.pipeline.utils import (
 from pipeline.science.pipeline.images_understanding import initialize_image_files
 from pipeline.science.pipeline.graphrag_doc_processor import generate_GraphRAG_embedding
 from pipeline.science.pipeline.session_manager import ChatMode
-from pipeline.science.pipeline.utils import generate_course_id
-
+from pipeline.science.pipeline.get_doc_summary import generate_document_summary
 import logging
 logger = logging.getLogger("tutorpipeline.science.doc_processor")
-
 load_dotenv()
 # Control whether to use Marker API or not. Only for local environment we skip Marker API.
 SKIP_MARKER_API = True if os.getenv("ENVIRONMENT") == "local" else False
@@ -49,7 +30,7 @@ print(f"SKIP_MARKER_API: {SKIP_MARKER_API}")
 
 class mdDocumentProcessor:
     """
-    Class to handle document processing and maintain document state without ST dependency.
+    Class to handle markdown document extraction processing and maintain document state without ST dependency.
     """
     def __init__(self):
         self.md_document = ""
@@ -265,7 +246,7 @@ async def generate_LiteRAG_embedding(_doc, pdf_path, embedding_folder):
     """
     config = load_config()
     para = config['llm']
-    file_hash = generate_course_id(pdf_path)
+    # file_hash = generate_course_id(pdf_path)
     lite_embedding_folder = os.path.join(embedding_folder, 'lite_embedding')
     # Check if all necessary files exist to load the embeddings
     faiss_path = os.path.join(lite_embedding_folder, "index.faiss")
@@ -285,191 +266,3 @@ async def generate_LiteRAG_embedding(_doc, pdf_path, embedding_folder):
         chunks = text_splitter.create_documents([raw_text])
         db = FAISS.from_documents(chunks, embeddings)
         db.save_local(lite_embedding_folder)
-
-
-def generate_document_summary(_document, embedding_folder, md_document=None):
-    """
-    Generate a comprehensive markdown-formatted summary of the document using multiple LLM calls.
-    Documents can come from either processed PDFs or markdown files.
-    """
-    config = load_config()
-    para = config['llm']
-    llm = get_llm(para["level"], para)  # Using advanced model for better quality
-
-    # First try to get content from markdown document
-    combined_content = ""
-    if md_document:
-        print("Using provided markdown content...")
-        combined_content = md_document
-
-    # If no content in markdown document, fall back to document content
-    if not combined_content and _document:
-        print("Using document content as source...")
-        combined_content = "\n\n".join(doc.page_content for doc in _document)
-
-    if not combined_content:
-        raise ValueError("No content available from either markdown document or document")
-
-    # First generate the take-home message
-    takehome_prompt = """
-    Provide a single, impactful sentence that captures the most important takeaway from this document.
-
-    Guidelines:
-    - Be extremely concise and specific
-    - Focus on the main contribution or finding
-    - Use bold for key terms
-    - Keep it to one sentence
-    - Add a relevant emoji at the start of bullet points or the first sentence
-    - For inline formulas use single $ marks: $E = mc^2$
-    - For block formulas use double $$ marks:
-      $$
-      F = ma (just an example, may not be a real formula in the doc)
-      $$
-
-    Document: {document}
-    """
-    takehome_prompt = ChatPromptTemplate.from_template(takehome_prompt)
-    str_parser = StrOutputParser()
-    takehome_chain = takehome_prompt | llm | str_parser
-    takehome = takehome_chain.invoke({"document": truncate_document(combined_content)})
-
-    # Topics extraction
-    topics_prompt = """
-    Identify only the most essential topics/sections from this document.
-    Be extremely selective and concise - only include major components.
-
-    Return format:
-    {{"topics": ["topic1", "topic2", ...]}}
-
-    Guidelines:
-    - Include maximum 4-5 topics
-    - Focus only on critical sections
-    - Use short, descriptive names
-
-    Document: {document}
-    """
-    topics_prompt = ChatPromptTemplate.from_template(topics_prompt)
-    parser = JsonOutputParser()
-    error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
-    topics_chain = topics_prompt | llm | error_parser
-    topics_result = topics_chain.invoke({"document": truncate_document(combined_content)})
-
-    try:
-        topics = topics_result.get("topics", [])
-    except AttributeError:
-        print("Warning: Failed to get topics. Using default topics.")
-        topics = ["Overview", "Methods", "Results", "Discussion"]
-
-    # Generate overview
-    overview_prompt = """
-    Provide a clear and engaging overview using bullet points.
-
-    Guidelines:
-    - Use 3-4 concise bullet points
-    - **Bold** for key terms
-    - Each bullet point should be one short sentence
-    - For inline formulas use single $ marks: $E = mc^2$
-    - For block formulas use double $$ marks:
-      $$
-      F = ma (just an example, may not be a real formula in the doc)
-      $$
-
-    Document: {document}
-    """
-    overview_prompt = ChatPromptTemplate.from_template(overview_prompt)
-    overview_chain = overview_prompt | llm | str_parser
-    overview = overview_chain.invoke({"document": truncate_document(combined_content)})
-
-    # Generate summaries for each topic
-    summaries = []
-    for topic in topics:
-        topic_prompt = """
-        Provide an engaging summary for the topic "{topic}" using bullet points.
-
-        Guidelines:
-        - Use 2-3 bullet points
-        - Each bullet point should be one short sentence
-        - **Bold** for key terms
-        - Use simple, clear language
-        - Include specific metrics only if crucial
-        - For inline formulas use single $ marks: $E = mc^2$
-        - For block formulas use double $$ marks:
-          $$
-          F = ma (just an example, may not be a real formula in the doc)
-          $$
-
-        Document: {document}
-        """
-        topic_prompt = ChatPromptTemplate.from_template(topic_prompt)
-        topic_chain = topic_prompt | llm | str_parser
-        topic_summary = topic_chain.invoke({
-            "topic": topic,
-            "document": truncate_document(combined_content)
-        })
-        summaries.append((topic, topic_summary))
-
-    # Combine everything into markdown format with welcome message and take-home message
-    markdown_summary = f"""### 👋 Welcome to DeepTutor!
-
-I'm your AI tutor 🤖 ready to help you understand this document.
-
-### 💡 Key Takeaway
-{takehome}
-
-### 📚 Document Overview
-{overview}
-
-"""
-
-    # Add emojis for common topic titles
-    topic_emojis = {
-        "introduction": "📖",
-        "overview": "🔎",
-        "background": "📚",
-        "methods": "🔬",
-        "methodology": "🔬", 
-        "results": "📊",
-        "discussion": "💭",
-        "conclusion": "🎯",
-        "future work": "🔮",
-        "implementation": "⚙️",
-        "evaluation": "📈",
-        "analysis": "🔍",
-        "design": "✏️",
-        "architecture": "🏗️",
-        "experiments": "🧪",
-        "related work": "🔗",
-        "motivation": "💪",
-        "approach": "🎯",
-        "system": "🖥️",
-        "framework": "🔧",
-        "model": "🤖",
-        "data": "📊",
-        "algorithm": "⚡",
-        "performance": "⚡",
-        "limitations": "⚠️",
-        "applications": "💡",
-        "default": "📌" # Default emoji for topics not in the mapping
-    }
-
-    for topic, summary in summaries:
-        # Get emoji based on topic, defaulting to 📌 if not found
-        topic_lower = topic.lower()
-        emoji = next((v for k, v in topic_emojis.items() if k in topic_lower), topic_emojis["default"])
-
-        markdown_summary += f"""### {emoji} {topic}
-{summary}
-
-"""
-
-    markdown_summary += """
----
-### 💬 Ask Me Anything!
-Feel free to ask me any questions about the document! I'm here to help! ✨
-"""
-
-    document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
-    with open(document_summary_path, "w", encoding='utf-8') as f:
-        f.write(markdown_summary)
-
-    return markdown_summary

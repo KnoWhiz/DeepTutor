@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from langchain_community.vectorstores import FAISS
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
+
 from pipeline.science.pipeline.config import load_config
 from pipeline.science.pipeline.utils import (
     get_embedding_models,
@@ -19,16 +20,14 @@ from pipeline.science.pipeline.utils import (
 from pipeline.science.pipeline.images_understanding import initialize_image_files
 from pipeline.science.pipeline.graphrag_doc_processor import generate_GraphRAG_embedding
 from pipeline.science.pipeline.session_manager import ChatMode
-from pipeline.science.pipeline.get_doc_summary import generate_document_summary
-from pipeline.science.pipeline.embeddings import generate_embedding, mdDocumentProcessor
+
 import logging
-logger = logging.getLogger("tutorpipeline.science.doc_processor")
+logger = logging.getLogger("tutorpipeline.science.embeddings")
 load_dotenv()
+
 # Control whether to use Marker API or not. Only for local environment we skip Marker API.
 SKIP_MARKER_API = True if os.getenv("ENVIRONMENT") == "local" else False
 print(f"SKIP_MARKER_API: {SKIP_MARKER_API}")
-
-__all__ = ['generate_embedding', 'mdDocumentProcessor']
 
 
 class mdDocumentProcessor:
@@ -232,6 +231,7 @@ async def generate_embedding(_mode, _document, _doc, pdf_path, embedding_folder,
             logger.info("Generating document summary...")
             generate_document_summary_start_time = time.time()
             # By default, use the markdown document to generate the summary
+            from pipeline.science.pipeline.get_doc_summary import generate_document_summary
             generate_document_summary(texts, embedding_folder, doc_processor.get_md_document())
             time_tracking['generate_document_summary'] = time.time() - generate_document_summary_start_time
             logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
@@ -250,22 +250,4 @@ async def generate_LiteRAG_embedding(_doc, pdf_path, embedding_folder):
     config = load_config()
     para = config['llm']
     # file_hash = generate_course_id(pdf_path)
-    lite_embedding_folder = os.path.join(embedding_folder, 'lite_embedding')
-    # Check if all necessary files exist to load the embeddings
-    faiss_path = os.path.join(lite_embedding_folder, "index.faiss")
-    pkl_path = os.path.join(lite_embedding_folder, "index.pkl")
-    embeddings = get_embedding_models('lite', para)
-    if os.path.exists(faiss_path) and os.path.exists(pkl_path):
-        # Try to load existing txt file in graphrag_embedding folder
-        logger.info("LiteRAG embedding already exists. We can load existing embeddings...")
-    else:
-        # If embeddings don't exist, create them from raw text
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000,
-            chunk_overlap=200,
-            separators=["\n\n", "\n", " ", ""]
-        )
-        raw_text = "\n\n".join([page.get_text() for page in _doc])
-        chunks = text_splitter.create_documents([raw_text])
-        db = FAISS.from_documents(chunks, embeddings)
-        db.save_local(lite_embedding_folder)
+    lite_embedding_folder = os.path.join(embedding_folder, 'lite_embedding') 

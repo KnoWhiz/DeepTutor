@@ -15,9 +15,7 @@ from pipeline.science.pipeline.utils import (
     responses_refine,
     detect_language,
 )
-from pipeline.science.pipeline.doc_processor import (
-    generate_embedding,
-)
+from pipeline.science.pipeline.embeddings import generate_embedding
 from pipeline.science.pipeline.inference import deepseek_inference
 from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
 from pipeline.science.pipeline.graphrag_get_response import get_GraphRAG_global_response

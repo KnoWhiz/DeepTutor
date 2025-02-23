@@ -11,11 +11,10 @@ from pipeline.science.pipeline.utils import (
     truncate_chat_history,
     get_llm,
     get_embedding_models,
+    responses_refine,
 )
-from pipeline.science.pipeline.doc_processor import (
-    generate_embedding,
-)
-from pipeline.science.pipeline.session_manager import ChatSession
+from pipeline.science.pipeline.embeddings import generate_embedding
+from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
 import logging
 logger = logging.getLogger("tutorpipeline.science.get_rag_response")
 

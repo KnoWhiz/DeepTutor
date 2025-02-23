@@ -26,5 +26,34 @@
     "languages_short": {
         "en": "English",
         "zh": "Chinese"
+    },
+    "topic_emojis": {
+        "introduction": "📖",
+        "overview": "🔎",
+        "background": "📚",
+        "methods": "🔬",
+        "methodology": "🔬", 
+        "results": "📊",
+        "discussion": "💭",
+        "conclusion": "🎯",
+        "future work": "🔮",
+        "implementation": "⚙️",
+        "evaluation": "📈",
+        "analysis": "🔍",
+        "design": "✏️",
+        "architecture": "🏗️",
+        "experiments": "🧪",
+        "related work": "🔗",
+        "motivation": "💪",
+        "approach": "🎯",
+        "system": "🖥️",
+        "framework": "🔧",
+        "model": "🤖",
+        "data": "📊",
+        "algorithm": "⚡",
+        "performance": "⚡",
+        "limitations": "⚠️",
+        "applications": "💡",
+        "default": "📌"
     }
 }

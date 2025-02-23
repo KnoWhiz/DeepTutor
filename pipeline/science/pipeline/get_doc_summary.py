@@ -13,13 +13,12 @@ from pipeline.science.pipeline.utils import (
 from pipeline.science.pipeline.doc_processor import process_pdf_file
 from pipeline.science.pipeline.get_rag_response import get_standard_rag_response
 from pipeline.science.pipeline.api_handler import ApiHandler
-from pipeline.science.pipeline.embeddings import get_embedding_models
 import logging
 logger = logging.getLogger("tutorpipeline.science.get_doc_summary")
 load_dotenv()
 
 
-def generate_document_summary(file_path, embedding_folder, md_document=None):
+async def generate_document_summary(file_path, embedding_folder, md_document=None):
     """
     Given a file path, generate a comprehensive markdown-formatted summary of the document using multiple LLM calls.
     The document can be a PDF file or a markdown file.
@@ -30,8 +29,8 @@ def generate_document_summary(file_path, embedding_folder, md_document=None):
     para = config['llm']
     llm = get_llm(para["level"], para)  # Using advanced model for better quality
     api = ApiHandler(para)
-    max_tokens = int(api.models['advance']['context_window']/1.5)
-    max_tokens = int(65536/3)
+    max_tokens = int(api.models['advance']['context_window']/2)
+    # max_tokens = int(65536/3)
     default_topics = config['default_topics']
 
     # First try to get content from markdown document

@@ -52,13 +52,17 @@ async def get_standard_rag_response(
     parser = StrOutputParser()
     error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
 
-    # Handle different embedding folders based on type
-    if chat_session.mode == ChatMode.LITE:
-        actual_embedding_folder = os.path.join(embedding_folder, 'lite_embedding')
-    elif chat_session.mode == ChatMode.BASIC or chat_session.mode == ChatMode.ADVANCED:
+    try:
+        # Handle different embedding folders based on type
+        if chat_session.mode == ChatMode.LITE:
+            actual_embedding_folder = os.path.join(embedding_folder, 'lite_embedding')
+        elif chat_session.mode == ChatMode.BASIC or chat_session.mode == ChatMode.ADVANCED:
+            actual_embedding_folder = os.path.join(embedding_folder, 'markdown')
+        else:
+            actual_embedding_folder = embedding_folder
+    except Exception as e:
+        logger.exception(f"Failed to load session mode: {str(e)}")
         actual_embedding_folder = os.path.join(embedding_folder, 'markdown')
-    else:
-        actual_embedding_folder = embedding_folder
 
     try:
         db = load_embeddings(actual_embedding_folder, embedding_type)

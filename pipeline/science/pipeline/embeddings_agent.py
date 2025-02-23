@@ -217,7 +217,7 @@ async def embeddings_agent(_mode, _document, _doc, pdf_path, embedding_folder, t
             logger.info("Generating document summary...")
             generate_document_summary_start_time = time.time()
             # By default, use the markdown document to generate the summary
-            generate_document_summary(texts, embedding_folder, doc_processor.get_md_document())
+            await generate_document_summary(texts, embedding_folder, doc_processor.get_md_document())
             time_tracking['generate_document_summary'] = time.time() - generate_document_summary_start_time
             logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
             logger.info("Document summary generated and saved successfully.")

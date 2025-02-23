@@ -16,9 +16,9 @@ from pipeline.science.pipeline.utils import (
     robust_search_for,
 )
 from pipeline.science.pipeline.embeddings import (
-    generate_embedding,
     load_embeddings,
 )
+from pipeline.science.pipeline.embeddings_agent import embeddings_agent
 
 
 import logging
@@ -67,7 +67,7 @@ def get_response_source(mode, _doc, _document, pdf_path, user_input, answer, cha
         db = load_embeddings(embedding_folder, 'default')
     else:
         print("No existing embeddings found, creating new ones...")
-        generate_embedding(mode, _document, _doc, pdf_path, embedding_folder)
+        embeddings_agent(mode, _document, _doc, pdf_path, embedding_folder)
         db = load_embeddings(embedding_folder, 'default')
         # # Split the document into chunks, respecting page boundaries
         # print("Creating new embeddings...")

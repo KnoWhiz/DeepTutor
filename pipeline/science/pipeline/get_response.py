@@ -20,7 +20,7 @@ from pipeline.science.pipeline.embeddings import (
 )
 from pipeline.science.pipeline.inference import deepseek_inference
 from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
-from pipeline.science.pipeline.graphrag_get_response import get_GraphRAG_global_response
+from pipeline.science.pipeline.get_graphrag_response import get_GraphRAG_global_response
 from pipeline.science.pipeline.get_rag_response import get_standard_rag_response
 import logging
 logger = logging.getLogger("tutorpipeline.science.get_response")

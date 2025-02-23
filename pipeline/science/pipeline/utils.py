@@ -33,7 +33,7 @@ logger = logging.getLogger("tutorpipeline.science.utils")
 load_dotenv()
 # Control whether to use Marker API or not. Only for local environment we skip Marker API.
 SKIP_MARKER_API = True if os.getenv("ENVIRONMENT") == "local" else False
-print(f"SKIP_MARKER_API: {SKIP_MARKER_API}")
+logger.info(f"SKIP_MARKER_API: {SKIP_MARKER_API}")
 
 
 if SKIP_MARKER_API:

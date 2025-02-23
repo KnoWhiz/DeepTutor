@@ -3,7 +3,6 @@ import json
 import time
 from typing import Dict
 
-from pipeline.science.pipeline.config import load_config
 from pipeline.science.pipeline.utils import (
     translate_content,
     generate_course_id,
@@ -22,7 +21,7 @@ from pipeline.science.pipeline.helper.index_files_saving import (
     graphrag_index_files_compress,
     literag_index_files_decompress,
 )
-from pipeline.science.pipeline.embeddings import generate_embedding
+from pipeline.science.pipeline.embeddings_agent import embeddings_agent
 from pipeline.science.pipeline.get_response import (
     get_query_helper,
     get_response,
@@ -78,7 +77,7 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
             # Files are missing and have been cleaned up
             save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
             logger.info("Lite embedding ...")
-            await generate_embedding(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder)
+            await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder)
         time_tracking['lite_embedding_total'] = time.time() - lite_embedding_start_time
         logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
         logger.info("Lite embedding done ...")
@@ -92,14 +91,14 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
         else:
             # Files are missing and have been cleaned up
             save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
-            time_tracking = await generate_embedding(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
+            time_tracking = await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
             logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
             if(vectorrag_index_files_compress(embedding_folder)):
                 logger.info("VectorRAG index files are ready and uploaded to Azure Blob Storage.")
             else:
                 # Retry once if first attempt fails
                 save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
-                time_tracking = await generate_embedding(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
+                time_tracking = await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
                 logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
                 if(vectorrag_index_files_compress(embedding_folder)):
                     logger.info("VectorRAG index files are ready and uploaded to Azure Blob Storage.")
@@ -115,7 +114,7 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
         else:
             # Files are missing and have been cleaned up
             save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
-            time_tracking = await generate_embedding(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
+            time_tracking = await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
             logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
             # asyncio.run(generate_GraphRAG_embedding(embedding_folder=embedding_folder))
             if(graphrag_index_files_compress(embedding_folder)):
@@ -123,7 +122,7 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
             else:
                 # Retry once if first attempt fails
                 save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
-                time_tracking = await generate_embedding(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
+                time_tracking = await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
                 logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
                 # asyncio.run(generate_GraphRAG_embedding(embedding_folder=embedding_folder))
                 if(graphrag_index_files_compress(embedding_folder)):

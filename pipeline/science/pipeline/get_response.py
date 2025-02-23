@@ -100,8 +100,6 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, us
         logger.info("deep thinking ...")
         # Load config and embeddings for deep thinking mode
         config = load_config()
-        para = config['llm']
-        embeddings = get_embedding_models('default', para)
         
         try:
             logger.info(f"Loading markdown embeddings from {os.path.join(embedding_folder, 'markdown')}")

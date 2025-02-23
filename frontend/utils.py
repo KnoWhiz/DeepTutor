@@ -1,7 +1,8 @@
 import streamlit as st
 import asyncio
 from pipeline.science.pipeline.chat_history_manager import save_chat_history
-from pipeline.science.pipeline.get_response import tutor_agent, generate_follow_up_questions
+from pipeline.science.pipeline.tutor_agent import tutor_agent
+from pipeline.science.pipeline.get_response import generate_follow_up_questions
 
 
 def streamlit_tutor_agent(chat_session, file_path, user_input):

@@ -202,5 +202,4 @@ def generate_document_summary(file_path, embedding_folder, md_document=None):
         takehome = takehome_chain.invoke({"document": truncate_document(combined_content)})
 
         # Generate overview
-        overview_prompt = ChatPromptTemplate.from_template(overview_prompt)
         

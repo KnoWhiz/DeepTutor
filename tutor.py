@@ -10,7 +10,7 @@ from frontend.ui import setup_page_config
 # Set page configuration
 setup_page_config()
 
-from pipeline.science.pipeline.get_response import (
+from pipeline.science.pipeline.tutor_agent import (
     tutor_agent,
 )
 

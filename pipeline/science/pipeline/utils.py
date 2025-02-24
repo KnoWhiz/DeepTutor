@@ -160,10 +160,10 @@ def truncate_chat_history(chat_history, model_name='gpt-4o'):
         model_level = 'advance'
     else:
         model_level = 'basic'
-    max_tokens = int(api.models[model_level]['context_window']/20)
+    max_tokens = int(api.models[model_level]['context_window']/3)
     total_tokens = 0
     truncated_history = []
-    for message in chat_history:
+    for message in (chat_history[::-1])[1:]:
         if(message['role'] == 'assistant' or message['role'] == 'user'):
             temp_message = {}
             temp_message['role'] = message['role']
@@ -176,7 +176,7 @@ def truncate_chat_history(chat_history, model_name='gpt-4o'):
             total_tokens += message_tokens
     
     # Reverse the order of the truncated history
-    truncated_history = truncated_history[::-1]
+    # truncated_history = truncated_history[::-1]
     logger.info(f"truncated_history: {truncated_history}")
     return truncated_history
 

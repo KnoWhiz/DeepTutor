@@ -191,13 +191,14 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                 initial_message,\
                 sources,\
                 source_pages,\
-                source_react_annotations,\
+                source_annotations,\
                 refined_source_pages,\
                 follow_up_questions = streamlit_tutor_agent(
                     chat_session=st.session_state.chat_session,
                     file_path=file_path,
                     user_input=None
                 )
+                st.session_state.source_annotations = source_annotations
                 # Convert sources to dict if it's a list (for backward compatibility)
                 if isinstance(sources, list):
                     sources = {source: 1.0 for source in sources}  # Assign max relevance to initial sources
@@ -215,7 +216,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                         "role": "source_buttons",
                         "sources": sources,
                         "pages": refined_source_pages,
-                        "react_annotations": source_react_annotations,
+                        "annotations": source_annotations,
                         "timestamp": len(st.session_state.chat_history)
                     })
                 # Save chat history
@@ -271,7 +272,8 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                                         if st.button(to_emoji_number(src_idx), key=f"source_btn_{idx}_{src_idx}", use_container_width=True):
                                             st.session_state.current_page = page_num
                                             # Display the highlight info for that single source button
-                                            st.session_state.annotations, st.session_state.react_annotations = get_highlight_info(doc, [source])
+                                            # st.session_state.annotations, st.session_state.react_annotations = get_highlight_info(doc, [source])
+                                            st.session_state.annotations = st.session_state.source_annotations[source]
                     
                     # Then display follow-up questions
                     if "follow_up_questions" in msg and msg["follow_up_questions"] != []:
@@ -298,13 +300,14 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                     answer,\
                     sources,\
                     source_pages,\
-                    source_react_annotations,\
+                    source_annotations,\
                     refined_source_pages,\
                     follow_up_questions = streamlit_tutor_agent(
                         chat_session=st.session_state.chat_session,
                         file_path=file_path,
                         user_input=user_input
                     )
+                    st.session_state.source_annotations = source_annotations
 
                     # Convert sources to dict if it's a list (for backward compatibility)
                     if isinstance(sources, list):
@@ -327,7 +330,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                         "role": "source_buttons",
                         "sources": sources,
                         "pages": refined_source_pages,
-                        "react_annotations": source_react_annotations,
+                        "annotations": st.session_state.source_annotations,
                         "timestamp": len(st.session_state.chat_history)
                     })
 
@@ -370,7 +373,10 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                                         ):
                                             if st.button(to_emoji_number(idx), key=f"source_btn_{idx}_current", use_container_width=True):
                                                 st.session_state.current_page = page_num
-                                                st.session_state.annotations, st.session_state.react_annotations = get_highlight_info(doc, [source])
+                                                # st.session_state.annotations, st.session_state.react_annotations = get_highlight_info(doc, [source])
+                                                # i = list(sources.keys()).index(source)
+                                                st.session_state.annotations = st.session_state.source_annotations[source]
+                                                # print(f"type of st.session_state.annotations: {type(st.session_state.annotations)}")
                         
                         # Then display follow-up questions
                         st.write("\n\n**📝 Follow-up Questions:**")
@@ -389,7 +395,10 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                 if "current_page" not in st.session_state:
                     st.session_state.current_page = 1
                 if st.session_state.get("sources"):
-                    st.session_state.annotations, st.session_state.react_annotations = get_highlight_info(doc, list(st.session_state.sources.keys()))
+                    # st.session_state.annotations, st.session_state.react_annotations = get_highlight_info(doc, list(st.session_state.sources.keys()))
+                    # i = list(st.session_state.sources.keys()).index(source)
+                    st.session_state.annotations = st.session_state.source_annotations[source]
+                    # print(f"type of st.session_state.annotations: {type(st.session_state.annotations)}")
 
 
 # Function to display the pdf viewer

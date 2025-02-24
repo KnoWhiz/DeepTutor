@@ -56,11 +56,11 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, us
         # For lite mode, we return empty containers for sources and follow-up questions
         sources = {}
         source_pages = {}
-        source_react_annotations = []
+        source_annotations = {}
         refined_source_pages = {}
         follow_up_questions = []
         
-        return answer, sources, source_pages, source_react_annotations, refined_source_pages, follow_up_questions
+        return answer, sources, source_pages, source_annotations, refined_source_pages, follow_up_questions
 
     # Handle advanced mode
     if chat_session.mode == ChatMode.ADVANCED:

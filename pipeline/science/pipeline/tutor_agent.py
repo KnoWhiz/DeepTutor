@@ -162,14 +162,14 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
         )
         sources = {}  # Return empty dictionary for sources
         source_pages = {}
-        source_react_annotations = []
+        source_annotations = {}
         refined_source_pages = {}
         if chat_session.mode != ChatMode.LITE:
             follow_up_questions = generate_follow_up_questions(answer, [])
         else:
             follow_up_questions = []
 
-        return answer, sources, source_pages, source_react_annotations, refined_source_pages, follow_up_questions
+        return answer, sources, source_pages, source_annotations, refined_source_pages, follow_up_questions
 
     time_tracking['summary_message'] = time.time() - initial_message_start_time
     logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
@@ -253,10 +253,10 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
                 answer += "\n"
                 answer += f"![]({image_url})"
 
-    source_react_annotations = []
+    source_annotations = {}
     for source, _ in sources.items():
-        react_annotations = get_highlight_info(_doc, [source])
-        source_react_annotations.extend(react_annotations)
+        annotations, _ = get_highlight_info(_doc, [source])
+        source_annotations[source] = annotations
     time_tracking['annotations'] = time.time() - annotations_start
     logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
@@ -268,4 +268,4 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
     follow_up_questions = generate_follow_up_questions(answer, chat_history)
     time_tracking['followup_questions'] = time.time() - followup_start
     logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-    return answer, sources, source_pages, source_react_annotations, refined_source_pages, follow_up_questions
+    return answer, sources, source_pages, source_annotations, refined_source_pages, follow_up_questions

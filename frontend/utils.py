@@ -11,7 +11,7 @@ def streamlit_tutor_agent(chat_session, file_path, user_input):
     initial_message,\
     sources,\
     source_pages,\
-    source_react_annotations,\
+    source_annotations,\
     refined_source_pages,\
     follow_up_questions = asyncio.run(tutor_agent(
         chat_session=chat_session,
@@ -19,7 +19,7 @@ def streamlit_tutor_agent(chat_session, file_path, user_input):
         user_input=user_input,
         deep_thinking=True
     ))
-    return initial_message, sources, source_pages, source_react_annotations, refined_source_pages, follow_up_questions
+    return initial_message, sources, source_pages, source_annotations, refined_source_pages, follow_up_questions
 
 
 # Function to display the pdf
@@ -64,7 +64,7 @@ def chat_content():
             answer,\
             sources,\
             source_pages,\
-            source_react_annotations,\
+            source_annotations,\
             refined_source_pages,\
             follow_up_questions = streamlit_tutor_agent(
                 chat_session=st.session_state.chat_session,

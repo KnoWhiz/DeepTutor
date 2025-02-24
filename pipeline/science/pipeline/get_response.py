@@ -65,7 +65,7 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, us
     # Handle Advanced mode
     if chat_session.mode == ChatMode.ADVANCED:
         try:
-            answer = await get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embedding_folder)
+            answer = await get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embedding_folder, deep_thinking)
             return answer
         except Exception as e:
             logger.exception("Error getting response from GraphRAG:", e)

@@ -272,13 +272,19 @@ def translate_content(content: str, target_lang: str) -> str:
     # Create translation prompt
     system_prompt = """
     You are a professional translator.
-    Translate the following content to {target_lang} language.
+    Translate the following entire content to {target_lang} language.
     Maintain the meaning and original formatting, including markdown syntax, LaTeX formulas, and emojis.
     Only translate the text content - do not modify any formatting, code, or special syntax.
     """
 
+    system_prompt = """
+    你是一个专业的英文到中文的翻译者。
+    """
+
     human_prompt = """
-    Content to translate:
+    你是一个专业的英文到中文的翻译者。
+    将以下内容全部翻译成中文，包括标题在内的每一句话
+    并返回翻译后的中文版本内容：
     {content}
     """
 

@@ -85,8 +85,8 @@ def show_mode_option():
             options=["Lite", "Basic", "Advanced"],
             help="""
             - Lite: Process raw text only (fastest)
-            - Basic: Standard processing (faster)
-            - Advanced: Enhanced processing (slower but more accurate)
+            - Basic: Agentic processing with Markdown extraction, image understanding, DeepSeek R1 deep thinking, and document summarization (standard)
+            - Advanced: In addition to Basic, add enhanced GraphRAG for better document understanding (slower but more accurate)
             """,
             index=mode_index
         )

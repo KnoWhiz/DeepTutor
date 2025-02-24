@@ -13,7 +13,11 @@ Create environment and install required packages
 ```bash
 conda create --name deeptutor python=3.12
 conda activate deeptutor
-pip install -U -r requirements.txt
+pip install -r requirements.txt
+# Install AgentChat and OpenAI client from Extensions
+pip install -U "autogen-agentchat" "autogen-ext[openai]"
+# Install AutoGen Studio for no-code GUI
+pip install -U "autogenstudio"
 ```
 
 ## Set OPENAI_API_KEY

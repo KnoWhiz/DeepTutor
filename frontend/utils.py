@@ -50,60 +50,6 @@ def file_changed():
         del st.session_state[key]
 
 
-# Function to handle chat content
-def chat_content():
-    """Handle chat input submission."""
-    if st.session_state.user_input and st.session_state.user_input.strip():
-        user_input = st.session_state.user_input
-        
-        # Add user message to chat history
-        st.session_state.chat_session.chat_history.append({"role": "user", "content": user_input})
-        
-        try:
-            # Get response
-            answer,\
-            sources,\
-            source_pages,\
-            source_annotations,\
-            refined_source_pages,\
-            follow_up_questions = streamlit_tutor_agent(
-                chat_session=st.session_state.chat_session,
-                file_path=st.session_state.file_path,
-                user_input=user_input
-            )
-            
-            # Convert sources to dict if it's a list (for backward compatibility)
-            if isinstance(sources, list):
-                sources = {source: 1.0 for source in sources}
-            
-            # Generate follow-up questions for new response
-            follow_up_questions = generate_follow_up_questions(answer, st.session_state.chat_session.chat_history)
-            
-            # Add assistant response to chat history
-            st.session_state.chat_session.chat_history.append({
-                "role": "assistant",
-                "content": answer,
-                "follow_up_questions": follow_up_questions
-            })
-            
-            if sources:
-                st.session_state.chat_session.chat_history.append({
-                    "role": "source_buttons",
-                    "sources": sources,
-                    "pages": source_pages,
-                    "timestamp": len(st.session_state.chat_session.chat_history)
-                })
-            
-            # Clear input
-            st.session_state.user_input = ""
-            
-        except Exception as e:
-            st.error(f"An error occurred while processing your message: {str(e)}")
-            # Remove the failed message from history
-            if st.session_state.chat_session.chat_history:
-                st.session_state.chat_session.chat_history.pop()
-
-
 # Function to handle follow-up question clicks
 def handle_follow_up_click(chat_session: ChatSession, question: str):
     """Handle when a user clicks on a follow-up question.

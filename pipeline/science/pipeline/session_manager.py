@@ -15,9 +15,9 @@ from .chat_history_manager import (
 
 class ChatMode(Enum):
     """Enum for different chat modes."""
-    LITE = "lite"
-    BASIC = "basic"
-    ADVANCED = "advanced"
+    LITE = "Lite"
+    BASIC = "Basic"
+    ADVANCED = "Advanced"
 
 
 @dataclass
@@ -29,7 +29,7 @@ class ChatSession:
 
     Attributes:
         session_id: Unique identifier for the session
-        mode: Current chat mode (basic or advanced)
+        mode: Current chat mode (Basic or Advanced)
         chat_history: List of chat messages
         uploaded_files: Set of uploaded file paths
         current_language: Current programming language context

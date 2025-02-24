@@ -45,7 +45,7 @@ if not SKIP_AUTH:
     show_auth()
 
 if st.session_state['isAuth']:
-    # Set up basic page configuration and header
+    # Set up Basic page configuration and header
     show_auth_top()
     show_header()
 

@@ -10,7 +10,6 @@ from streamlit_extras.stylable_container import stylable_container
 from frontend.utils import (
     previous_page,
     next_page,
-    chat_content,
     handle_follow_up_click
 )
 from frontend.forms.contact import contact_form
@@ -83,7 +82,7 @@ def show_mode_option():
         mode_index = 0
         current_mode = st.radio(
             "Choose a mode:",
-            options=["lite", "basic", "advanced"],
+            options=["Lite", "Basic", "Advanced"],
             help="""
             - Lite: Process raw text only (fastest)
             - Basic: Standard processing (faster)
@@ -93,9 +92,9 @@ def show_mode_option():
         )
         st.session_state.mode = current_mode
         if 'chat_session' in st.session_state:
-            if current_mode == "advanced":
+            if current_mode == "Advanced":
                 st.session_state.chat_session.set_mode(ChatMode.ADVANCED)
-            elif current_mode == "basic":
+            elif current_mode == "Basic":
                 st.session_state.chat_session.set_mode(ChatMode.BASIC)
             else:
                 st.session_state.chat_session.set_mode(ChatMode.LITE)
@@ -181,7 +180,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
         float_init(theme=True, include_unstable_primary=False)
         user_input = st.chat_input(key='user_input')
         if user_input:
-            chat_content()
+            st.session_state.chat_session.chat_history.append({"role": "user", "content": user_input})
         button_b_pos = "1.2rem"
         button_css = float_css_helper(width="1.2rem", bottom=button_b_pos, transition=0)
         float_parent(css=button_css)
@@ -191,7 +190,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
     with chat_container:
         # Generate initial welcome message if chat history is empty
         if not st.session_state.chat_session.chat_history:
-            with st.spinner("Loading document summary..."):
+            with st.spinner("Generating deep document understanding..."):
                 initial_message,\
                 sources,\
                 source_pages,\
@@ -300,7 +299,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
 
         # If we have input to process
         if user_input:
-            with st.spinner("Generating response..."):
+            with st.spinner("Generating deep agentic response..."):
                 try:
                     # Get response
                     answer,\

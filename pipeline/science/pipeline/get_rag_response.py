@@ -37,7 +37,7 @@ async def get_standard_rag_response(
         user_input: The user's query
         chat_history: The conversation history (can be empty string)
         embedding_folder: Path to the folder containing embeddings
-        embedding_type: Type of embedding model to use ('default' or 'lite')
+        embedding_type: Type of embedding model to use ('default' or 'Lite')
         chat_session: Optional ChatSession object for generating embeddings if needed
         doc: Optional document dict for generating embeddings if needed
         document: Optional document dict for generating embeddings if needed
@@ -48,7 +48,7 @@ async def get_standard_rag_response(
     """
     config = load_config()
     para = config['llm']
-    llm = get_llm('basic', para)
+    llm = get_llm('Basic', para)
     parser = StrOutputParser()
     error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
 

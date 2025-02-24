@@ -27,7 +27,7 @@ async def generate_document_summary(file_path, embedding_folder, md_document=Non
     """
     config = load_config()
     para = config['llm']
-    llm = get_llm(para["level"], para)  # Using advanced model for better quality
+    llm = get_llm(para["level"], para)  # Using Advanced model for better quality
     api = ApiHandler(para)
     max_tokens = int(api.models['advance']['context_window']/2)
     # max_tokens = int(65536/3)

@@ -27,7 +27,7 @@ logger = logging.getLogger("tutorpipeline.science.get_response")
 
 
 async def get_response(chat_session: ChatSession, _doc, _document, file_path, user_input, chat_history, embedding_folder, deep_thinking = False):
-    # Handle lite mode first
+    # Handle Lite mode first
     if chat_session.mode == ChatMode.LITE:
         lite_prompt = """You are a helpful tutor assisting with document understanding.
             Use the given context to answer the question.
@@ -46,14 +46,14 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, us
             user_input=user_input,
             chat_history=chat_history,
             embedding_folder=embedding_folder,
-            embedding_type='lite',
+            embedding_type='Lite',
             chat_session=chat_session,
             doc=_doc,
             document=_document,
             file_path=file_path
         )
         
-        # For lite mode, we return empty containers for sources and follow-up questions
+        # For Lite mode, we return empty containers for sources and follow-up questions
         sources = {}
         source_pages = {}
         source_annotations = {}
@@ -62,7 +62,7 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, us
         
         return answer, sources, source_pages, source_annotations, refined_source_pages, follow_up_questions
 
-    # Handle advanced mode
+    # Handle Advanced mode
     if chat_session.mode == ChatMode.ADVANCED:
         try:
             answer = await get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embedding_folder)
@@ -72,7 +72,7 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, us
             import traceback
             traceback.print_exc()
 
-    # Handle basic mode
+    # Handle Basic mode
     if not deep_thinking:
         logger.info("not deep thinking ...")
         basic_prompt = """
@@ -148,7 +148,7 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
 
     # Load languages from config
     config = load_config()
-    llm = get_llm('basic', config['llm'])
+    llm = get_llm('Basic', config['llm'])
     parser = JsonOutputParser()
     error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
 
@@ -210,7 +210,7 @@ def generate_follow_up_questions(answer, chat_history):
     """
     config = load_config()
     para = config['llm']
-    llm = get_llm('basic', para)
+    llm = get_llm('Basic', para)
     parser = JsonOutputParser()
     error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
 

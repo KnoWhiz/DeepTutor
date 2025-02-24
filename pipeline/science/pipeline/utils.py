@@ -159,7 +159,7 @@ def truncate_chat_history(chat_history, model_name='gpt-4o'):
     if model_name == 'gpt-4o':
         model_level = 'advance'
     else:
-        model_level = 'basic'
+        model_level = 'Basic'
     max_tokens = int(api.models[model_level]['context_window']/3)
     total_tokens = 0
     truncated_history = []
@@ -189,7 +189,7 @@ def truncate_document(_document, model_name='gpt-4o'):
     if model_name == 'gpt-4o':
         model_level = 'advance'
     else:
-        model_level = 'basic'
+        model_level = 'Basic'
     max_tokens = int(api.models[model_level]['context_window']/1.2)
 
     # # TEST
@@ -212,10 +212,10 @@ def truncate_document(_document, model_name='gpt-4o'):
 def get_llm(llm_type, para):
     para = para
     api = ApiHandler(para)
-    llm_basic = api.models['basic']['instance']
+    llm_basic = api.models['Basic']['instance']
     llm_advance = api.models['advance']['instance']
     llm_creative = api.models['creative']['instance']
-    if llm_type == 'basic':
+    if llm_type == 'Basic':
         return llm_basic
     elif llm_type == 'advance':
         return llm_advance
@@ -227,7 +227,7 @@ def get_llm(llm_type, para):
 def get_translation_llm(para):
     """Get LLM instance specifically for translation"""
     api = ApiHandler(para)
-    return api.models['basic']['instance']
+    return api.models['Basic']['instance']
 
 
 def detect_language(text):

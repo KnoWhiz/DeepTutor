@@ -177,7 +177,7 @@ def truncate_chat_history(chat_history, model_name='gpt-4o'):
     
     # Reverse the order of the truncated history
     # truncated_history = truncated_history[::-1]
-    logger.info(f"truncated_history: {truncated_history}")
+    # logger.info(f"truncated_history: {truncated_history}")
     return truncated_history
 
 

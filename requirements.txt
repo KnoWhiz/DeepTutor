@@ -9,8 +9,8 @@ anyio==4.7.0
 anytree==2.12.1
 asttokens==2.4.1
 attrs==24.3.0
-autogen-agentchat
-autogen-ext[openai]
+autogen-agentchat==0.4.7
+autogen-ext[openai]==0.4.7
 autogenstudio
 autograd==1.7.0
 azure-common==1.1.28
@@ -153,7 +153,8 @@ pandas==2.2.3
 patsy==1.0.1
 pdftext==0.5.1
 # pillow==10.4.0
-Pillow==10.4.0
+# Pillow==10.4.0
+Pillow
 plotly==6.0.0
 portalocker==2.10.1
 POT==0.9.5

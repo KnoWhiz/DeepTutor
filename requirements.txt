@@ -9,6 +9,9 @@ anyio==4.7.0
 anytree==2.12.1
 asttokens==2.4.1
 attrs==24.3.0
+autogen-agentchat
+autogen-ext[openai]
+autogenstudio
 autograd==1.7.0
 azure-common==1.1.28
 azure-core==1.32.0
@@ -44,7 +47,7 @@ executing==2.2.0
 faiss-cpu==1.8.0.post1
 Faker==36.1.0
 fastapi==0.115.8
-fastembed==0.4.2
+# fastembed==0.4.2
 favicon==0.7.0
 filelock==3.17.0
 filetype==1.2.0
@@ -149,7 +152,8 @@ packaging==24.2
 pandas==2.2.3
 patsy==1.0.1
 pdftext==0.5.1
-pillow==10.4.0
+# pillow==10.4.0
+Pillow==10.4.0
 plotly==6.0.0
 portalocker==2.10.1
 POT==0.9.5

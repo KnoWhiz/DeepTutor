@@ -303,6 +303,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                         file_path=file_path,
                         user_input=user_input
                     )
+                    
                     # Convert sources to dict if it's a list (for backward compatibility)
                     if isinstance(sources, list):
                         sources = {source: 1.0 for source in sources}  # Assign max relevance to old sources
@@ -327,6 +328,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                         "react_annotations": source_react_annotations,
                         "timestamp": len(st.session_state.chat_history)
                     })
+
                     # Save chat history after assistant response
                     st.session_state.chat_session.chat_history = st.session_state.chat_history
                     
@@ -337,6 +339,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                         # First display source buttons
                         if sources and len(sources) > 0:
                             st.write("\n\n**📚 Sources:**")
+
                             # Sort sources by page numbers
                             sorted_sources = sorted(sources.items(), key=lambda x: refined_source_pages.get(x[0], 0))
                             cols = st.columns(len(sources))

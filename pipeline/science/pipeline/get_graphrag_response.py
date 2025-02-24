@@ -1,4 +1,5 @@
 import os
+import logging
 import pandas as pd
 import tiktoken
 import asyncio
@@ -22,14 +23,8 @@ from pipeline.science.pipeline.utils import (
     responses_refine,
 )
 
-# def get_existing_event_loop():
-#     """Get the existing event loop or create a new one if none exists."""
-#     try:
-#         return asyncio.get_event_loop()
-#     except RuntimeError:
-#         loop = asyncio.new_event_loop()
-#         asyncio.set_event_loop(loop)
-#         return loop
+logger = logging.getLogger("tutorpipeline.science.get_graphrag_response")
+
 
 async def get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embedding_folder, deep_thinking = False):
     # Chat history and user input
@@ -135,14 +130,24 @@ async def get_GraphRAG_global_response(_doc, _document, user_input, chat_history
     context = search_engine_result.context_data["reports"]
     context = str(context)
     prompt = f"""
+    You are a deep thinking tutor helping a student reading a paper.
     The previous conversation is: {chat_history_text}
     Reference context from the paper: {context}
-    The user's query is: {user_input_text}
+    The student's query is: {user_input_text}
     """
 
     if deep_thinking:
         from pipeline.science.pipeline.inference import deepseek_inference
-        answer = str(deepseek_inference(prompt))
+        try:
+            answer = str(deepseek_inference(prompt))
+        except Exception as e:
+            logger.exception(f"Error in deepseek_inference: {e}")
+            prompt = f"""
+            You are a deep thinking tutor helping a student reading a paper.
+            Reference context from the paper: {context}
+            The student's query is: {user_input_text}
+            """
+            answer = str(deepseek_inference(prompt))
         answer_thinking = answer.split("<think>")[1].split("</think>")[0]
         answer_summary = answer.split("<think>")[1].split("</think>")[1]
         answer_summary = responses_refine(search_engine_result.response, answer_summary)

@@ -2,7 +2,11 @@
 
 ## Webapp Demo
 
-Please feel free to try out our deployed webapp here and feel free to leave any comments!
+Our production webapp is online! Try it out here:
+
+https://deeptutor.knowhiz.us/
+
+And also please feel free to try out our demo webapp hosted on Streamlit Cloud and feel free to leave any comments!
 
 https://deeptutor.streamlit.app/
 

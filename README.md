@@ -24,22 +24,27 @@ pip install -U "autogen-agentchat" "autogen-ext[openai]"
 pip install -U "autogenstudio"
 ```
 
-## Set OPENAI_API_KEY
+## Setup ```.env``` file
 
 If use OpenAI API
 
 ```bash
-cd DeepTutor
-# Should replace sk-xxx to a real openai api key
-echo "OPENAI_API_KEY=sk-xxx" > .env
-```
-
-If use Azure OpenAI API
-```bash
-cd DeepTutor
-# Should replace xxx to a real Azure openai api key and endpoint url
-echo "AZURE_OPENAI_API_KEY=xxx" > .env
-echo "AZURE_OPENAI_ENDPOINT=xxx" > .env
+AZURE_OPENAI_API_KEY="xxx"
+AZURE_OPENAI_ENDPOINT="xxx"
+SAMBANOVA_API_KEY="xxx"
+SAMBANOVA_API_ENDPOINT="xxx"
+GRAPHRAG_API_KEY="xxx"
+GRAPHRAG_LLM_MODEL="xxx"
+GRAPHRAG_API_BASE="xxx"
+GRAPHRAG_API_VERSION="xxx"
+USER_POOL_ID="xxx"
+CLIENT_ID="xxx"
+AZURE_STORAGE_CONNECTION_STRING="xxx"
+AZURE_STORAGE_CONTAINER_NAME="xxx"
+WEBHOOK_URL="xxx"
+ENVIRONMENT="local"   # "local" or "staging" or "production"
+MARKER_API_KEY="xxx"
+MARKER_API_ENDPOINT="xxx"
 ```
 
 ## Run Native

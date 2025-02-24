@@ -1,6 +1,7 @@
 import json
 import base64
 import PyPDF2
+import logging
 import streamlit as st
 from streamlit_pdf_viewer import pdf_viewer
 from streamlit_float import float_init, float_parent, float_css_helper
@@ -13,6 +14,7 @@ from pipeline.science.pipeline.config import load_config
 from pipeline.science.pipeline.session_manager import ChatMode
 from frontend.utils import streamlit_tutor_agent
 
+logger = logging.getLogger(__name__)
 
 def to_emoji_number(num: int) -> str:
     """Convert an integer to a bold circled number (1-20).
@@ -303,7 +305,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                         file_path=file_path,
                         user_input=user_input
                     )
-                    
+
                     # Convert sources to dict if it's a list (for backward compatibility)
                     if isinstance(sources, list):
                         sources = {source: 1.0 for source in sources}  # Assign max relevance to old sources
@@ -393,10 +395,13 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
 # Function to display the pdf viewer
 def show_pdf_viewer(file):
     if "current_page" not in st.session_state:
+        logger.info("current_page not in st.session_state")
         st.session_state.current_page = 1
     if "annotations" not in st.session_state:
+        logger.info("annotations not in st.session_state")
         st.session_state.annotations = []
     if "total_pages" not in st.session_state:
+        logger.info("total_pages not in st.session_state")
         # Get total pages from the PDF file
         pdf = PyPDF2.PdfReader(file)
         st.session_state.total_pages = len(pdf.pages)

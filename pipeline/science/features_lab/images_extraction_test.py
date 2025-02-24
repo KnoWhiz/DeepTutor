@@ -13,16 +13,16 @@ def extract_pdf_content_to_markdown(
 ) -> Tuple[str, Dict[str, Image.Image]]:
     """
     Extract text and images from a PDF file and save them to the specified directory.
-    
+
     Args:
         pdf_path: Path to the input PDF file
         output_dir: Directory where images and markdown will be saved
-    
+
     Returns:
         Tuple containing:
         - Path to the saved markdown file
         - Dictionary of image names and their PIL Image objects
-    
+
     Raises:
         FileNotFoundError: If PDF file doesn't exist
         OSError: If output directory cannot be created
@@ -60,7 +60,7 @@ def extract_pdf_content_to_markdown(
                     # Create a valid filename from the image name
                     safe_filename = "".join(c for c in img_name if c.isalnum() or c in ('-', '_', '.'))
                     output_path = output_dir / safe_filename
-                    
+
                     # Save the image
                     img.save(output_path)
                     saved_images[img_name] = img
@@ -80,7 +80,7 @@ if __name__ == "__main__":
     # pdf_path = "/Users/bingran_you/Library/Mobile Documents/com~apple~CloudDocs/Downloads/papers/science.1189075.pdf"
     pdf_path = "/Users/bingran_you/Library/Mobile Documents/com~apple~CloudDocs/Downloads/papers/RankRAG- Unifying Context Ranking with  Retrieval-Augmented Generation in LLMs.pdf"
     output_dir = "markdown_output"
-    
+
     try:
         md_path, saved_images = extract_pdf_content_to_markdown(pdf_path, output_dir)
         print(f"Successfully processed PDF. Markdown saved to: {md_path}")

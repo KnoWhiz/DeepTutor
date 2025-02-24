@@ -9,7 +9,7 @@ from langchain_community.docstore.in_memory import InMemoryDocstore
 def check_index_file(index_file_path: str, pkl_file_path: str) -> None:
     """
     Check and display information about FAISS index file and its associated pickle file.
-    
+
     Args:
         index_file_path: Path to the FAISS index file
         pkl_file_path: Path to the pickle file containing docstore and id_to_uuid mapping
@@ -18,7 +18,7 @@ def check_index_file(index_file_path: str, pkl_file_path: str) -> None:
     if not os.path.exists(index_file_path):
         print(f"Error: Index file not found at {index_file_path}")
         return
-    
+
     if not os.path.exists(pkl_file_path):
         print(f"Error: Pickle file not found at {pkl_file_path}")
         return
@@ -34,11 +34,11 @@ def check_index_file(index_file_path: str, pkl_file_path: str) -> None:
         # Unpack the tuple
         docstore, id_to_uuid_map = pkl_data
 
-        # Display basic information
+        # Display Basic information
         print(f"\nFile Information:")
         print(f"Index file: {index_file_path}")
         print(f"Pkl file: {pkl_file_path}")
-        
+
         print(f"\nType Information:")
         print(f"Index file type: {type(index)}")
         print(f"Docstore type: {type(docstore)}")
@@ -46,9 +46,9 @@ def check_index_file(index_file_path: str, pkl_file_path: str) -> None:
 
         # Display the information of the pkl file components
         print(f"\nPickle File Contents:")
-        print(f"Number of documents in docstore: {len(docstore._dict)}")
+        print(f"Number of document in docstore: {len(docstore._dict)}")
         print(f"Number of UUID mappings: {len(id_to_uuid_map)}")
-        
+
         # Display sample of UUID mappings
         print(f"\nSample UUID mappings (first 5):")
         for idx, uuid in list(id_to_uuid_map.items())[:5]:

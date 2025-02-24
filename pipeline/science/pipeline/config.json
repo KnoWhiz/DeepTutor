@@ -1,0 +1,60 @@
+{
+    "llm": {
+        "llm_source": "azure",
+        "level": "advance",
+        "temperature": 0,
+        "creative_temperature": 0.5,
+        "openai_key_dir": ".env",
+        "anthropic_key_dir": ".env"
+    },
+    "embedding": {
+        "chunk_size": 500,
+        "chunk_overlap": 0
+    },
+    "retriever": {
+        "search_type": "similarity",
+        "k": 10
+    },
+    "sources_retriever": {
+        "search_type": "similarity",
+        "k": 7
+    },
+    "languages": {
+        "🇺🇸 English": "English",
+        "🇨🇳 中文": "Chinese"
+    },
+    "languages_short": {
+        "en": "English",
+        "zh": "Chinese"
+    },
+    "topic_emojis": {
+        "introduction": "📖",
+        "overview": "🔎",
+        "background": "📚",
+        "methods": "🔬",
+        "methodology": "🔬", 
+        "results": "📊",
+        "discussion": "💭",
+        "conclusion": "🎯",
+        "future work": "🔮",
+        "implementation": "⚙️",
+        "evaluation": "📈",
+        "analysis": "🔍",
+        "design": "✏️",
+        "architecture": "🏗️",
+        "experiments": "🧪",
+        "related work": "🔗",
+        "motivation": "💪",
+        "approach": "🎯",
+        "system": "🖥️",
+        "framework": "🔧",
+        "model": "🤖",
+        "data": "📊",
+        "algorithm": "⚡",
+        "performance": "⚡",
+        "limitations": "⚠️",
+        "applications": "💡",
+        "default": "📌"
+    },
+    "default_topics": ["Overview", "Methods", "Results", "Discussion"]
+}

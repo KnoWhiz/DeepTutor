@@ -1,6 +1,27 @@
 import os
 import shutil
-from pipeline.helper.azure_blob import AzureBlobHelper
+from pipeline.science.pipeline.helper.azure_blob import AzureBlobHelper
+from pipeline.science.pipeline.utils import file_check_list
+import logging
+logger = logging.getLogger("tutorpipeline.science.helper.index_files_saving")
+
+
+def literag_index_files_decompress(embedding_folder):
+    """
+    Function to decompress the LiteRAG index files and download them from Azure Blob Storage
+    :param embedding_folder: The path to the embedding folder
+    :return: True if the index files are ready now in embedding_folder, False otherwise
+    """
+    lite_embedding_folder = os.path.join(embedding_folder, "lite_embedding")
+    faiss_path = os.path.join(lite_embedding_folder, "index.faiss")
+    pkl_path = os.path.join(lite_embedding_folder, "index.pkl")
+    path_list = [faiss_path, pkl_path]
+    all_files_exist = True
+    for path in path_list:
+        if not os.path.exists(path):
+            all_files_exist = False
+            logger.info(f"Missing directory: {path}")
+    return all_files_exist
 
 
 def graphrag_index_files_check(embedding_folder):
@@ -10,36 +31,18 @@ def graphrag_index_files_check(embedding_folder):
     :return: True if all necessary files exist, False otherwise
     """
     # Define the index files path for GraphRAG embedding
-    GraphRAG_embedding_folder = os.path.join(embedding_folder, "GraphRAG/")
-    create_final_community_reports_path = GraphRAG_embedding_folder + "output/create_final_community_reports.parquet"
-    create_final_covariates_path = GraphRAG_embedding_folder + "output/create_final_covariates.parquet"
-    create_final_documents_path = GraphRAG_embedding_folder + "output/create_final_documents.parquet"
-    create_final_entities_path = GraphRAG_embedding_folder + "output/create_final_entities.parquet"
-    create_final_nodes_path = GraphRAG_embedding_folder + "output/create_final_nodes.parquet"
-    create_final_relationships_path = GraphRAG_embedding_folder + "output/create_final_relationships.parquet"
-    create_final_text_units_path = GraphRAG_embedding_folder + "output/create_final_text_units.parquet"
-    create_final_communities_path = GraphRAG_embedding_folder + "output/create_final_communities.parquet"
-    lancedb_path = GraphRAG_embedding_folder + "output/lancedb/"
+    GraphRAG_embedding_folder, path_list = file_check_list(embedding_folder)
 
     # Define the index files path for VectorRAG embedding
     faiss_path = os.path.join(embedding_folder, "index.faiss")
     pkl_path = os.path.join(embedding_folder, "index.pkl")
-    documents_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
+    document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
 
-    path_list = [
-        create_final_community_reports_path,
-        create_final_covariates_path,
-        create_final_documents_path,
-        create_final_entities_path,
-        create_final_nodes_path,
-        create_final_relationships_path,
-        create_final_text_units_path,
-        create_final_communities_path,
-        lancedb_path,
+    path_list.extend([
         faiss_path,
         pkl_path,
-        documents_summary_path
-    ]
+        document_summary_path
+    ])
 
     # Check if all necessary files exist to load the embeddings and print the directories that are missing
     all_files_exist = True
@@ -148,15 +151,21 @@ def vectorrag_index_files_check(embedding_folder):
     :param embedding_folder: The path to the embedding folder
     :return: True if all necessary files exist, False otherwise
     """
+    markdown_embedding_folder = os.path.join(embedding_folder, "markdown")
+    
     # Define the index files path for VectorRAG embedding
     faiss_path = os.path.join(embedding_folder, "index.faiss")
     pkl_path = os.path.join(embedding_folder, "index.pkl")
-    documents_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
+    document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
+    markdown_faiss_path = os.path.join(markdown_embedding_folder, "index.faiss")
+    markdown_pkl_path = os.path.join(markdown_embedding_folder, "index.pkl")
 
     path_list = [
         faiss_path,
         pkl_path,
-        documents_summary_path
+        document_summary_path,
+        markdown_faiss_path,
+        markdown_pkl_path
     ]
 
     # Check if all necessary files exist to load the embeddings and print the directories that are missing
@@ -208,6 +217,8 @@ def vectorrag_index_files_decompress(embedding_folder):
     :param embedding_folder: The path to the embedding folder
     :return: True if the index files are ready now in embedding_folder, False otherwise
     """
+    markdown_embedding_folder = os.path.join(embedding_folder, "markdown")
+
     # Prepare paths
     if embedding_folder.endswith("/"):
         folder = embedding_folder[:-1]
@@ -220,18 +231,20 @@ def vectorrag_index_files_decompress(embedding_folder):
 
     # Try No.1: Check if the index files are already ready
     if vectorrag_index_files_check(embedding_folder):
-        print("VectorRAG index files are already ready!")
+        print("VectorRAG index files are locally ready!")
         return True
     else:
         # CLEANUP: Clear the existing files if they're not complete
         faiss_path = os.path.join(embedding_folder, "index.faiss")
         pkl_path = os.path.join(embedding_folder, "index.pkl")
-        documents_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
+        document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
+        markdown_faiss_path = os.path.join(markdown_embedding_folder, "index.faiss")
+        markdown_pkl_path = os.path.join(markdown_embedding_folder, "index.pkl")
         
-        for path in [faiss_path, pkl_path, documents_summary_path]:
+        for path in [faiss_path, pkl_path, document_summary_path, markdown_faiss_path, markdown_pkl_path]:
             if os.path.exists(path):
                 os.remove(path)
-        print("VectorRAG index files are not ready yet!")
+        print("VectorRAG index files are not locally ready yet!")
 
     # Try No.2: Download the compressed zip file from Azure Blob Storage and decompress it
     try:

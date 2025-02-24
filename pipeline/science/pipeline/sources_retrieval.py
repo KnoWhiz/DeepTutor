@@ -1,7 +1,6 @@
 import os
 import pprint
 import json
-from dotenv import load_dotenv
 
 from langchain_community.vectorstores import FAISS
 from langchain_core.runnables import RunnablePassthrough
@@ -11,20 +10,21 @@ from langchain.output_parsers import OutputFixingParser
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema import Document
 
-from streamlit_float import *
-
-from pipeline.config import load_config
-from pipeline.utils import (
-    tiktoken,
-    truncate_chat_history,
+from pipeline.science.pipeline.config import load_config
+from pipeline.science.pipeline.utils import (
     get_llm,
-    get_embedding_models,
-    robust_search_for
+    robust_search_for,
 )
-from pipeline.doc_processor import generate_embedding
+from pipeline.science.pipeline.embeddings import (
+    load_embeddings,
+)
+from pipeline.science.pipeline.embeddings_agent import embeddings_agent
 
 
-def get_response_source(_doc, _documents, pdf_path, user_input, answer, chat_history, embedding_folder):
+import logging
+logger = logging.getLogger("tutorpipeline.science.sources_retrieval")
+
+def get_response_source(mode, _doc, _document, pdf_path, user_input, answer, chat_history, embedding_folder):
     """
     Get the sources for the response
     Return a dictionary of sources with scores and metadata
@@ -37,7 +37,6 @@ def get_response_source(_doc, _documents, pdf_path, user_input, answer, chat_his
     """
     config = load_config()
     para = config['llm']
-    embeddings = get_embedding_models('default', para)
 
     # Load image context
     image_context_path = os.path.join(embedding_folder, "markdown/image_context.json")
@@ -49,7 +48,7 @@ def get_response_source(_doc, _documents, pdf_path, user_input, answer, chat_his
         image_context = {}
         with open(image_context_path, 'w') as f:
             json.dump(image_context, f)
-    
+
     # Create reverse mapping from description to image name
     image_mapping = {}
     for image_name, descriptions in image_context.items():
@@ -63,23 +62,20 @@ def get_response_source(_doc, _documents, pdf_path, user_input, answer, chat_his
     # Check if all necessary files exist to load the embeddings
     if os.path.exists(faiss_path) and os.path.exists(pkl_path):
         # Load existing embeddings
-        print("Loading existing embeddings...")
-        db = FAISS.load_local(
-            embedding_folder, embeddings, allow_dangerous_deserialization=True
-        )
+        # print("Loading existing embeddings...")
+        logger.info("Loading existing embeddings...")
+        db = load_embeddings(embedding_folder, 'default')
     else:
         print("No existing embeddings found, creating new ones...")
-        generate_embedding(_documents, _doc, pdf_path, embedding_folder)
-        db = FAISS.load_local(
-            embedding_folder, embeddings, allow_dangerous_deserialization=True
-        )
-        # # Split the documents into chunks, respecting page boundaries
+        embeddings_agent(mode, _document, _doc, pdf_path, embedding_folder)
+        db = load_embeddings(embedding_folder, 'default')
+        # # Split the document into chunks, respecting page boundaries
         # print("Creating new embeddings...")
         # text_splitter = PageAwareTextSplitter(
         #     chunk_size=config['embedding']['chunk_size'],
         #     chunk_overlap=0
         # )
-        # texts = text_splitter.split_documents(_documents)
+        # texts = text_splitter.split_document(_document)
         # print(f"length of document chunks generated for get_response_source:{len(texts)}")
 
         # # Create the vector store to use as the index
@@ -105,7 +101,7 @@ def get_response_source(_doc, _documents, pdf_path, user_input, answer, chat_his
     source_pages = {}
     for chunk in sources_chunks:
         try:
-            source_pages[chunk.page_content] = chunk.metadata['page']+1
+            source_pages[chunk.page_content] = chunk.metadata['page']
         except KeyError:
             print(f"Error getting source pages for {chunk.page_content}")
             print(f"Chunk metadata: {chunk.metadata}")
@@ -134,7 +130,7 @@ def get_response_source(_doc, _documents, pdf_path, user_input, answer, chat_his
                          for source, score in sources_with_scores.items()}
     source_pages = {image_mapping.get(source, source): page 
                          for source, page in source_pages.items()}
-    
+
     # # TEST
     # print("sources before refine:")
     # pprint.pprint(sources_with_scores)
@@ -142,18 +138,24 @@ def get_response_source(_doc, _documents, pdf_path, user_input, answer, chat_his
 
     # Refine and limit sources while preserving scores
     markdown_dir = os.path.join(embedding_folder, "markdown")
-    sources_with_scores = refine_sources(_doc, _documents, sources_with_scores, markdown_dir, user_input)
+    sources_with_scores = refine_sources(_doc, _document, sources_with_scores, markdown_dir, user_input)
+
+    # Refine source pages while preserving scores
+    refined_source_pages = {}
+    for source, page in source_pages.items():
+        if source in sources_with_scores:
+            refined_source_pages[source] = page + 1
 
     # # TEST
     # print("sources after refine:")
     # for source, score in sources_with_scores.items():
     #     print(f"{source}: {score}")
     # print(f"length of sources after refine: {len(sources_with_scores)}")
-    
-    return sources_with_scores, source_pages
+
+    return sources_with_scores, source_pages, refined_source_pages
 
 
-def refine_sources(_doc, _documents, sources_with_scores, markdown_dir, user_input):
+def refine_sources(_doc, _document, sources_with_scores, markdown_dir, user_input):
     """
     Refine sources by checking if they can be found in the document
     Only get first 20 sources
@@ -162,7 +164,7 @@ def refine_sources(_doc, _documents, sources_with_scores, markdown_dir, user_inp
     """
     refined_sources = {}
     image_sources = {}
-    
+
     # Load image context
     image_context_path = os.path.join(markdown_dir, "image_context.json")
     if os.path.exists(image_context_path):
@@ -173,7 +175,7 @@ def refine_sources(_doc, _documents, sources_with_scores, markdown_dir, user_inp
         image_context = {}
         with open(image_context_path, 'w') as f:
             json.dump(image_context, f)
-    
+
     # First separate image sources from text sources
     text_sources = {}
     for source, score in sources_with_scores.items():
@@ -182,14 +184,14 @@ def refine_sources(_doc, _documents, sources_with_scores, markdown_dir, user_inp
             image_sources[source] = score
         else:
             text_sources[source] = score
-    
+
     # Filter image sources based on LLM evaluation
     filtered_images = {}
     if image_sources:
         # Initialize LLM for relevance evaluation
         config = load_config()
         para = config['llm']
-        llm = get_llm('basic', para)
+        llm = get_llm('Basic', para)
         parser = JsonOutputParser()
         error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
 
@@ -197,10 +199,10 @@ def refine_sources(_doc, _documents, sources_with_scores, markdown_dir, user_inp
         system_prompt = """
         You are an expert at evaluating the relevance between a user's question and image descriptions.
         Given a user's question and descriptions of an image, determine if the image is relevant and provide a relevance score.
-        
+
         First, analyze the image descriptions to identify the actual figure number in the document (e.g., "Figure 1", "Fig. 2", etc.).
         Then evaluate the relevance considering both the actual figure number and the content.
-        
+
         Organize your response in the following JSON format:
         ```json
         {{
@@ -210,29 +212,29 @@ def refine_sources(_doc, _documents, sources_with_scores, markdown_dir, user_inp
             "explanation": "<brief explanation including actual figure number and why this image is or isn't relevant>"
         }}
         ```
-        
+
         Pay special attention to:
         1. If the user asks about a specific figure number (e.g., "Figure 1"), prioritize matching the ACTUAL figure number from descriptions, NOT the filename
         2. The semantic meaning and context of both the question and image descriptions
         3. Whether the image would help answer the user's question
         4. Look for figure number mentions in the descriptions like "Figure X", "Fig. X", "Figure-X", etc.
         """
-        
+
         human_prompt = """
         User's question: {question}
         Image descriptions:
         {descriptions}
-        
+
         Note: The image filename may not reflect the actual figure number in the document. Please extract the actual figure number from the descriptions.
         """
-        
+
         prompt = ChatPromptTemplate.from_messages([
             ("system", system_prompt),
             ("human", human_prompt),
         ])
-        
+
         chain = prompt | llm | error_parser
-        
+
         # Evaluate each image
         image_scores = []
         for image, score in image_sources.items():
@@ -240,14 +242,14 @@ def refine_sources(_doc, _documents, sources_with_scores, markdown_dir, user_inp
                 # Get all context descriptions for this image
                 descriptions = image_context[image]
                 descriptions_text = "\n".join([f"- {desc}" for desc in descriptions])
-                
+
                 # Evaluate relevance using LLM
                 try:
                     result = chain.invoke({
                         "question": user_input,
                         "descriptions": descriptions_text
                     })
-                    
+
                     # Store both the actual figure number and score
                     if result["is_relevant"]:
                         # Combine vector similarity score with LLM relevance score
@@ -262,21 +264,21 @@ def refine_sources(_doc, _documents, sources_with_scores, markdown_dir, user_inp
                         # print(f"image_scores for {image}: {image_scores}")
                         # print(f"result for {image}: {result}")
                 except Exception as e:
-                    print(f"Error evaluating image {image}: {e}")
+                    logger.exception(f"Error evaluating image {image}: {e}")
                     continue
-        
+
         # Sort images by relevance score
         image_scores.sort(key=lambda x: x[1], reverse=True)
-        
+
         # Filter images with high relevance score (score > 0.2)
         filtered_images = {img: score for img, score, fig_num, expl in image_scores if score > 0.5}
-        
+
         if filtered_images:
             # If asking about a specific figure, prioritize exact figure number match
             import re
             figure_pattern = re.compile(r'fig(?:ure)?\.?\s*(\d+)', re.IGNORECASE)
             user_figure_match = figure_pattern.search(user_input)
-            
+
             if user_figure_match:
                 user_figure_num = user_figure_match.group(1)
                 # Look for exact figure number match first
@@ -304,19 +306,26 @@ def refine_sources(_doc, _documents, sources_with_scores, markdown_dir, user_inp
                     # Keep images with scores within 10% of the highest score
                     score_threshold = highest_score * 0.9
                     filtered_images = {img: score for img, score in filtered_images.items() if score >= score_threshold}
-    
+
     # Process text sources as before
     for page in _doc:
         for source, score in text_sources.items():
             text_instances = robust_search_for(page, source)
             if text_instances:
                 refined_sources[source] = score
-    
+
     # Combine filtered image sources with refined text sources
     final_sources = {**filtered_images, **refined_sources}
+
+    # Sort by score
+    sorted_sources = dict(sorted(final_sources.items(), key=lambda x: x[1], reverse=True))
     
-    # Sort by score and limit to top 20
-    sorted_sources = dict(sorted(final_sources.items(), key=lambda x: x[1], reverse=True)[:20])
+    # Keep only the top 50% of sources by score
+    num_sources_to_keep = max(1, len(sorted_sources) // 2)  # Keep at least 1 source
+    sorted_sources = dict(list(sorted_sources.items())[:num_sources_to_keep])
+    
+    # Further limit to top 20 if needed
+    sorted_sources = dict(list(sorted_sources.items())[:20])
     return sorted_sources
 
 
@@ -330,20 +339,20 @@ def cosine_similarity(vec1, vec2):
 
 class PageAwareTextSplitter(RecursiveCharacterTextSplitter):
     """Custom text splitter that respects page boundaries"""
-    
-    def split_documents(self, documents):
-        """Split documents while respecting page boundaries"""
+
+    def split_document(self, document):
+        """Split document while respecting page boundaries"""
         final_chunks = []
-        
-        for doc in documents:
+
+        for doc in document:
             # Get the page number from the metadata
             page_num = doc.metadata.get("page", 0)
             text = doc.page_content
-            
+
             # Use parent class's splitting logic first
             chunks = super().split_text(text)
-            
-            # Create new documents for each chunk with original metadata
+
+            # Create new document for each chunk with original metadata
             for i, chunk in enumerate(chunks):
                 metadata = doc.metadata.copy()
                 # Update metadata to indicate chunk position
@@ -352,11 +361,11 @@ class PageAwareTextSplitter(RecursiveCharacterTextSplitter):
                     page_content=chunk,
                     metadata=metadata
                 ))
-                
+
         # Sort chunks by page number and then by chunk index
         final_chunks.sort(key=lambda x: (
             x.metadata.get("page", 0),
             x.metadata.get("chunk_index", 0)
         ))
-        
+
         return final_chunks

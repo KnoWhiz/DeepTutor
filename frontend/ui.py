@@ -1,20 +1,23 @@
 import json
 import base64
 import PyPDF2
-import pprint
+import logging
 import streamlit as st
 from streamlit_pdf_viewer import pdf_viewer
 from streamlit_float import float_init, float_parent, float_css_helper
 from streamlit_extras.stylable_container import stylable_container
-import streamlit.components.v1 as components
-from streamlit_js_eval import streamlit_js_eval
 
-from frontend.utils import previous_page, next_page, close_pdf, chat_content, handle_follow_up_click
-from pipeline.utils import find_pages_with_excerpts, get_highlight_info, translate_content
+from frontend.utils import (
+    previous_page,
+    next_page,
+    handle_follow_up_click
+)
 from frontend.forms.contact import contact_form
-from pipeline.config import load_config
-from pipeline.get_response import generate_follow_up_questions
+from pipeline.science.pipeline.config import load_config
+from pipeline.science.pipeline.session_manager import ChatMode
+from frontend.utils import streamlit_tutor_agent
 
+logger = logging.getLogger(__name__)
 
 def to_emoji_number(num: int) -> str:
     """Convert an integer to a bold circled number (1-20).
@@ -77,14 +80,31 @@ def show_header():
 def show_mode_option():
     with st.sidebar:
         mode_index = 0
-        st.session_state.mode = st.radio("Basic model (faster) or Advanced model (slower but more accurate)?", options=["Basic", "Advanced"], index=mode_index)
+        current_mode = st.radio(
+            "Choose a mode:",
+            options=["Lite", "Basic", "Advanced"],
+            help="""
+            - Lite: Process raw text only (fastest)
+            - Basic: Agentic processing with Markdown extraction, image understanding, DeepSeek R1 deep thinking, and document summarization (standard)
+            - Advanced: In addition to Basic, add enhanced GraphRAG for better document understanding (slower but more accurate)
+            """,
+            index=mode_index
+        )
+        st.session_state.mode = current_mode
+        if 'chat_session' in st.session_state:
+            if current_mode == "Advanced":
+                st.session_state.chat_session.set_mode(ChatMode.ADVANCED)
+            elif current_mode == "Basic":
+                st.session_state.chat_session.set_mode(ChatMode.BASIC)
+            else:
+                st.session_state.chat_session.set_mode(ChatMode.LITE)
 
 
 # Function to display the file uploader
 def show_file_upload(on_change=None):
     with st.sidebar:
         previous_file = st.session_state.get('uploaded_file', None)
-        current_file = st.file_uploader("Upload a document no more than **50 pages** to get started.", type="pdf", on_change=on_change)
+        current_file = st.file_uploader("Upload a document no more than **30 pages** to get started.", type="pdf", on_change=on_change)
         
         # Check if file has changed
         if previous_file is not None and current_file is not None:
@@ -117,8 +137,11 @@ def show_language_option():
             index=list(languages.values()).index(current_lang)
         )
         
-        # Update the session state with the selected language code
-        st.session_state.language = languages[selected_lang_display]
+        # Update both session state and chat session with the selected language
+        selected_lang = languages[selected_lang_display]
+        st.session_state.language = selected_lang
+        if 'chat_session' in st.session_state:
+            st.session_state.chat_session.set_language(selected_lang)
 
 
 # Function to display the chat interface
@@ -147,7 +170,7 @@ def get_relevance_color(score):
 
 
 # Function to display the chat interface
-def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agent):
+def show_chat_interface(doc, document, file_path, embedding_folder):
     # Init float function for chat_input textbox
     learner_avatar = "frontend/images/learner.svg"
     tutor_avatar = "frontend/images/tutor.svg"
@@ -155,7 +178,9 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
 
     with st.container():
         float_init(theme=True, include_unstable_primary=False)
-        st.chat_input(key='user_input', on_submit=chat_content)
+        user_input = st.chat_input(key='user_input')
+        if user_input:
+            st.session_state.chat_session.chat_history.append({"role": "user", "content": user_input})
         button_b_pos = "1.2rem"
         button_css = float_css_helper(width="1.2rem", bottom=button_b_pos, transition=0)
         float_parent(css=button_css)
@@ -164,24 +189,24 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
 
     with chat_container:
         # Generate initial welcome message if chat history is empty
-        if not st.session_state.chat_history:
-            with st.spinner("Loading document summary..."):
-                initial_message, sources, source_pages = tutor_agent(
-                    mode=st.session_state.mode,
-                    _doc=doc,
-                    _documents=documents,
-                    file_paths=file_paths,
-                    user_input=None,
-                    chat_history=[],
-                    embedding_folder=embedding_folder
+        if not st.session_state.chat_session.chat_history:
+            with st.spinner("Generating deep document understanding..."):
+                initial_message,\
+                sources,\
+                source_pages,\
+                source_annotations,\
+                refined_source_pages,\
+                follow_up_questions = streamlit_tutor_agent(
+                    chat_session=st.session_state.chat_session,
+                    file_path=file_path,
+                    user_input=None
                 )
+                st.session_state.source_annotations = source_annotations
                 # Convert sources to dict if it's a list (for backward compatibility)
                 if isinstance(sources, list):
                     sources = {source: 1.0 for source in sources}  # Assign max relevance to initial sources
                 
-                # Generate follow-up questions for initial message
-                follow_up_questions = generate_follow_up_questions(initial_message, [])
-                st.session_state.chat_history.append(
+                st.session_state.chat_session.chat_history.append(
                     {
                         "role": "assistant", 
                         "content": initial_message,
@@ -190,37 +215,27 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                 )
                 
                 if sources:
-                    # Store source-to-page mapping
-                    source_pages = source_pages
-                    # source_pages = {}
-                    # for source in sources.keys():
-                    #     pages_with_excerpts = find_pages_with_excerpts(doc, [source])
-                    #     if pages_with_excerpts:
-                    #         source_pages[source] = pages_with_excerpts[0] + 1
-
-                    # # TEST
-                    # print(f"Current source_pages: {source_pages}")
-                    
-                    st.session_state.chat_history.append({
+                    st.session_state.chat_session.chat_history.append({
                         "role": "source_buttons",
                         "sources": sources,
-                        "pages": source_pages,
-                        "timestamp": len(st.session_state.chat_history)
+                        "pages": refined_source_pages,
+                        "annotations": source_annotations,
+                        "timestamp": len(st.session_state.chat_session.chat_history)
                     })
-
+                
         # Display chat history
-        for idx, msg in enumerate(st.session_state.chat_history):
+        for idx, msg in enumerate(st.session_state.chat_session.chat_history):
             if msg["role"] == "user":
                 avatar = learner_avatar
                 with st.chat_message(msg["role"], avatar=avatar):
                     st.write(msg["content"])
             elif msg["role"] == "assistant":
-                avatar = professor_avatar if st.session_state.mode == "Advanced" else tutor_avatar
+                avatar = professor_avatar if st.session_state.chat_session.mode == ChatMode.ADVANCED else tutor_avatar
                 with st.chat_message(msg["role"], avatar=avatar):
                     st.write(msg["content"])
                     
                     # First display source buttons if this message has associated sources
-                    next_msg = st.session_state.chat_history[idx + 1] if idx + 1 < len(st.session_state.chat_history) else None
+                    next_msg = st.session_state.chat_session.chat_history[idx + 1] if idx + 1 < len(st.session_state.chat_session.chat_history) else None
                     if next_msg and next_msg["role"] == "source_buttons":
                         sources = next_msg["sources"]
                         # Convert sources to dict if it's a list (for backward compatibility)
@@ -257,14 +272,20 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                                     ):
                                         if st.button(to_emoji_number(src_idx), key=f"source_btn_{idx}_{src_idx}", use_container_width=True):
                                             st.session_state.current_page = page_num
-                                            st.session_state.annotations = get_highlight_info(doc, [source])
+                                            # Display the highlight info for that single source button
+                                            # st.session_state.annotations, st.session_state.react_annotations = get_highlight_info(doc, [source])
+                                            try:
+                                                st.session_state.annotations = st.session_state.source_annotations[source]
+                                            except Exception as e:
+                                                logger.exception(f"Failed to get annotations: {str(e)}")
+                                                st.session_state.annotations = []
                     
                     # Then display follow-up questions
-                    if "follow_up_questions" in msg:
+                    if "follow_up_questions" in msg and msg["follow_up_questions"] != []:
                         st.write("\n\n**📝 Follow-up Questions:**")
                         for q_idx, question in enumerate(msg["follow_up_questions"], 1):
                             if st.button(f"{q_idx}. {question}", key=f"follow_up_{idx}_{q_idx}"):
-                                handle_follow_up_click(question)
+                                handle_follow_up_click(st.session_state.chat_session, question)
             elif msg["role"] == "source_buttons":
                 # Skip source buttons here since we're showing them with the assistant message
                 pass
@@ -278,18 +299,21 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
 
         # If we have input to process
         if user_input:
-            with st.spinner("Generating response..."):
+            with st.spinner("Generating deep agentic response..."):
                 try:
                     # Get response
-                    answer, sources, source_pages = tutor_agent(
-                        mode=st.session_state.mode,
-                        _doc=doc,
-                        _documents=documents,
-                        file_paths=file_paths,
-                        user_input=user_input,
-                        chat_history=st.session_state.chat_history,
-                        embedding_folder=embedding_folder
+                    answer,\
+                    sources,\
+                    source_pages,\
+                    source_annotations,\
+                    refined_source_pages,\
+                    follow_up_questions = streamlit_tutor_agent(
+                        chat_session=st.session_state.chat_session,
+                        file_path=file_path,
+                        user_input=user_input
                     )
+                    st.session_state.source_annotations = source_annotations
+
                     # Convert sources to dict if it's a list (for backward compatibility)
                     if isinstance(sources, list):
                         sources = {source: 1.0 for source in sources}  # Assign max relevance to old sources
@@ -297,22 +321,8 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                         # Validate sources is a dictionary
                         sources = sources if isinstance(sources, dict) else {}
                     
-                    # Store source-to-page mapping
-                    source_pages = source_pages
-                    # source_pages = {}
-                    # for source in sources.keys():
-                    #     pages_with_excerpts = find_pages_with_excerpts(doc, [source])
-                    #     if pages_with_excerpts:
-                    #         source_pages[source] = pages_with_excerpts[0] + 1
-
-                    # # TEST
-                    # print(f"Current source_pages: {source_pages}")
-                    
-                    # Generate follow-up questions for new response
-                    follow_up_questions = generate_follow_up_questions(answer, st.session_state.chat_history)
-                    
                     # Add response with follow-up questions to chat history
-                    st.session_state.chat_history.append(
+                    st.session_state.chat_session.chat_history.append(
                         {
                             "role": "assistant", 
                             "content": answer,
@@ -321,11 +331,12 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                     )
                     
                     # Add source buttons to chat history
-                    st.session_state.chat_history.append({
+                    st.session_state.chat_session.chat_history.append({
                         "role": "source_buttons",
                         "sources": sources,
-                        "pages": source_pages,
-                        "timestamp": len(st.session_state.chat_history)
+                        "pages": refined_source_pages,
+                        "annotations": st.session_state.source_annotations,
+                        "timestamp": len(st.session_state.chat_session.chat_history)
                     })
                     
                     # Display current response
@@ -335,11 +346,12 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                         # First display source buttons
                         if sources and len(sources) > 0:
                             st.write("\n\n**📚 Sources:**")
+
                             # Sort sources by page numbers
-                            sorted_sources = sorted(sources.items(), key=lambda x: source_pages.get(x[0], 0))
+                            sorted_sources = sorted(sources.items(), key=lambda x: refined_source_pages.get(x[0], 0))
                             cols = st.columns(len(sources))
                             for idx, (col, (source, score)) in enumerate(zip(cols, sorted_sources), 1):
-                                page_num = source_pages.get(source)
+                                page_num = refined_source_pages.get(source)
                                 if page_num:
                                     with col:
                                         # Create a stylable container for the button with custom color
@@ -363,13 +375,20 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                                         ):
                                             if st.button(to_emoji_number(idx), key=f"source_btn_{idx}_current", use_container_width=True):
                                                 st.session_state.current_page = page_num
-                                                st.session_state.annotations = get_highlight_info(doc, [source])
+                                                # st.session_state.annotations, st.session_state.react_annotations = get_highlight_info(doc, [source])
+                                                # i = list(sources.keys()).index(source)
+                                                try:
+                                                    st.session_state.annotations = st.session_state.source_annotations[source]
+                                                except Exception as e:
+                                                    logger.exception(f"Failed to get annotations: {str(e)}")
+                                                    st.session_state.annotations = []
+                                                # print(f"type of st.session_state.annotations: {type(st.session_state.annotations)}")
                         
                         # Then display follow-up questions
                         st.write("\n\n**📝 Follow-up Questions:**")
                         for q_idx, question in enumerate(follow_up_questions, 1):
                             if st.button(f"{q_idx}. {question}", key=f"follow_up_current_{q_idx}"):
-                                handle_follow_up_click(question)
+                                handle_follow_up_click(st.session_state.chat_session, question)
 
                     st.session_state.sources = sources
                     st.session_state.chat_occurred = True
@@ -382,23 +401,29 @@ def show_chat_interface(doc, documents, file_paths, embedding_folder, tutor_agen
                 if "current_page" not in st.session_state:
                     st.session_state.current_page = 1
                 if st.session_state.get("sources"):
-                    st.session_state.annotations = get_highlight_info(doc, list(st.session_state.sources.keys()))
+                    # st.session_state.annotations, st.session_state.react_annotations = get_highlight_info(doc, list(st.session_state.sources.keys()))
+                    # i = list(st.session_state.sources.keys()).index(source)
+                    try:
+                        st.session_state.annotations = st.session_state.source_annotations[source]
+                    except Exception as e:
+                        logger.exception(f"Failed to get annotations: {str(e)}")
+                        st.session_state.annotations = []
+                    # print(f"type of st.session_state.annotations: {type(st.session_state.annotations)}")
 
 
 # Function to display the pdf viewer
 def show_pdf_viewer(file):
     if "current_page" not in st.session_state:
+        logger.info("current_page not in st.session_state")
         st.session_state.current_page = 1
     if "annotations" not in st.session_state:
+        logger.info("annotations not in st.session_state")
         st.session_state.annotations = []
     if "total_pages" not in st.session_state:
+        logger.info("total_pages not in st.session_state")
         # Get total pages from the PDF file
         pdf = PyPDF2.PdfReader(file)
         st.session_state.total_pages = len(pdf.pages)
-        
-    # # TEST
-    # page_height = streamlit_js_eval(js_expressions='window.innerHeight', key='HEIGHT', want_output=True)
-    # print(f"Page height is {page_height} pixels.")
 
     with st.container():
         st.markdown("""
@@ -416,15 +441,18 @@ def show_pdf_viewer(file):
         </style>
         """, unsafe_allow_html=True)
     
-    pdf_container = st.container(border=st.session_state.show_chat_border, height=1005)
+    # Create a unique key for the PDF container based on current page
+    pdf_container = st.container(border=st.session_state.show_chat_border, height=1005, key=f"pdf_container_{st.session_state.current_page}")
 
     with pdf_container:
+        # Use current_page in the key to force refresh when page changes
         pdf_viewer(
             file,
             width="100%",
             annotations=st.session_state.annotations,
             pages_to_render=[st.session_state.current_page],
-            render_text=True
+            render_text=True,
+            key=f"pdf_viewer_{st.session_state.current_page}_{st.session_state.annotations}"
         )
 
     # Create three columns for the navigation controls
@@ -433,14 +461,14 @@ def show_pdf_viewer(file):
     # Left arrow button
     with columns[0]:
         with stylable_container(
-            key="left_aligned_button",
+            key=f"left_aligned_button_{st.session_state.current_page}",
             css_styles="""
             button {
                 float: left;
             }
             """
         ):
-            st.button("←", key='←', on_click=previous_page)
+            st.button("←", key=f"prev_{st.session_state.current_page}", on_click=previous_page)
             button_css = float_css_helper(width="1.2rem", bottom="1.2rem", transition=0)
             float_parent(css=button_css)
     
@@ -456,18 +484,16 @@ def show_pdf_viewer(file):
     # Right arrow button
     with columns[2]:
         with stylable_container(
-            key="right_aligned_button",
+            key=f"right_aligned_button_{st.session_state.current_page}",
             css_styles="""
             button {
                 float: right;
             }
             """
         ):
-            st.button("→", key='→', on_click=next_page)
+            st.button("→", key=f"next_{st.session_state.current_page}", on_click=next_page)
             button_css = float_css_helper(width="1.2rem", bottom="1.2rem", transition=0)
             float_parent(css=button_css)
-    # viewer_css = float_css_helper(transition=0)
-    # float_parent(css=viewer_css)
 
 
 # Function to display the footer

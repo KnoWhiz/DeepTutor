@@ -1,19 +1,11 @@
 import os
 import fitz
 import io
-import json
-import hashlib
 import streamlit as st
 
 from dotenv import load_dotenv
 from pipeline.science.pipeline.doc_processor import extract_document_from_file
-from pipeline.science.pipeline.chat_history_manager import (
-    create_session_id,
-    save_chat_history,
-    load_chat_history,
-    delete_chat_history,
-    cleanup_old_sessions
-)
+from pipeline.science.pipeline.chat_history_manager import create_session_id
 from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
 
 

@@ -3,7 +3,6 @@
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set
 from enum import Enum
-import os
 from datetime import datetime
 
 from .chat_history_manager import (

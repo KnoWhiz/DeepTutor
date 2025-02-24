@@ -27,10 +27,7 @@ from pipeline.science.pipeline.get_response import (
     get_response,
     generate_follow_up_questions,
 )
-from pipeline.science.pipeline.sources_retrieval import (
-    get_response_source,
-)
-from pipeline.science.pipeline.inference import deepseek_inference
+from pipeline.science.pipeline.sources_retrieval import get_response_source
 import logging
 logger = logging.getLogger("tutorpipeline.science.tutor_agent")
 

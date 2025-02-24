@@ -10,14 +10,7 @@ from frontend.ui import setup_page_config
 # Set page configuration
 setup_page_config()
 
-from pipeline.science.pipeline.tutor_agent import (
-    tutor_agent,
-)
-
-
-from pipeline.science.pipeline.utils import (
-    generate_course_id,
-)
+from pipeline.science.pipeline.utils import generate_course_id
 
 from frontend.ui import (
     show_auth_top,
@@ -32,18 +25,13 @@ from frontend.ui import (
     show_contact_us,
 )
 
-
 from frontend.state import (
     handle_file_change,
     initialize_session_state,
     state_process_pdf_file,
 )
 
-
-from frontend.auth import (
-    show_auth,
-)
-
+from frontend.auth import show_auth
 
 from frontend.state import SKIP_AUTH
 
@@ -59,7 +47,6 @@ if st.session_state['isAuth']:
     show_auth_top()
     show_header()
 
-
     # Show mode selection and file uploader in the sidebar
     if 'is_uploaded_file' not in st.session_state:
         st.session_state['is_uploaded_file'] = False
@@ -70,7 +57,6 @@ if st.session_state['isAuth']:
     show_language_option()
     show_page_option()
     show_footer()
-
 
     if __name__ == "__main__" and st.session_state.uploaded_file is not None and st.session_state.page == "📑 Document reading":
         file_size = st.session_state.uploaded_file.size

@@ -13,7 +13,7 @@ Create environment and install required packages
 ```bash
 conda create --name deeptutor python=3.12
 conda activate deeptutor
-pip install -r requirements.txt
+pip install -U -r requirements.txt
 ```
 
 ## Set OPENAI_API_KEY

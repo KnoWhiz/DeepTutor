@@ -273,7 +273,11 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                                             st.session_state.current_page = page_num
                                             # Display the highlight info for that single source button
                                             # st.session_state.annotations, st.session_state.react_annotations = get_highlight_info(doc, [source])
-                                            st.session_state.annotations = st.session_state.source_annotations[source]
+                                            try:
+                                                st.session_state.annotations = st.session_state.source_annotations[source]
+                                            except Exception as e:
+                                                logger.exception(f"Failed to get annotations: {str(e)}")
+                                                st.session_state.annotations = []
                     
                     # Then display follow-up questions
                     if "follow_up_questions" in msg and msg["follow_up_questions"] != []:
@@ -375,7 +379,11 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                                                 st.session_state.current_page = page_num
                                                 # st.session_state.annotations, st.session_state.react_annotations = get_highlight_info(doc, [source])
                                                 # i = list(sources.keys()).index(source)
-                                                st.session_state.annotations = st.session_state.source_annotations[source]
+                                                try:
+                                                    st.session_state.annotations = st.session_state.source_annotations[source]
+                                                except Exception as e:
+                                                    logger.exception(f"Failed to get annotations: {str(e)}")
+                                                    st.session_state.annotations = []
                                                 # print(f"type of st.session_state.annotations: {type(st.session_state.annotations)}")
                         
                         # Then display follow-up questions
@@ -397,7 +405,11 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                 if st.session_state.get("sources"):
                     # st.session_state.annotations, st.session_state.react_annotations = get_highlight_info(doc, list(st.session_state.sources.keys()))
                     # i = list(st.session_state.sources.keys()).index(source)
-                    st.session_state.annotations = st.session_state.source_annotations[source]
+                    try:
+                        st.session_state.annotations = st.session_state.source_annotations[source]
+                    except Exception as e:
+                        logger.exception(f"Failed to get annotations: {str(e)}")
+                        st.session_state.annotations = []
                     # print(f"type of st.session_state.annotations: {type(st.session_state.annotations)}")
 
 

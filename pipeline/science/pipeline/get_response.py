@@ -1,5 +1,5 @@
 import os
-
+import logging
 from langchain_community.vectorstores import FAISS
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.prompts import ChatPromptTemplate
@@ -22,7 +22,7 @@ from pipeline.science.pipeline.inference import deepseek_inference
 from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
 from pipeline.science.pipeline.get_graphrag_response import get_GraphRAG_global_response
 from pipeline.science.pipeline.get_rag_response import get_standard_rag_response
-import logging
+
 logger = logging.getLogger("tutorpipeline.science.get_response")
 
 
@@ -118,16 +118,23 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, us
             sources_chunks.append(chunk[0])
         context = "\n\n".join([chunk.page_content for chunk in sources_chunks])
 
-        prompt = f"\
-        The previous conversation is: {chat_history_string}\
-        Reference context from the paper: {context}\
-        The user's query is: {user_input_string}\
-        "
+        prompt = f"""
+        You are a deep thinking tutor helping a student reading a paper.
+        The previous conversation is: {chat_history_string}
+        Reference context from the paper: {context}
+        The student's query is: {user_input_string}
+        """
         logger.info("before deepseek_inference ...")
-        answer = str(deepseek_inference(prompt))
-        logger.info("after deepseek_inference ...")
-
-        # Extract the content between <think> and </think> as answer_thinking, and the rest as answer_summary
+        try:
+            answer = str(deepseek_inference(prompt))
+        except Exception as e:
+            logger.exception(f"Error in deepseek_inference: {e}")
+            prompt = f"""
+            You are a deep thinking tutor helping a student reading a paper.
+            Reference context from the paper: {context}
+            The student's query is: {user_input_string}
+            """
+            answer = str(deepseek_inference(prompt))
         answer_thinking = answer.split("<think>")[1].split("</think>")[0]
         answer_summary = answer.split("<think>")[1].split("</think>")[1]
         answer_summary = responses_refine(answer_summary, "")

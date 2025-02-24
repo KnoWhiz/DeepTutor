@@ -7,8 +7,12 @@ from streamlit_pdf_viewer import pdf_viewer
 from streamlit_float import float_init, float_parent, float_css_helper
 from streamlit_extras.stylable_container import stylable_container
 
-from frontend.utils import previous_page, next_page, chat_content, handle_follow_up_click
-from pipeline.science.pipeline.doc_processor import get_highlight_info
+from frontend.utils import (
+    previous_page,
+    next_page,
+    chat_content,
+    handle_follow_up_click
+)
 from frontend.forms.contact import contact_form
 from pipeline.science.pipeline.config import load_config
 from pipeline.science.pipeline.session_manager import ChatMode
@@ -186,7 +190,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
 
     with chat_container:
         # Generate initial welcome message if chat history is empty
-        if not st.session_state.chat_history:
+        if not st.session_state.chat_session.chat_history:
             with st.spinner("Loading document summary..."):
                 initial_message,\
                 sources,\
@@ -203,7 +207,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                 if isinstance(sources, list):
                     sources = {source: 1.0 for source in sources}  # Assign max relevance to initial sources
                 
-                st.session_state.chat_history.append(
+                st.session_state.chat_session.chat_history.append(
                     {
                         "role": "assistant", 
                         "content": initial_message,
@@ -212,18 +216,16 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                 )
                 
                 if sources:
-                    st.session_state.chat_history.append({
+                    st.session_state.chat_session.chat_history.append({
                         "role": "source_buttons",
                         "sources": sources,
                         "pages": refined_source_pages,
                         "annotations": source_annotations,
-                        "timestamp": len(st.session_state.chat_history)
+                        "timestamp": len(st.session_state.chat_session.chat_history)
                     })
-                # Save chat history
-                st.session_state.chat_session.chat_history = st.session_state.chat_history
-
+                
         # Display chat history
-        for idx, msg in enumerate(st.session_state.chat_history):
+        for idx, msg in enumerate(st.session_state.chat_session.chat_history):
             if msg["role"] == "user":
                 avatar = learner_avatar
                 with st.chat_message(msg["role"], avatar=avatar):
@@ -234,7 +236,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                     st.write(msg["content"])
                     
                     # First display source buttons if this message has associated sources
-                    next_msg = st.session_state.chat_history[idx + 1] if idx + 1 < len(st.session_state.chat_history) else None
+                    next_msg = st.session_state.chat_session.chat_history[idx + 1] if idx + 1 < len(st.session_state.chat_session.chat_history) else None
                     if next_msg and next_msg["role"] == "source_buttons":
                         sources = next_msg["sources"]
                         # Convert sources to dict if it's a list (for backward compatibility)
@@ -284,7 +286,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                         st.write("\n\n**📝 Follow-up Questions:**")
                         for q_idx, question in enumerate(msg["follow_up_questions"], 1):
                             if st.button(f"{q_idx}. {question}", key=f"follow_up_{idx}_{q_idx}"):
-                                handle_follow_up_click(question)
+                                handle_follow_up_click(st.session_state.chat_session, question)
             elif msg["role"] == "source_buttons":
                 # Skip source buttons here since we're showing them with the assistant message
                 pass
@@ -321,7 +323,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                         sources = sources if isinstance(sources, dict) else {}
                     
                     # Add response with follow-up questions to chat history
-                    st.session_state.chat_history.append(
+                    st.session_state.chat_session.chat_history.append(
                         {
                             "role": "assistant", 
                             "content": answer,
@@ -330,16 +332,13 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                     )
                     
                     # Add source buttons to chat history
-                    st.session_state.chat_history.append({
+                    st.session_state.chat_session.chat_history.append({
                         "role": "source_buttons",
                         "sources": sources,
                         "pages": refined_source_pages,
                         "annotations": st.session_state.source_annotations,
-                        "timestamp": len(st.session_state.chat_history)
+                        "timestamp": len(st.session_state.chat_session.chat_history)
                     })
-
-                    # Save chat history after assistant response
-                    st.session_state.chat_session.chat_history = st.session_state.chat_history
                     
                     # Display current response
                     with st.chat_message("assistant", avatar=tutor_avatar):
@@ -390,7 +389,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                         st.write("\n\n**📝 Follow-up Questions:**")
                         for q_idx, question in enumerate(follow_up_questions, 1):
                             if st.button(f"{q_idx}. {question}", key=f"follow_up_current_{q_idx}"):
-                                handle_follow_up_click(question)
+                                handle_follow_up_click(st.session_state.chat_session, question)
 
                     st.session_state.sources = sources
                     st.session_state.chat_occurred = True

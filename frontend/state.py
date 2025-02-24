@@ -27,9 +27,6 @@ def initialize_session_state(embedding_folder=None):
         )
         st.session_state.chat_session.initialize()
     
-    if 'chat_history' not in st.session_state:
-        st.session_state.chat_history = st.session_state.chat_session.chat_history
-    
     if 'mode' not in st.session_state:
         st.session_state.mode = "basic"
         st.session_state.chat_session.set_mode(ChatMode.BASIC)
@@ -60,9 +57,6 @@ def initialize_session_state(embedding_folder=None):
 def handle_file_change():
     """Handle changes when a new file is uploaded."""
     # Clear existing chat history
-    if 'chat_history' in st.session_state:
-        st.session_state.chat_history = []
-    
     if 'chat_session' in st.session_state:
         st.session_state.chat_session.clear_history()
     

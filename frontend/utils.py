@@ -2,6 +2,7 @@ import streamlit as st
 import asyncio
 from pipeline.science.pipeline.tutor_agent import tutor_agent
 from pipeline.science.pipeline.get_response import generate_follow_up_questions
+from pipeline.science.pipeline.session_manager import ChatSession
 
 import logging
 logger = logging.getLogger(__name__)
@@ -56,8 +57,7 @@ def chat_content():
         user_input = st.session_state.user_input
         
         # Add user message to chat history
-        st.session_state.chat_history.append({"role": "user", "content": user_input})
-        st.session_state.chat_session.chat_history = st.session_state.chat_history
+        st.session_state.chat_session.chat_history.append({"role": "user", "content": user_input})
         
         try:
             # Get response
@@ -77,25 +77,22 @@ def chat_content():
                 sources = {source: 1.0 for source in sources}
             
             # Generate follow-up questions for new response
-            follow_up_questions = generate_follow_up_questions(answer, st.session_state.chat_history)
+            follow_up_questions = generate_follow_up_questions(answer, st.session_state.chat_session.chat_history)
             
             # Add assistant response to chat history
-            st.session_state.chat_history.append({
+            st.session_state.chat_session.chat_history.append({
                 "role": "assistant",
                 "content": answer,
                 "follow_up_questions": follow_up_questions
             })
             
             if sources:
-                st.session_state.chat_history.append({
+                st.session_state.chat_session.chat_history.append({
                     "role": "source_buttons",
                     "sources": sources,
                     "pages": source_pages,
-                    "timestamp": len(st.session_state.chat_history)
+                    "timestamp": len(st.session_state.chat_session.chat_history)
                 })
-            
-            # Update chat session history
-            st.session_state.chat_session.chat_history = st.session_state.chat_history
             
             # Clear input
             st.session_state.user_input = ""
@@ -103,13 +100,12 @@ def chat_content():
         except Exception as e:
             st.error(f"An error occurred while processing your message: {str(e)}")
             # Remove the failed message from history
-            if st.session_state.chat_history:
-                st.session_state.chat_history.pop()
-                st.session_state.chat_session.chat_history = st.session_state.chat_history
+            if st.session_state.chat_session.chat_history:
+                st.session_state.chat_session.chat_history.pop()
 
 
 # Function to handle follow-up question clicks
-def handle_follow_up_click(question: str):
+def handle_follow_up_click(chat_session: ChatSession, question: str):
     """Handle when a user clicks on a follow-up question.
     
     Args:
@@ -121,13 +117,13 @@ def handle_follow_up_click(question: str):
     temp_chat_history = []
     
     # Find the last assistant message that generated this follow-up question
-    for i in range(len(st.session_state.chat_history) - 1, -1, -1):
-        msg = st.session_state.chat_history[i]
+    for i in range(len(st.session_state.chat_session.chat_history) - 1, -1, -1):
+        msg = st.session_state.chat_session.chat_history[i]
         if msg["role"] == "assistant" and "follow_up_questions" in msg:
             if question in msg["follow_up_questions"]:
                 # Include the context: previous user question and assistant's response
-                if i > 0 and st.session_state.chat_history[i-1]["role"] == "user":
-                    temp_chat_history.append(st.session_state.chat_history[i-1])  # Previous user question
+                if i > 0 and st.session_state.chat_session.chat_history[i-1]["role"] == "user":
+                    temp_chat_history.append(st.session_state.chat_session.chat_history[i-1])  # Previous user question
                 temp_chat_history.append(msg)  # Assistant's response
                 break
     
@@ -135,8 +131,8 @@ def handle_follow_up_click(question: str):
     st.session_state.temp_chat_history = temp_chat_history
     
     # Add the new question to the full chat history
-    st.session_state.chat_history.append(
+    st.session_state.chat_session.chat_history.append(
         {"role": "user", "content": question}
     )
     # Update chat session history
-    st.session_state.chat_session.chat_history = st.session_state.chat_history
+    st.session_state.chat_session.chat_history = st.session_state.chat_session.chat_history

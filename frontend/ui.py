@@ -422,15 +422,18 @@ def show_pdf_viewer(file):
         </style>
         """, unsafe_allow_html=True)
     
-    pdf_container = st.container(border=st.session_state.show_chat_border, height=1005)
+    # Create a unique key for the PDF container based on current page
+    pdf_container = st.container(border=st.session_state.show_chat_border, height=1005, key=f"pdf_container_{st.session_state.current_page}")
 
     with pdf_container:
+        # Use current_page in the key to force refresh when page changes
         pdf_viewer(
             file,
             width="100%",
             annotations=st.session_state.annotations,
             pages_to_render=[st.session_state.current_page],
-            render_text=True
+            render_text=True,
+            key=f"pdf_viewer_{st.session_state.current_page}_{st.session_state.annotations}"
         )
 
     # Create three columns for the navigation controls
@@ -439,14 +442,14 @@ def show_pdf_viewer(file):
     # Left arrow button
     with columns[0]:
         with stylable_container(
-            key="left_aligned_button",
+            key=f"left_aligned_button_{st.session_state.current_page}",
             css_styles="""
             button {
                 float: left;
             }
             """
         ):
-            st.button("←", key='←', on_click=previous_page)
+            st.button("←", key=f"prev_{st.session_state.current_page}", on_click=previous_page)
             button_css = float_css_helper(width="1.2rem", bottom="1.2rem", transition=0)
             float_parent(css=button_css)
     
@@ -462,14 +465,14 @@ def show_pdf_viewer(file):
     # Right arrow button
     with columns[2]:
         with stylable_container(
-            key="right_aligned_button",
+            key=f"right_aligned_button_{st.session_state.current_page}",
             css_styles="""
             button {
                 float: right;
             }
             """
         ):
-            st.button("→", key='→', on_click=next_page)
+            st.button("→", key=f"next_{st.session_state.current_page}", on_click=next_page)
             button_css = float_css_helper(width="1.2rem", bottom="1.2rem", transition=0)
             float_parent(css=button_css)
 

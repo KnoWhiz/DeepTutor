@@ -1,9 +1,11 @@
 import os
+import logging
 import streamlit as st
 from pipeline.science.pipeline.logging_config import setup_logging
 
 # Set up logging configuration
 setup_logging()
+logger = logging.getLogger(__name__)
 
 from frontend.ui import setup_page_config
 
@@ -97,6 +99,8 @@ if st.session_state['isAuth']:
 
             with outer_columns[0]:
                 show_pdf_viewer(file)
+
+            logger.info("st.session_state.current_page is %s", st.session_state.current_page)
 
     elif __name__ == "__main__" and st.session_state.page == "📬 DeepTutor?":
         show_contact_us()

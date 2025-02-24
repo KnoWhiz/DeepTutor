@@ -1,8 +1,10 @@
 import streamlit as st
 import asyncio
-from pipeline.science.pipeline.chat_history_manager import save_chat_history
 from pipeline.science.pipeline.tutor_agent import tutor_agent
 from pipeline.science.pipeline.get_response import generate_follow_up_questions
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 def streamlit_tutor_agent(chat_session, file_path, user_input):
@@ -22,14 +24,18 @@ def streamlit_tutor_agent(chat_session, file_path, user_input):
 
 # Function to display the pdf
 def previous_page():
+    logger.info("previous_page")
     if st.session_state.current_page > 1:
-        st.session_state.current_page -= 1
+        st.session_state.current_page = st.session_state.current_page - 1
+    logger.info("st.session_state.current_page is %s", st.session_state.current_page)
 
 
 # Function to display the pdf
 def next_page():
+    logger.info("next_page")
     if st.session_state.current_page < st.session_state.total_pages:
-        st.session_state.current_page += 1
+        st.session_state.current_page = st.session_state.current_page + 1
+    logger.info("st.session_state.current_page is %s", st.session_state.current_page)
 
 
 # Function to close the pdf

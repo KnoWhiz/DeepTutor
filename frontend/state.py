@@ -100,8 +100,6 @@ def handle_file_change():
     st.session_state.document = None
     st.session_state.doc = None
     st.session_state.file_path = None
-    st.session_state.total_pages = 0
-    st.session_state.current_page = 1
     st.session_state.annotations = []
     st.session_state.chat_occurred = False
     st.session_state.sources = {}
@@ -133,7 +131,6 @@ def state_process_pdf_file(file_path):
     st.session_state.doc = doc
     st.session_state.file_path = file_path
     st.session_state.total_pages = len(doc)
-    st.session_state.current_page = 1  # Initialize current page
     st.session_state.annotations = []  # Initialize annotations
     st.session_state.chat_occurred = False  # Initialize chat state
     st.session_state.sources = {}  # Initialize sources

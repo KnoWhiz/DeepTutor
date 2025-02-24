@@ -169,6 +169,12 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
         else:
             follow_up_questions = []
 
+        for i in range(len(follow_up_questions)):
+            follow_up_questions[i] = translate_content(
+                content=follow_up_questions[i],
+                target_lang=chat_session.current_language
+            )
+
         return answer, sources, source_pages, source_annotations, refined_source_pages, follow_up_questions
 
     time_tracking['summary_message'] = time.time() - initial_message_start_time
@@ -241,6 +247,7 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
         content=answer,
         target_lang=chat_session.current_language
     )
+    # print(f"translate_content Answer: {answer}")
     time_tracking['translation'] = time.time() - translation_start
     logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
@@ -266,6 +273,11 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
     # Generate follow-up questions
     followup_start = time.time()
     follow_up_questions = generate_follow_up_questions(answer, chat_history)
+    for i in range(len(follow_up_questions)):
+        follow_up_questions[i] = translate_content(
+            content=follow_up_questions[i],
+            target_lang=chat_session.current_language
+        )
     time_tracking['followup_questions'] = time.time() - followup_start
     logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
     return answer, sources, source_pages, source_annotations, refined_source_pages, follow_up_questions

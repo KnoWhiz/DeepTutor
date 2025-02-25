@@ -1,9 +1,9 @@
 import os
 import openai
+import logging
 from dotenv import load_dotenv
 from typing import Optional
-import logging
-
+from pipeline.science.pipeline.config import load_config
 load_dotenv()
 
 logger = logging.getLogger("tutorpipeline.science.inference")
@@ -14,7 +14,8 @@ def deepseek_inference(
     stream: bool = False,
     temperature: float = 0.4,
     top_p: float = 0.1,
-    max_tokens: int = 10000
+    max_tokens: int = 3000,
+    model: str = "DeepSeek-R1-Distill-Llama-70B"
 ) -> Optional[str]:
     """
     Get completion from the DeepSeek model with optional streaming support.
@@ -30,15 +31,29 @@ def deepseek_inference(
     Returns:
         The generated text if streaming is False, None if streaming is True
     """
+    config = load_config()
+    max_tokens = config["inference_token_limit"]
+    if model == "DeepSeek-R1-Distill-Llama-70B":
+        model = "DeepSeek-R1-Distill-Llama-70B"
+        base_url = "https://api.sambanova.ai/v1"
+        max_tokens *= 3
+    elif model == "DeepSeek-R1":
+        model = "DeepSeek-R1"
+        base_url = "https://preview.snova.ai/v1"
+        max_tokens *= 1
+    else:
+        model = "DeepSeek-R1-Distill-Llama-70B"
+        base_url = "https://api.sambanova.ai/v1"
+        max_tokens *= 1
+
     client = openai.OpenAI(
         api_key=os.environ.get("SAMBANOVA_API_KEY"),
-        base_url="https://api.sambanova.ai/v1",
+        base_url=base_url
     )
 
     try:
         response = client.chat.completions.create(
-            # model="DeepSeek-R1-Distill-Llama-70B",
-            model="DeepSeek-R1-Distill-Llama-70B",
+            model=model,
             messages=[
                 {"role": "system", "content": system_message},
                 {"role": "user", "content": prompt}

@@ -151,7 +151,7 @@ def count_tokens(text, model_name='gpt-4o'):
     return len(encoding.encode(text))
 
 
-def truncate_chat_history(chat_history, model_name='gpt-4o'):
+def truncate_chat_history(chat_history, model_name='gpt-4o', token_limit=None):
     """Only keep messages that fit within token limit"""
     config = load_config()
     para = config['llm']
@@ -160,7 +160,10 @@ def truncate_chat_history(chat_history, model_name='gpt-4o'):
         model_level = 'advance'
     else:
         model_level = 'Basic'
-    max_tokens = int(api.models[model_level]['context_window']/3)
+    if token_limit is None:
+        max_tokens = int(api.models[model_level]['context_window']/3)
+    else:
+        max_tokens = token_limit
     total_tokens = 0
     truncated_history = []
     for message in (chat_history[::-1])[1:]:
@@ -178,7 +181,7 @@ def truncate_chat_history(chat_history, model_name='gpt-4o'):
     # Reverse the order of the truncated history
     # truncated_history = truncated_history[::-1]
     # logger.info(f"truncated_history: {truncated_history}")
-    return truncated_history
+    return str(truncated_history)
 
 
 def truncate_document(_document, model_name='gpt-4o'):

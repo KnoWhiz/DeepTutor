@@ -26,6 +26,7 @@ from pipeline.science.pipeline.get_response import (
     get_query_helper,
     get_response,
     generate_follow_up_questions,
+    Question,
 )
 from pipeline.science.pipeline.sources_retrieval import get_response_source
 from pipeline.science.pipeline.config import load_config
@@ -187,14 +188,17 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
     refined_user_input = user_input
     if chat_session.mode != ChatMode.LITE:
         query_start = time.time()
-        refined_user_input = get_query_helper(chat_session, user_input, context_chat_history, embedding_folder)
+        question = get_query_helper(chat_session, user_input, context_chat_history, embedding_folder)
+        refined_user_input = question.text
         logger.info(f"Refined user input: {refined_user_input}")
         time_tracking['query_refinement'] = time.time() - query_start
         logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    else:
+        question = Question(text=user_input, language=chat_session.current_language, question_type="local")
 
     # Get response
     response_start = time.time()
-    response = await get_response(chat_session, _doc, _document, file_path, refined_user_input, context_chat_history, embedding_folder, deep_thinking=deep_thinking)
+    response = await get_response(chat_session, _doc, _document, file_path, question, context_chat_history, embedding_folder, deep_thinking=deep_thinking)
     answer = response[0] if isinstance(response, tuple) else response
     time_tracking['response_generation'] = time.time() - response_start
     logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")

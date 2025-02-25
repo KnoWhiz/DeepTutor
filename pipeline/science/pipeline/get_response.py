@@ -13,6 +13,7 @@ from pipeline.science.pipeline.utils import (
     get_llm,
     responses_refine,
     detect_language,
+    count_tokens
 )
 from pipeline.science.pipeline.embeddings import (
     get_embedding_models,
@@ -26,7 +27,49 @@ from pipeline.science.pipeline.get_rag_response import get_standard_rag_response
 logger = logging.getLogger("tutorpipeline.science.get_response")
 
 
-async def get_response(chat_session: ChatSession, _doc, _document, file_path, user_input, chat_history, embedding_folder, deep_thinking = False):
+class Question:
+    """
+    Represents a question with its text, language, and type information.
+    
+    Attributes:
+        text (str): The text content of the question
+        language (str): The detected language of the question (e.g., "English")
+        question_type (str): The type of question (e.g., "local" or "global" or "image")
+    """
+    
+    def __init__(self, text="", language="English", question_type="global", special_context=""):
+        """
+        Initialize a Question object.
+        
+        Args:
+            text (str): The text content of the question
+            language (str): The language of the question
+            question_type (str): The type of the question (local or global or image)
+        """
+        self.text = text
+        self.language = language
+        if question_type not in ["local", "global", "image"]:
+            self.question_type = "global"
+        else:
+            self.question_type = question_type
+
+        self.special_context =  special_context
+    
+    def __str__(self):
+        """Return string representation of the Question."""
+        return f"Question(text='{self.text}', language='{self.language}', type='{self.question_type}')"
+
+    def to_dict(self):
+        """Convert Question object to dictionary."""
+        return {
+            "text": self.text,
+            "language": self.language,
+            "question_type": self.question_type
+        }
+
+
+async def get_response(chat_session: ChatSession, _doc, _document, file_path, question: Question, chat_history, embedding_folder, deep_thinking = False):
+    user_input = question.text
     # Handle Lite mode first
     if chat_session.mode == ChatMode.LITE:
         lite_prompt = """You are a helpful tutor assisting with document understanding.
@@ -43,7 +86,7 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, us
 
         answer = await get_standard_rag_response(
             prompt_string=lite_prompt,
-            user_input=user_input,
+            user_input=user_input + "\n\n" + question.special_context,
             chat_history=chat_history,
             embedding_folder=embedding_folder,
             embedding_type='Lite',
@@ -91,7 +134,7 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, us
 
         answer = await get_standard_rag_response(
             prompt_string=basic_prompt,
-            user_input=user_input,
+            user_input=user_input + "\n\n" + question.special_context,
             chat_history=chat_history,
             embedding_folder=embedding_folder
         )
@@ -100,6 +143,7 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, us
         logger.info("deep thinking ...")
         # Load config and embeddings for deep thinking mode
         config = load_config()
+        token_limit = config["inference_token_limit"]
         
         try:
             logger.info(f"Loading markdown embeddings from {os.path.join(embedding_folder, 'markdown')}")
@@ -108,14 +152,19 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, us
             logger.exception(f"Failed to load markdown embeddings for deep thinking: {str(e)}")
             db = load_embeddings(embedding_folder, 'default')
 
-        chat_history_string = truncate_chat_history(chat_history)
-        user_input_string = str(user_input)
+        chat_history_string = truncate_chat_history(chat_history, token_limit=token_limit)
+        user_input_string = str(user_input + "\n\n" + question.special_context)
         # Get relevant chunks for both question and answer with scores
-        question_chunks_with_scores = db.similarity_search_with_score(user_input, k=config['retriever']['k'])
+        question_chunks_with_scores = db.similarity_search_with_score(user_input_string, k=config['retriever']['k'])
         # The total list of sources chunks
         sources_chunks = []
+        # From the highest score to the lowest score, until the total tokens exceed 3000
+        total_tokens = 0
         for chunk in question_chunks_with_scores:
+            if total_tokens + count_tokens(chunk[0].page_content) > token_limit:
+                break
             sources_chunks.append(chunk[0])
+            total_tokens += count_tokens(chunk[0].page_content)
         context = "\n\n".join([chunk.page_content for chunk in sources_chunks])
 
         prompt = f"""
@@ -124,9 +173,13 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, us
         Reference context from the paper: {context}
         The student's query is: {user_input_string}
         """
+        logger.info(f"user_input_string tokens: {count_tokens(user_input_string)}")
+        logger.info(f"chat_history_string tokens: {count_tokens(chat_history_string)}")
+        logger.info(f"context tokens: {count_tokens(context)}")
+
         logger.info("before deepseek_inference ...")
         try:
-            answer = str(deepseek_inference(prompt))
+            answer = str(deepseek_inference(prompt, model="DeepSeek-R1"))
         except Exception as e:
             logger.exception(f"Error in deepseek_inference: {e}")
             prompt = f"""
@@ -134,7 +187,7 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, us
             Reference context from the paper: {context}
             The student's query is: {user_input_string}
             """
-            answer = str(deepseek_inference(prompt))
+            answer = str(deepseek_inference(prompt, model="DeepSeek-R1-Distill-Llama-70B"))
         answer_thinking = answer.split("<think>")[1].split("</think>")[0]
         answer_summary = answer.split("<think>")[1].split("</think>")[1]
         answer_summary = responses_refine(answer_summary, "")
@@ -174,7 +227,7 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
         ```json
         {{
             "question": "<question try to understand what the user really mean by the question and rephrase it in a better way>",
-            "question_type": "<local/global>",
+            "question_type": "local" or "global" or "image", (if the question is like "what is fig. 1 mainly about?", the question_type should be "image")
         }}
         ```
         """
@@ -208,6 +261,18 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
 
     # # TEST
     # print("question rephrased:", question)
+    question = Question(text=question, language=language, question_type=question_type)
+    logger.info(f"TEST: question.question_type: {question.question_type}")
+
+    if question_type == "image":
+        # Find a single chunk in the embedding folder
+        db = load_embeddings(embedding_folder, 'default')
+        image_chunks = db.similarity_search_with_score(user_input + "\n\n" + question.special_context, k=1)
+        if image_chunks:
+            question.special_context = """
+            Here is the context and visual understanding of the image:
+            """ + image_chunks[0][0].page_content
+        logger.info(f"TEST: question.special_context: {question.special_context}")
     return question
 
 

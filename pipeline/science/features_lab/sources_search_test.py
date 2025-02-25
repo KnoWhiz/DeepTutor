@@ -98,7 +98,7 @@ def create_searchable_chunks(doc, chunk_size: int) -> list:
 
     return chunks
 
-def test_source_search(pdf_path: str, chunk_size: int = 512) -> None:
+def test_source_search(file_path: str, chunk_size: int = 512) -> None:
     """
     Test source search functionality by:
     1. Loading a PDF file
@@ -108,17 +108,17 @@ def test_source_search(pdf_path: str, chunk_size: int = 512) -> None:
     5. For each chunk, verify it can be found in the source PDF
 
     Args:
-        pdf_path: Path to the PDF file to test
+        file_path: Path to the PDF file to test
         chunk_size: Maximum size of each text chunk in characters (default: 512)
     """
-    print(f"Testing source search for PDF: {pdf_path}")
+    print(f"Testing source search for PDF: {file_path}")
 
     # Load the PDF file
-    with open(pdf_path, "rb") as f:
+    with open(file_path, "rb") as f:
         file_content = f.read()
 
     # Process the PDF file
-    document, doc = state_process_pdf_file(pdf_path)
+    document, doc = state_process_pdf_file(file_path)
 
     print(f"Loaded PDF with {len(document)} document chunks")
 
@@ -197,7 +197,7 @@ def test_source_search(pdf_path: str, chunk_size: int = 512) -> None:
 
 if __name__ == "__main__":
     # parser = argparse.ArgumentParser(description="Test source search functionality")
-    # parser.add_argument("pdf_path", help="Path to the PDF file to test")
+    # parser.add_argument("file_path", help="Path to the PDF file to test")
     # args = parser.parse_args()
 
     test_source_search(

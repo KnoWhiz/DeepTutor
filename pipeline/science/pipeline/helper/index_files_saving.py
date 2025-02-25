@@ -59,14 +59,14 @@ def graphrag_index_files_compress(embedding_folder):
     :param embedding_folder: The path to the embedding folder
     :return: True if the index files are ready now in embedding_folder and uploaded to Azure blob, False otherwise
     """
-    # Decompress the zip file to the folder named with course_id under the parent folder
+    # Decompress the zip file to the folder named with file_id under the parent folder
     if embedding_folder.endswith("/"):
         folder = embedding_folder[:-1]
     else:
         folder = embedding_folder
-    course_id = os.path.basename(folder)
-    parent_folder = folder.replace(course_id, "").rstrip(os.sep)
-    compressed_file = os.path.join(parent_folder, course_id)
+    file_id = os.path.basename(folder)
+    parent_folder = folder.replace(file_id, "").rstrip(os.sep)
+    compressed_file = os.path.join(parent_folder, file_id)
 
     if graphrag_index_files_check(embedding_folder):
         print("Index files are already ready to be compressed!")
@@ -76,8 +76,8 @@ def graphrag_index_files_compress(embedding_folder):
 
         # Upload the compressed zip file to Azure Blob Storage
         azure_blob_helper = AzureBlobHelper()
-        azure_blob_helper.upload(compressed_file + ".zip", f"graphrag_index/{course_id}.zip", "knowhiztutorrag")
-        print(f"Uploaded the compressed {course_id}.zip file to Azure Blob Storage")
+        azure_blob_helper.upload(compressed_file + ".zip", f"graphrag_index/{file_id}.zip", "knowhiztutorrag")
+        print(f"Uploaded the compressed {file_id}.zip file to Azure Blob Storage")
         return True
     else:
         # CLEANUP: If the files are not ready, clear the compressed zip file and the corresponding folder
@@ -95,15 +95,15 @@ def graphrag_index_files_decompress(embedding_folder):
     :param embedding_folder: The path to the embedding folder
     :return: True if the index files are ready now in embedding_folder, False otherwise
     """
-    # Decompress the zip file to the folder named with course_id under the parent folder
+    # Decompress the zip file to the folder named with file_id under the parent folder
     if embedding_folder.endswith("/"):
         folder = embedding_folder[:-1]
     else:
         folder = embedding_folder
-    course_id = os.path.basename(folder)
-    parent_folder = folder.replace(course_id, "").rstrip(os.sep)
-    compressed_file = os.path.join(parent_folder, course_id)
-    compressed_file_blob = f"graphrag_index/{course_id}.zip"
+    file_id = os.path.basename(folder)
+    parent_folder = folder.replace(file_id, "").rstrip(os.sep)
+    compressed_file = os.path.join(parent_folder, file_id)
+    compressed_file_blob = f"graphrag_index/{file_id}.zip"
 
     # Try No.1: Check if the index files are already ready
     if graphrag_index_files_check(embedding_folder):
@@ -188,9 +188,9 @@ def vectorrag_index_files_compress(embedding_folder):
         folder = embedding_folder[:-1]
     else:
         folder = embedding_folder
-    course_id = os.path.basename(folder)
-    parent_folder = folder.replace(course_id, "").rstrip(os.sep)
-    compressed_file = os.path.join(parent_folder, f"vectorrag_{course_id}")
+    file_id = os.path.basename(folder)
+    parent_folder = folder.replace(file_id, "").rstrip(os.sep)
+    compressed_file = os.path.join(parent_folder, f"vectorrag_{file_id}")
 
     if vectorrag_index_files_check(embedding_folder):
         print("VectorRAG index files are ready to be compressed!")
@@ -200,8 +200,8 @@ def vectorrag_index_files_compress(embedding_folder):
 
         # Upload the compressed zip file to Azure Blob Storage
         azure_blob_helper = AzureBlobHelper()
-        azure_blob_helper.upload(compressed_file + ".zip", f"vectorrag_index/{course_id}.zip", "knowhiztutorrag")
-        print(f"Uploaded the compressed vectorrag_{course_id}.zip file to Azure Blob Storage")
+        azure_blob_helper.upload(compressed_file + ".zip", f"vectorrag_index/{file_id}.zip", "knowhiztutorrag")
+        print(f"Uploaded the compressed vectorrag_{file_id}.zip file to Azure Blob Storage")
         return True
     else:
         # CLEANUP: If the files are not ready, clear the compressed zip file
@@ -224,10 +224,10 @@ def vectorrag_index_files_decompress(embedding_folder):
         folder = embedding_folder[:-1]
     else:
         folder = embedding_folder
-    course_id = os.path.basename(folder)
-    parent_folder = folder.replace(course_id, "").rstrip(os.sep)
-    compressed_file = os.path.join(parent_folder, f"vectorrag_{course_id}")
-    compressed_file_blob = f"vectorrag_index/{course_id}.zip"
+    file_id = os.path.basename(folder)
+    parent_folder = folder.replace(file_id, "").rstrip(os.sep)
+    compressed_file = os.path.join(parent_folder, f"vectorrag_{file_id}")
+    compressed_file_blob = f"vectorrag_index/{file_id}.zip"
 
     # Try No.1: Check if the index files are already ready
     if vectorrag_index_files_check(embedding_folder):

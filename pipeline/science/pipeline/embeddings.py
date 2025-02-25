@@ -72,13 +72,13 @@ def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_s
         print("No markdown content available to create markdown embeddings")
 
 
-async def generate_LiteRAG_embedding(_doc, pdf_path, embedding_folder):
+async def generate_LiteRAG_embedding(_doc, file_path, embedding_folder):
     """
     Generate LiteRAG embeddings for the document
     """
     config = load_config()
     para = config['llm']
-    # file_hash = generate_course_id(pdf_path)
+    # file_id = generate_file_id(file_path)
     lite_embedding_folder = os.path.join(embedding_folder, 'lite_embedding')
     # Check if all necessary files exist to load the embeddings
     faiss_path = os.path.join(lite_embedding_folder, "index.faiss")

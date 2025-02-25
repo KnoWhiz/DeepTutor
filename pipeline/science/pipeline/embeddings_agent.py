@@ -10,7 +10,7 @@ from pipeline.science.pipeline.config import load_config
 from pipeline.science.pipeline.utils import (
     create_searchable_chunks,
     format_time_tracking,
-    generate_course_id,
+    generate_file_id,
 )
 from pipeline.science.pipeline.images_understanding import initialize_image_files
 from pipeline.science.pipeline.embeddings_graphrag import generate_GraphRAG_embedding
@@ -36,7 +36,7 @@ SKIP_MARKER_API = True if os.getenv("ENVIRONMENT") == "local" else False
 logger.info(f"SKIP_MARKER_API: {SKIP_MARKER_API}")
 
 
-async def embeddings_agent(_mode, _document, _doc, pdf_path, embedding_folder, time_tracking: Dict[str, float] = {}):
+async def embeddings_agent(_mode, _document, _doc, file_path, embedding_folder, time_tracking: Dict[str, float] = {}):
     """
     Generate embeddings for the document
     If the embeddings already exist, load them
@@ -46,7 +46,7 @@ async def embeddings_agent(_mode, _document, _doc, pdf_path, embedding_folder, t
     Save the embeddings to the specified folder
     Generate and save document summary using the texts we created
     """
-    file_hash = generate_course_id(pdf_path)
+    file_id = generate_file_id(file_path)
     graphrag_start_time = time.time()
     logger.info(f"Current mode: {_mode}")
     if _mode == ChatMode.ADVANCED:
@@ -57,14 +57,14 @@ async def embeddings_agent(_mode, _document, _doc, pdf_path, embedding_folder, t
     elif _mode == ChatMode.LITE:
         logger.info("Mode: ChatMode.LITE. Generating LiteRAG embeddings...")
         lite_embedding_start_time = time.time()
-        await generate_LiteRAG_embedding(_doc, pdf_path, embedding_folder)
+        await generate_LiteRAG_embedding(_doc, file_path, embedding_folder)
         time_tracking['lite_embedding_total'] = time.time() - lite_embedding_start_time
-        logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+        logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
         return time_tracking
     else:
         raise ValueError("Invalid mode")
     time_tracking['graphrag_generate_embedding'] = time.time() - graphrag_start_time
-    logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     config = load_config()
     para = config['llm']
@@ -91,15 +91,15 @@ async def embeddings_agent(_mode, _document, _doc, pdf_path, embedding_folder, t
             if not SKIP_MARKER_API:
                 logger.info("Marker API is enabled. Using Marker API to extract content to markdown.")
                 markdown_dir = os.path.join(embedding_folder, "markdown")
-                md_path, saved_images, md_document = extract_pdf_content_to_markdown_via_api(pdf_path, markdown_dir)
+                md_path, saved_images, md_document = extract_pdf_content_to_markdown_via_api(file_path, markdown_dir)
                 doc_processor.set_md_document(md_document)
             else:
                 logger.info("Marker API is disabled. Using local PDF extraction.")
                 markdown_dir = os.path.join(embedding_folder, "markdown")
-                md_path, saved_images, md_document = extract_pdf_content_to_markdown(pdf_path, markdown_dir)
+                md_path, saved_images, md_document = extract_pdf_content_to_markdown(file_path, markdown_dir)
                 doc_processor.set_md_document(md_document)
             time_tracking['markdown_extraction'] = time.time() - markdown_extraction_start_time
-            logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+            logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
         except Exception as e:
             logger.exception(f"Error extracting content to markdown, using _doc to extract searchable content as save as markdown file: {e}")
             # Use _doc to extract searchable content as save as markdown file
@@ -129,15 +129,15 @@ async def embeddings_agent(_mode, _document, _doc, pdf_path, embedding_folder, t
             # Save to markdown_dir
             markdown_dir = os.path.join(embedding_folder, "markdown")
             os.makedirs(markdown_dir, exist_ok=True)
-            file_hash = generate_course_id(pdf_path)
-            md_path = os.path.join(markdown_dir, f"{file_hash}.md")
+            file_id = generate_file_id(file_path)
+            md_path = os.path.join(markdown_dir, f"{file_id}.md")
             with open(md_path, "w", encoding="utf-8") as f:
                 f.write(doc_processor.get_md_document())
 
             # Use the texts directly instead of splitting again
             logger.info(f"Number of pages processed: {len(texts)}")
             time_tracking['fake_markdown_extraction'] = time.time() - fake_markdown_extraction_start_time
-            logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+            logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
         else:
             # Split the document into chunks when markdown extraction succeeded
             create_searchable_chunks_start_time = time.time()
@@ -149,7 +149,7 @@ async def embeddings_agent(_mode, _document, _doc, pdf_path, embedding_folder, t
             texts = create_searchable_chunks(_doc, chunk_size)
             logger.info(f"length of document chunks generated for get_response_source:{len(texts)}")
             time_tracking['create_searchable_chunks'] = time.time() - create_searchable_chunks_start_time
-            logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+            logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
         # Initialize image files and try to append image context to texts with error handling
         process_image_files_start_time = time.time()
@@ -196,7 +196,7 @@ async def embeddings_agent(_mode, _document, _doc, pdf_path, embedding_folder, t
             logger.exception(f"Error processing image context: {e}")
             logger.info("Continuing without image context...")
         time_tracking['process_image_files'] = time.time() - process_image_files_start_time
-        logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+        logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
         # Create the vector store to use as the index
         create_vector_store_start_time = time.time()
@@ -204,13 +204,13 @@ async def embeddings_agent(_mode, _document, _doc, pdf_path, embedding_folder, t
         # Save the embeddings to the specified folder
         db.save_local(embedding_folder)
         time_tracking['vectorrag_create_vector_store'] = time.time() - create_vector_store_start_time
-        logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+        logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
         # Save the markdown embeddings to the specified folder
         create_markdown_embeddings_start_time = time.time()
         create_markdown_embeddings(doc_processor.get_md_document(), markdown_embedding_folder)
         time_tracking['vectorrag_create_markdown_embeddings'] = time.time() - create_markdown_embeddings_start_time
-        logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+        logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
         try:
             # Generate and save document summary using the texts we created
@@ -219,7 +219,7 @@ async def embeddings_agent(_mode, _document, _doc, pdf_path, embedding_folder, t
             # By default, use the markdown document to generate the summary
             await generate_document_summary(texts, embedding_folder, doc_processor.get_md_document())
             time_tracking['generate_document_summary'] = time.time() - generate_document_summary_start_time
-            logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+            logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
             logger.info("Document summary generated and saved successfully.")
         except Exception as e:
             logger.exception(f"Error generating document summary: {e}")

@@ -12,7 +12,7 @@ from frontend.ui import setup_page_config
 # Set page configuration
 setup_page_config()
 
-from pipeline.science.pipeline.utils import generate_course_id
+from pipeline.science.pipeline.utils import generate_file_id
 
 from frontend.ui import (
     show_auth_top,
@@ -76,7 +76,7 @@ if st.session_state['isAuth']:
                 f.write(file)
 
             document, doc = state_process_pdf_file(file_path)
-            embedding_folder = os.path.join('embedded_content', generate_course_id(file_path))
+            embedding_folder = os.path.join('embedded_content', generate_file_id(file_path))
 
             if len(document) > 50:
                 st.error("File contains more than 50 pages. Please upload a shorter document.")

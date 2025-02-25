@@ -8,14 +8,14 @@ from marker.output import text_from_rendered
 from marker.settings import settings
 
 def extract_pdf_content_to_markdown(
-    pdf_path: str | Path,
+    file_path: str | Path,
     output_dir: str | Path,
 ) -> Tuple[str, Dict[str, Image.Image]]:
     """
     Extract text and images from a PDF file and save them to the specified directory.
 
     Args:
-        pdf_path: Path to the input PDF file
+        file_path: Path to the input PDF file
         output_dir: Directory where images and markdown will be saved
 
     Returns:
@@ -29,9 +29,9 @@ def extract_pdf_content_to_markdown(
         Exception: For other processing errors
     """
     # Validate input PDF exists
-    pdf_path = Path(pdf_path)
-    if not pdf_path.exists():
-        raise FileNotFoundError(f"PDF file not found: {pdf_path}")
+    file_path = Path(file_path)
+    if not file_path.exists():
+        raise FileNotFoundError(f"PDF file not found: {file_path}")
 
     # Create output directory
     output_dir = Path(output_dir)
@@ -42,11 +42,11 @@ def extract_pdf_content_to_markdown(
         converter = PdfConverter(
             artifact_dict=create_model_dict(),
         )
-        rendered = converter(str(pdf_path))
+        rendered = converter(str(file_path))
         text, _, images = text_from_rendered(rendered)
 
         # Save markdown content
-        md_path = output_dir / f"{pdf_path.stem}.md"
+        md_path = output_dir / f"{file_path.stem}.md"
         with open(md_path, "w", encoding="utf-8") as f:
             f.write(text)
         print(f"Saved markdown to: {md_path}")
@@ -77,12 +77,12 @@ def extract_pdf_content_to_markdown(
 
 if __name__ == "__main__":
     # Example usage
-    # pdf_path = "/Users/bingran_you/Library/Mobile Documents/com~apple~CloudDocs/Downloads/papers/science.1189075.pdf"
-    pdf_path = "/Users/bingran_you/Library/Mobile Documents/com~apple~CloudDocs/Downloads/papers/RankRAG- Unifying Context Ranking with  Retrieval-Augmented Generation in LLMs.pdf"
+    # file_path = "/Users/bingran_you/Library/Mobile Documents/com~apple~CloudDocs/Downloads/papers/science.1189075.pdf"
+    file_path = "/Users/bingran_you/Library/Mobile Documents/com~apple~CloudDocs/Downloads/papers/RankRAG- Unifying Context Ranking with  Retrieval-Augmented Generation in LLMs.pdf"
     output_dir = "markdown_output"
 
     try:
-        md_path, saved_images = extract_pdf_content_to_markdown(pdf_path, output_dir)
+        md_path, saved_images = extract_pdf_content_to_markdown(file_path, output_dir)
         print(f"Successfully processed PDF. Markdown saved to: {md_path}")
         print(f"Number of images extracted: {len(saved_images)}")
     except Exception as e:

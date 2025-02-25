@@ -5,6 +5,7 @@ from typing import Dict, List, Set
 from pathlib import Path
 from dotenv import load_dotenv
 from openai import AzureOpenAI
+from pipeline.science.pipeline.utils import generate_file_id
 load_dotenv()
 
 # Add the project root to Python path for direct script execution
@@ -94,7 +95,7 @@ def initialize_image_files(folder_dir: str | Path) -> tuple[str, str]:
 def upload_images_to_azure(folder_dir: str | Path) -> None:
     """
     Upload images from the given folder to Azure Blob storage and create a mapping file.
-    The images will be stored in the format '/course_id/images/...'
+    The images will be stored in the format '/file_id/images/...'
     If an image already exists in Azure storage, it will be skipped.
 
     Parameters:
@@ -109,8 +110,8 @@ def upload_images_to_azure(folder_dir: str | Path) -> None:
     # Define the image file extensions we care about
     image_extensions: Set[str] = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp', '.svg'}
 
-    # Extract course_id from the folder path
-    course_id = folder_path.parts[-2]
+    # Extract file_id from the folder path
+    file_id = folder_path.parts[-2]
 
     # List all image files in the folder
     image_files = [f for f in os.listdir(folder_path) if os.path.splitext(f.lower())[1] in image_extensions]
@@ -135,7 +136,7 @@ def upload_images_to_azure(folder_dir: str | Path) -> None:
             continue
 
         local_path = folder_path / image_file
-        blob_name = f"file_appendix/{course_id}/images/{image_file}"
+        blob_name = f"file_appendix/{file_id}/images/{image_file}"
 
         try:
             # Check if blob already exists
@@ -167,13 +168,13 @@ def upload_markdown_to_azure(folder_dir: str | Path) -> None:
     Upload markdown file to Azure Blob storage.
     """
     folder_dir = Path(folder_dir)
-    course_id = folder_dir.parts[-2]
+    file_id = folder_dir.parts[-2]
     azure_blob = AzureBlobHelper()
     container_name = "knowhiztutorrag"
     # Upload all the md files in the folder
     md_files = [f for f in os.listdir(folder_dir) if f.lower().endswith('.md')]
     for md_file in md_files:
-        blob_name = f"file_appendix/{course_id}/images/{md_file}"
+        blob_name = f"file_appendix/{file_id}/images/{md_file}"
         local_path = folder_dir / md_file
         azure_blob.upload(str(local_path), blob_name, container_name)
 
@@ -210,6 +211,8 @@ def extract_image_context(folder_dir: str | Path, file_path: str = "", context_t
         return
     
     # If there are images_files and md_files, re-order the list image_files to match the order that images show up in md_files
+    file_id = generate_file_id(file_path)
+
 
     md_file = md_files[0]
     md_path = folder_dir / md_file
@@ -353,5 +356,6 @@ def process_folder_images(folder_path):
 if __name__ == "__main__":
     # folder_dir = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/16005aaa19145334b5605c6bf61661a0/markdown/"
     folder_dir = "/Users/bingranyou/Documents/GitHub_Mac_mini/DeepTutor/embedded_content/c8773c4a9a62ca3bafd2010d3d0093f5/markdown"
-    extract_image_context(folder_dir)
+    file_path = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/16005aaa19145334b5605c6bf61661a0/16005aaa19145334b5605c6bf61661a0.pdf"
+    extract_image_context(folder_dir, file_path)
     # upload_images_to_azure(folder_dir)

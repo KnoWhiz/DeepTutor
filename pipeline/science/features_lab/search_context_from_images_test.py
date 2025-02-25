@@ -123,4 +123,5 @@ def extract_image_context(folder_dir: str, context_tokens: int = 100) -> None:
 if __name__ == "__main__":
     # Example usage with custom context window size
     folder_dir = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/16005aaa19145334b5605c6bf61661a0/markdown/"
-    extract_image_context(folder_dir, context_tokens=500)
+    file_path = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/16005aaa19145334b5605c6bf61661a0/16005aaa19145334b5605c6bf61661a0.pdf"
+    extract_image_context(folder_dir, file_path, context_tokens=500)

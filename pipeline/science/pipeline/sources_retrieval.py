@@ -24,7 +24,7 @@ from pipeline.science.pipeline.embeddings_agent import embeddings_agent
 import logging
 logger = logging.getLogger("tutorpipeline.science.sources_retrieval")
 
-def get_response_source(mode, _doc, _document, pdf_path, user_input, answer, chat_history, embedding_folder):
+def get_response_source(mode, _doc, _document, file_path, user_input, answer, chat_history, embedding_folder):
     """
     Get the sources for the response
     Return a dictionary of sources with scores and metadata
@@ -67,7 +67,7 @@ def get_response_source(mode, _doc, _document, pdf_path, user_input, answer, cha
         db = load_embeddings(embedding_folder, 'default')
     else:
         print("No existing embeddings found, creating new ones...")
-        embeddings_agent(mode, _document, _doc, pdf_path, embedding_folder)
+        embeddings_agent(mode, _document, _doc, file_path, embedding_folder)
         db = load_embeddings(embedding_folder, 'default')
         # # Split the document into chunks, respecting page boundaries
         # print("Creating new embeddings...")

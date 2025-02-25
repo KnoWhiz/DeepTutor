@@ -1,12 +1,16 @@
 import os
+import io
 import time
 import requests
 import base64
+import logging
 from pathlib import Path
 from typing import Dict, Tuple
 from PIL import Image
-import io
+
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 def extract_pdf_content_to_markdown_via_api(
     file_path: str | Path,
@@ -94,7 +98,7 @@ def extract_pdf_content_to_markdown_via_api(
     md_path = output_dir / f"{file_path.stem}.md"
     with open(md_path, "w", encoding="utf-8") as md_file:
         md_file.write(markdown)
-    print(f"Saved markdown to: {md_path}")
+    logger.info(f"Saved markdown to: {md_path}")
 
     # Process and save images
     saved_images: Dict[str, Image.Image] = {}

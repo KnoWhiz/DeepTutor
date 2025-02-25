@@ -96,7 +96,7 @@ def initialize_image_files(folder_dir: str | Path) -> tuple[str, str]:
     return str(image_context_path), str(image_urls_path)
 
 
-def upload_images_to_azure(folder_dir: str | Path) -> None:
+def upload_images_to_azure(folder_dir: str | Path, file_path) -> None:
     """
     Upload images from the given folder to Azure Blob storage and create a mapping file.
     The images will be stored in the format '/file_id/images/...'
@@ -115,7 +115,7 @@ def upload_images_to_azure(folder_dir: str | Path) -> None:
     image_extensions: Set[str] = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp', '.svg'}
 
     # Extract file_id from the folder path
-    file_id = folder_path.parts[-2]
+    file_id = generate_file_id(file_path)
 
     # List all image files in the folder
     image_files = [f for f in os.listdir(folder_path) if os.path.splitext(f.lower())[1] in image_extensions]
@@ -167,26 +167,28 @@ def upload_images_to_azure(folder_dir: str | Path) -> None:
     print(f"Image URLs mapping saved to: {output_path}")
 
 
-def upload_markdown_to_azure(folder_dir: str | Path) -> None:
+def upload_markdown_to_azure(folder_dir: str | Path, file_path: str) -> None:
     """
     Upload markdown file to Azure Blob storage.
     """
     folder_dir = Path(folder_dir)
-    file_id = folder_dir.parts[-2]
+    logger.info(f"Uploading folder_dir markdown to Azure Blob storage: {folder_dir}")
+    file_id = generate_file_id(file_path)
     azure_blob = AzureBlobHelper()
     container_name = "knowhiztutorrag"
     # Upload all the md files in the folder
     md_files = [os.path.join(folder_dir, f"{file_id}.md")]
+    logger.info(f"Uploading dir {md_files} markdown files to Azure Blob storage")
     for md_file in md_files:
         blob_name = f"file_appendix/{file_id}/images/{md_file}"
-        local_path = folder_dir / md_file
+        local_path = md_file
         azure_blob.upload(str(local_path), blob_name, container_name)
 
     # TEST
     logger.info(f"Uploaded {(md_files)} markdown files to Azure Blob storage")
 
 
-def extract_image_context(folder_dir: str | Path, file_path: str = "", context_tokens: int = 500) -> None:
+def extract_image_context(folder_dir: str | Path, file_path: str = "", context_tokens: int = 1000) -> None:
     """
     Extract context for each image in a folder and save to JSON.
 
@@ -195,6 +197,7 @@ def extract_image_context(folder_dir: str | Path, file_path: str = "", context_t
         context_tokens (int): Maximum number of tokens for context per image
     """
     folder_dir = Path(folder_dir)
+    logger.info(f"Current markdown folder: {folder_dir}")
 
     # Initialize both JSON files
     image_context_path, _ = initialize_image_files(folder_dir)
@@ -216,18 +219,29 @@ def extract_image_context(folder_dir: str | Path, file_path: str = "", context_t
         return
 
     md_file = md_files[0]
-    md_path = folder_dir / md_file
-
-    # If there are images_files and md_files, re-order the list image_files to match the order that images show up in md_files
+    md_path = md_file
 
     # Read the content of the markdown file
     with open(md_path, 'r', encoding='utf-8') as f:
         md_lines = f.read().splitlines()
 
+    # If there are images_files and md_files, re-order the list image_files to match the order that images show up in md_files
+    image_order = []
+    for line in md_lines:
+        for image in image_files:
+            if image in line and image not in image_order:
+                image_order.append(image)
+    # Add any images that weren't found in the markdown file to the end of the order list
+    for image in image_files:
+        if image not in image_order:
+            image_order.append(image)
+    # Replace image_files with the ordered list
+    image_files = image_order
+
     # Create a dictionary to store image filename vs. list of context windows
     image_context: Dict[str, List[str]] = {}
 
-    for image in image_files:
+    for i, image in enumerate(image_files):
         # Find all lines in the markdown file that mention the image filename
         contexts = []
         for idx, line in enumerate(md_lines):
@@ -235,7 +249,7 @@ def extract_image_context(folder_dir: str | Path, file_path: str = "", context_t
                 # Get only the second line after this mention
                 context_window = get_context_window(md_lines, idx)
                 if context_window:  # Only add if we found a valid context line
-                    contexts.append(context_window[0] + " <markdown>")
+                    contexts.append(f"This is Image #{i+1} / Fig.{i+1} / Figure {i+1}: \n" + context_window[0] + " <markdown>")
 
         if contexts:
             image_context[image] = contexts

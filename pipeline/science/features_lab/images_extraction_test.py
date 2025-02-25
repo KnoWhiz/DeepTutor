@@ -1,4 +1,5 @@
 import os
+import logging
 from pathlib import Path
 from typing import Dict, Tuple
 from PIL import Image
@@ -6,6 +7,8 @@ from marker.converters.pdf import PdfConverter
 from marker.models import create_model_dict
 from marker.output import text_from_rendered
 from marker.settings import settings
+
+logger = logging.getLogger(__name__)
 
 def extract_pdf_content_to_markdown(
     file_path: str | Path,
@@ -49,12 +52,12 @@ def extract_pdf_content_to_markdown(
         md_path = output_dir / f"{file_path.stem}.md"
         with open(md_path, "w", encoding="utf-8") as f:
             f.write(text)
-        print(f"Saved markdown to: {md_path}")
+        logger.info(f"Saved markdown to: {md_path}")
 
         # Save images
         saved_images = {}
         if images:
-            print(f"Saving {len(images)} images to {output_dir}")
+            logger.info(f"Saving {len(images)} images to {output_dir}")
             for img_name, img in images.items():
                 try:
                     # Create a valid filename from the image name
@@ -64,11 +67,11 @@ def extract_pdf_content_to_markdown(
                     # Save the image
                     img.save(output_path)
                     saved_images[img_name] = img
-                    print(f"Saved image: {output_path}")
+                    logger.info(f"Saved image: {output_path}")
                 except Exception as e:
-                    print(f"Error saving image {img_name}: {str(e)}")
+                    logger.exception(f"Error saving image {img_name}: {str(e)}")
         else:
-            print("No images found in the PDF")
+            logger.info("No images found in the PDF")
 
         return str(md_path), saved_images
 
@@ -83,7 +86,7 @@ if __name__ == "__main__":
 
     try:
         md_path, saved_images = extract_pdf_content_to_markdown(file_path, output_dir)
-        print(f"Successfully processed PDF. Markdown saved to: {md_path}")
-        print(f"Number of images extracted: {len(saved_images)}")
+        logger.info(f"Successfully processed PDF. Markdown saved to: {md_path}")
+        logger.info(f"Number of images extracted: {len(saved_images)}")
     except Exception as e:
-        print(f"Error: {str(e)}")
+        logger.exception(f"Error: {str(e)}")

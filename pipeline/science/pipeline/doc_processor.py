@@ -269,7 +269,7 @@ def extract_pdf_content_to_markdown_via_api(
     md_path = output_dir / f"{file_id}.md"
     with open(md_path, "w", encoding="utf-8") as md_file:
         md_file.write(markdown)
-    print(f"Saved markdown to: {md_path}")
+    logger.info(f"Saved markdown to: {md_path}")
 
     # Process and save images
     saved_images: Dict[str, Image.Image] = {}
@@ -297,13 +297,20 @@ def extract_pdf_content_to_markdown_via_api(
         print("No images were returned with the result")
 
     # Save markdown file and images to Azure Blob Storage
-    upload_markdown_to_azure(output_dir)
-    upload_images_to_azure(output_dir)
+    try:
+        upload_markdown_to_azure(output_dir, file_path)
+        upload_images_to_azure(output_dir, file_path)
+    except Exception as e:
+        logger.exception(f"Error uploading markdown and images to Azure Blob Storage: {e}")
 
     # Extract image context
-    config = load_config()
-    chunk_size = config['embedding']['chunk_size']
-    extract_image_context(output_dir, file_path=file_path, chunk_size=chunk_size)
+    try:
+        config = load_config()
+        chunk_size = config['embedding']['chunk_size']
+        extract_image_context(output_dir, file_path=file_path)
+    except Exception as e:
+        logger.exception(f"Error extracting image context: {e}")
+        raise Exception(f"Error extracting image context: {e}")
 
     return str(md_path), saved_images, markdown
 
@@ -359,7 +366,7 @@ def extract_pdf_content_to_markdown(
         md_path = output_dir / f"{file_id}.md"
         with open(md_path, "w", encoding="utf-8") as f:
             f.write(text)
-        print(f"Saved markdown to: {md_path}")
+        logger.info(f"Saved markdown to: {md_path}")
 
         # Save images
         saved_images = {}
@@ -381,13 +388,20 @@ def extract_pdf_content_to_markdown(
             print("No images found in the PDF")
 
         # Save markdown file and images to Azure Blob Storage
-        upload_markdown_to_azure(output_dir)
-        upload_images_to_azure(output_dir)
+        try:
+            upload_markdown_to_azure(output_dir, file_path)
+            upload_images_to_azure(output_dir, file_path)
+        except Exception as e:
+            logger.exception(f"Error uploading markdown and images to Azure Blob Storage: {e}")
 
         # Extract image context
-        config = load_config()
-        chunk_size = config['embedding']['chunk_size']
-        extract_image_context(output_dir, file_path=file_path, chunk_size=chunk_size)
+        try:
+            config = load_config()
+            chunk_size = config['embedding']['chunk_size']
+            extract_image_context(output_dir, file_path=file_path)
+        except Exception as e:
+            logger.exception(f"Error extracting image context: {e}")
+            raise Exception(f"Error extracting image context: {e}")
 
         return str(md_path), saved_images, text
 

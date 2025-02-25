@@ -28,6 +28,7 @@ from pipeline.science.pipeline.get_response import (
     generate_follow_up_questions,
 )
 from pipeline.science.pipeline.sources_retrieval import get_response_source
+from pipeline.science.pipeline.config import load_config
 import logging
 logger = logging.getLogger("tutorpipeline.science.tutor_agent")
 
@@ -37,6 +38,7 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
     Taking the user input, document, and chat history, generate a response and sources.
     If user_input is None, generates the initial welcome message.
     """
+    config = load_config()
     if time_tracking is None:
         time_tracking: Dict = {}
 
@@ -228,7 +230,7 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
         # Process each source and check if it's an image
         sources_to_remove = []
         for source, score in sources.items():
-            if any(source.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.svg']):
+            if any(source.lower().endswith(ext) for ext in config["image_extensions"]):
                 image_url = image_url_mapping.get(source, None)
                 if image_url:
                     images_sources[source] = score

@@ -162,6 +162,7 @@ def refine_sources(_doc, _document, sources_with_scores, markdown_dir, user_inpu
     Show them in the order they are found in the document
     Preserve image filenames but filter them based on context relevance using LLM
     """
+    config = load_config()
     refined_sources = {}
     image_sources = {}
 
@@ -180,7 +181,7 @@ def refine_sources(_doc, _document, sources_with_scores, markdown_dir, user_inpu
     text_sources = {}
     for source, score in sources_with_scores.items():
         # Check if source looks like an image filename (has image extension)
-        if any(source.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.svg']):
+        if any(source.lower().endswith(ext) for ext in config["image_extensions"]):
             image_sources[source] = score
         else:
             text_sources[source] = score

@@ -7,6 +7,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from openai import AzureOpenAI
 from pipeline.science.pipeline.utils import generate_file_id
+from pipeline.science.pipeline.config import load_config
 load_dotenv()
 
 logger = logging.getLogger(__name__)
@@ -112,7 +113,8 @@ def upload_images_to_azure(folder_dir: str | Path, file_path) -> None:
     _, output_path = initialize_image_files(folder_path)
 
     # Define the image file extensions we care about
-    image_extensions: Set[str] = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp', '.svg'}
+    config = load_config()
+    image_extensions: Set[str] = set(config["image_extensions"])
 
     # Extract file_id from the folder path
     file_id = generate_file_id(file_path)
@@ -203,7 +205,8 @@ def extract_image_context(folder_dir: str | Path, file_path: str = "", context_t
     image_context_path, _ = initialize_image_files(folder_dir)
 
     # Define the image file extensions we care about
-    image_extensions: Set[str] = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp', '.svg'}
+    config = load_config()
+    image_extensions: Set[str] = set(config["image_extensions"])
 
     # List all image files in the folder (case-insensitive match)
     image_files = [f for f in os.listdir(folder_dir) if os.path.splitext(f.lower())[1] in image_extensions]

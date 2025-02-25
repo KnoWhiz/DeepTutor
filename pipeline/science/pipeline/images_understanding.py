@@ -181,7 +181,7 @@ def upload_markdown_to_azure(folder_dir: str | Path) -> None:
     print(f"Uploaded {(md_files)} markdown files to Azure Blob storage")
 
 
-def extract_image_context(folder_dir: str | Path, context_tokens: int = 500) -> None:
+def extract_image_context(folder_dir: str | Path, file_path: str = "", context_tokens: int = 500) -> None:
     """
     Extract context for each image in a folder and save to JSON.
 
@@ -208,6 +208,8 @@ def extract_image_context(folder_dir: str | Path, context_tokens: int = 500) -> 
     if not md_files:
         print("No markdown file found in the folder.")
         return
+    
+    # If there are images_files and md_files, re-order the list image_files to match the order that images show up in md_files
 
     md_file = md_files[0]
     md_path = folder_dir / md_file

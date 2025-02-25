@@ -26,7 +26,44 @@ from pipeline.science.pipeline.get_rag_response import get_standard_rag_response
 logger = logging.getLogger("tutorpipeline.science.get_response")
 
 
-async def get_response(chat_session: ChatSession, _doc, _document, file_path, user_input, chat_history, embedding_folder, deep_thinking = False):
+class Question:
+    """
+    Represents a question with its text, language, and type information.
+    
+    Attributes:
+        text (str): The text content of the question
+        language (str): The detected language of the question (e.g., "English")
+        question_type (str): The type of question (e.g., "local" or "global")
+    """
+    
+    def __init__(self, text="", language="English", question_type="global"):
+        """
+        Initialize a Question object.
+        
+        Args:
+            text (str): The text content of the question
+            language (str): The language of the question
+            question_type (str): The type of the question (local or global)
+        """
+        self.text = text
+        self.language = language
+        self.question_type = question_type
+    
+    def __str__(self):
+        """Return string representation of the Question."""
+        return f"Question(text='{self.text}', language='{self.language}', type='{self.question_type}')"
+
+    def to_dict(self):
+        """Convert Question object to dictionary."""
+        return {
+            "text": self.text,
+            "language": self.language,
+            "question_type": self.question_type
+        }
+
+
+async def get_response(chat_session: ChatSession, _doc, _document, file_path, question: Question, chat_history, embedding_folder, deep_thinking = False):
+    user_input = question.text
     # Handle Lite mode first
     if chat_session.mode == ChatMode.LITE:
         lite_prompt = """You are a helpful tutor assisting with document understanding.
@@ -208,6 +245,7 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
 
     # # TEST
     # print("question rephrased:", question)
+    question = Question(text=question, language=language, question_type=question_type)
     return question
 
 

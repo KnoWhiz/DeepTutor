@@ -33,21 +33,26 @@ class Question:
     Attributes:
         text (str): The text content of the question
         language (str): The detected language of the question (e.g., "English")
-        question_type (str): The type of question (e.g., "local" or "global")
+        question_type (str): The type of question (e.g., "local" or "global" or "image")
     """
     
-    def __init__(self, text="", language="English", question_type="global"):
+    def __init__(self, text="", language="English", question_type="global", special_context=""):
         """
         Initialize a Question object.
         
         Args:
             text (str): The text content of the question
             language (str): The language of the question
-            question_type (str): The type of the question (local or global)
+            question_type (str): The type of the question (local or global or image)
         """
         self.text = text
         self.language = language
-        self.question_type = question_type
+        if question_type not in ["local", "global", "image"]:
+            self.question_type = "global"
+        else:
+            self.question_type = question_type
+
+        self.special_context =  special_context
     
     def __str__(self):
         """Return string representation of the Question."""
@@ -80,7 +85,7 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, qu
 
         answer = await get_standard_rag_response(
             prompt_string=lite_prompt,
-            user_input=user_input,
+            user_input=user_input + "\n\n" + question.special_context,
             chat_history=chat_history,
             embedding_folder=embedding_folder,
             embedding_type='Lite',
@@ -128,7 +133,7 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, qu
 
         answer = await get_standard_rag_response(
             prompt_string=basic_prompt,
-            user_input=user_input,
+            user_input=user_input + "\n\n" + question.special_context,
             chat_history=chat_history,
             embedding_folder=embedding_folder
         )
@@ -146,9 +151,9 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, qu
             db = load_embeddings(embedding_folder, 'default')
 
         chat_history_string = truncate_chat_history(chat_history)
-        user_input_string = str(user_input)
+        user_input_string = str(user_input + "\n\n" + question.special_context)
         # Get relevant chunks for both question and answer with scores
-        question_chunks_with_scores = db.similarity_search_with_score(user_input, k=config['retriever']['k'])
+        question_chunks_with_scores = db.similarity_search_with_score(user_input_string, k=config['retriever']['k'])
         # The total list of sources chunks
         sources_chunks = []
         for chunk in question_chunks_with_scores:
@@ -211,7 +216,7 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
         ```json
         {{
             "question": "<question try to understand what the user really mean by the question and rephrase it in a better way>",
-            "question_type": "<local/global>",
+            "question_type": "local" or "global" or "image", (if the question is like "what is fig. 1 mainly about?", the question_type should be "image")
         }}
         ```
         """
@@ -246,6 +251,17 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
     # # TEST
     # print("question rephrased:", question)
     question = Question(text=question, language=language, question_type=question_type)
+    logger.info(f"TEST: question.question_type: {question.question_type}")
+
+    if question_type == "image":
+        # Find a single chunk in the embedding folder
+        db = load_embeddings(embedding_folder, 'default')
+        image_chunks = db.similarity_search_with_score(user_input + "\n\n" + question.special_context, k=1)
+        if image_chunks:
+            question.special_context = """
+            Here is the context and visual understanding of the image:
+            """ + image_chunks[0][0].page_content
+        logger.info(f"TEST: question.special_context: {question.special_context}")
     return question
 
 

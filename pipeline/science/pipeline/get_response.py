@@ -13,6 +13,7 @@ from pipeline.science.pipeline.utils import (
     get_llm,
     responses_refine,
     detect_language,
+    count_tokens
 )
 from pipeline.science.pipeline.embeddings import (
     get_embedding_models,
@@ -142,6 +143,7 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, qu
         logger.info("deep thinking ...")
         # Load config and embeddings for deep thinking mode
         config = load_config()
+        token_limit = config["inference_token_limit"]
         
         try:
             logger.info(f"Loading markdown embeddings from {os.path.join(embedding_folder, 'markdown')}")
@@ -150,14 +152,19 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, qu
             logger.exception(f"Failed to load markdown embeddings for deep thinking: {str(e)}")
             db = load_embeddings(embedding_folder, 'default')
 
-        chat_history_string = truncate_chat_history(chat_history)
+        chat_history_string = truncate_chat_history(chat_history, token_limit=token_limit)
         user_input_string = str(user_input + "\n\n" + question.special_context)
         # Get relevant chunks for both question and answer with scores
         question_chunks_with_scores = db.similarity_search_with_score(user_input_string, k=config['retriever']['k'])
         # The total list of sources chunks
         sources_chunks = []
+        # From the highest score to the lowest score, until the total tokens exceed 3000
+        total_tokens = 0
         for chunk in question_chunks_with_scores:
+            if total_tokens + count_tokens(chunk[0].page_content) > token_limit:
+                break
             sources_chunks.append(chunk[0])
+            total_tokens += count_tokens(chunk[0].page_content)
         context = "\n\n".join([chunk.page_content for chunk in sources_chunks])
 
         prompt = f"""
@@ -166,9 +173,13 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, qu
         Reference context from the paper: {context}
         The student's query is: {user_input_string}
         """
+        logger.info(f"user_input_string tokens: {count_tokens(user_input_string)}")
+        logger.info(f"chat_history_string tokens: {count_tokens(chat_history_string)}")
+        logger.info(f"context tokens: {count_tokens(context)}")
+
         logger.info("before deepseek_inference ...")
         try:
-            answer = str(deepseek_inference(prompt))
+            answer = str(deepseek_inference(prompt, model="DeepSeek-R1"))
         except Exception as e:
             logger.exception(f"Error in deepseek_inference: {e}")
             prompt = f"""
@@ -176,7 +187,7 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, qu
             Reference context from the paper: {context}
             The student's query is: {user_input_string}
             """
-            answer = str(deepseek_inference(prompt))
+            answer = str(deepseek_inference(prompt, model="DeepSeek-R1-Distill-Llama-70B"))
         answer_thinking = answer.split("<think>")[1].split("</think>")[0]
         answer_summary = answer.split("<think>")[1].split("</think>")[1]
         answer_summary = responses_refine(answer_summary, "")

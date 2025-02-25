@@ -1,11 +1,17 @@
 import os
 import json
 import sys
+import logging
 from typing import Dict, List, Set
 from pathlib import Path
 from dotenv import load_dotenv
 from openai import AzureOpenAI
+from pipeline.science.pipeline.utils import generate_file_id
+from pipeline.science.pipeline.config import load_config
 load_dotenv()
+
+logger = logging.getLogger(__name__)
+
 
 # Add the project root to Python path for direct script execution
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -91,10 +97,10 @@ def initialize_image_files(folder_dir: str | Path) -> tuple[str, str]:
     return str(image_context_path), str(image_urls_path)
 
 
-def upload_images_to_azure(folder_dir: str | Path) -> None:
+def upload_images_to_azure(folder_dir: str | Path, file_path) -> None:
     """
     Upload images from the given folder to Azure Blob storage and create a mapping file.
-    The images will be stored in the format '/course_id/images/...'
+    The images will be stored in the format '/file_id/images/...'
     If an image already exists in Azure storage, it will be skipped.
 
     Parameters:
@@ -107,10 +113,11 @@ def upload_images_to_azure(folder_dir: str | Path) -> None:
     _, output_path = initialize_image_files(folder_path)
 
     # Define the image file extensions we care about
-    image_extensions: Set[str] = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp', '.svg'}
+    config = load_config()
+    image_extensions: Set[str] = set(config["image_extensions"])
 
-    # Extract course_id from the folder path
-    course_id = folder_path.parts[-2]
+    # Extract file_id from the folder path
+    file_id = generate_file_id(file_path)
 
     # List all image files in the folder
     image_files = [f for f in os.listdir(folder_path) if os.path.splitext(f.lower())[1] in image_extensions]
@@ -135,7 +142,7 @@ def upload_images_to_azure(folder_dir: str | Path) -> None:
             continue
 
         local_path = folder_path / image_file
-        blob_name = f"file_appendix/{course_id}/images/{image_file}"
+        blob_name = f"file_appendix/{file_id}/images/{image_file}"
 
         try:
             # Check if blob already exists
@@ -162,26 +169,28 @@ def upload_images_to_azure(folder_dir: str | Path) -> None:
     print(f"Image URLs mapping saved to: {output_path}")
 
 
-def upload_markdown_to_azure(folder_dir: str | Path) -> None:
+def upload_markdown_to_azure(folder_dir: str | Path, file_path: str) -> None:
     """
     Upload markdown file to Azure Blob storage.
     """
     folder_dir = Path(folder_dir)
-    course_id = folder_dir.parts[-2]
+    logger.info(f"Uploading folder_dir markdown to Azure Blob storage: {folder_dir}")
+    file_id = generate_file_id(file_path)
     azure_blob = AzureBlobHelper()
     container_name = "knowhiztutorrag"
     # Upload all the md files in the folder
-    md_files = [f for f in os.listdir(folder_dir) if f.lower().endswith('.md')]
+    md_files = [os.path.join(folder_dir, f"{file_id}.md")]
+    logger.info(f"Uploading dir {md_files} markdown files to Azure Blob storage")
     for md_file in md_files:
-        blob_name = f"file_appendix/{course_id}/images/{md_file}"
-        local_path = folder_dir / md_file
+        blob_name = f"file_appendix/{file_id}/images/{md_file}"
+        local_path = md_file
         azure_blob.upload(str(local_path), blob_name, container_name)
 
     # TEST
-    print(f"Uploaded {(md_files)} markdown files to Azure Blob storage")
+    logger.info(f"Uploaded {(md_files)} markdown files to Azure Blob storage")
 
 
-def extract_image_context(folder_dir: str | Path, context_tokens: int = 500) -> None:
+def extract_image_context(folder_dir: str | Path, file_path: str = "", context_tokens: int = 1000) -> None:
     """
     Extract context for each image in a folder and save to JSON.
 
@@ -190,36 +199,52 @@ def extract_image_context(folder_dir: str | Path, context_tokens: int = 500) -> 
         context_tokens (int): Maximum number of tokens for context per image
     """
     folder_dir = Path(folder_dir)
+    logger.info(f"Current markdown folder: {folder_dir}")
 
     # Initialize both JSON files
     image_context_path, _ = initialize_image_files(folder_dir)
 
     # Define the image file extensions we care about
-    image_extensions: Set[str] = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp', '.svg'}
+    config = load_config()
+    image_extensions: Set[str] = set(config["image_extensions"])
 
     # List all image files in the folder (case-insensitive match)
     image_files = [f for f in os.listdir(folder_dir) if os.path.splitext(f.lower())[1] in image_extensions]
     if not image_files:
-        print("No image files found in the folder.")
+        logger.info("No image files found in the folder.")
         return
 
-    # Find the markdown file (assuming there's only one .md file)
-    md_files = [f for f in os.listdir(folder_dir) if f.lower().endswith('.md')]
+    # Find the markdown file (with file_id.md file name)
+    file_id = generate_file_id(file_path)
+    md_files = [os.path.join(folder_dir, f"{file_id}.md")]
     if not md_files:
-        print("No markdown file found in the folder.")
+        logger.info("No markdown file found in the folder.")
         return
 
     md_file = md_files[0]
-    md_path = folder_dir / md_file
+    md_path = md_file
 
     # Read the content of the markdown file
     with open(md_path, 'r', encoding='utf-8') as f:
         md_lines = f.read().splitlines()
 
+    # If there are images_files and md_files, re-order the list image_files to match the order that images show up in md_files
+    image_order = []
+    for line in md_lines:
+        for image in image_files:
+            if image in line and image not in image_order:
+                image_order.append(image)
+    # Add any images that weren't found in the markdown file to the end of the order list
+    for image in image_files:
+        if image not in image_order:
+            image_order.append(image)
+    # Replace image_files with the ordered list
+    image_files = image_order
+
     # Create a dictionary to store image filename vs. list of context windows
     image_context: Dict[str, List[str]] = {}
 
-    for image in image_files:
+    for i, image in enumerate(image_files):
         # Find all lines in the markdown file that mention the image filename
         contexts = []
         for idx, line in enumerate(md_lines):
@@ -227,7 +252,7 @@ def extract_image_context(folder_dir: str | Path, context_tokens: int = 500) -> 
                 # Get only the second line after this mention
                 context_window = get_context_window(md_lines, idx)
                 if context_window:  # Only add if we found a valid context line
-                    contexts.append(context_window[0] + " <markdown>")
+                    contexts.append(f"This is Image #{i+1} / Fig.{i+1} / Figure {i+1}: \n" + context_window[0] + " <markdown>")
 
         if contexts:
             image_context[image] = contexts
@@ -351,5 +376,6 @@ def process_folder_images(folder_path):
 if __name__ == "__main__":
     # folder_dir = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/16005aaa19145334b5605c6bf61661a0/markdown/"
     folder_dir = "/Users/bingranyou/Documents/GitHub_Mac_mini/DeepTutor/embedded_content/c8773c4a9a62ca3bafd2010d3d0093f5/markdown"
-    extract_image_context(folder_dir)
+    file_path = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/16005aaa19145334b5605c6bf61661a0/16005aaa19145334b5605c6bf61661a0.pdf"
+    extract_image_context(folder_dir, file_path)
     # upload_images_to_azure(folder_dir)

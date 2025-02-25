@@ -11,7 +11,7 @@ def deepseek_inference(
     stream: bool = False,
     temperature: float = 0.0,
     top_p: float = 0.1,
-    max_tokens: int = 10000
+    max_tokens: int = 5000
 ) -> Optional[str]:
     """
     Get completion from the DeepSeek model with optional streaming support.
@@ -29,12 +29,12 @@ def deepseek_inference(
     """
     client = openai.OpenAI(
         api_key=os.environ.get("SAMBANOVA_API_KEY"),
-        base_url="https://api.sambanova.ai/v1",
+        base_url="https://preview.snova.ai/v1",
     )
 
     try:
         response = client.chat.completions.create(
-            model="DeepSeek-R1-Distill-Llama-70B",
+            model="DeepSeek-R1",
             messages=[
                 {"role": "system", "content": system_message},
                 {"role": "user", "content": prompt}

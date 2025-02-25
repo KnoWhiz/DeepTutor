@@ -3,6 +3,7 @@ import base64
 import PyPDF2
 import logging
 import streamlit as st
+from typing import Set
 from streamlit_pdf_viewer import pdf_viewer
 from streamlit_float import float_init, float_parent, float_css_helper
 from streamlit_extras.stylable_container import stylable_container
@@ -275,7 +276,16 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                                             # Display the highlight info for that single source button
                                             # st.session_state.annotations, st.session_state.react_annotations = get_highlight_info(doc, [source])
                                             try:
-                                                st.session_state.annotations = st.session_state.source_annotations[source]
+                                                config = load_config()
+                                                image_extensions: Set[str] = set(config["image_extensions"])
+                                                is_image_file = any(source.lower().endswith(ext.lower()) for ext in image_extensions)
+                                                
+                                                if is_image_file:
+                                                    # For image files, use empty annotations
+                                                    st.session_state.annotations = []
+                                                else:
+                                                    # For other files, get annotations from source_annotations
+                                                    st.session_state.annotations = st.session_state.source_annotations[source]
                                             except Exception as e:
                                                 logger.exception(f"Failed to get annotations: {str(e)}")
                                                 st.session_state.annotations = []
@@ -378,7 +388,16 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                                                 # st.session_state.annotations, st.session_state.react_annotations = get_highlight_info(doc, [source])
                                                 # i = list(sources.keys()).index(source)
                                                 try:
-                                                    st.session_state.annotations = st.session_state.source_annotations[source]
+                                                    config = load_config()
+                                                    image_extensions: Set[str] = set(config["image_extensions"])
+                                                    is_image_file = any(source.lower().endswith(ext.lower()) for ext in image_extensions)
+                                                    
+                                                    if is_image_file:
+                                                        # For image files, use empty annotations
+                                                        st.session_state.annotations = []
+                                                    else:
+                                                        # For other files, get annotations from source_annotations
+                                                        st.session_state.annotations = st.session_state.source_annotations[source]
                                                 except Exception as e:
                                                     logger.exception(f"Failed to get annotations: {str(e)}")
                                                     st.session_state.annotations = []
@@ -403,8 +422,18 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                 if st.session_state.get("sources"):
                     # st.session_state.annotations, st.session_state.react_annotations = get_highlight_info(doc, list(st.session_state.sources.keys()))
                     # i = list(st.session_state.sources.keys()).index(source)
+                    config = load_config()
+                    image_extensions: Set[str] = set(config["image_extensions"])
                     try:
-                        st.session_state.annotations = st.session_state.source_annotations[source]
+                        # Check if source is an image file by checking its extension
+                        is_image_file = any(source.lower().endswith(ext.lower()) for ext in image_extensions)
+                        
+                        if is_image_file:
+                            # For image files, use empty annotations
+                            st.session_state.annotations = []
+                        else:
+                            # For other files, get annotations from source_annotations
+                            st.session_state.annotations = st.session_state.source_annotations[source]
                     except Exception as e:
                         logger.exception(f"Failed to get annotations: {str(e)}")
                         st.session_state.annotations = []

@@ -62,12 +62,12 @@ from pipeline.science.pipeline.utils import file_check_list
 
 
 async def generate_GraphRAG_embedding(embedding_folder, time_tracking: Dict[str, float] = {}):
-    # The embedding_folder is the folder end with file_hash
-    file_hash = embedding_folder.split("/")[-1]
+    # The embedding_folder is the folder end with file_id
+    file_id = embedding_folder.split("/")[-1]
     check_list_start_time = time.time()
     GraphRAG_embedding_folder, path_list = file_check_list(embedding_folder)
     time_tracking['graphrag_check_list'] = time.time() - check_list_start_time
-    logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Check if all necessary paths in path_list exist
     if all([os.path.exists(path) for path in path_list]):
@@ -81,7 +81,7 @@ async def generate_GraphRAG_embedding(embedding_folder, time_tracking: Dict[str,
         create_env_file_start_time = time.time()
         create_env_file(GraphRAG_embedding_folder)
         time_tracking['graphrag_create_env_file'] = time.time() - create_env_file_start_time
-        logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+        logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
         try:
             """Initialize the project at the given path."""
             # Initialize the project
@@ -115,7 +115,7 @@ async def generate_GraphRAG_embedding(embedding_folder, time_tracking: Dict[str,
                     with prompt_file.open("wb") as file:
                         file.write(content.encode(encoding="utf-8", errors="strict"))
             time_tracking['graphrag_initialize_project'] = time.time() - initialize_project_start_time
-            logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+            logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
         except Exception as e:
             logger.exception(f"Initialization error: {e}")
 
@@ -126,7 +126,7 @@ async def generate_GraphRAG_embedding(embedding_folder, time_tracking: Dict[str,
             values=settings, root_dir=GraphRAG_embedding_folder
         )
         time_tracking['graphrag_create_config'] = time.time() - create_graphrag_config_start_time
-        logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+        logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
         # graphrag_config.storage.base_dir = os.path.join(GraphRAG_embedding_folder, "output")
         # graphrag_config.reporting.base_dir = os.path.join(GraphRAG_embedding_folder, "logs")
         # # print(f"graphrag_config before build: {graphrag_config}")
@@ -135,7 +135,7 @@ async def generate_GraphRAG_embedding(embedding_folder, time_tracking: Dict[str,
             build_index_start_time = time.time()
             await api.build_index(config=graphrag_config)
             time_tracking['graphrag_build_index'] = time.time() - build_index_start_time
-            logger.info(f"File id: {file_hash}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+            logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
             # print(f"graphrag_config after build: {graphrag_config}")
         except Exception as e:
             logger.exception(f"Index building error: {e}")

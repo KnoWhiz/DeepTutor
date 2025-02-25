@@ -179,14 +179,14 @@ class mdDocumentProcessor:
 
 
 def extract_pdf_content_to_markdown_via_api(
-    pdf_path: str | Path,
+    file_path: str | Path,
     output_dir: str | Path,
 ) -> Tuple[str, Dict[str, Image.Image], str]:
     """
     Extract text and images from a PDF file using the Marker API and save them to the specified directory.
 
     Args:
-        pdf_path: Path to the input PDF file
+        file_path: Path to the input PDF file
         output_dir: Directory where images and markdown will be saved
 
     Returns:
@@ -207,13 +207,13 @@ def extract_pdf_content_to_markdown_via_api(
         raise ValueError("MARKER_API_KEY not found in environment variables")
 
     # Validate input PDF exists
-    pdf_path = Path(pdf_path)
-    if not pdf_path.exists():
-        raise FileNotFoundError(f"PDF file not found: {pdf_path}")
+    file_path = Path(file_path)
+    if not file_path.exists():
+        raise FileNotFoundError(f"PDF file not found: {file_path}")
 
     # Generate hash ID for the file
-    with open(pdf_path, 'rb') as f:
-        file_hash = hashlib.md5(f.read()).hexdigest()
+    with open(file_path, 'rb') as f:
+        file_id = hashlib.md5(f.read()).hexdigest()
 
     # Create output directory
     output_dir = Path(output_dir)
@@ -222,9 +222,9 @@ def extract_pdf_content_to_markdown_via_api(
     API_URL = "https://www.datalab.to/api/v1/marker"
 
     # Submit the file to API
-    with open(pdf_path, "rb") as f:
+    with open(file_path, "rb") as f:
         form_data = {
-            "file": (str(pdf_path), f, "application/pdf"),
+            "file": (str(file_path), f, "application/pdf"),
             "langs": (None, "English"),
             "force_ocr": (None, False),
             "paginate": (None, False),
@@ -266,10 +266,10 @@ def extract_pdf_content_to_markdown_via_api(
 
     # Save markdown content with hash ID
     markdown = result.get("markdown", "")
-    md_path = output_dir / f"{file_hash}.md"
+    md_path = output_dir / f"{file_id}.md"
     with open(md_path, "w", encoding="utf-8") as md_file:
         md_file.write(markdown)
-    print(f"Saved markdown to: {md_path}")
+    logger.info(f"Saved markdown to: {md_path}")
 
     # Process and save images
     saved_images: Dict[str, Image.Image] = {}
@@ -297,26 +297,33 @@ def extract_pdf_content_to_markdown_via_api(
         print("No images were returned with the result")
 
     # Save markdown file and images to Azure Blob Storage
-    upload_markdown_to_azure(output_dir)
-    upload_images_to_azure(output_dir)
+    try:
+        upload_markdown_to_azure(output_dir, file_path)
+        upload_images_to_azure(output_dir, file_path)
+    except Exception as e:
+        logger.exception(f"Error uploading markdown and images to Azure Blob Storage: {e}")
 
     # Extract image context
-    config = load_config()
-    chunk_size = config['embedding']['chunk_size']
-    extract_image_context(output_dir, chunk_size)
+    try:
+        config = load_config()
+        chunk_size = config['embedding']['chunk_size']
+        extract_image_context(output_dir, file_path=file_path)
+    except Exception as e:
+        logger.exception(f"Error extracting image context: {e}")
+        raise Exception(f"Error extracting image context: {e}")
 
     return str(md_path), saved_images, markdown
 
 
 def extract_pdf_content_to_markdown(
-    pdf_path: str | Path,
+    file_path: str | Path,
     output_dir: str | Path,
 ) -> Tuple[str, Dict[str, Image.Image]]:
     """
     Extract text and images from a PDF file and save them to the specified directory.
 
     Args:
-        pdf_path: Path to the input PDF file
+        file_path: Path to the input PDF file
         output_dir: Directory where images and markdown will be saved
 
     Returns:
@@ -335,9 +342,9 @@ def extract_pdf_content_to_markdown(
     from marker.settings import settings
 
     # Validate input PDF exists
-    pdf_path = Path(pdf_path)
-    if not pdf_path.exists():
-        raise FileNotFoundError(f"PDF file not found: {pdf_path}")
+    file_path = Path(file_path)
+    if not file_path.exists():
+        raise FileNotFoundError(f"PDF file not found: {file_path}")
 
     # Create output directory
     output_dir = Path(output_dir)
@@ -345,21 +352,21 @@ def extract_pdf_content_to_markdown(
 
     try:
         # Generate hash ID for the file
-        with open(pdf_path, 'rb') as f:
-            file_hash = hashlib.md5(f.read()).hexdigest()
+        with open(file_path, 'rb') as f:
+            file_id = hashlib.md5(f.read()).hexdigest()
 
         # Initialize converter and process PDF
         converter = PdfConverter(
             artifact_dict=create_model_dict(),
         )
-        rendered = converter(str(pdf_path))
+        rendered = converter(str(file_path))
         text, _, images = text_from_rendered(rendered)
 
         # Save markdown content with hash ID
-        md_path = output_dir / f"{file_hash}.md"
+        md_path = output_dir / f"{file_id}.md"
         with open(md_path, "w", encoding="utf-8") as f:
             f.write(text)
-        print(f"Saved markdown to: {md_path}")
+        logger.info(f"Saved markdown to: {md_path}")
 
         # Save images
         saved_images = {}
@@ -381,13 +388,20 @@ def extract_pdf_content_to_markdown(
             print("No images found in the PDF")
 
         # Save markdown file and images to Azure Blob Storage
-        upload_markdown_to_azure(output_dir)
-        upload_images_to_azure(output_dir)
+        try:
+            upload_markdown_to_azure(output_dir, file_path)
+            upload_images_to_azure(output_dir, file_path)
+        except Exception as e:
+            logger.exception(f"Error uploading markdown and images to Azure Blob Storage: {e}")
 
         # Extract image context
-        config = load_config()
-        chunk_size = config['embedding']['chunk_size']
-        extract_image_context(output_dir, chunk_size)
+        try:
+            config = load_config()
+            chunk_size = config['embedding']['chunk_size']
+            extract_image_context(output_dir, file_path=file_path)
+        except Exception as e:
+            logger.exception(f"Error extracting image context: {e}")
+            raise Exception(f"Error extracting image context: {e}")
 
         return str(md_path), saved_images, text
 

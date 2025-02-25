@@ -56,5 +56,6 @@
         "applications": "💡",
         "default": "📌"
     },
-    "default_topics": ["Overview", "Methods", "Results", "Discussion"]
+    "default_topics": ["Overview", "Methods", "Results", "Discussion"],
+    "image_extensions": [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".webp", ".svg"]
 }

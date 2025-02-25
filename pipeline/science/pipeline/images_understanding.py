@@ -1,12 +1,16 @@
 import os
 import json
 import sys
+import logging
 from typing import Dict, List, Set
 from pathlib import Path
 from dotenv import load_dotenv
 from openai import AzureOpenAI
 from pipeline.science.pipeline.utils import generate_file_id
 load_dotenv()
+
+logger = logging.getLogger(__name__)
+
 
 # Add the project root to Python path for direct script execution
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -172,14 +176,14 @@ def upload_markdown_to_azure(folder_dir: str | Path) -> None:
     azure_blob = AzureBlobHelper()
     container_name = "knowhiztutorrag"
     # Upload all the md files in the folder
-    md_files = [f for f in os.listdir(folder_dir) if f.lower().endswith('.md')]
+    md_files = [os.path.join(folder_dir, f"{file_id}.md")]
     for md_file in md_files:
         blob_name = f"file_appendix/{file_id}/images/{md_file}"
         local_path = folder_dir / md_file
         azure_blob.upload(str(local_path), blob_name, container_name)
 
     # TEST
-    print(f"Uploaded {(md_files)} markdown files to Azure Blob storage")
+    logger.info(f"Uploaded {(md_files)} markdown files to Azure Blob storage")
 
 
 def extract_image_context(folder_dir: str | Path, file_path: str = "", context_tokens: int = 500) -> None:
@@ -201,21 +205,20 @@ def extract_image_context(folder_dir: str | Path, file_path: str = "", context_t
     # List all image files in the folder (case-insensitive match)
     image_files = [f for f in os.listdir(folder_dir) if os.path.splitext(f.lower())[1] in image_extensions]
     if not image_files:
-        print("No image files found in the folder.")
+        logger.info("No image files found in the folder.")
         return
 
-    # Find the markdown file (assuming there's only one .md file)
-    md_files = [f for f in os.listdir(folder_dir) if f.lower().endswith('.md')]
-    if not md_files:
-        print("No markdown file found in the folder.")
-        return
-    
-    # If there are images_files and md_files, re-order the list image_files to match the order that images show up in md_files
+    # Find the markdown file (with file_id.md file name)
     file_id = generate_file_id(file_path)
-
+    md_files = [os.path.join(folder_dir, f"{file_id}.md")]
+    if not md_files:
+        logger.info("No markdown file found in the folder.")
+        return
 
     md_file = md_files[0]
     md_path = folder_dir / md_file
+
+    # If there are images_files and md_files, re-order the list image_files to match the order that images show up in md_files
 
     # Read the content of the markdown file
     with open(md_path, 'r', encoding='utf-8') as f:

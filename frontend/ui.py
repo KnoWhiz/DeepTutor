@@ -47,7 +47,8 @@ def to_emoji_number(num: int) -> str:
 def setup_page_config():
     st.set_page_config(
         page_title="DeepTutor",
-        page_icon="frontend/images/professor.svg",
+        # page_icon="frontend/images/professor.svg",
+        page_icon="frontend/images/logo.png",
         layout="wide",
         # initial_sidebar_state="collapsed",
         initial_sidebar_state="expanded"
@@ -62,7 +63,7 @@ def show_auth_top():
 # Function to display the header
 def show_header():
     with st.sidebar:
-        with open("frontend/images/professor.ico", "rb") as image_file:
+        with open("frontend/images/logo.png", "rb") as image_file:
             encoded_image = base64.b64encode(image_file.read()).decode()
         st.markdown(
             f"""

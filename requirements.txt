@@ -1,6 +1,7 @@
 azure-storage-blob==12.24.1
 boto3==1.37.1
 faiss-cpu==1.10.0
+fitz==0.0.1.dev2
 graphrag==0.9.0
 langchain==0.3.19
 langchain-community==0.3.18
@@ -16,3 +17,4 @@ streamlit==1.42.2
 streamlit_pdf_viewer==0.0.21
 streamlit_float==0.3.5
 streamlit_extras==0.5.5
+tools==0.1.9

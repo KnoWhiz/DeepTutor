@@ -5,8 +5,6 @@
 pipeline/__pycache__/api_handler.cpython-312.pyc
 *.faiss
 *.pkl
-*.jpg
-*.png
 *.pdf
 *.csv
 *.log

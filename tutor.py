@@ -78,8 +78,8 @@ if st.session_state['isAuth']:
             document, doc = state_process_pdf_file(file_path)
             embedding_folder = os.path.join('embedded_content', generate_file_id(file_path))
 
-            if len(document) > 50:
-                st.error("File contains more than 50 pages. Please upload a shorter document.")
+            if len(document) > 200:
+                st.error("File contains more than 200 pages. Please upload a shorter document.")
                 st.stop()
 
             # Initialize state

@@ -105,7 +105,7 @@ def show_mode_option():
 def show_file_upload(on_change=None):
     with st.sidebar:
         previous_file = st.session_state.get('uploaded_file', None)
-        current_file = st.file_uploader("Upload a document no more than **30 pages** to get started.", type="pdf", on_change=on_change)
+        current_file = st.file_uploader("Upload a document no more than **200 pages** to get started.", type="pdf", on_change=on_change)
         
         # Check if file has changed
         if previous_file is not None and current_file is not None:

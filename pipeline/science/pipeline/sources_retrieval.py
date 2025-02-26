@@ -39,6 +39,7 @@ def get_response_source(mode, _doc, _document, file_path, user_input, answer, ch
     para = config['llm']
 
     # Load image context
+    logger.info(f"TEST: loading from embedding_folder: {embedding_folder}")
     image_context_path = os.path.join(embedding_folder, "markdown/image_context.json")
     if os.path.exists(image_context_path):
         with open(image_context_path, 'r') as f:
@@ -69,22 +70,6 @@ def get_response_source(mode, _doc, _document, file_path, user_input, answer, ch
         print("No existing embeddings found, creating new ones...")
         embeddings_agent(mode, _document, _doc, file_path, embedding_folder)
         db = load_embeddings(embedding_folder, 'default')
-        # # Split the document into chunks, respecting page boundaries
-        # print("Creating new embeddings...")
-        # text_splitter = PageAwareTextSplitter(
-        #     chunk_size=config['embedding']['chunk_size'],
-        #     chunk_overlap=0
-        # )
-        # texts = text_splitter.split_document(_document)
-        # print(f"length of document chunks generated for get_response_source:{len(texts)}")
-
-        # # Create the vector store to use as the index
-        # db = FAISS.from_documents(texts, embeddings)
-        # # Save the embeddings to the specified folder
-        # db.save_local(embedding_folder)
-
-    # Configure retriever with search parameters from config
-    retriever = db.as_retriever(search_kwargs={"k": config['sources_retriever']['k']})
 
     # Get relevant chunks for both question and answer with scores
     question_chunks_with_scores = db.similarity_search_with_score(user_input, k=config['sources_retriever']['k'])
@@ -131,10 +116,9 @@ def get_response_source(mode, _doc, _document, file_path, user_input, answer, ch
     source_pages = {image_mapping.get(source, source): page 
                          for source, page in source_pages.items()}
 
-    # # TEST
-    # print("sources before refine:")
-    # pprint.pprint(sources_with_scores)
-    # print(f"length of sources before refine: {len(sources_with_scores)}")
+    # TEST
+    logger.info("TEST: sources before refine:")
+    logger.info(f"TEST: length of sources before refine: {len(sources_with_scores)}")
 
     # Refine and limit sources while preserving scores
     markdown_dir = os.path.join(embedding_folder, "markdown")
@@ -146,11 +130,11 @@ def get_response_source(mode, _doc, _document, file_path, user_input, answer, ch
         if source in sources_with_scores:
             refined_source_pages[source] = page + 1
 
-    # # TEST
-    # print("sources after refine:")
-    # for source, score in sources_with_scores.items():
-    #     print(f"{source}: {score}")
-    # print(f"length of sources after refine: {len(sources_with_scores)}")
+    # TEST
+    logger.info("TEST: sources after refine:")
+    for source, score in sources_with_scores.items():
+        logger.info(f"{source}: {score}")
+    logger.info(f"TEST: length of sources after refine: {len(sources_with_scores)}")
 
     return sources_with_scores, source_pages, refined_source_pages
 
@@ -185,6 +169,12 @@ def refine_sources(_doc, _document, sources_with_scores, markdown_dir, user_inpu
             image_sources[source] = score
         else:
             text_sources[source] = score
+
+    # TEST
+    logger.info("TEST: image sources before refine:")
+    logger.info(f"TEST: length of image sources before refine: {len(image_sources)}")
+    logger.info(f"TEST: text sources before refine: {text_sources}")
+    logger.info(f"TEST: length of text sources before refine: {len(text_sources)}")
 
     # Filter image sources based on LLM evaluation
     filtered_images = {}

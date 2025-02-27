@@ -52,6 +52,9 @@ async def get_standard_rag_response(
     parser = StrOutputParser()
     error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
 
+    if chat_session is None:
+        chat_session = ChatSession()
+
     try:
         # Handle different embedding folders based on type
         if chat_session.mode == ChatMode.BASIC:

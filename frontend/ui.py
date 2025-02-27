@@ -84,20 +84,20 @@ def show_mode_option():
         mode_index = 0
         current_mode = st.radio(
             "Choose a mode:",
-            options=["Lite", "Basic", "Advanced"],
+            options=["Basic", "Advanced", "Premium"],
             help="""
-            - Lite: Process raw text only (fastest)
-            - Basic: Agentic processing with Markdown extraction, image understanding, DeepSeek R1 deep thinking, and document summarization (standard)
-            - Advanced: In addition to Basic, add enhanced GraphRAG for better document understanding (slower but more accurate)
+            - Basic: Process raw text only (fastest)
+            - Advanced: Agentic processing with Markdown extraction, image understanding, DeepSeek R1 deep thinking, and document summarization (standard)
+            - Premium: In addition to Advanced, add enhanced GraphRAG for better document understanding (slower but more accurate)
             """,
             index=mode_index
         )
         st.session_state.mode = current_mode
         if 'chat_session' in st.session_state:
-            if current_mode == "Advanced":
+            if current_mode == "Premium":
+                st.session_state.chat_session.set_mode(ChatMode.PREMIUM)
+            elif current_mode == "Advanced":
                 st.session_state.chat_session.set_mode(ChatMode.ADVANCED)
-            elif current_mode == "Basic":
-                st.session_state.chat_session.set_mode(ChatMode.BASIC)
             else:
                 st.session_state.chat_session.set_mode(ChatMode.LITE)
 
@@ -232,7 +232,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                 with st.chat_message(msg["role"], avatar=avatar):
                     st.write(msg["content"])
             elif msg["role"] == "assistant":
-                avatar = professor_avatar if st.session_state.chat_session.mode == ChatMode.ADVANCED else tutor_avatar
+                avatar = professor_avatar if st.session_state.chat_session.mode == ChatMode.PREMIUM else tutor_avatar
                 with st.chat_message(msg["role"], avatar=avatar):
                     st.write(msg["content"])
                     

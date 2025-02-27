@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 WEBHOOK_URL = str(os.getenv("WEBHOOK_URL"))
 
 def is_valid_email(email):
-    # Basic regex pattern for email validation
+    # Advanced regex pattern for email validation
     email_pattern = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
     return re.match(email_pattern, email) is not None
 

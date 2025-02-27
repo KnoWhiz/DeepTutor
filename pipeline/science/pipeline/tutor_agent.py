@@ -68,7 +68,7 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
     logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     if chat_session.mode == ChatMode.LITE:
-        logger.info("Lite mode - using raw text only")
+        logger.info("Basic mode - using raw text only")
         lite_embedding_start_time = time.time()
         if(literag_index_files_decompress(embedding_folder)):
             # Check if the LiteRAG index files are ready locally
@@ -76,15 +76,15 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
         else:
             # Files are missing and have been cleaned up
             save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
-            logger.info("Lite embedding ...")
+            logger.info("Basic embedding ...")
             await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder)
         time_tracking['lite_embedding_total'] = time.time() - lite_embedding_start_time
         logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-        logger.info("Lite embedding done ...")
+        logger.info("Basic embedding done ...")
         
-    elif chat_session.mode == ChatMode.BASIC:
+    elif chat_session.mode == ChatMode.ADVANCED:
         vectorrag_start_time = time.time()
-        logger.info("Basic (VectorRAG) mode")
+        logger.info("Advanced (VectorRAG) mode")
         # Doc processing
         if(vectorrag_index_files_decompress(embedding_folder)):
             logger.info("VectorRAG index files are ready.")
@@ -106,9 +106,9 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
                     logger.info("Error compressing and uploading VectorRAG index files to Azure Blob Storage.")
         time_tracking['vectorrag_generate_embedding_total'] = time.time() - vectorrag_start_time
         logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-    elif chat_session.mode == ChatMode.ADVANCED:
+    elif chat_session.mode == ChatMode.PREMIUM:
         graphrag_start_time = time.time()
-        logger.info("Advanced (GraphRAG) mode")
+        logger.info("Premium (GraphRAG) mode")
         if(graphrag_index_files_decompress(embedding_folder)):
             logger.info("GraphRAG index files are ready.")
         else:

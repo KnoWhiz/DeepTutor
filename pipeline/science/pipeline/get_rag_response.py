@@ -37,7 +37,7 @@ async def get_standard_rag_response(
         user_input: The user's query
         chat_history: The conversation history (can be empty string)
         embedding_folder: Path to the folder containing embeddings
-        embedding_type: Type of embedding model to use ('default' or 'Lite')
+        embedding_type: Type of embedding model to use ('default' or 'Basic')
         chat_session: Optional ChatSession object for generating embeddings if needed
         doc: Optional document dict for generating embeddings if needed
         document: Optional document dict for generating embeddings if needed
@@ -48,7 +48,7 @@ async def get_standard_rag_response(
     """
     config = load_config()
     para = config['llm']
-    llm = get_llm('Basic', para)
+    llm = get_llm('Advanced', para)
     parser = StrOutputParser()
     error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
 
@@ -56,7 +56,7 @@ async def get_standard_rag_response(
         # Handle different embedding folders based on type
         if chat_session.mode == ChatMode.LITE:
             actual_embedding_folder = os.path.join(embedding_folder, 'lite_embedding')
-        elif chat_session.mode == ChatMode.BASIC or chat_session.mode == ChatMode.ADVANCED:
+        elif chat_session.mode == ChatMode.ADVANCED or chat_session.mode == ChatMode.PREMIUM:
             actual_embedding_folder = os.path.join(embedding_folder, 'markdown')
         else:
             actual_embedding_folder = embedding_folder

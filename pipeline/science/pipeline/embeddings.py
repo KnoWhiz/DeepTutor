@@ -21,10 +21,10 @@ def get_embedding_models(embedding_type, para):
     para = para
     api = ApiHandler(para)
     embedding_model_default = api.embedding_models['default']['instance']
-    embedding_model_lite = api.embedding_models['Basic']['instance']
+    embedding_model_lite = api.embedding_models['Lite']['instance']
     if embedding_type == 'default':
         return embedding_model_default
-    elif embedding_type == 'Basic':
+    elif embedding_type == 'Lite':
         return embedding_model_lite
     else:
         return embedding_model_default
@@ -83,7 +83,7 @@ async def generate_LiteRAG_embedding(_doc, file_path, embedding_folder):
     # Check if all necessary files exist to load the embeddings
     faiss_path = os.path.join(lite_embedding_folder, "index.faiss")
     pkl_path = os.path.join(lite_embedding_folder, "index.pkl")
-    embeddings = get_embedding_models('Basic', para)
+    embeddings = get_embedding_models('Lite', para)
     if os.path.exists(faiss_path) and os.path.exists(pkl_path):
         # Try to load existing txt file in graphrag_embedding folder
         logger.info("LiteRAG embedding already exists. We can load existing embeddings...")

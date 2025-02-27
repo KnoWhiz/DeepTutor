@@ -182,7 +182,7 @@ def refine_sources(_doc, _document, sources_with_scores, markdown_dir, user_inpu
         # Initialize LLM for relevance evaluation
         config = load_config()
         para = config['llm']
-        llm = get_llm('Basic', para)
+        llm = get_llm('basic', para)
         parser = JsonOutputParser()
         error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
 

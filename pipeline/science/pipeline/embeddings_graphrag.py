@@ -57,7 +57,6 @@ from graphrag.prompts.query.local_search_system_prompt import LOCAL_SEARCH_SYSTE
 from graphrag.prompts.query.question_gen_system_prompt import QUESTION_SYSTEM_PROMPT
 
 from pipeline.science.pipeline.api_handler import create_env_file
-from pipeline.science.pipeline.api_handler import ApiHandler
 from pipeline.science.pipeline.utils import file_check_list
 
 

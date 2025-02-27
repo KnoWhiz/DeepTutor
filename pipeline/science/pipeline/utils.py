@@ -147,8 +147,14 @@ def generate_file_id(file_path):
 # Add new helper functions
 def count_tokens(text, model_name='gpt-4o'):
     """Count tokens in text using tiktoken"""
-    encoding = tiktoken.encoding_for_model(model_name)
-    return len(encoding.encode(text))
+    try:
+        encoding = tiktoken.encoding_for_model(model_name)
+        tokens = encoding.encode(text)
+        length = len(tokens)
+        return length
+    except Exception as e:
+        logger.exception(f"Error counting tokens: {str(e)}")
+        return len(str(text))
 
 
 def truncate_chat_history(chat_history, model_name='gpt-4o', token_limit=None):
@@ -157,9 +163,9 @@ def truncate_chat_history(chat_history, model_name='gpt-4o', token_limit=None):
     para = config['llm']
     api = ApiHandler(para)
     if model_name == 'gpt-4o':
-        model_level = 'advance'
+        model_level = 'advanced'
     else:
-        model_level = 'Basic'
+        model_level = 'basic'
     if token_limit is None:
         max_tokens = int(api.models[model_level]['context_window']/3)
     else:
@@ -190,9 +196,9 @@ def truncate_document(_document, model_name='gpt-4o'):
     para = config['llm']
     api = ApiHandler(para)
     if model_name == 'gpt-4o':
-        model_level = 'advance'
+        model_level = 'advanced'
     else:
-        model_level = 'Basic'
+        model_level = 'basic'
     max_tokens = int(api.models[model_level]['context_window']/1.2)
 
     # # TEST
@@ -215,13 +221,13 @@ def truncate_document(_document, model_name='gpt-4o'):
 def get_llm(llm_type, para):
     para = para
     api = ApiHandler(para)
-    llm_basic = api.models['Basic']['instance']
-    llm_advance = api.models['advance']['instance']
+    llm_basic = api.models['basic']['instance']
+    llm_advanced = api.models['advanced']['instance']
     llm_creative = api.models['creative']['instance']
-    if llm_type == 'Basic':
+    if llm_type == 'basic':
         return llm_basic
-    elif llm_type == 'advance':
-        return llm_advance
+    elif llm_type == 'advanced':
+        return llm_advanced
     elif llm_type == 'creative':
         return llm_creative
     return llm_basic
@@ -230,7 +236,7 @@ def get_llm(llm_type, para):
 def get_translation_llm(para):
     """Get LLM instance specifically for translation"""
     api = ApiHandler(para)
-    return api.models['Basic']['instance']
+    return api.models['basic']['instance']
 
 
 def detect_language(text):

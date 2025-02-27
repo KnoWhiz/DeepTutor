@@ -102,14 +102,14 @@ class ApiHandler:
 
         if self.para['llm_source'] == 'azure' or self.para['llm_source'] == 'openai':
             models = {
-                'Basic': {'instance': llm_basic, 'context_window': 128000},
-                'advance': {'instance': llm_advance, 'context_window': 128000},
+                'basic': {'instance': llm_basic, 'context_window': 128000},
+                'advanced': {'instance': llm_advance, 'context_window': 128000},
                 'creative': {'instance': llm_creative, 'context_window': 128000},
             }
         # elif self.para['llm_source'] == 'deepseek':
         #     models = {
-        #         'Basic': {'instance': llm_deepseek, 'context_window': 65536},
-        #         'advance': {'instance': llm_deepseek, 'context_window': 65536},
+        #         'basic': {'instance': llm_deepseek, 'context_window': 65536},
+        #         'advanced': {'instance': llm_deepseek, 'context_window': 65536},
         #         'creative': {'instance': llm_deepseek, 'context_window': 65536},
         #     }
         return models
@@ -134,6 +134,6 @@ class ApiHandler:
 
         models = {
             'default': {'instance': embedding_model},
-            'Lite': {'instance': lite_embedding_model},
+            'lite': {'instance': lite_embedding_model},
         }
         return models

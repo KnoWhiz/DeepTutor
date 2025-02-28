@@ -55,7 +55,7 @@ def format_time_tracking(time_tracking: Dict[str, float]) -> str:
     """
     formatted_times = []
     for key, value in time_tracking.items():
-        if key == "0. session_id":
+        if key == "0. session_id" or key == "0. session_type":
             formatted_times.append(f"{key}: {value}")
             continue
         if key == "0. start_time":
@@ -64,8 +64,18 @@ def format_time_tracking(time_tracking: Dict[str, float]) -> str:
             continue
         if key == "0. end_time" and "0. start_time" in time_tracking:
             total_time_cost = value - time_tracking["0. start_time"]
-            formatted_times.append(f"0. total time cost: {total_time_cost:.2f}s")
+            if total_time_cost >= 60:
+                minutes = int(total_time_cost // 60)
+                remaining_seconds = total_time_cost % 60
+                formatted_times.append(f"0. total time cost: {minutes}m {remaining_seconds:.2f}s, session_id: {time_tracking.get('0. session_id', 'none')}, mode: {time_tracking.get('0. session_type', 'default')}")
+            else:
+                formatted_times.append(f"0. total time cost: {total_time_cost:.2f}s, session_id: {time_tracking.get('0. session_id', 'none')}, mode: {time_tracking.get('0. session_type', 'default')}")
             continue
+        if key == "0. metrics_time" and "0. end_time" in time_tracking:
+            metrics_time_cost = value - time_tracking["0. end_time"]
+            formatted_times.append(f"0. metrics record time cost: {metrics_time_cost:.2f}s")
+            continue
+
 
         if value >= 60:
             minutes = int(value // 60)

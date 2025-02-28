@@ -81,7 +81,7 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
         time_tracking['lite_embedding_total'] = time.time() - lite_embedding_start_time
         logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
         logger.info("Basic embedding done ...")
-        
+
     elif chat_session.mode == ChatMode.ADVANCED:
         vectorrag_start_time = time.time()
         logger.info("Advanced (VectorRAG) mode")

@@ -34,7 +34,7 @@ def check_index_file(index_file_path: str, pkl_file_path: str) -> None:
         # Unpack the tuple
         docstore, id_to_uuid_map = pkl_data
 
-        # Display Basic information
+        # Display Advanced information
         print(f"\nFile Information:")
         print(f"Index file: {index_file_path}")
         print(f"Pkl file: {pkl_file_path}")

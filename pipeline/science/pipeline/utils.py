@@ -55,7 +55,7 @@ def format_time_tracking(time_tracking: Dict[str, float]) -> str:
     """
     formatted_times = []
     for key, value in time_tracking.items():
-        if key == "0. session_id":
+        if key == "0. session_id" or key == "0. session_type":
             formatted_times.append(f"{key}: {value}")
             continue
         if key == "0. start_time":
@@ -64,8 +64,18 @@ def format_time_tracking(time_tracking: Dict[str, float]) -> str:
             continue
         if key == "0. end_time" and "0. start_time" in time_tracking:
             total_time_cost = value - time_tracking["0. start_time"]
-            formatted_times.append(f"0. total time cost: {total_time_cost:.2f}s")
+            if total_time_cost >= 60:
+                minutes = int(total_time_cost // 60)
+                remaining_seconds = total_time_cost % 60
+                formatted_times.append(f"0. total time cost: {minutes}m {remaining_seconds:.2f}s, session_id: {time_tracking.get('0. session_id', 'none')}, mode: {time_tracking.get('0. session_type', 'default')}")
+            else:
+                formatted_times.append(f"0. total time cost: {total_time_cost:.2f}s, session_id: {time_tracking.get('0. session_id', 'none')}, mode: {time_tracking.get('0. session_type', 'default')}")
             continue
+        if key == "0. metrics_time" and "0. end_time" in time_tracking:
+            metrics_time_cost = value - time_tracking["0. end_time"]
+            formatted_times.append(f"0. metrics record time cost: {metrics_time_cost:.2f}s")
+            continue
+
 
         if value >= 60:
             minutes = int(value // 60)
@@ -147,8 +157,14 @@ def generate_file_id(file_path):
 # Add new helper functions
 def count_tokens(text, model_name='gpt-4o'):
     """Count tokens in text using tiktoken"""
-    encoding = tiktoken.encoding_for_model(model_name)
-    return len(encoding.encode(text))
+    try:
+        encoding = tiktoken.encoding_for_model(model_name)
+        tokens = encoding.encode(text)
+        length = len(tokens)
+        return length
+    except Exception as e:
+        logger.exception(f"Error counting tokens: {str(e)}")
+        return len(str(text))
 
 
 def truncate_chat_history(chat_history, model_name='gpt-4o', token_limit=None):
@@ -157,9 +173,9 @@ def truncate_chat_history(chat_history, model_name='gpt-4o', token_limit=None):
     para = config['llm']
     api = ApiHandler(para)
     if model_name == 'gpt-4o':
-        model_level = 'advance'
+        model_level = 'advanced'
     else:
-        model_level = 'Basic'
+        model_level = 'basic'
     if token_limit is None:
         max_tokens = int(api.models[model_level]['context_window']/3)
     else:
@@ -190,9 +206,9 @@ def truncate_document(_document, model_name='gpt-4o'):
     para = config['llm']
     api = ApiHandler(para)
     if model_name == 'gpt-4o':
-        model_level = 'advance'
+        model_level = 'advanced'
     else:
-        model_level = 'Basic'
+        model_level = 'basic'
     max_tokens = int(api.models[model_level]['context_window']/1.2)
 
     # # TEST
@@ -215,22 +231,25 @@ def truncate_document(_document, model_name='gpt-4o'):
 def get_llm(llm_type, para):
     para = para
     api = ApiHandler(para)
-    llm_basic = api.models['Basic']['instance']
-    llm_advance = api.models['advance']['instance']
+    llm_basic = api.models['basic']['instance']
+    llm_advanced = api.models['advanced']['instance']
     llm_creative = api.models['creative']['instance']
-    if llm_type == 'Basic':
+    llm_backup = api.models['backup']['instance']
+    if llm_type == 'basic':
         return llm_basic
-    elif llm_type == 'advance':
-        return llm_advance
+    elif llm_type == 'advanced':
+        return llm_advanced
     elif llm_type == 'creative':
         return llm_creative
+    elif llm_type == 'backup':
+        return llm_backup
     return llm_basic
 
 
 def get_translation_llm(para):
     """Get LLM instance specifically for translation"""
     api = ApiHandler(para)
-    return api.models['Basic']['instance']
+    return api.models['basic']['instance']
 
 
 def detect_language(text):

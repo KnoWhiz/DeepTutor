@@ -27,9 +27,9 @@ async def generate_document_summary(file_path, embedding_folder, md_document=Non
     """
     config = load_config()
     para = config['llm']
-    llm = get_llm(para["level"], para)  # Using Advanced model for better quality
+    llm = get_llm(para["level"], para)  # Using Premium model for better quality
     api = ApiHandler(para)
-    max_tokens = int(api.models['advance']['context_window']/2)
+    max_tokens = int(api.models['advanced']['context_window']/2)
     # max_tokens = int(65536/3)
     default_topics = config['default_topics']
 
@@ -227,7 +227,7 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
                 topic_prompt_copy = copy.deepcopy(topic_prompt)
                 # Fill in the topic in the prompt
                 topic_prompt_copy = topic_prompt_copy.format(topic=topic)
-                
+
                 logger.info(f"Generating summary for topic: {topic}")
                 logger.info(f"Prompt: {topic_prompt_copy}")
                 try:
@@ -244,7 +244,7 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
                 topic_prompt_copy = copy.deepcopy(topic_prompt)
                 # Fill in the topic in the prompt
                 topic_prompt_copy = topic_prompt_copy.replace("{topic}", topic)
-                
+
                 logger.info(f"Generating summary for topic: {topic}")
                 logger.info(f"Prompt: {topic_prompt_copy}")
                 try:

@@ -1,7 +1,7 @@
 {
     "llm": {
         "llm_source": "azure",
-        "level": "advance",
+        "level": "advanced",
         "temperature": 0,
         "creative_temperature": 0.5,
         "openai_key_dir": ".env",

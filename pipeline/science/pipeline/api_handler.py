@@ -5,6 +5,8 @@ from langchain_openai import ChatOpenAI
 from langchain_openai import AzureChatOpenAI
 from langchain_openai import OpenAIEmbeddings, AzureOpenAIEmbeddings
 from langchain_deepseek import ChatDeepSeek
+from langchain_sambanova import ChatSambaNovaCloud
+from langchain_core.prompts import ChatPromptTemplate
 
 
 def create_env_file(GraphRAG_embedding_folder):
@@ -26,7 +28,8 @@ class ApiHandler:
         self.api_key = str(os.getenv("AZURE_OPENAI_API_KEY"))
         self.azure_endpoint = str(os.getenv("AZURE_OPENAI_ENDPOINT"))
         # self.openai_api_key = str(os.getenv("OPENAI_API_KEY"))
-        self.deepseek_api_key = str(os.getenv("DEEPSEEK_API_KEY"))
+        # self.deepseek_api_key = str(os.getenv("DEEPSEEK_API_KEY"))
+        self.sambanova_api_key = str(os.getenv("SAMBANOVA_API_KEY"))
         self.models = self.load_models()
         self.embedding_models = self.load_embedding_models()
 
@@ -62,11 +65,13 @@ class ApiHandler:
                 temperature=temperature,
             )
         elif host == 'sambanova':
-            return ChatOpenAI(
+            return ChatSambaNovaCloud(
                 model=deployment_name,
-                api_key=api_key,
-                base_url=endpoint,
-                streaming=False,
+                api_key=self.sambanova_api_key,
+                base_url="https://api.sambanova.ai/v1",
+                max_tokens=1024,
+                temperature=temperature,
+                top_p=0.1
             )
         # elif host == 'deepseek':
         #     return ChatDeepSeek(
@@ -100,12 +105,22 @@ class ApiHandler:
         # llm_deepseek = self.get_models(api_key=self.deepseek_api_key,
         #                                temperature=self.para['temperature'],
         #                                host='deepseek')
+        llm_llama = self.get_models(api_key=self.sambanova_api_key,
+                                    temperature=self.para['temperature'],
+                                    deployment_name='Meta-Llama-3.3-70B-Instruct',
+                                    host='sambanova')
 
         if self.para['llm_source'] == 'azure' or self.para['llm_source'] == 'openai':
             models = {
                 'basic': {'instance': llm_basic, 'context_window': 128000},
                 'advanced': {'instance': llm_advance, 'context_window': 128000},
                 'creative': {'instance': llm_creative, 'context_window': 128000},
+            }
+        elif self.para['llm_source'] == 'sambanova':
+            models = {
+                'basic': {'instance': llm_llama, 'context_window': 128000},
+                'advanced': {'instance': llm_llama, 'context_window': 128000},
+                'creative': {'instance': llm_llama, 'context_window': 128000},
             }
         # elif self.para['llm_source'] == 'deepseek':
         #     models = {

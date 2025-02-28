@@ -68,7 +68,7 @@ class Question:
         }
 
 
-async def get_response(chat_session: ChatSession, _doc, _document, file_path, question: Question, chat_history, embedding_folder, deep_thinking = False):
+async def get_response(chat_session: ChatSession, _doc, _document, file_path, question: Question, chat_history, embedding_folder, deep_thinking = False, stream=False):
     user_input = question.text
     # Handle Basic mode first
     if chat_session.mode == ChatMode.BASIC:
@@ -93,7 +93,8 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, qu
             chat_session=chat_session,
             doc=_doc,
             document=_document,
-            file_path=file_path
+            file_path=file_path,
+            stream=stream
         )
         
         # For Basic mode, we return empty containers for sources and follow-up questions
@@ -136,7 +137,8 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, qu
             prompt_string=basic_prompt,
             user_input=user_input + "\n\n" + question.special_context,
             chat_history=chat_history,
-            embedding_folder=embedding_folder
+            embedding_folder=embedding_folder,
+            stream=stream
         )
         return answer
     else:

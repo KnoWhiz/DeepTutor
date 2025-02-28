@@ -40,6 +40,7 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
     If user_input is None, generates the initial welcome message.
     """
     config = load_config()
+    stream = config['stream']
     if time_tracking is None:
         time_tracking: Dict = {}
 
@@ -198,7 +199,7 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
 
     # Get response
     response_start = time.time()
-    response = await get_response(chat_session, _doc, _document, file_path, question, context_chat_history, embedding_folder, deep_thinking=deep_thinking)
+    response = await get_response(chat_session, _doc, _document, file_path, question, context_chat_history, embedding_folder, deep_thinking=deep_thinking, stream=stream)
     answer = response[0] if isinstance(response, tuple) else response
     time_tracking['response_generation'] = time.time() - response_start
     logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")

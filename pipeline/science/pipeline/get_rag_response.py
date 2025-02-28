@@ -27,7 +27,8 @@ async def get_standard_rag_response(
     chat_session: ChatSession = None,
     doc: dict = None,
     document: dict = None,
-    file_path: str = None
+    file_path: str = None,
+    stream: bool = False
 ):
     """
     Standard function for RAG-based response generation.
@@ -42,7 +43,7 @@ async def get_standard_rag_response(
         doc: Optional document dict for generating embeddings if needed
         document: Optional document dict for generating embeddings if needed
         file_path: Optional file path for generating embeddings if needed
-        
+        stream: Whether to stream the response
     Returns:
         str: The generated response
     """
@@ -98,9 +99,15 @@ async def get_standard_rag_response(
         answer=rag_chain
     )
 
-    parsed_result = chain.invoke({
-        "input": user_input,
-        "chat_history": truncate_chat_history(chat_history) if chat_history else ""
-    })
+    if not stream:
+        parsed_result = chain.invoke({
+            "input": user_input,
+            "chat_history": truncate_chat_history(chat_history) if chat_history else ""
+        })
+    else:
+        parsed_result = chain.invoke({
+            "input": user_input,
+            "chat_history": truncate_chat_history(chat_history) if chat_history else ""
+        })
     
     return parsed_result['answer']

@@ -224,12 +224,15 @@ def get_llm(llm_type, para):
     llm_basic = api.models['basic']['instance']
     llm_advanced = api.models['advanced']['instance']
     llm_creative = api.models['creative']['instance']
+    llm_backup = api.models['backup']['instance']
     if llm_type == 'basic':
         return llm_basic
     elif llm_type == 'advanced':
         return llm_advanced
     elif llm_type == 'creative':
         return llm_creative
+    elif llm_type == 'backup':
+        return llm_backup
     return llm_basic
 
 

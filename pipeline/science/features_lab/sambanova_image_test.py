@@ -6,16 +6,17 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-def process_image_with_llama(image_url, prompt_text):
+def process_image_with_llama(image_url, prompt_text, stream=False):
     """
     Process an image with Llama-3.2-90B-Vision-Instruct model.
     
     Args:
         image_url (str): URL of the image to process
         prompt_text (str): Text prompt to send along with the image
+        stream (bool): Whether to stream the response incrementally (default: False)
         
     Returns:
-        str: The model's response
+        str or generator: The model's response as text, or a generator of response chunks if stream=True
     """
     # Initialize the client
     client = openai.OpenAI(
@@ -39,10 +40,15 @@ def process_image_with_llama(image_url, prompt_text):
                 }
             ],
             temperature=0.1,
-            top_p=0.1
+            top_p=0.1,
+            stream=stream
         )
         
-        # Return the model's response
+        # Handle streaming response
+        if stream:
+            return response  # Return the streaming response generator
+        
+        # Return the model's response for non-streaming case
         if hasattr(response, 'choices') and response.choices:
             return response.choices[0].message.content
         else:
@@ -80,6 +86,21 @@ if __name__ == "__main__":
     image_url = "https://knowhiztutorrag.blob.core.windows.net/knowhiztutorrag/file_appendix/4a003e263d89a1e4fabff70111df076b/images/_page_2_Figure_0.jpeg"
     prompt = "What do you see in this image"
     
-    # Get the response
+    # Get the regular response
     result = process_image_with_llama(image_url, prompt)
     print(result)
+    
+    # Example with streaming
+    print("\nStreaming response:")
+    stream_response = process_image_with_llama(image_url, prompt, stream=True)
+    
+    # Process the streaming response
+    try:
+        for chunk in stream_response:
+            if hasattr(chunk, 'choices') and chunk.choices:
+                content = chunk.choices[0].delta.content
+                if content:
+                    print(content, end="", flush=True)
+        print()  # Add a newline at the end
+    except Exception as e:
+        print(f"Error processing stream: {e}")

@@ -115,12 +115,14 @@ class ApiHandler:
                 'basic': {'instance': llm_basic, 'context_window': 128000},
                 'advanced': {'instance': llm_advance, 'context_window': 128000},
                 'creative': {'instance': llm_creative, 'context_window': 128000},
+                'backup': {'instance': llm_llama, 'context_window': 128000},
             }
         elif self.para['llm_source'] == 'sambanova':
             models = {
                 'basic': {'instance': llm_llama, 'context_window': 128000},
                 'advanced': {'instance': llm_llama, 'context_window': 128000},
                 'creative': {'instance': llm_llama, 'context_window': 128000},
+                'backup': {'instance': llm_basic, 'context_window': 128000},
             }
         # elif self.para['llm_source'] == 'deepseek':
         #     models = {

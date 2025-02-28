@@ -6,10 +6,49 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-client = openai.OpenAI(
-    api_key=os.environ.get("SAMBANOVA_API_KEY"),
-    base_url="https://api.sambanova.ai/v1",
-)
+def process_image_with_llama(image_url, prompt_text):
+    """
+    Process an image with Llama-3.2-90B-Vision-Instruct model.
+    
+    Args:
+        image_url (str): URL of the image to process
+        prompt_text (str): Text prompt to send along with the image
+        
+    Returns:
+        str: The model's response
+    """
+    # Initialize the client
+    client = openai.OpenAI(
+        api_key=os.environ.get("SAMBANOVA_API_KEY"),
+        base_url="https://api.sambanova.ai/v1",
+    )
+    
+    # Convert image URL to base64
+    base64_image = get_image_base64(image_url)
+    
+    try:
+        response = client.chat.completions.create(
+            model="Llama-3.2-90B-Vision-Instruct",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt_text},
+                        {"type": "image_url", "image_url": {"url": base64_image}}
+                    ]
+                }
+            ],
+            temperature=0.1,
+            top_p=0.1
+        )
+        
+        # Return the model's response
+        if hasattr(response, 'choices') and response.choices:
+            return response.choices[0].message.content
+        else:
+            return f"API response without expected structure: {response}"
+    except Exception as e:
+        return f"Error: {e}"
 
 # Function to convert image URL to base64
 def get_image_base64(image_url):
@@ -35,33 +74,12 @@ def get_image_base64(image_url):
     else:
         raise Exception(f"Failed to download image: {response.status_code}")
 
-# Image URL
-image_url = "https://knowhiztutorrag.blob.core.windows.net/knowhiztutorrag/file_appendix/4a003e263d89a1e4fabff70111df076b/images/_page_2_Figure_0.jpeg"
-
-# Convert to base64
-base64_image = get_image_base64(image_url)
-
-try:
-    response = client.chat.completions.create(
-        model="Llama-3.2-90B-Vision-Instruct",
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": "What do you see in this image"},
-                    {"type": "image_url", "image_url": {"url": base64_image}}
-                ]
-            }
-        ],
-        temperature=0.1,
-        top_p=0.1
-    )
+# Example usage
+if __name__ == "__main__":
+    # Example image URL and prompt
+    image_url = "https://knowhiztutorrag.blob.core.windows.net/knowhiztutorrag/file_appendix/4a003e263d89a1e4fabff70111df076b/images/_page_2_Figure_0.jpeg"
+    prompt = "What do you see in this image"
     
-    # Check if we have a response with choices
-    if hasattr(response, 'choices') and response.choices:
-        print(response.choices[0].message.content)
-    else:
-        print(f"API response without expected structure: {response}")
-except Exception as e:
-    print(f"Error: {e}")
-    print(f"Full response: {response}")
+    # Get the response
+    result = process_image_with_llama(image_url, prompt)
+    print(result)

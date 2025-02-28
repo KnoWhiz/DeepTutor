@@ -69,6 +69,8 @@ async def embeddings_agent(_mode, _document, _doc, file_path, embedding_folder, 
     config = load_config()
     para = config['llm']
     embeddings = get_embedding_models('default', para)
+    embeddings_small = get_embedding_models('small', para)
+    embeddings_lite = get_embedding_models('lite', para)
     doc_processor = mdDocumentProcessor()
 
     # Define the default filenames used by FAISS when saving
@@ -164,7 +166,17 @@ async def embeddings_agent(_mode, _document, _doc, file_path, embedding_folder, 
                 logger.info(f"Found {len(image_context)} images with context")
 
                 # Create a temporary FAISS index for similarity search
-                temp_db = FAISS.from_documents(texts, embeddings)
+                try:
+                    temp_db = FAISS.from_documents(texts, embeddings)
+                except Exception as e:
+                    try:
+                        logger.exception(f"Error creating temporary FAISS index: {e}")
+                        logger.info("Continuing with small embeddings...")
+                        temp_db = FAISS.from_documents(texts, embeddings_small)
+                    except Exception as e:
+                        logger.exception(f"Error creating temporary FAISS index with small embeddings: {e}")
+                        logger.info("Continuing with lite embeddings...")
+                        temp_db = FAISS.from_documents(texts, embeddings_lite)
 
                 for image, context in image_context.items():
                     for c in context:

@@ -1,0 +1,67 @@
+import os
+import openai
+import requests
+import base64
+from dotenv import load_dotenv
+
+load_dotenv()
+
+client = openai.OpenAI(
+    api_key=os.environ.get("SAMBANOVA_API_KEY"),
+    base_url="https://api.sambanova.ai/v1",
+)
+
+# Function to convert image URL to base64
+def get_image_base64(image_url):
+    response = requests.get(image_url)
+    if response.status_code == 200:
+        # Get the content type from response headers or infer from URL
+        content_type = response.headers.get('Content-Type', '')
+        if not content_type or 'image' not in content_type:
+            # Try to infer from URL extension
+            if image_url.lower().endswith(('jpg', 'jpeg')):
+                content_type = 'image/jpeg'
+            elif image_url.lower().endswith('png'):
+                content_type = 'image/png'
+            elif image_url.lower().endswith('webp'):
+                content_type = 'image/webp'
+            else:
+                content_type = 'image/jpeg'  # Default to JPEG
+        
+        # Encode the image in base64
+        base64_image = base64.b64encode(response.content).decode('utf-8')
+        # Return in required format
+        return f"data:{content_type};base64,{base64_image}"
+    else:
+        raise Exception(f"Failed to download image: {response.status_code}")
+
+# Image URL
+image_url = "https://knowhiztutorrag.blob.core.windows.net/knowhiztutorrag/file_appendix/4a003e263d89a1e4fabff70111df076b/images/_page_2_Figure_0.jpeg"
+
+# Convert to base64
+base64_image = get_image_base64(image_url)
+
+try:
+    response = client.chat.completions.create(
+        model="Llama-3.2-90B-Vision-Instruct",
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "What do you see in this image"},
+                    {"type": "image_url", "image_url": {"url": base64_image}}
+                ]
+            }
+        ],
+        temperature=0.1,
+        top_p=0.1
+    )
+    
+    # Check if we have a response with choices
+    if hasattr(response, 'choices') and response.choices:
+        print(response.choices[0].message.content)
+    else:
+        print(f"API response without expected structure: {response}")
+except Exception as e:
+    print(f"Error: {e}")
+    print(f"Full response: {response}")

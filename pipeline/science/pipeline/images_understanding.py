@@ -324,8 +324,9 @@ def analyze_image(image_url=None):
         return response.choices[0].message.content
 
     except Exception as e:
-        print(f"Error occurred: {str(e)}")
-        raise
+        logger.exception(f"Error occurred: {str(e)}")
+        
+        # Try another model for image understanding
 
 
 def process_folder_images(folder_path):

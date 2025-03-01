@@ -1,8 +1,10 @@
 import os
 import openai
 import logging
+from typing import Optional, Dict, Any, Union, Iterator
 from dotenv import load_dotenv
-from typing import Optional
+from langchain_openai import AzureChatOpenAI
+from langchain_core.messages import SystemMessage, HumanMessage
 from pipeline.science.pipeline.config import load_config
 load_dotenv()
 
@@ -12,7 +14,7 @@ def deepseek_inference(
     prompt: str,
     system_message: str = "You are a deep thinking researcher reading a paper. If you don't know the answer, say you don't know.",
     stream: bool = False,
-    temperature: float = 0.4,
+    temperature: float = 0.6,
     top_p: float = 0.1,
     max_tokens: int = 3000,
     model: str = "DeepSeek-R1-Distill-Llama-70B"
@@ -81,6 +83,56 @@ def deepseek_inference(
     except Exception as e:
         logger.exception(f"An error occurred: {str(e)}")
         return None
+
+
+def o3mini_inference(user_prompt: str, 
+                     system_prompt: str = "You are a deep thinking researcher reading a paper. \
+                        If you don't know the answer, say you don't know.",
+                     stream: bool = False) -> Union[str, Iterator]:
+    """
+    Generate a response using Azure OpenAI through LangChain
+    
+    Args:
+        system_prompt: The system instruction for the AI
+        user_prompt: The user's query or input
+        stream: Whether to stream the response (default: False)
+    
+    Returns:
+        If stream=False: The text content of the model's response as a string
+        If stream=True: A streaming response iterator that can be iterated over
+    """
+    # Azure OpenAI credentials
+    endpoint = os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP")
+    deployment = "o3-mini"
+    subscription_key = os.getenv("AZURE_OPENAI_API_KEY_BACKUP")
+    
+    # Initialize the Azure OpenAI model through LangChain
+    # Use model_kwargs to properly pass the max_completion_tokens parameter
+    model = AzureChatOpenAI(
+        azure_endpoint=endpoint,
+        api_key=subscription_key,
+        api_version="2024-12-01-preview",
+        deployment_name=deployment,
+        model_kwargs={"max_completion_tokens": 100000},
+        streaming=stream
+    )
+    
+    # Create messages
+    messages = [
+        SystemMessage(content=system_prompt),
+        HumanMessage(content=user_prompt)
+    ]
+    
+    # Generate response
+    response = model.invoke(messages)
+    
+    # Return appropriate response based on streaming mode
+    if stream:
+        return response  # Return the streaming response iterator
+    else:
+        # Return just the content string
+        return response.content
+
 
 # Example usage
 if __name__ == "__main__":

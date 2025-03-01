@@ -137,21 +137,26 @@ async def get_GraphRAG_global_response(_doc, _document, user_input, chat_history
     """
 
     if deep_thinking:
-        from pipeline.science.pipeline.inference import deepseek_inference
+        from pipeline.science.pipeline.inference import deep_inference_agent
         try:
-            answer = str(deepseek_inference(prompt))
+            answer = str(deep_inference_agent(prompt))
         except Exception as e:
-            logger.exception(f"Error in deepseek_inference: {e}")
+            logger.exception(f"Error in deep_inference_agent: {e}")
             prompt = f"""
             You are a deep thinking tutor helping a student reading a paper.
             Reference context from the paper: {context}
             The student's query is: {user_input_text}
             """
-            answer = str(deepseek_inference(prompt))
-        answer_thinking = answer.split("<think>")[1].split("</think>")[0]
-        answer_summary = answer.split("<think>")[1].split("</think>")[1]
-        answer_summary = responses_refine(search_engine_result.response, answer_summary)
-        answer = "### Here is my thinking process\n\n" + answer_thinking + "\n\n### Here is my summarized answer\n\n" + answer_summary
+            answer = str(deep_inference_agent(prompt))
+
+        # If there is <think> in the answer, split it into thinking and summary
+        if "<think>" in answer:
+            answer_thinking = answer.split("<think>")[1].split("</think>")[0]
+            answer_summary = answer.split("<think>")[1].split("</think>")[1]
+            answer_summary = responses_refine(search_engine_result.response, answer_summary)
+            answer = "### Here is my thinking process\n\n" + answer_thinking + "\n\n### Here is my summarized answer\n\n" + answer_summary
+        else:
+            answer = responses_refine(answer)
     else:
         answer = responses_refine(search_engine_result.response)
 

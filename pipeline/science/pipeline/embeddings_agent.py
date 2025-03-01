@@ -49,17 +49,23 @@ async def embeddings_agent(_mode, _document, _doc, file_path, embedding_folder, 
     file_id = generate_file_id(file_path)
     graphrag_start_time = time.time()
     logger.info(f"Current mode: {_mode}")
-    if _mode == ChatMode.PREMIUM:
-        logger.info("Mode: ChatMode.PREMIUM. Generating GraphRAG embeddings...")
+    if _mode == ChatMode.ADVANCED:
+        logger.info("Mode: ChatMode.ADVANCED. Generating GraphRAG embeddings...")
         time_tracking = await generate_GraphRAG_embedding(embedding_folder, time_tracking)
-    elif _mode == ChatMode.ADVANCED:
-        logger.info("Mode: ChatMode.ADVANCED. Generating VectorRAG embeddings...")
-    elif _mode == ChatMode.BASIC:
-        logger.info("Mode: ChatMode.BASIC. Generating LiteRAG embeddings...")
+    elif _mode == ChatMode.STANDARD:
+        logger.info("Mode: ChatMode.STANDARD. Generating VectorRAG embeddings...")
+    elif _mode == ChatMode.LITE:
+        logger.info("Mode: ChatMode.LITE. Generating LiteRAG embeddings...")
         lite_embedding_start_time = time.time()
         await generate_LiteRAG_embedding(_doc, file_path, embedding_folder)
         time_tracking['lite_embedding_total'] = time.time() - lite_embedding_start_time
         logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+
+        # Memory cleanup
+        db = None
+        doc_processor = None
+        texts = None
+
         return time_tracking
     else:
         raise ValueError("Invalid mode")
@@ -236,5 +242,10 @@ async def embeddings_agent(_mode, _document, _doc, file_path, embedding_folder, 
         except Exception as e:
             logger.exception(f"Error generating document summary: {e}")
             logger.info("Continuing without document summary...")
+
+    # Memory cleanup
+    db = None
+    doc_processor = None
+    texts = None
 
     return time_tracking

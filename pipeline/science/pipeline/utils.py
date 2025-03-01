@@ -148,8 +148,8 @@ def robust_search_for(page, text, chunk_size=512):
 # Generate a unique course ID for the uploaded file
 def generate_file_id(file_path):
     # logger.info(f"Generating course ID for file: {file_path}")
-    file = open(file_path, 'rb')
-    file_bytes = file.read()
+    with open(file_path, 'rb') as file:
+        file_bytes = file.read()
     file_id = hashlib.md5(file_bytes).hexdigest()
     return file_id
 
@@ -158,13 +158,18 @@ def generate_file_id(file_path):
 def count_tokens(text, model_name='gpt-4o'):
     """Count tokens in text using tiktoken"""
     try:
+        logger.info(f"Counting tokens for text: {text}")
         encoding = tiktoken.encoding_for_model(model_name)
-        tokens = encoding.encode(text)
+        # tokens = encoding.encode(text)
+        tokens = encoding.encode(text, disallowed_special=(encoding.special_tokens_set - {'<|endoftext|>'}))
         length = len(tokens)
+        logger.info(f"Length of tokens: {length}")
         return length
     except Exception as e:
         logger.exception(f"Error counting tokens: {str(e)}")
-        return len(str(text))
+        length = len(text.split())
+        logger.info(f"Length of text: {length}")
+        return length
 
 
 def truncate_chat_history(chat_history, model_name='gpt-4o', token_limit=None):
@@ -180,6 +185,9 @@ def truncate_chat_history(chat_history, model_name='gpt-4o', token_limit=None):
         max_tokens = int(api.models[model_level]['context_window']/3)
     else:
         max_tokens = token_limit
+
+    logger.info(f"max_tokens: {max_tokens}")
+    
     total_tokens = 0
     truncated_history = []
     for message in (chat_history[::-1])[1:]:

@@ -136,6 +136,9 @@ def get_response_source(mode, _doc, _document, file_path, user_input, answer, ch
         logger.info(f"{source}: {score}")
     logger.info(f"TEST: length of sources after refine: {len(sources_with_scores)}")
 
+    # Memory cleanup
+    db = None
+    
     return sources_with_scores, source_pages, refined_source_pages
 
 

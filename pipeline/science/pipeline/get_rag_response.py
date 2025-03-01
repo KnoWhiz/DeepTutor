@@ -27,7 +27,8 @@ async def get_standard_rag_response(
     chat_session: ChatSession = None,
     doc: dict = None,
     document: dict = None,
-    file_path: str = None
+    file_path: str = None,
+    stream: bool = False
 ):
     """
     Standard function for RAG-based response generation.
@@ -37,12 +38,12 @@ async def get_standard_rag_response(
         user_input: The user's query
         chat_history: The conversation history (can be empty string)
         embedding_folder: Path to the folder containing embeddings
-        embedding_type: Type of embedding model to use ('default' or 'Basic')
+        embedding_type: Type of embedding model to use (default, lite, small)
         chat_session: Optional ChatSession object for generating embeddings if needed
         doc: Optional document dict for generating embeddings if needed
         document: Optional document dict for generating embeddings if needed
         file_path: Optional file path for generating embeddings if needed
-        
+        stream: Whether to stream the response
     Returns:
         str: The generated response
     """
@@ -57,9 +58,9 @@ async def get_standard_rag_response(
 
     try:
         # Handle different embedding folders based on type
-        if chat_session.mode == ChatMode.BASIC:
+        if chat_session.mode == ChatMode.LITE:
             actual_embedding_folder = os.path.join(embedding_folder, 'lite_embedding')
-        elif chat_session.mode == ChatMode.ADVANCED or chat_session.mode == ChatMode.PREMIUM:
+        elif chat_session.mode == ChatMode.STANDARD or chat_session.mode == ChatMode.ADVANCED:
             actual_embedding_folder = os.path.join(embedding_folder, 'markdown')
         else:
             actual_embedding_folder = embedding_folder
@@ -98,9 +99,18 @@ async def get_standard_rag_response(
         answer=rag_chain
     )
 
-    parsed_result = chain.invoke({
-        "input": user_input,
-        "chat_history": truncate_chat_history(chat_history) if chat_history else ""
-    })
+    if not stream:
+        parsed_result = chain.invoke({
+            "input": user_input,
+            "chat_history": truncate_chat_history(chat_history) if chat_history else ""
+        })
+    else:
+        parsed_result = chain.invoke({
+            "input": user_input,
+            "chat_history": truncate_chat_history(chat_history) if chat_history else ""
+        })
+
+    # Memory cleanup
+    db = None
     
     return parsed_result['answer']

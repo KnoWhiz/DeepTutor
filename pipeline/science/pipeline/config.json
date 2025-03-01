@@ -58,5 +58,6 @@
     },
     "default_topics": ["Overview", "Methods", "Results", "Discussion"],
     "image_extensions": [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".webp", ".svg"],
-    "inference_token_limit": 2500
+    "inference_token_limit": 2500,
+    "stream": false
 }

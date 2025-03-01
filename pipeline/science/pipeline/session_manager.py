@@ -15,9 +15,9 @@ from .chat_history_manager import (
 
 class ChatMode(Enum):
     """Enum for different chat modes."""
-    BASIC = "Basic"
+    LITE = "Lite"
+    STANDARD = "Standard"
     ADVANCED = "Advanced"
-    PREMIUM = "Premium"
 
 
 @dataclass
@@ -29,7 +29,7 @@ class ChatSession:
 
     Attributes:
         session_id: Unique identifier for the session
-        mode: Current chat mode (Advanced or Premium)
+        mode: Current chat mode (Standard or Advanced)
         chat_history: List of chat messages
         uploaded_files: Set of uploaded file paths
         current_language: Current programming language context
@@ -37,7 +37,7 @@ class ChatSession:
     """
 
     session_id: str = field(default_factory=create_session_id)
-    mode: ChatMode = ChatMode.ADVANCED #   ChatMode.ADVANCED or ChatMode.PREMIUM
+    mode: ChatMode = ChatMode.STANDARD #   ChatMode.STANDARD or ChatMode.ADVANCED
     chat_history: List[Dict] = field(default_factory=list)
     uploaded_files: Set[str] = field(default_factory=set)
     current_language: Optional[str] = None

@@ -109,5 +109,8 @@ async def get_standard_rag_response(
             "input": user_input,
             "chat_history": truncate_chat_history(chat_history) if chat_history else ""
         })
+
+    # Memory cleanup
+    db = None
     
     return parsed_result['answer']

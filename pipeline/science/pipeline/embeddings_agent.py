@@ -60,6 +60,12 @@ async def embeddings_agent(_mode, _document, _doc, file_path, embedding_folder, 
         await generate_LiteRAG_embedding(_doc, file_path, embedding_folder)
         time_tracking['lite_embedding_total'] = time.time() - lite_embedding_start_time
         logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+
+        # Memory cleanup
+        db = None
+        doc_processor = None
+        texts = None
+
         return time_tracking
     else:
         raise ValueError("Invalid mode")
@@ -236,5 +242,10 @@ async def embeddings_agent(_mode, _document, _doc, file_path, embedding_folder, 
         except Exception as e:
             logger.exception(f"Error generating document summary: {e}")
             logger.info("Continuing without document summary...")
+
+    # Memory cleanup
+    db = None
+    doc_processor = None
+    texts = None
 
     return time_tracking

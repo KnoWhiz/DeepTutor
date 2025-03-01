@@ -19,7 +19,7 @@ from pipeline.science.pipeline.embeddings import (
     get_embedding_models,
     load_embeddings,
 )
-from pipeline.science.pipeline.inference import deepseek_inference
+from pipeline.science.pipeline.inference import deep_inference_agent
 from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
 from pipeline.science.pipeline.get_graphrag_response import get_GraphRAG_global_response
 from pipeline.science.pipeline.get_rag_response import get_standard_rag_response
@@ -178,22 +178,25 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, qu
         logger.info(f"user_input_string tokens: {count_tokens(user_input_string)}")
         logger.info(f"chat_history_string tokens: {count_tokens(chat_history_string)}")
         logger.info(f"context tokens: {count_tokens(context)}")
-
-        logger.info("before deepseek_inference ...")
+        logger.info("before deep_inference_agent ...")
         try:
-            answer = str(deepseek_inference(prompt, model="DeepSeek-R1"))
+            answer = str(deep_inference_agent(prompt))
         except Exception as e:
-            logger.exception(f"Error in deepseek_inference: {e}")
+            logger.exception(f"Error in deep_inference_agent with chat history, retry with no chat history: {e}")
             prompt = f"""
             You are a deep thinking tutor helping a student reading a paper.
             Reference context from the paper: {context}
             The student's query is: {user_input_string}
             """
-            answer = str(deepseek_inference(prompt, model="DeepSeek-R1-Distill-Llama-70B"))
-        answer_thinking = answer.split("<think>")[1].split("</think>")[0]
-        answer_summary = answer.split("<think>")[1].split("</think>")[1]
-        answer_summary = responses_refine(answer_summary, "")
-        answer = "### Here is my thinking process\n\n" + answer_thinking + "\n\n### Here is my summarized answer\n\n" + answer_summary
+            answer = str(deep_inference_agent(prompt))
+
+        if "<think>" in answer:
+            answer_thinking = answer.split("<think>")[1].split("</think>")[0]
+            answer_summary = answer.split("<think>")[1].split("</think>")[1]
+            answer_summary = responses_refine(answer_summary, "")
+            answer = "### Here is my thinking process\n\n" + answer_thinking + "\n\n### Here is my summarized answer\n\n" + answer_summary
+        else:
+            answer = answer
         
         logger.info("get_response done ...")
         return answer

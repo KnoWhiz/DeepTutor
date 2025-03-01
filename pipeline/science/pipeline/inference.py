@@ -21,6 +21,8 @@ def deep_inference_agent(
                                       system_message=system_prompt, 
                                       stream=stream,
                                       model="DeepSeek-R1")
+        if response == None:
+            raise Exception("No response from DeepSeek-R1")
         return response
     except Exception as e:
         logger.exception(f"An error occurred when calling DeepSeek-R1: {str(e)}")
@@ -29,6 +31,8 @@ def deep_inference_agent(
                                           system_message=system_prompt, 
                                           stream=stream,
                                           model="DeepSeek-R1-Distill-Llama-70B")
+            if response == None:
+                raise Exception("No response from DeepSeek-R1-Distill-Llama-70B")
             return response
         except Exception as e:
             logger.exception(f"An error occurred when calling DeepSeek-R1-Distill-Llama-70B: {str(e)}")
@@ -36,6 +40,8 @@ def deep_inference_agent(
                 response = o3mini_inference(user_prompt=user_prompt, 
                                             system_prompt=system_prompt, 
                                             stream=stream)
+                if response == None:
+                    raise Exception("No response from o3mini")
                 return response
             except Exception as e:
                 logger.exception(f"An error occurred when calling o3mini: {str(e)}")
@@ -49,7 +55,7 @@ def deepseek_inference(
     stream: bool = False,
     temperature: float = 0.6,
     top_p: float = 0.1,
-    max_tokens: int = 3000,
+    max_tokens: int = 2500,
     model: str = "DeepSeek-R1-Distill-Llama-70B"
 ) -> Optional[str]:
     """

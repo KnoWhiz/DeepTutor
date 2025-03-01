@@ -81,7 +81,7 @@ def show_header():
 # Function to display the response mode options
 def show_mode_option():
     with st.sidebar:
-        mode_index = 0
+        mode_index = 1
         current_mode = st.radio(
             "Choose a mode:",
             options=["Lite", "Basic", "Advanced"],

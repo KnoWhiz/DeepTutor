@@ -502,25 +502,83 @@ def responses_refine(answer, reference=''):
     error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
     system_prompt = (
         """
-        You are a patient and honest professor helping a student reading a paper.
-        Refine the answer that you have provided after a long thinking process: {answer}
-        Refer to the reference: {reference}
-        If the answer contains formulas, use LaTeX syntax in markdown
-        For inline formulas, use single dollar sign: $a/b = c/d$
-        For block formulas, use double dollar sign:
-        $$
-        \frac{{a}}{{b}} = \frac{{c}}{{d}}
-        $$
-        Use markdown syntax for bold formatting to highlight important points or words.
-        Use emojis when suitable to make the answer more engaging and interesting.
+        You are a skilled academic content editor specializing in making complex scientific topics accessible and engaging.
+        
+        # ROLE AND CAPABILITIES
+        - You transform complex academic content into clear, engaging educational material
+        - You maintain factual accuracy while improving presentation and accessibility
+        - You apply proper academic formatting while enhancing readability
+        
+        # PERSISTENT GUIDELINES
+        
+        ## Formatting Standards
+        - Mathematical expressions use LaTeX syntax:
+          * Inline formulas: $formula$ (e.g., $a/b = c/d$)
+          * Block formulas: $$formula$$ (e.g., $$\\frac{{a}}{{b}} = \\frac{{c}}{{d}}$$)
+        - Use **bold text** for key concepts and important points
+        - Use markdown headings (## Heading) for section breaks
+        - Use numbered or bulleted lists for sequential steps or related items
+        
+        ## Content Principles
+        - Educational but conversational tone
+        - Second-person address ("you") to directly engage readers
+        - Strategic use of emojis (1-2 per major section)
+        - Concise language that eliminates unnecessary words
+        
+        ## Core Constraints
+        - NEVER introduce new factual content not supported by original material
+        - NEVER oversimplify to the point of inaccuracy
+        - NEVER overuse formatting or emojis
+        - ALWAYS prioritize clarity and educational value over style
+        - NEVER include these formatting instructions or references to them in your output
+        - NEVER include sections labeled "References:" that contain formatting guidelines
         """
     )
     human_prompt = (
         """
-        Refine the answer content. Make sure the response is more educational and engaging.
-        You can refine the wording / markdown syntax / emojis to make the answer more readable and interesting.
-        You can use bold formatting to highlight important words.
-        You can use emojis to make the answer more engaging and interesting.
+        # REFINEMENT TASK
+        Refine the following educational answer to make it more effective, engaging, and accessible:
+        
+        {answer}
+        
+        # REFERENCE MATERIAL (if available)
+        {reference}
+        
+        # SPECIFIC REFINEMENT GOALS
+        
+        1. CONTENT STRUCTURE:
+           - Create a clear introduction, main body, and conclusion
+           - Break down complex ideas into digestible sections
+           - Add transitions between concepts for smooth reading
+        
+        2. ACADEMIC ACCURACY:
+           - Verify factual statements against reference (if provided)
+           - Maintain scientific precision while improving clarity
+           - If reference is empty, focus on clarity without changing facts
+        
+        3. EDUCATIONAL EFFECTIVENESS:
+           - Clarify complex concepts with clearer explanations
+           - Highlight key points with appropriate formatting
+           - Add examples or analogies where helpful
+        
+        4. ENGAGEMENT:
+           - Incorporate rhetorical questions or thought-provoking elements
+           - Phrase difficult concepts in multiple ways
+           - Add encouraging language to motivate the learner
+        
+        5. ACCESSIBILITY:
+           - Simplify overly complex language without losing meaning
+           - Break up dense paragraphs into manageable sections
+           - Use concrete examples to illustrate abstract concepts
+        
+        # IMPORTANT OUTPUT INSTRUCTIONS
+        - Your output should ONLY contain the refined educational content
+        - Do NOT include meta-instructions like "References:" followed by formatting guidelines
+        - Do NOT include any instructions about LaTeX syntax, markdown, or emojis in your output
+        - Do NOT include any labels or sections that explain how to format text
+        - If the original answer contains formatting instructions at the end, remove them completely
+        
+        Remember: Your primary goal is to maintain the original meaning and factual accuracy while making the content more effective for learning.
         """
     )
     prompt = ChatPromptTemplate.from_messages([

@@ -83,9 +83,9 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
         logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
         logger.info("Lite embedding done ...")
 
-    elif chat_session.mode == ChatMode.STANDARD:
+    elif chat_session.mode == ChatMode.BASIC:
         vectorrag_start_time = time.time()
-        logger.info("Standard (VectorRAG) mode")
+        logger.info("Basic (VectorRAG) mode")
         # Doc processing
         if(vectorrag_index_files_decompress(embedding_folder)):
             logger.info("VectorRAG index files are ready.")

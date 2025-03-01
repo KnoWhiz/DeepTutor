@@ -84,11 +84,11 @@ def show_mode_option():
         mode_index = 0
         current_mode = st.radio(
             "Choose a mode:",
-            options=["Lite", "Standard", "Advanced"],
+            options=["Lite", "Basic", "Advanced"],
             help="""
             - Lite: Process raw text only (fastest)
-            - Standard: Agentic processing with Markdown extraction, image understanding, DeepSeek R1 deep thinking, and document summarization (standard)
-            - Advanced: In addition to Standard, add enhanced GraphRAG for better document understanding (slower but more accurate)
+            - Basic: Agentic processing with Markdown extraction, image understanding, DeepSeek R1 deep thinking, and document summarization (standard)
+            - Advanced: In addition to Basic, add enhanced GraphRAG for better document understanding (slower but more accurate)
             """,
             index=mode_index
         )
@@ -96,8 +96,8 @@ def show_mode_option():
         if 'chat_session' in st.session_state:
             if current_mode == "Advanced":
                 st.session_state.chat_session.set_mode(ChatMode.ADVANCED)
-            elif current_mode == "Standard":
-                st.session_state.chat_session.set_mode(ChatMode.STANDARD)
+            elif current_mode == "Basic":
+                st.session_state.chat_session.set_mode(ChatMode.BASIC)
             else:
                 st.session_state.chat_session.set_mode(ChatMode.LITE)
 

@@ -31,7 +31,7 @@ async def get_standard_rag_response(
     stream: bool = False
 ):
     """
-    Standard function for RAG-based response generation.
+    Basic function for RAG-based response generation.
     
     Args:
         prompt_string: The system prompt to use
@@ -60,7 +60,7 @@ async def get_standard_rag_response(
         # Handle different embedding folders based on type
         if chat_session.mode == ChatMode.LITE:
             actual_embedding_folder = os.path.join(embedding_folder, 'lite_embedding')
-        elif chat_session.mode == ChatMode.STANDARD or chat_session.mode == ChatMode.ADVANCED:
+        elif chat_session.mode == ChatMode.BASIC or chat_session.mode == ChatMode.ADVANCED:
             actual_embedding_folder = os.path.join(embedding_folder, 'markdown')
         else:
             actual_embedding_folder = embedding_folder

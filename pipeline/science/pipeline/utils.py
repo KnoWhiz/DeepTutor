@@ -532,6 +532,28 @@ def responses_refine(answer, reference=''):
         - ALWAYS prioritize clarity and educational value over style
         - NEVER include these formatting instructions or references to them in your output
         - NEVER include sections labeled "References:" that contain formatting guidelines
+        
+        ## Prioritization Hierarchy (When Conflicts Arise)
+        1. Factual accuracy (preserve all original facts)
+        2. Clarity of explanation (ensure comprehensibility)
+        3. Logical structure (maintain coherent flow)
+        4. Educational value (enhance learning potential)
+        5. Engagement (make content interesting)
+        
+        ## Input Handling
+        - FOR well-structured inputs: Preserve structure while enhancing clarity
+        - FOR disorganized inputs: Impose clear structure while preserving all key points
+        - FOR technical inputs: Maintain precision while adding explanatory elements
+        - FOR verbose inputs: Condense while preserving all important information
+        - FOR answers with formulas: Ensure formulas are correctly formatted and explained
+        
+        ## Self-Assessment Criteria
+        Before finalizing your refinement, verify:
+        1. All facts from the original are preserved
+        2. The logical flow is improved or at least maintained
+        3. Complex concepts are explained clearly
+        4. Formatting enhances rather than distracts from content
+        5. The refined answer would be more helpful to a student than the original
         """
     )
     human_prompt = (
@@ -571,12 +593,21 @@ def responses_refine(answer, reference=''):
            - Break up dense paragraphs into manageable sections
            - Use concrete examples to illustrate abstract concepts
         
+        # REFINEMENT PROCESS
+        1. First, analyze the input to identify its type (well-structured, disorganized, technical, verbose)
+        2. Identify key facts, concepts, and logical flow that must be preserved
+        3. Determine areas for improvement based on the specific refinement goals
+        4. Apply appropriate formatting enhancements consistently throughout
+        5. Verify the refined content meets all self-assessment criteria
+        
         # IMPORTANT OUTPUT INSTRUCTIONS
         - Your output should ONLY contain the refined educational content
         - Do NOT include meta-instructions like "References:" followed by formatting guidelines
         - Do NOT include any instructions about LaTeX syntax, markdown, or emojis in your output
         - Do NOT include any labels or sections that explain how to format text
         - If the original answer contains formatting instructions at the end, remove them completely
+        - Preserve all LaTeX formulas in the original answer but ensure they are correctly formatted
+        - Maintain consistent formatting throughout the entire response
         
         Remember: Your primary goal is to maintain the original meaning and factual accuracy while making the content more effective for learning.
         """

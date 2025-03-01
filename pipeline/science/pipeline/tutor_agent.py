@@ -59,8 +59,8 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
 
     # Save the file txt content locally
     save_file_start_time = time.time()
-    file = open(file_path, 'rb')
-    file_bytes = file.read()
+    # with open(file_path, 'rb') as file:
+    #     file_bytes = file.read()
     filename = os.path.basename(file_path)
     save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
     # Process file and create session states for document and PDF object
@@ -287,4 +287,8 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
         )
     time_tracking['followup_questions'] = time.time() - followup_start
     logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+
+    # Memory clean up 
+    _document = None
+    _doc = None
     return answer, sources, source_pages, source_annotations, refined_source_pages, follow_up_questions

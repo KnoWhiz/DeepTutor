@@ -42,8 +42,8 @@ def extract_document_from_file(file_path):
 # Function to process the PDF file
 def process_pdf_file(file_path):
     # Process the document
-    file = open(file_path, 'rb')
-    file_bytes = file.read()
+    with open(file_path, 'rb') as file:
+        file_bytes = file.read()
     document = extract_document_from_file(file_path)
     doc = fitz.open(stream=io.BytesIO(file_bytes), filetype="pdf")
     return document, doc
@@ -54,8 +54,8 @@ def save_file_txt_locally(file_path, filename, embedding_folder):
     """
     Save the file (e.g., PDF) loaded as text into the GraphRAG_embedding_input_folder.
     """
-    file = open(file_path, 'rb')
-    file_bytes = file.read()
+    with open(file_path, 'rb') as file:
+        file_bytes = file.read()
 
     # Define folder structure
     GraphRAG_embedding_folder = os.path.join(embedding_folder, "GraphRAG")

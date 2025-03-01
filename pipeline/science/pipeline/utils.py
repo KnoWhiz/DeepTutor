@@ -148,8 +148,8 @@ def robust_search_for(page, text, chunk_size=512):
 # Generate a unique course ID for the uploaded file
 def generate_file_id(file_path):
     # logger.info(f"Generating course ID for file: {file_path}")
-    file = open(file_path, 'rb')
-    file_bytes = file.read()
+    with open(file_path, 'rb') as file:
+        file_bytes = file.read()
     file_id = hashlib.md5(file_bytes).hexdigest()
     return file_id
 

@@ -88,17 +88,28 @@ if st.session_state['isAuth']:
             # If document are found, proceed to show chat interface and PDF viewer
             if document:
                 outer_columns = st.columns([1, 1])
-                
-            with outer_columns[1]:
-                show_chat_interface(
-                    doc=doc,
-                    document=document,
-                    file_path=file_path,
-                    embedding_folder=embedding_folder,
-                )
 
-            with outer_columns[0]:
-                show_pdf_viewer(file)
+            if len(st.session_state.chat_session.chat_history) == 0:
+                with outer_columns[0]:
+                    show_pdf_viewer(file)
+                    
+                with outer_columns[1]:
+                    show_chat_interface(
+                        doc=doc,
+                        document=document,
+                        file_path=file_path,
+                        embedding_folder=embedding_folder,
+                    )
+            else:
+                with outer_columns[1]:
+                    show_chat_interface(
+                        doc=doc,
+                        document=document,
+                        file_path=file_path,
+                        embedding_folder=embedding_folder,
+                    )
+                with outer_columns[0]:
+                    show_pdf_viewer(file)
 
             logger.info("st.session_state.current_page is %s", st.session_state.current_page)
 

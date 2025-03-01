@@ -116,7 +116,7 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, qu
             import traceback
             traceback.print_exc()
 
-    # Handle Standard mode
+    # Handle Basic mode
     if not deep_thinking:
         logger.info("not deep thinking ...")
         basic_prompt = """

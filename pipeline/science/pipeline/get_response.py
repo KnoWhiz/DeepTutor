@@ -70,8 +70,8 @@ class Question:
 
 async def get_response(chat_session: ChatSession, _doc, _document, file_path, question: Question, chat_history, embedding_folder, deep_thinking = False, stream=False):
     user_input = question.text
-    # Handle Basic mode first
-    if chat_session.mode == ChatMode.BASIC:
+    # Handle Lite mode first
+    if chat_session.mode == ChatMode.LITE:
         lite_prompt = """You are a helpful tutor assisting with document understanding.
             Use the given context to answer the question.
             If you don't know the answer, say so.
@@ -97,7 +97,7 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, qu
             stream=stream
         )
         
-        # For Basic mode, we return empty containers for sources and follow-up questions
+        # For Lite mode, we return empty containers for sources and follow-up questions
         sources = {}
         source_pages = {}
         source_annotations = {}
@@ -106,8 +106,8 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, qu
         
         return answer, sources, source_pages, source_annotations, refined_source_pages, follow_up_questions
 
-    # Handle Premium mode
-    if chat_session.mode == ChatMode.PREMIUM:
+    # Handle Advanced mode
+    if chat_session.mode == ChatMode.ADVANCED:
         try:
             answer = await get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embedding_folder, deep_thinking)
             return answer
@@ -116,7 +116,7 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, qu
             import traceback
             traceback.print_exc()
 
-    # Handle Advanced mode
+    # Handle Standard mode
     if not deep_thinking:
         logger.info("not deep thinking ...")
         basic_prompt = """

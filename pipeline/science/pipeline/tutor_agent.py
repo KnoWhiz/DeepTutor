@@ -68,8 +68,8 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
     time_tracking['file_loading_save_text'] = time.time() - save_file_start_time
     logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
-    if chat_session.mode == ChatMode.BASIC:
-        logger.info("Basic mode - using raw text only")
+    if chat_session.mode == ChatMode.LITE:
+        logger.info("Lite mode - using raw text only")
         lite_embedding_start_time = time.time()
         if(literag_index_files_decompress(embedding_folder)):
             # Check if the LiteRAG index files are ready locally
@@ -77,15 +77,15 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
         else:
             # Files are missing and have been cleaned up
             save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
-            logger.info("Basic embedding ...")
+            logger.info("Lite embedding ...")
             await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder)
         time_tracking['lite_embedding_total'] = time.time() - lite_embedding_start_time
         logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-        logger.info("Basic embedding done ...")
+        logger.info("Lite embedding done ...")
 
-    elif chat_session.mode == ChatMode.ADVANCED:
+    elif chat_session.mode == ChatMode.STANDARD:
         vectorrag_start_time = time.time()
-        logger.info("Advanced (VectorRAG) mode")
+        logger.info("Standard (VectorRAG) mode")
         # Doc processing
         if(vectorrag_index_files_decompress(embedding_folder)):
             logger.info("VectorRAG index files are ready.")
@@ -107,9 +107,9 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
                     logger.info("Error compressing and uploading VectorRAG index files to Azure Blob Storage.")
         time_tracking['vectorrag_generate_embedding_total'] = time.time() - vectorrag_start_time
         logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-    elif chat_session.mode == ChatMode.PREMIUM:
+    elif chat_session.mode == ChatMode.ADVANCED:
         graphrag_start_time = time.time()
-        logger.info("Premium (GraphRAG) mode")
+        logger.info("Advanced (GraphRAG) mode")
         if(graphrag_index_files_decompress(embedding_folder)):
             logger.info("GraphRAG index files are ready.")
         else:
@@ -147,7 +147,7 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
     # Handle initial welcome message when chat history is empty
     initial_message_start_time = time.time()
     if user_input == "Can you give me a summary of this document?" or not chat_history:
-        if chat_session.mode == ChatMode.BASIC:
+        if chat_session.mode == ChatMode.LITE:
             initial_message = "Hello! How can I assist you today?"
         else:
             try:
@@ -168,7 +168,7 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
         source_pages = {}
         source_annotations = {}
         refined_source_pages = {}
-        if chat_session.mode != ChatMode.BASIC:
+        if chat_session.mode != ChatMode.LITE:
             follow_up_questions = generate_follow_up_questions(answer, [])
         else:
             follow_up_questions = []
@@ -187,7 +187,7 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
     # Regular chat flow
     # Refine user input
     refined_user_input = user_input
-    if chat_session.mode != ChatMode.BASIC:
+    if chat_session.mode != ChatMode.LITE:
         query_start = time.time()
         question = get_query_helper(chat_session, user_input, context_chat_history, embedding_folder)
         refined_user_input = question.text
@@ -209,7 +209,7 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
     source_pages = {}
     refined_source_pages = {}
     sources_start = time.time()
-    if chat_session.mode != ChatMode.BASIC:
+    if chat_session.mode != ChatMode.LITE:
         sources, source_pages, refined_source_pages = get_response_source(
             chat_session.mode,
             _doc, _document, file_path, refined_user_input, answer, context_chat_history, embedding_folder

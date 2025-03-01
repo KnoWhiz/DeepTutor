@@ -196,7 +196,7 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, qu
             answer_summary = responses_refine(answer_summary, "")
             answer = "### Here is my thinking process\n\n" + answer_thinking + "\n\n### Here is my summarized answer\n\n" + answer_summary
         else:
-            answer = answer
+            answer = responses_refine(answer)
         
         logger.info("get_response done ...")
         return answer

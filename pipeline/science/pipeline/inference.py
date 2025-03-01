@@ -38,7 +38,6 @@ def deep_inference_agent(
             logger.exception(f"An error occurred when calling DeepSeek-R1-Distill-Llama-70B: {str(e)}")
             try:
                 response = o3mini_inference(user_prompt=user_prompt, 
-                                            system_prompt=system_prompt, 
                                             stream=stream)
                 if response == None:
                     raise Exception("No response from o3mini")

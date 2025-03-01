@@ -156,7 +156,7 @@ async def get_GraphRAG_global_response(_doc, _document, user_input, chat_history
             answer_summary = responses_refine(search_engine_result.response, answer_summary)
             answer = "### Here is my thinking process\n\n" + answer_thinking + "\n\n### Here is my summarized answer\n\n" + answer_summary
         else:
-            answer = answer
+            answer = responses_refine(answer)
     else:
         answer = responses_refine(search_engine_result.response)
 

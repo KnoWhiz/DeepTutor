@@ -10,6 +10,39 @@ load_dotenv()
 
 logger = logging.getLogger("tutorpipeline.science.inference")
 
+
+def deep_inference_agent(
+    user_prompt: str,
+    system_prompt: str = "You are a deep thinking researcher reading a paper. If you don't know the answer, say you don't know.",
+    stream: bool = False,
+):
+    try:
+        response = deepseek_inference(prompt=user_prompt, 
+                                      system_message=system_prompt, 
+                                      stream=stream,
+                                      model="DeepSeek-R1")
+        return response
+    except Exception as e:
+        logger.exception(f"An error occurred when calling DeepSeek-R1: {str(e)}")
+        try:
+            response = deepseek_inference(prompt=user_prompt, 
+                                          system_message=system_prompt, 
+                                          stream=stream,
+                                          model="DeepSeek-R1-Distill-Llama-70B")
+            return response
+        except Exception as e:
+            logger.exception(f"An error occurred when calling DeepSeek-R1-Distill-Llama-70B: {str(e)}")
+            try:
+                response = o3mini_inference(user_prompt=user_prompt, 
+                                            system_prompt=system_prompt, 
+                                            stream=stream)
+                return response
+            except Exception as e:
+                logger.exception(f"An error occurred when calling o3mini: {str(e)}")
+                response = "I'm sorry, I don't know the answer to that question."
+                return response
+
+
 def deepseek_inference(
     prompt: str,
     system_message: str = "You are a deep thinking researcher reading a paper. If you don't know the answer, say you don't know.",
@@ -46,7 +79,7 @@ def deepseek_inference(
     else:
         model = "DeepSeek-R1-Distill-Llama-70B"
         base_url = "https://api.sambanova.ai/v1"
-        max_tokens *= 1
+        max_tokens *= 10
 
     client = openai.OpenAI(
         api_key=os.environ.get("SAMBANOVA_API_KEY"),

@@ -9,7 +9,7 @@ dotenv.load_dotenv()
 from langchain_openai import AzureChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 
-def generate_response(user_prompt: str, system_prompt: str = "", stream: bool = False) -> Union[str, Iterator]:
+def o3mini_inference(user_prompt: str, system_prompt: str = "", stream: bool = False) -> Union[str, Iterator]:
     """
     Generate a response using Azure OpenAI through LangChain
     
@@ -60,12 +60,12 @@ if __name__ == "__main__":
     user_prompt = "What are the key principles of machine learning?"
     
     # Non-streaming example
-    response = generate_response(system_prompt, user_prompt)
+    response = o3mini_inference(user_prompt, system_prompt=system_prompt)
     print(response)
     
     # Streaming example
     print("\nStreaming response example:")
-    streaming_response = generate_response(system_prompt, user_prompt, stream=True)
+    streaming_response = o3mini_inference(user_prompt, system_prompt=system_prompt, stream=True)
     
     # Create a dictionary to store collected response parts
     response_parts = {}

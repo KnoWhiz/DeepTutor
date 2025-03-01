@@ -18,7 +18,7 @@ import logging
 logger = logging.getLogger("tutorpipeline.science.get_rag_response")
 
 
-async def get_standard_rag_response(
+async def get_basic_rag_response(
     prompt_string: str,
     user_input: str,
     chat_history: str,
@@ -32,7 +32,7 @@ async def get_standard_rag_response(
 ):
     """
     Basic function for RAG-based response generation.
-    
+
     Args:
         prompt_string: The system prompt to use
         user_input: The user's query
@@ -74,7 +74,7 @@ async def get_standard_rag_response(
         logger.exception(f"Failed to load embeddings: {str(e)}")
 
     retriever = db.as_retriever(search_kwargs={"k": config['retriever']['k']})
-    
+
     prompt = ChatPromptTemplate.from_messages([
         ("system", prompt_string),
         ("human", "{input}")
@@ -112,5 +112,5 @@ async def get_standard_rag_response(
 
     # Memory cleanup
     db = None
-    
+
     return parsed_result['answer']

@@ -22,7 +22,7 @@ from pipeline.science.pipeline.embeddings import (
 from pipeline.science.pipeline.inference import deep_inference_agent
 from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
 from pipeline.science.pipeline.get_graphrag_response import get_GraphRAG_global_response
-from pipeline.science.pipeline.get_rag_response import get_standard_rag_response
+from pipeline.science.pipeline.get_rag_response import get_basic_rag_response
 
 logger = logging.getLogger("tutorpipeline.science.get_response")
 
@@ -30,17 +30,17 @@ logger = logging.getLogger("tutorpipeline.science.get_response")
 class Question:
     """
     Represents a question with its text, language, and type information.
-    
+
     Attributes:
         text (str): The text content of the question
         language (str): The detected language of the question (e.g., "English")
         question_type (str): The type of question (e.g., "local" or "global" or "image")
     """
-    
+
     def __init__(self, text="", language="English", question_type="global", special_context=""):
         """
         Initialize a Question object.
-        
+
         Args:
             text (str): The text content of the question
             language (str): The language of the question
@@ -54,7 +54,7 @@ class Question:
             self.question_type = question_type
 
         self.special_context =  special_context
-    
+
     def __str__(self):
         """Return string representation of the Question."""
         return f"Question(text='{self.text}', language='{self.language}', type='{self.question_type}')"
@@ -77,14 +77,14 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, qu
             If you don't know the answer, say so.
             Previous conversation: {chat_history}
             Reference context: {context}
-            
+
             Please provide a clear and concise answer that:
             1. Directly addresses the question
             2. Uses simple language
             3. Highlights key points in bold
             4. Uses emojis when appropriate to make the response engaging"""
 
-        answer = await get_standard_rag_response(
+        answer = await get_basic_rag_response(
             prompt_string=lite_prompt,
             user_input=user_input + "\n\n" + question.special_context,
             chat_history=chat_history,
@@ -96,14 +96,14 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, qu
             file_path=file_path,
             stream=stream
         )
-        
+
         # # For Lite mode, we return empty containers for sources and follow-up questions
         # sources = {}
         # source_pages = {}
         # source_annotations = {}
         # refined_source_pages = {}
         # follow_up_questions = []
-        
+
         return answer
 
     # Handle Advanced mode
@@ -133,7 +133,7 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, qu
             $$
             """
 
-        answer = await get_standard_rag_response(
+        answer = await get_basic_rag_response(
             prompt_string=basic_prompt,
             user_input=user_input + "\n\n" + question.special_context,
             chat_history=chat_history,
@@ -146,7 +146,7 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, qu
         # Load config and embeddings for deep thinking mode
         config = load_config()
         token_limit = config["inference_token_limit"]
-        
+
         try:
             logger.info(f"Loading markdown embeddings from {os.path.join(embedding_folder, 'markdown')}")
             db = load_embeddings(os.path.join(embedding_folder, 'markdown'), 'default')
@@ -194,10 +194,11 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, qu
             answer_thinking = answer.split("<think>")[1].split("</think>")[0]
             answer_summary = answer.split("<think>")[1].split("</think>")[1]
             answer_summary = responses_refine(answer_summary, "")
-            answer = "### Here is my thinking process\n\n" + answer_thinking + "\n\n### Here is my summarized answer\n\n" + answer_summary
+            # answer = "### Here is my thinking process\n\n" + answer_thinking + "\n\n### Here is my summarized answer\n\n" + answer_summary
+            answer = answer_summary
         else:
             answer = responses_refine(answer)
-        
+
         logger.info("get_response done ...")
         return answer
 

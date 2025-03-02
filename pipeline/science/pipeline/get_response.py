@@ -216,14 +216,20 @@ Remember: Your goal is to make learning enjoyable and accessible. Keep your tone
         return answer
 
 
-def get_query_helper(chat_session: ChatSession, user_input, context_chat_history, embedding_folder):
+def get_query_helper(chat_session: ChatSession, user_input, context_chat_history, embedding_folder_list):
     # If we have "documents_summary" in the embedding folder, we can use it to speed up the search
-    document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
-    if os.path.exists(document_summary_path):
-        with open(document_summary_path, "r") as f:
-            documents_summary = f.read()
-    else:
-        documents_summary = " "
+    document_summary_path_list = [os.path.join(embedding_folder, "documents_summary.txt") for embedding_folder in embedding_folder_list]
+    documents_summary_list = []
+    for document_summary_path in document_summary_path_list:
+        if os.path.exists(document_summary_path):
+            with open(document_summary_path, "r") as f:
+                documents_summary_list.append(f.read())
+        else:
+            documents_summary_list.append(" ")
+
+    # Join all the documents summaries into one string
+    # FIXME: Add a function to combine the initial messages into a single summary message
+    documents_summary = "\n".join(documents_summary_list)
 
     # Load languages from config
     config = load_config()
@@ -285,7 +291,7 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
 
     if question_type == "image":
         # Find a single chunk in the embedding folder
-        db = load_embeddings(embedding_folder, 'default')
+        db = load_embeddings(embedding_folder_list, 'default')
         image_chunks = db.similarity_search_with_score(user_input + "\n\n" + question.special_context, k=1)
         if image_chunks:
             question.special_context = """

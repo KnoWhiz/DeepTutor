@@ -202,33 +202,34 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
     refined_user_input = user_input
     if chat_session.mode != ChatMode.LITE:
         query_start = time.time()
-        question = get_query_helper(chat_session, user_input, context_chat_history, embedding_folder)
+        question = get_query_helper(chat_session, user_input, context_chat_history, embedding_folder_list)
         refined_user_input = question.text
         logger.info(f"Refined user input: {refined_user_input}")
         time_tracking['query_refinement'] = time.time() - query_start
-        logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+        logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
     else:
-        question = Question(text=user_input, language=chat_session.current_language, question_type="local")
+        question = Question(text=refined_user_input, language=chat_session.current_language, question_type="local")
 
     # Get response
     response_start = time.time()
     response = await get_response(chat_session, _doc, _document, file_path, question, context_chat_history, embedding_folder, deep_thinking=deep_thinking, stream=stream)
     answer = response[0] if isinstance(response, tuple) else response
     time_tracking['response_generation'] = time.time() - response_start
-    logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Get sources
     sources = {}
     source_pages = {}
     refined_source_pages = {}
+    refined_source_index = {}
     sources_start = time.time()
     if chat_session.mode != ChatMode.LITE:
-        sources, source_pages, refined_source_pages = get_response_source(
+        sources, source_pages, refined_source_pages, refined_source_index = get_response_source(
             chat_session.mode,
             _doc, _document, file_path, refined_user_input, answer, context_chat_history, embedding_folder
         )
     time_tracking['source_retrieval'] = time.time() - sources_start
-    logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # If the sources have images, append the image URL (in image_urls.json mapping) to the end of the answer in markdown format
     # Process image sources
@@ -257,7 +258,7 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
         for source in sources_to_remove:
             del sources[source]
     time_tracking['image_processing'] = time.time() - images_processing_start
-    logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Refine and translate the answer to the selected language
     translation_start = time.time()
@@ -269,7 +270,7 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
     )
     # print(f"translate_content Answer: {answer}")
     time_tracking['translation'] = time.time() - translation_start
-    logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Append images URL in markdown format to the end of the answer
     annotations_start = time.time()
@@ -285,7 +286,7 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
         annotations, _ = get_highlight_info(_doc, [source])
         source_annotations[source] = annotations
     time_tracking['annotations'] = time.time() - annotations_start
-    logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Combine regular sources with image sources
     sources.update(images_sources)
@@ -299,9 +300,9 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
             target_lang=chat_session.current_language
         )
     time_tracking['followup_questions'] = time.time() - followup_start
-    logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Memory clean up 
     _document = None
     _doc = None
-    return answer, sources, source_pages, source_annotations, refined_source_pages, follow_up_questions
+    return answer, sources, source_pages, source_annotations, refined_source_pages, follow_up_questions, refined_source_index

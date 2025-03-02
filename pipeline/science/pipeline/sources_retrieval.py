@@ -77,17 +77,17 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
         image_mapping_list.append(image_mapping)
         
     # Create a single mapping from description to image URL
-    image_url_mapping = {}
-    for idx, (image_mapping, image_url_mapping) in enumerate(zip(image_mapping_list, image_url_mapping_list)):
+    image_url_mapping_merged = {}
+    for idx, (image_mapping, image_url_mapping_merged) in enumerate(zip(image_mapping_list, image_url_mapping_list)):
         for description, image_name in image_mapping.items():
-            if image_name in image_url_mapping.keys():
+            if image_name in image_url_mapping_merged.keys():
                 # If the image name exists in URL mapping, link the description directly to the URL
-                image_url_mapping[description] = image_url_mapping[image_name]
+                image_url_mapping_merged[description] = image_url_mapping_merged[image_name]
             else:
                 # If image URL not found, log a warning but don't break the process
                 logger.warning(f"Image URL not found for {image_name} in embedding folder {idx}")
     
-    logger.info(f"Created image URL mapping with {len(image_url_mapping)} entries")
+    logger.info(f"Created image URL mapping with {len(image_url_mapping_merged)} entries")
 
     # Load / generate embeddings for each file and merge them
     db_list = []
@@ -171,20 +171,20 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
         sources_with_scores[chunk.page_content] = max(normalized_score, sources_with_scores.get(chunk.page_content, 0))
 
     # Replace matching sources with image names while preserving scores
-    sources_with_scores = {image_url_mapping.get(source, source): score 
+    sources_with_scores = {image_url_mapping_merged.get(source, source): score 
                          for source, score in sources_with_scores.items()}
-    source_pages = {image_url_mapping.get(source, source): page 
+    source_pages = {image_url_mapping_merged.get(source, source): page 
                          for source, page in source_pages.items()}
-    
-
+    source_file_index = {image_url_mapping_merged.get(source, source): file_index 
+                         for source, file_index in source_file_index.items()}
 
     # TEST
     logger.info("TEST: sources before refine:")
     logger.info(f"TEST: length of sources before refine: {len(sources_with_scores)}")
 
     # Refine and limit sources while preserving scores
-    markdown_dir = os.path.join(embedding_folder, "markdown")
-    sources_with_scores = refine_sources(_doc, _document, sources_with_scores, markdown_dir, user_input)
+    markdown_dir_list = [os.path.join(embedding_folder, "markdown") for embedding_folder in embedding_folder_list]
+    sources_with_scores = refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_input, image_url_mapping_merged, image_context_list)
 
     # Refine source pages while preserving scores
     refined_source_pages = {}
@@ -204,7 +204,7 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
     return sources_with_scores, source_pages, refined_source_pages
 
 
-def refine_sources(_doc, _document, sources_with_scores, markdown_dir, user_input):
+def refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_input, image_url_mapping_merged, image_context_list):
     """
     Refine sources by checking if they can be found in the document
     Only get first 20 sources
@@ -215,25 +215,8 @@ def refine_sources(_doc, _document, sources_with_scores, markdown_dir, user_inpu
     refined_sources = {}
     image_sources = {}
 
-    # Load image context
-    image_context_path = os.path.join(markdown_dir, "image_context.json")
-    if os.path.exists(image_context_path):
-        with open(image_context_path, 'r') as f:
-            image_context = json.load(f)
-    else:
-        print("image_context_path does not exist")
-        image_context = {}
-        with open(image_context_path, 'w') as f:
-            json.dump(image_context, f)
-
     # First separate image sources from text sources
-    text_sources = {}
-    for source, score in sources_with_scores.items():
-        # Check if source looks like an image filename (has image extension)
-        if any(source.lower().endswith(ext) for ext in config["image_extensions"]):
-            image_sources[source] = score
-        else:
-            text_sources[source] = score
+
 
     # TEST
     logger.info("TEST: image sources before refine:")

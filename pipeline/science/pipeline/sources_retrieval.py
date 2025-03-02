@@ -88,6 +88,9 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
                 logger.warning(f"Image URL not found for {image_name} in embedding folder {idx}")
     logger.info(f"Created image URL mapping with {len(image_url_mapping_merged)} entries")
 
+    # Create a reverse mapping based on image_url_mapping_merged
+    image_url_mapping_merged_reverse = {v: k for k, v in image_url_mapping_merged.items()}
+
     # Load / generate embeddings for each file and merge them
     db_list = []
     faiss_path_0 = os.path.join(embedding_folder_list[0], "index.faiss")
@@ -206,7 +209,7 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
     return sources_with_scores, source_pages, refined_source_pages
 
 
-def refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_input, image_url_mapping_merged, source_pages, source_file_index):
+def refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_input, image_url_mapping_merged, source_pages, source_file_index, image_url_mapping_merged_reverse):
     """
     Refine sources by checking if they can be found in the document
     Only get first 20 sources
@@ -287,9 +290,9 @@ def refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_
         # Evaluate each image
         image_scores = []
         for image_url, score in image_sources.items():
-            if image in image_context:
+            if image_url in image_url_mapping_merged:
                 # Get all context descriptions for this image
-                descriptions = image_context[image]
+                descriptions = image_url_mapping_merged_reverse[image_url]
                 descriptions_text = "\n".join([f"- {desc}" for desc in descriptions])
 
                 # Evaluate relevance using LLM
@@ -304,64 +307,72 @@ def refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_
                         # Combine vector similarity score with LLM relevance score
                         combined_score = (score + result["relevance_score"]) / 2
                         image_scores.append((
-                            image,
+                            image_url,
                             combined_score,
                             result["actual_figure_number"],
                             result["explanation"]
                         ))
                         # # TEST
-                        # print(f"image_scores for {image}: {image_scores}")
-                        # print(f"result for {image}: {result}")
+                        # print(f"image_scores for {image_url}: {image_scores}")
+                        # print(f"result for {image_url}: {result}")
                 except Exception as e:
-                    logger.exception(f"Error evaluating image {image}: {e}")
+                    logger.exception(f"Error evaluating image {image_url}: {e}")
                     continue
 
         # Sort images by relevance score
         image_scores.sort(key=lambda x: x[1], reverse=True)
 
         # Filter images with high relevance score (score > 0.2)
-        filtered_images = {img: score for img, score, fig_num, expl in image_scores if score > 0.5}
+        filtered_images = {img_url: score for img_url, score, fig_num, expl in image_scores if score > 0.5}
 
+        # if filtered_images:
+        #     # If asking about a specific figure, prioritize exact figure number match
+        #     import re
+        #     figure_pattern = re.compile(r'fig(?:ure)?\.?\s*(\d+)', re.IGNORECASE)
+        #     user_figure_match = figure_pattern.search(user_input)
+
+        #     if user_figure_match:
+        #         user_figure_num = user_figure_match.group(1)
+        #         # Look for exact figure number match first
+        #         exact_matches = {
+        #             img_url: score for img_url, score, fig_num, expl in image_scores 
+        #             if re.search(rf'(?:figure|fig)\.?\s*{user_figure_num}\b', fig_num, re.IGNORECASE)
+        #         }
+        #         if exact_matches:
+        #             # Take the highest scored exact match
+        #             highest_match = max(exact_matches.items(), key=lambda x: x[1])
+        #             filtered_images = {highest_match[0]: highest_match[1]}
+        #         else:
+        #             # If no exact match found, include images with scores close to the highest score
+        #             if filtered_images:
+        #                 # Get the highest score
+        #                 highest_score = max(filtered_images.values())
+        #                 # Keep images with scores within 10% of the highest score
+        #                 score_threshold = highest_score * 0.9
+        #                 filtered_images = {img: score for img, score in filtered_images.items() if score >= score_threshold}
+        #     else:
+        # If no specific figure was asked for, include images with scores close to the highest score
         if filtered_images:
-            # If asking about a specific figure, prioritize exact figure number match
-            import re
-            figure_pattern = re.compile(r'fig(?:ure)?\.?\s*(\d+)', re.IGNORECASE)
-            user_figure_match = figure_pattern.search(user_input)
-
-            if user_figure_match:
-                user_figure_num = user_figure_match.group(1)
-                # Look for exact figure number match first
-                exact_matches = {
-                    img: score for img, score, fig_num, expl in image_scores 
-                    if re.search(rf'(?:figure|fig)\.?\s*{user_figure_num}\b', fig_num, re.IGNORECASE)
-                }
-                if exact_matches:
-                    # Take the highest scored exact match
-                    highest_match = max(exact_matches.items(), key=lambda x: x[1])
-                    filtered_images = {highest_match[0]: highest_match[1]}
-                else:
-                    # If no exact match found, include images with scores close to the highest score
-                    if filtered_images:
-                        # Get the highest score
-                        highest_score = max(filtered_images.values())
-                        # Keep images with scores within 10% of the highest score
-                        score_threshold = highest_score * 0.9
-                        filtered_images = {img: score for img, score in filtered_images.items() if score >= score_threshold}
-            else:
-                # If no specific figure was asked for, include images with scores close to the highest score
-                if filtered_images:
-                    # Get the highest score
-                    highest_score = max(filtered_images.values())
-                    # Keep images with scores within 10% of the highest score
-                    score_threshold = highest_score * 0.9
-                    filtered_images = {img: score for img, score in filtered_images.items() if score >= score_threshold}
+            # Get the highest score
+            highest_score = max(filtered_images.values())
+            # Keep images with scores within 10% of the highest score
+            score_threshold = highest_score * 0.9
+            filtered_images = {img_url: score for img_url, score in filtered_images.items() if score >= score_threshold}
 
     # Process text sources as before
-    for page in _doc:
-        for source, score in text_sources.items():
-            text_instances = robust_search_for(page, source)
-            if text_instances:
-                refined_sources[source] = score
+    _docs = []
+    for file_path in file_path_list:
+        try:
+            _, _doc = process_pdf_file(file_path)
+            _docs.append(_doc)
+        except Exception as e:
+            logger.exception(f"Error opening document {file_path}: {e}")
+    for _doc in _docs:
+        for page in _doc:
+            for source, score in text_sources.items():
+                text_instances = robust_search_for(page, source)
+                if text_instances:
+                    refined_sources[source] = score
 
     # Combine filtered image sources with refined text sources
     final_sources = {**filtered_images, **refined_sources}

@@ -89,7 +89,9 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
         embeddings_agent(mode, _document, _doc, file_path_list[0], embedding_folder_list[0])
         db_merged = load_embeddings(embedding_folder_list[0], 'default')
         db_list.append(db_merged)
+    file_index = 0
     for file_path, embedding_folder in zip(file_path_list[1:], embedding_folder_list[1:]):
+        file_index += 1
         # Define the default filenames used by FAISS when saving
         faiss_path = os.path.join(embedding_folder, "index.faiss")
         pkl_path = os.path.join(embedding_folder, "index.pkl")
@@ -98,6 +100,9 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
             # Load existing embeddings
             logger.info(f"Loading existing embeddings for {embedding_folder}...")
             db = load_embeddings(embedding_folder, 'default')
+            # For each document chunk in db, add "file_index" to the metadata
+            for doc in db.get_collection().find():
+                doc['metadata']['file_index'] = file_index
             db_merged = db_merged.merge_from(db)
             db_list.append(db)
         else:
@@ -105,6 +110,9 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
             _document, _doc = process_pdf_file(file_path)
             embeddings_agent(mode, _document, _doc, file_path, embedding_folder)
             db = load_embeddings(embedding_folder, 'default')
+            # For each document chunk in db, add "file_index" to the metadata
+            for doc in db.get_collection().find():
+                doc['metadata']['file_index'] = file_index
             db_merged = db_merged.merge_from(db)
             db_list.append(db)
 

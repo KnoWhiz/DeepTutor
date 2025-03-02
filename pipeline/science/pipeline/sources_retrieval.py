@@ -19,12 +19,12 @@ from pipeline.science.pipeline.embeddings import (
     load_embeddings,
 )
 from pipeline.science.pipeline.embeddings_agent import embeddings_agent
-
+from pipeline.science.pipeline.doc_processor import process_pdf_file
 
 import logging
 logger = logging.getLogger("tutorpipeline.science.sources_retrieval")
 
-def get_response_source(mode, _doc, _document, file_path, user_input, answer, chat_history, embedding_folder):
+def get_response_source(mode, file_path_list, user_input, answer, chat_history, embedding_folder_list):
     """
     Get the sources for the response
     Return a dictionary of sources with scores and metadata
@@ -39,16 +39,18 @@ def get_response_source(mode, _doc, _document, file_path, user_input, answer, ch
     para = config['llm']
 
     # Load image context
-    logger.info(f"TEST: loading from embedding_folder: {embedding_folder}")
-    image_context_path = os.path.join(embedding_folder, "markdown/image_context.json")
-    if os.path.exists(image_context_path):
-        with open(image_context_path, 'r') as f:
-            image_context = json.loads(f.read())
-    else:
-        print("image_context_path does not exist")
-        image_context = {}
-        with open(image_context_path, 'w') as f:
-            json.dump(image_context, f)
+    logger.info(f"TEST: loading from embedding_folder_list: {embedding_folder_list}")
+    image_context_path_list = [os.path.join(embedding_folder, "markdown/image_context.json") for embedding_folder in embedding_folder_list]
+    image_context = {}
+    for image_context_path in image_context_path_list:
+        if os.path.exists(image_context_path):
+            with open(image_context_path, 'r') as f:
+                image_context = json.loads(f.read())
+        else:
+            print(f"image_context_path: {image_context_path} does not exist")
+            image_context = {}
+            with open(image_context_path, 'w') as f:
+                json.dump(image_context, f)
 
     # Create reverse mapping from description to image name
     image_mapping = {}
@@ -56,24 +58,40 @@ def get_response_source(mode, _doc, _document, file_path, user_input, answer, ch
         for desc in descriptions:
             image_mapping[desc] = image_name
 
-    # Define the default filenames used by FAISS when saving
-    faiss_path = os.path.join(embedding_folder, "index.faiss")
-    pkl_path = os.path.join(embedding_folder, "index.pkl")
-
-    # Check if all necessary files exist to load the embeddings
-    if os.path.exists(faiss_path) and os.path.exists(pkl_path):
-        # Load existing embeddings
-        # print("Loading existing embeddings...")
-        logger.info("Loading existing embeddings...")
-        db = load_embeddings(embedding_folder, 'default')
+    # Load / generate embeddings for each file and merge them
+    db_list = []
+    faiss_path_0 = os.path.join(embedding_folder_list[0], "index.faiss")
+    pkl_path_0 = os.path.join(embedding_folder_list[0], "index.pkl")
+    if os.path.exists(faiss_path_0) and os.path.exists(pkl_path_0):
+        db_merged = load_embeddings(embedding_folder_list[0], 'default')
+        db_list.append(db_merged)
     else:
-        print("No existing embeddings found, creating new ones...")
-        embeddings_agent(mode, _document, _doc, file_path, embedding_folder)
-        db = load_embeddings(embedding_folder, 'default')
+        _document, _doc = process_pdf_file(file_path_list[0])
+        embeddings_agent(mode, _document, _doc, file_path_list[0], embedding_folder_list[0])
+        db_merged = load_embeddings(embedding_folder_list[0], 'default')
+        db_list.append(db_merged)
+    for file_path, embedding_folder in zip(file_path_list[1:], embedding_folder_list[1:]):
+        # Define the default filenames used by FAISS when saving
+        faiss_path = os.path.join(embedding_folder, "index.faiss")
+        pkl_path = os.path.join(embedding_folder, "index.pkl")
+        # Check if all necessary files exist to load the embeddings
+        if os.path.exists(faiss_path) and os.path.exists(pkl_path):
+            # Load existing embeddings
+            logger.info(f"Loading existing embeddings for {embedding_folder}...")
+            db = load_embeddings(embedding_folder, 'default')
+            db_merged = db_merged.merge_from(db)
+            db_list.append(db)
+        else:
+            logger.info(f"No existing embeddings found for {embedding_folder}, creating new ones...")
+            _document, _doc = process_pdf_file(file_path)
+            embeddings_agent(mode, _document, _doc, file_path, embedding_folder)
+            db = load_embeddings(embedding_folder, 'default')
+            db_merged = db_merged.merge_from(db)
+            db_list.append(db)
 
     # Get relevant chunks for both question and answer with scores
-    question_chunks_with_scores = db.similarity_search_with_score(user_input, k=config['sources_retriever']['k'])
-    answer_chunks_with_scores = db.similarity_search_with_score(answer, k=config['sources_retriever']['k'])
+    question_chunks_with_scores = db_merged.similarity_search_with_score(user_input, k=config['sources_retriever']['k'])
+    answer_chunks_with_scores = db_merged.similarity_search_with_score(answer, k=config['sources_retriever']['k'])
 
     # The total list of sources chunks
     sources_chunks = []

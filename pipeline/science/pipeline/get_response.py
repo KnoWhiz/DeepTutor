@@ -22,7 +22,7 @@ from pipeline.science.pipeline.embeddings import (
 from pipeline.science.pipeline.inference import deep_inference_agent
 from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
 from pipeline.science.pipeline.get_graphrag_response import get_GraphRAG_global_response
-from pipeline.science.pipeline.get_rag_response import get_basic_rag_response
+from pipeline.science.pipeline.get_rag_response import get_basic_rag_response, get_rag_response
 
 logger = logging.getLogger("tutorpipeline.science.get_response")
 
@@ -68,7 +68,7 @@ class Question:
         }
 
 
-async def get_response(chat_session: ChatSession, file_path, question: Question, chat_history, embedding_folder, deep_thinking = True, stream=False):
+async def get_response(chat_session: ChatSession, file_path_list, question: Question, chat_history, embedding_folder_list, deep_thinking = True, stream=False):
     user_input = question.text
     # Handle Lite mode first
     if chat_session.mode == ChatMode.LITE:
@@ -96,15 +96,23 @@ RESPONSE GUIDELINES:
 Remember: Your goal is to make learning enjoyable and accessible. Keep your tone positive, supportive, and engaging at all times.
 """
 
-        answer = await get_basic_rag_response(
+        # answer = await get_basic_rag_response(
+        #     prompt_string=lite_prompt,
+        #     user_input=user_input + "\n\n" + question.special_context,
+        #     chat_history=chat_history,
+        #     embedding_folder=embedding_folder,
+        #     embedding_type="lite",
+        #     chat_session=chat_session,
+        #     file_path=file_path,
+        #     stream=stream
+        # )
+
+        db = load_embeddings(embedding_folder_list, 'lite')
+        answer = await get_rag_response(
             prompt_string=lite_prompt,
             user_input=user_input + "\n\n" + question.special_context,
             chat_history=chat_history,
-            embedding_folder=embedding_folder,
-            embedding_type="lite",
-            chat_session=chat_session,
-            file_path=file_path,
-            stream=stream
+            db=db
         )
 
         # # For Lite mode, we return empty containers for sources and follow-up questions

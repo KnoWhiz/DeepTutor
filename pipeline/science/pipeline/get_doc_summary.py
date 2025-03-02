@@ -11,7 +11,7 @@ from pipeline.science.pipeline.utils import (
     count_tokens,
 )
 from pipeline.science.pipeline.doc_processor import process_pdf_file
-from pipeline.science.pipeline.get_rag_response import get_standard_rag_response
+from pipeline.science.pipeline.get_rag_response import get_basic_rag_response
 from pipeline.science.pipeline.api_handler import ApiHandler
 import logging
 logger = logging.getLogger("tutorpipeline.science.get_doc_summary")
@@ -208,17 +208,17 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
 
         # First generate the take-home message, user input is the prompt's first line
         try:
-            takehome = await get_standard_rag_response(takehome_prompt, takehome_prompt.split("\n")[0], "", os.path.join(embedding_folder, 'markdown'), 'default')
+            takehome = await get_basic_rag_response(takehome_prompt, takehome_prompt.split("\n")[0], "", os.path.join(embedding_folder, 'markdown'), 'default')
         except Exception as e:
             logger.exception(f"Failed to generate take-home message: {str(e)}")
-            takehome = await get_standard_rag_response(takehome_prompt, takehome_prompt.split("\n")[0], "", embedding_folder)
+            takehome = await get_basic_rag_response(takehome_prompt, takehome_prompt.split("\n")[0], "", embedding_folder)
 
         # Generate overview
         try:
-            overview = await get_standard_rag_response(overview_prompt, overview_prompt.split("\n")[0], "", os.path.join(embedding_folder, 'markdown'), 'default')
+            overview = await get_basic_rag_response(overview_prompt, overview_prompt.split("\n")[0], "", os.path.join(embedding_folder, 'markdown'), 'default')
         except Exception as e:
             logger.exception(f"Failed to generate overview: {str(e)}")
-            overview = await get_standard_rag_response(overview_prompt, overview_prompt.split("\n")[0], "", embedding_folder)
+            overview = await get_basic_rag_response(overview_prompt, overview_prompt.split("\n")[0], "", embedding_folder)
 
         # Generate summaries for each topic
         try:
@@ -231,10 +231,10 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
                 logger.info(f"Generating summary for topic: {topic}")
                 logger.info(f"Prompt: {topic_prompt_copy}")
                 try:
-                    summary = await get_standard_rag_response(topic_prompt_copy, topic_prompt_copy.split("\n")[0], "", os.path.join(embedding_folder, 'markdown'), 'default')
+                    summary = await get_basic_rag_response(topic_prompt_copy, topic_prompt_copy.split("\n")[0], "", os.path.join(embedding_folder, 'markdown'), 'default')
                 except Exception as e:
                     logger.exception(f"Failed to generate summary for topic: {topic}, error: {str(e)}")
-                    summary = await get_standard_rag_response(topic_prompt_copy, topic_prompt_copy.split("\n")[0], "", embedding_folder)
+                    summary = await get_basic_rag_response(topic_prompt_copy, topic_prompt_copy.split("\n")[0], "", embedding_folder)
                 summaries.append((topic, summary))
         except Exception as e:
             logger.exception(f"Failed to load topics: {str(e)}")
@@ -248,10 +248,10 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
                 logger.info(f"Generating summary for topic: {topic}")
                 logger.info(f"Prompt: {topic_prompt_copy}")
                 try:
-                    summary = await get_standard_rag_response(topic_prompt_copy, topic_prompt_copy.split("\n")[0], "", os.path.join(embedding_folder, 'markdown'), 'default')
+                    summary = await get_basic_rag_response(topic_prompt_copy, topic_prompt_copy.split("\n")[0], "", os.path.join(embedding_folder, 'markdown'), 'default')
                 except Exception as e:
                     logger.exception(f"Failed to generate summary for topic: {topic}, error: {str(e)}")
-                    summary = await get_standard_rag_response(topic_prompt_copy, topic_prompt_copy.split("\n")[0], "", embedding_folder)
+                    summary = await get_basic_rag_response(topic_prompt_copy, topic_prompt_copy.split("\n")[0], "", embedding_folder)
                 summaries.append((topic, summary))
 
         # Combine everything into markdown format with welcome message and take-home message

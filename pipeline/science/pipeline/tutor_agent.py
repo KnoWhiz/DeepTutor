@@ -34,7 +34,7 @@ import logging
 logger = logging.getLogger("tutorpipeline.science.tutor_agent")
 
 
-async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tracking=None, deep_thinking=False):
+async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tracking=None, deep_thinking=True):
     """
     Taking the user input, document, and chat history, generate a response and sources.
     If user_input is None, generates the initial welcome message.
@@ -85,7 +85,7 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
 
     elif chat_session.mode == ChatMode.BASIC:
         vectorrag_start_time = time.time()
-        logger.info("Basic (VectorRAG) mode")
+        logger.info("BASIC (VectorRAG) mode")
         # Doc processing
         if(vectorrag_index_files_decompress(embedding_folder)):
             logger.info("VectorRAG index files are ready.")
@@ -248,8 +248,8 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
 
     # Refine and translate the answer to the selected language
     translation_start = time.time()
-    answer = f"""**{refined_user_input}**
-    """ + "\n" + answer
+    # answer = f"""**{refined_user_input}**
+    # """ + "\n" + answer
     answer = translate_content(
         content=answer,
         target_lang=chat_session.current_language

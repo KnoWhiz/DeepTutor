@@ -220,7 +220,8 @@ def get_response(query: str, chat_history: str, embedding_folder: str) -> str:
     answer_thinking = answer.split("<think>")[1].split("</think>")[0]
     answer_summary = answer.split("<think>")[1].split("</think>")[1]
 
-    return f"### Here is my thinking process\n\n{answer_thinking}\n\n### Here is my summarized answer\n\n{answer_summary}"
+    # return f"### Here is my thinking process\n\n{answer_thinking}\n\n### Here is my summarized answer\n\n{answer_summary}"
+    return answer_summary
 
 async def main():
     """Main function to demonstrate GraphRAG usage."""

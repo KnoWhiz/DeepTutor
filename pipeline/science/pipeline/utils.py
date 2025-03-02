@@ -495,6 +495,7 @@ def create_searchable_chunks(doc, chunk_size: int) -> list:
 
 
 def responses_refine(answer, reference=''):
+    # return answer
     config = load_config()
     para = config['llm']
     llm = get_llm(para["level"], para)
@@ -502,25 +503,44 @@ def responses_refine(answer, reference=''):
     error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
     system_prompt = (
         """
-        You are a patient and honest professor helping a student reading a paper.
-        Refine the answer that you have provided after a long thinking process: {answer}
-        Refer to the reference: {reference}
-        If the answer contains formulas, use LaTeX syntax in markdown
-        For inline formulas, use single dollar sign: $a/b = c/d$
-        For block formulas, use double dollar sign:
-        $$
-        \frac{{a}}{{b}} = \frac{{c}}{{d}}
-        $$
-        Use markdown syntax for bold formatting to highlight important points or words.
-        Use emojis when suitable to make the answer more engaging and interesting.
+        You are an expert at refining educational content while maintaining its original meaning and language.
+        Your task is to enhance the display of content by:
+        
+        1. Properly formatting all mathematical formulas with LaTeX syntax:
+           - Surround inline formulas with single dollar signs ($formula$)
+           - Surround block/display formulas with double dollar signs ($$formula$$)
+           - Ensure all mathematical symbols, equations, and expressions use proper LaTeX notation
+        
+        2. Improving readability by:
+           - Adding **bold text** to important terms, concepts, and key points
+           - Using proper markdown formatting for headings, lists, and other structural elements
+           - Maintaining paragraph structure and flow
+        
+        3. Making the content more engaging by:
+           - Adding relevant emojis at appropriate places (section headings, important points, examples)
+           - Using emojis that match the educational context and subject matter
+        
+        IMPORTANT RULES:
+        - DO NOT add any new information or change the actual content
+        - DO NOT alter the meaning of any statements
+        - DO NOT change the language of the content
+        - DO NOT remove any information from the original answer
         """
     )
     human_prompt = (
         """
-        Refine the answer content. Make sure the response is more educational and engaging.
-        You can refine the wording / markdown syntax / emojis to make the answer more readable and interesting.
-        You can use bold formatting to highlight important words.
-        You can use emojis to make the answer more engaging and interesting.
+        # Original answer
+        {answer}
+        
+        # Reference material (if available)
+        {reference}
+        
+        Please refine the original answer by:
+        1. Properly formatting all mathematical formulas with LaTeX syntax (using $ or $$ as appropriate)
+        2. Adding **bold text** to important terms and concepts for better readability
+        3. Including relevant emojis to make the content more engaging
+        
+        Do not change the actual information or add new content.
         """
     )
     prompt = ChatPromptTemplate.from_messages([

@@ -29,7 +29,7 @@ class ChatSession:
 
     Attributes:
         session_id: Unique identifier for the session
-        mode: Current chat mode (Basic or Advanced)
+        mode: Current chat mode (Lite, Basic or Advanced)
         chat_history: List of chat messages
         uploaded_files: Set of uploaded file paths
         current_language: Current programming language context
@@ -37,7 +37,7 @@ class ChatSession:
     """
 
     session_id: str = field(default_factory=create_session_id)
-    mode: ChatMode = ChatMode.BASIC #   ChatMode.BASIC or ChatMode.ADVANCED
+    mode: ChatMode = ChatMode.BASIC # ChatMode.LITE, ChatMode.BASIC or ChatMode.ADVANCED
     chat_history: List[Dict] = field(default_factory=list)
     uploaded_files: Set[str] = field(default_factory=set)
     current_language: Optional[str] = None

@@ -128,13 +128,16 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
 
     # Get source pages dictionary, which maps each source to the page number it is found in. the page number is in the metadata of the document chunks
     source_pages = {}
+    source_file_index = {}
     for chunk in sources_chunks:
         try:
             source_pages[chunk.page_content] = chunk.metadata['page']
+            source_file_index[chunk.page_content] = chunk.metadata['file_index']
         except KeyError:
             print(f"Error getting source pages for {chunk.page_content}")
             print(f"Chunk metadata: {chunk.metadata}")
             source_pages[chunk.page_content] = 1
+            source_file_index[chunk.page_content] = 1
 
     # Extract page content and scores, normalize scores to 0-1 range
     max_score = max(max(score for _, score in question_chunks_with_scores), 
@@ -159,6 +162,8 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
                          for source, score in sources_with_scores.items()}
     source_pages = {image_mapping.get(source, source): page 
                          for source, page in source_pages.items()}
+    
+    
 
     # TEST
     logger.info("TEST: sources before refine:")

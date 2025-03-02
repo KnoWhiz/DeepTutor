@@ -103,8 +103,6 @@ Remember: Your goal is to make learning enjoyable and accessible. Keep your tone
             embedding_folder=embedding_folder,
             embedding_type="lite",
             chat_session=chat_session,
-            doc=_doc,
-            document=_document,
             file_path=file_path,
             stream=stream
         )

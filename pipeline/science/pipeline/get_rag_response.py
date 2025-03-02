@@ -25,13 +25,11 @@ async def get_basic_rag_response(
     embedding_folder: str,
     embedding_type: str = "default",
     chat_session: ChatSession = None,
-    doc: dict = None,
-    document: dict = None,
     file_path: str = None,
     stream: bool = False
 ):
     """
-    Basic function for RAG-based response generation.
+    Basic function for RAG-based response generation. For single file response only.
 
     Args:
         prompt_string: The system prompt to use

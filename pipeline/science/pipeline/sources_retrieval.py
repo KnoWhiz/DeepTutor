@@ -200,10 +200,16 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
             refined_source_index[source] = source_file_index[source]
 
     # TEST
-    logger.info("TEST: sources after refine:")
-    for source, score in sources_with_scores.items():
-        logger.info(f"{source}: {score}")
-    logger.info(f"TEST: length of sources after refine: {len(sources_with_scores)}")
+    logger.info("TEST: refined source index:")
+    for source, index in refined_source_index.items():
+        logger.info(f"{source}: {index}")
+    logger.info(f"TEST: length of refined source index: {len(refined_source_index)}")
+
+    # TEST
+    logger.info("TEST: refined source pages:")
+    for source, page in refined_source_pages.items():
+        logger.info(f"{source}: {page}")
+    logger.info(f"TEST: length of refined source pages: {len(refined_source_pages)}")
 
     # Memory cleanup
     db = None
@@ -388,6 +394,13 @@ def refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_
     
     # Further limit to top 20 if needed
     sorted_sources = dict(list(sorted_sources.items())[:20])
+
+    # TEST
+    logger.info("TEST: sorted sources after refine:")
+    for source, score in sorted_sources.items():
+        logger.info(f"{source}: {score}")
+    logger.info(f"TEST: length of sorted sources after refine: {len(sorted_sources)}")
+
     return sorted_sources
 
 

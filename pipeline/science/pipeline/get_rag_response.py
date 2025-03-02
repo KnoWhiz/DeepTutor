@@ -140,7 +140,7 @@ async def get_basic_rag_response(
         actual_embedding_folder = os.path.join(embedding_folder, "markdown")
 
     try:
-        db = load_embeddings(actual_embedding_folder, embedding_type)
+        db = load_embeddings([actual_embedding_folder], embedding_type)
     except Exception as e:
         logger.exception(f"Failed to load embeddings: {str(e)}")
         return "I'm sorry, I couldn't access the document information. Please try again later."

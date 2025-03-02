@@ -96,12 +96,12 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
     faiss_path_0 = os.path.join(embedding_folder_list[0], "index.faiss")
     pkl_path_0 = os.path.join(embedding_folder_list[0], "index.pkl")
     if os.path.exists(faiss_path_0) and os.path.exists(pkl_path_0):
-        db_merged = load_embeddings(embedding_folder_list[0], 'default')
+        db_merged = load_embeddings([embedding_folder_list[0]], 'default')
         db_list.append(db_merged)
     else:
         _document, _doc = process_pdf_file(file_path_list[0])
         embeddings_agent(mode, _document, _doc, file_path_list[0], embedding_folder_list[0])
-        db_merged = load_embeddings(embedding_folder_list[0], 'default')
+        db_merged = load_embeddings([embedding_folder_list[0]], 'default')
         db_list.append(db_merged)
     file_index = 0
     for file_path, embedding_folder in zip(file_path_list[1:], embedding_folder_list[1:]):
@@ -113,7 +113,7 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
         if os.path.exists(faiss_path) and os.path.exists(pkl_path):
             # Load existing embeddings
             logger.info(f"Loading existing embeddings for {embedding_folder}...")
-            db = load_embeddings(embedding_folder, 'default')
+            db = load_embeddings([embedding_folder], 'default')
             # For each document chunk in db, add "file_index" to the metadata
             for doc in db.get_collection().find():
                 doc['metadata']['file_index'] = file_index
@@ -123,7 +123,7 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
             logger.info(f"No existing embeddings found for {embedding_folder}, creating new ones...")
             _document, _doc = process_pdf_file(file_path)
             embeddings_agent(mode, _document, _doc, file_path, embedding_folder)
-            db = load_embeddings(embedding_folder, 'default')
+            db = load_embeddings([embedding_folder], 'default')
             # For each document chunk in db, add "file_index" to the metadata
             for doc in db.get_collection().find():
                 doc['metadata']['file_index'] = file_index
@@ -189,13 +189,15 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
 
     # Refine and limit sources while preserving scores
     markdown_dir_list = [os.path.join(embedding_folder, "markdown") for embedding_folder in embedding_folder_list]
-    sources_with_scores = refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_input, image_url_mapping_merged, source_pages, source_file_index)
+    sources_with_scores = refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_input, image_url_mapping_merged, source_pages, source_file_index, image_url_mapping_merged_reverse)
 
     # Refine source pages while preserving scores
     refined_source_pages = {}
+    refined_source_index = {}
     for source, page in source_pages.items():
         if source in sources_with_scores:
             refined_source_pages[source] = page + 1
+            refined_source_index[source] = source_file_index[source]
 
     # TEST
     logger.info("TEST: sources after refine:")
@@ -206,7 +208,7 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
     # Memory cleanup
     db = None
     
-    return sources_with_scores, source_pages, refined_source_pages
+    return sources_with_scores, source_pages, refined_source_pages, refined_source_index
 
 
 def refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_input, image_url_mapping_merged, source_pages, source_file_index, image_url_mapping_merged_reverse):

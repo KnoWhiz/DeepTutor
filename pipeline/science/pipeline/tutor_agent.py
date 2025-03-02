@@ -224,9 +224,14 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
     refined_source_index = {}
     sources_start = time.time()
     if chat_session.mode != ChatMode.LITE:
+        # def get_response_source(mode, file_path_list, user_input, answer, chat_history, embedding_folder_list):
         sources, source_pages, refined_source_pages, refined_source_index = get_response_source(
-            chat_session.mode,
-            _doc, _document, file_path_list, refined_user_input, answer, context_chat_history, embedding_folder_list
+            mode=chat_session.mode,
+            file_path_list=file_path_list,
+            user_input=refined_user_input,
+            answer=answer,
+            chat_history=chat_history,
+            embedding_folder_list=embedding_folder_list
         )
     time_tracking['source_retrieval'] = time.time() - sources_start
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")

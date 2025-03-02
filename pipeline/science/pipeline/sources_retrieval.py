@@ -184,7 +184,7 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
 
     # Refine and limit sources while preserving scores
     markdown_dir_list = [os.path.join(embedding_folder, "markdown") for embedding_folder in embedding_folder_list]
-    sources_with_scores = refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_input, image_url_mapping_merged, image_context_list)
+    sources_with_scores = refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_input, image_url_mapping_merged, sources_with_scores, source_pages, source_file_index)
 
     # Refine source pages while preserving scores
     refined_source_pages = {}
@@ -204,7 +204,7 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
     return sources_with_scores, source_pages, refined_source_pages
 
 
-def refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_input, image_url_mapping_merged, image_context_list):
+def refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_input, image_url_mapping_merged, sources_with_scores, source_pages, source_file_index):
     """
     Refine sources by checking if they can be found in the document
     Only get first 20 sources

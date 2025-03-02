@@ -68,7 +68,7 @@ class Question:
         }
 
 
-async def get_response(chat_session: ChatSession, _doc, _document, file_path, question: Question, chat_history, embedding_folder, deep_thinking = False, stream=False):
+async def get_response(chat_session: ChatSession, _doc, _document, file_path, question: Question, chat_history, embedding_folder, deep_thinking = True, stream=False):
     user_input = question.text
     # Handle Lite mode first
     if chat_session.mode == ChatMode.LITE:

@@ -41,7 +41,7 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
     # Load image context
     logger.info(f"TEST: loading from embedding_folder_list: {embedding_folder_list}")
     image_context_path_list = [os.path.join(embedding_folder, "markdown/image_context.json") for embedding_folder in embedding_folder_list]
-    image_context = {}
+    image_context_list = []
     for image_context_path in image_context_path_list:
         if os.path.exists(image_context_path):
             with open(image_context_path, 'r') as f:
@@ -51,12 +51,31 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
             image_context = {}
             with open(image_context_path, 'w') as f:
                 json.dump(image_context, f)
+        image_context_list.append(image_context)
+
+    # Load images URL list
+    image_url_mapping_list = []
+    for embedding_folder in embedding_folder_list:
+        image_url_path = os.path.join(embedding_folder, "markdown/image_urls.json")
+        if os.path.exists(image_url_path):
+            with open(image_url_path, 'r') as f:
+                image_url_mapping = json.load(f)
+        else:
+            logger.info("Image URL mapping file not found. Creating a new one.")
+            image_url_mapping = {}
+            with open(image_url_path, 'w') as f:
+                json.dump(image_url_mapping, f)
+        image_url_mapping_list.append(image_url_mapping)
+        
 
     # Create reverse mapping from description to image name
-    image_mapping = {}
-    for image_name, descriptions in image_context.items():
-        for desc in descriptions:
-            image_mapping[desc] = image_name
+    image_mapping_list = []
+    for image_context in image_context_list:
+        image_mapping = {}
+        for image_name, descriptions in image_context.items():
+            for desc in descriptions:
+                image_mapping[desc] = image_name
+        image_mapping_list.append(image_mapping)
 
     # Load / generate embeddings for each file and merge them
     db_list = []

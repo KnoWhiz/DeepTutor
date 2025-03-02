@@ -23,7 +23,8 @@ async def get_rag_response(
     user_input: str,
     chat_history: str,
     chat_session: ChatSession = None,
-    db: Any = None
+    db: Any = None,
+    stream: bool = False
 ):
     """
     Basic function for RAG-based response generation. For single file response only.

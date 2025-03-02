@@ -127,7 +127,7 @@ Remember: Your goal is to make learning enjoyable and accessible. Keep your tone
     # Handle Advanced mode
     if chat_session.mode == ChatMode.ADVANCED:
         try:
-            answer = await get_GraphRAG_global_response(user_input, chat_history, embedding_folder, deep_thinking)
+            answer = await get_GraphRAG_global_response(user_input, chat_history, embedding_folder_list, deep_thinking)
             return answer
         except Exception as e:
             logger.exception("Error getting response from GraphRAG:", e)
@@ -150,27 +150,35 @@ Remember: Your goal is to make learning enjoyable and accessible. Keep your tone
             \frac{{a}}{{b}} = \frac{{c}}{{d}}
             $$
             """
+        
+        # Load embeddings for Non-deep thinking mode
+        try:
+            logger.info(f"Loading markdown embeddings from {[os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]}")
+            db = load_embeddings(embedding_folder_list, 'default')
+        except Exception as e:
+            logger.exception(f"Failed to load markdown embeddings for Non-deep thinking mode: {str(e)}")
+            db = load_embeddings(embedding_folder_list, 'default')
 
-        answer = await get_basic_rag_response(
+        answer = await get_rag_response(
             prompt_string=basic_prompt,
             user_input=user_input + "\n\n" + question.special_context,
             chat_history=chat_history,
-            embedding_folder=embedding_folder,
+            db=db,
             stream=stream
         )
         return answer
     else:
         logger.info("deep thinking ...")
-        # Load config and embeddings for deep thinking mode
+        try:
+            logger.info(f"Loading markdown embeddings from {[os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]}")
+            db = load_embeddings(embedding_folder_list, 'default')
+        except Exception as e:
+            logger.exception(f"Failed to load markdown embeddings for deep thinking mode: {str(e)}")
+            db = load_embeddings(embedding_folder_list, 'default')
+        
+        # Load config for deep thinking mode
         config = load_config()
         token_limit = config["inference_token_limit"]
-
-        try:
-            logger.info(f"Loading markdown embeddings from {os.path.join(embedding_folder, 'markdown')}")
-            db = load_embeddings(os.path.join(embedding_folder, 'markdown'), 'default')
-        except Exception as e:
-            logger.exception(f"Failed to load markdown embeddings for deep thinking: {str(e)}")
-            db = load_embeddings(embedding_folder, 'default')
 
         chat_history_string = truncate_chat_history(chat_history, token_limit=token_limit)
         user_input_string = str(user_input + "\n\n" + question.special_context)

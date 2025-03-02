@@ -143,13 +143,14 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
         logger.info("Error: Invalid chat mode.")
 
     chat_history = chat_session.chat_history
-    # Use temporary chat history for follow-up questions if available
-    if hasattr(chat_session, 'temp_chat_history') and chat_session.temp_chat_history:
-        context_chat_history = chat_session.temp_chat_history
-        # Clear the temporary chat history after using it
-        chat_session.temp_chat_history = None
-    else:
-        context_chat_history = chat_history
+    context_chat_history = chat_history
+    # # Use temporary chat history for follow-up questions if available
+    # if hasattr(chat_session, 'temp_chat_history') and chat_session.temp_chat_history:
+    #     context_chat_history = chat_session.temp_chat_history
+    #     # Clear the temporary chat history after using it
+    #     chat_session.temp_chat_history = None
+    # else:
+    #     context_chat_history = chat_history
 
     # Handle initial welcome message when chat history is empty
     initial_message_start_time = time.time()

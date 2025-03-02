@@ -76,7 +76,7 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
                 image_mapping[desc] = image_name
         image_mapping_list.append(image_mapping)
         
-    # Create a single mapping from description to image URL
+    # Create a single mapping from description to image URL, mapping from image description to image URL
     image_url_mapping_merged = {}
     for idx, (image_mapping, image_url_mapping_merged) in enumerate(zip(image_mapping_list, image_url_mapping_list)):
         for description, image_name in image_mapping.items():
@@ -86,7 +86,6 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
             else:
                 # If image URL not found, log a warning but don't break the process
                 logger.warning(f"Image URL not found for {image_name} in embedding folder {idx}")
-    
     logger.info(f"Created image URL mapping with {len(image_url_mapping_merged)} entries")
 
     # Load / generate embeddings for each file and merge them
@@ -187,7 +186,7 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
 
     # Refine and limit sources while preserving scores
     markdown_dir_list = [os.path.join(embedding_folder, "markdown") for embedding_folder in embedding_folder_list]
-    sources_with_scores = refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_input, image_url_mapping_merged, sources_with_scores, source_pages, source_file_index)
+    sources_with_scores = refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_input, image_url_mapping_merged, source_pages, source_file_index)
 
     # Refine source pages while preserving scores
     refined_source_pages = {}
@@ -207,22 +206,23 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
     return sources_with_scores, source_pages, refined_source_pages
 
 
-def refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_input, image_url_mapping_merged, sources_with_scores, source_pages, source_file_index):
+def refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_input, image_url_mapping_merged, source_pages, source_file_index):
     """
     Refine sources by checking if they can be found in the document
     Only get first 20 sources
     Show them in the order they are found in the document
     Preserve image filenames but filter them based on context relevance using LLM
-    Source_pages: a dictionary that maps each source to the page number it is found in
-    Source_file_index: a dictionary that maps each source to the file index it is found in
-    Sources_with_scores: a dictionary that maps each source to the score it has
+    Source_pages: a dictionary that maps each source to the page number it is found in. For images, it is mapping from the image URL to the page number.
+    Source_file_index: a dictionary that maps each source to the file index it is found in. For images, it is mapping from the image URL to the file index.
+    Sources_with_scores: a dictionary that maps each source to the score it has. For images, it is mapping from the image URL to the score.
     """
     config = load_config()
     refined_sources = {}
     image_sources = {}
+    text_sources = {}
 
-    # First separate image sources from text sources
-
+    # First separate image sources from text sources. The image sources are the ones mapping from image URL to image score.
+    
     # TEST
     logger.info("TEST: image sources before refine:")
     logger.info(f"TEST: length of image sources before refine: {len(image_sources)}")
@@ -281,7 +281,7 @@ def refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_
 
         # Evaluate each image
         image_scores = []
-        for image, score in image_sources.items():
+        for image_url, score in image_sources.items():
             if image in image_context:
                 # Get all context descriptions for this image
                 descriptions = image_context[image]

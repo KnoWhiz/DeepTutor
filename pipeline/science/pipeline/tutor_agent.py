@@ -180,6 +180,7 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
         source_pages = {}
         source_annotations = {}
         refined_source_pages = {}
+        refined_source_index = {}
         if chat_session.mode != ChatMode.LITE:
             follow_up_questions = generate_follow_up_questions(answer, [])
         else:
@@ -191,10 +192,10 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
                 target_lang=chat_session.current_language
             )
 
-        return answer, sources, source_pages, source_annotations, refined_source_pages, follow_up_questions
+        return answer, sources, source_pages, source_annotations, refined_source_pages, follow_up_questions, refined_source_index
 
     time_tracking['summary_message'] = time.time() - initial_message_start_time
-    logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Regular chat flow
     # Refine user input

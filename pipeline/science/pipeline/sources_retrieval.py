@@ -67,7 +67,6 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
                 json.dump(image_url_mapping, f)
         image_url_mapping_list.append(image_url_mapping)
         
-
     # Create reverse mapping from description to image name
     image_mapping_list = []
     for image_context in image_context_list:
@@ -120,7 +119,7 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
     question_chunks_with_scores = db_merged.similarity_search_with_score(user_input, k=config['sources_retriever']['k'])
     answer_chunks_with_scores = db_merged.similarity_search_with_score(answer, k=config['sources_retriever']['k'])
 
-    # The total list of sources chunks
+    # The total list of sources chunks from question and answer
     sources_chunks = []
     for chunk in question_chunks_with_scores:
         sources_chunks.append(chunk[0])

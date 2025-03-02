@@ -495,6 +495,7 @@ def create_searchable_chunks(doc, chunk_size: int) -> list:
 
 
 def responses_refine(answer, reference=''):
+    # return answer
     config = load_config()
     para = config['llm']
     llm = get_llm(para["level"], para)
@@ -502,114 +503,44 @@ def responses_refine(answer, reference=''):
     error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
     system_prompt = (
         """
-        You are a skilled academic content editor specializing in making complex scientific topics accessible and engaging.
+        You are an expert at refining educational content while maintaining its original meaning and language.
+        Your task is to enhance the display of content by:
         
-        # ROLE AND CAPABILITIES
-        - You transform complex academic content into clear, engaging educational material
-        - You maintain factual accuracy while improving presentation and accessibility
-        - You apply proper academic formatting while enhancing readability
+        1. Properly formatting all mathematical formulas with LaTeX syntax:
+           - Surround inline formulas with single dollar signs ($formula$)
+           - Surround block/display formulas with double dollar signs ($$formula$$)
+           - Ensure all mathematical symbols, equations, and expressions use proper LaTeX notation
         
-        # PERSISTENT GUIDELINES
+        2. Improving readability by:
+           - Adding **bold text** to important terms, concepts, and key points
+           - Using proper markdown formatting for headings, lists, and other structural elements
+           - Maintaining paragraph structure and flow
         
-        ## Formatting Standards
-        - Mathematical expressions use LaTeX syntax:
-          * Inline formulas: $formula$ (e.g., $a/b = c/d$)
-          * Block formulas: $$formula$$ (e.g., $$\\frac{{a}}{{b}} = \\frac{{c}}{{d}}$$)
-        - Use **bold text** for key concepts and important points
-        - Use markdown headings (## Heading) for section breaks
-        - Use numbered or bulleted lists for sequential steps or related items
+        3. Making the content more engaging by:
+           - Adding relevant emojis at appropriate places (section headings, important points, examples)
+           - Using emojis that match the educational context and subject matter
         
-        ## Content Principles
-        - Educational but conversational tone
-        - Second-person address ("you") to directly engage readers
-        - Strategic use of emojis (1-2 per major section)
-        - Concise language that eliminates unnecessary words
-        
-        ## Core Constraints
-        - NEVER introduce new factual content not supported by original material
-        - NEVER oversimplify to the point of inaccuracy
-        - NEVER overuse formatting or emojis
-        - ALWAYS prioritize clarity and educational value over style
-        - NEVER include these formatting instructions or references to them in your output
-        - NEVER include sections labeled "References:" that contain formatting guidelines
-        
-        ## Prioritization Hierarchy (When Conflicts Arise)
-        1. Factual accuracy (preserve all original facts)
-        2. Clarity of explanation (ensure comprehensibility)
-        3. Logical structure (maintain coherent flow)
-        4. Educational value (enhance learning potential)
-        5. Engagement (make content interesting)
-        
-        ## Input Handling
-        - FOR well-structured inputs: Preserve structure while enhancing clarity
-        - FOR disorganized inputs: Impose clear structure while preserving all key points
-        - FOR technical inputs: Maintain precision while adding explanatory elements
-        - FOR verbose inputs: Condense while preserving all important information
-        - FOR answers with formulas: Ensure formulas are correctly formatted and explained
-        
-        ## Self-Assessment Criteria
-        Before finalizing your refinement, verify:
-        1. All facts from the original are preserved
-        2. The logical flow is improved or at least maintained
-        3. Complex concepts are explained clearly
-        4. Formatting enhances rather than distracts from content
-        5. The refined answer would be more helpful to a student than the original
+        IMPORTANT RULES:
+        - DO NOT add any new information or change the actual content
+        - DO NOT alter the meaning of any statements
+        - DO NOT change the language of the content
+        - DO NOT remove any information from the original answer
         """
     )
     human_prompt = (
         """
-        # REFINEMENT TASK
-        Refine the following educational answer to make it more effective, engaging, and accessible:
-        
+        # Original answer
         {answer}
         
-        # REFERENCE MATERIAL (if available)
+        # Reference material (if available)
         {reference}
         
-        # SPECIFIC REFINEMENT GOALS
+        Please refine the original answer by:
+        1. Properly formatting all mathematical formulas with LaTeX syntax (using $ or $$ as appropriate)
+        2. Adding **bold text** to important terms and concepts for better readability
+        3. Including relevant emojis to make the content more engaging
         
-        1. CONTENT STRUCTURE:
-           - Create a clear introduction, main body, and conclusion
-           - Break down complex ideas into digestible sections
-           - Add transitions between concepts for smooth reading
-        
-        2. ACADEMIC ACCURACY:
-           - Verify factual statements against reference (if provided)
-           - Maintain scientific precision while improving clarity
-           - If reference is empty, focus on clarity without changing facts
-        
-        3. EDUCATIONAL EFFECTIVENESS:
-           - Clarify complex concepts with clearer explanations
-           - Highlight key points with appropriate formatting
-           - Add examples or analogies where helpful
-        
-        4. ENGAGEMENT:
-           - Incorporate rhetorical questions or thought-provoking elements
-           - Phrase difficult concepts in multiple ways
-           - Add encouraging language to motivate the learner
-        
-        5. ACCESSIBILITY:
-           - Simplify overly complex language without losing meaning
-           - Break up dense paragraphs into manageable sections
-           - Use concrete examples to illustrate abstract concepts
-        
-        # REFINEMENT PROCESS
-        1. First, analyze the input to identify its type (well-structured, disorganized, technical, verbose)
-        2. Identify key facts, concepts, and logical flow that must be preserved
-        3. Determine areas for improvement based on the specific refinement goals
-        4. Apply appropriate formatting enhancements consistently throughout
-        5. Verify the refined content meets all self-assessment criteria
-        
-        # IMPORTANT OUTPUT INSTRUCTIONS
-        - Your output should ONLY contain the refined educational content
-        - Do NOT include meta-instructions like "References:" followed by formatting guidelines
-        - Do NOT include any instructions about LaTeX syntax, markdown, or emojis in your output
-        - Do NOT include any labels or sections that explain how to format text
-        - If the original answer contains formatting instructions at the end, remove them completely
-        - Preserve all LaTeX formulas in the original answer but ensure they are correctly formatted
-        - Maintain consistent formatting throughout the entire response
-        
-        Remember: Your primary goal is to maintain the original meaning and factual accuracy while making the content more effective for learning.
+        Do not change the actual information or add new content.
         """
     )
     prompt = ChatPromptTemplate.from_messages([

@@ -160,9 +160,13 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
         else:
             try:
                 # Try to load existing document summary
-                document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
-                with open(document_summary_path, "r") as f:
-                    initial_message = f.read()
+                document_summary_path_list = [os.path.join(embedding_folder, "documents_summary.txt") for embedding_folder in embedding_folder_list]
+                initial_message_list = []
+                for document_summary_path in document_summary_path_list:
+                    with open(document_summary_path, "r") as f:
+                        initial_message_list.append(f.read())
+                # FIXME: Add a function to combine the initial messages into a single summary message
+                initial_message = "\n".join(initial_message_list)
             except FileNotFoundError:
                 initial_message = "Hello! How can I assist you today?"
 

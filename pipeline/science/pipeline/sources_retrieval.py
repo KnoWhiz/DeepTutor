@@ -171,6 +171,9 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
         sources_with_scores[chunk.page_content] = max(normalized_score, sources_with_scores.get(chunk.page_content, 0))
 
     # Replace matching sources with image names while preserving scores
+    #     Source_pages: a dictionary that maps each source to the page number it is found in
+    #     Source_file_index: a dictionary that maps each source to the file index it is found in
+    #     Sources_with_scores: a dictionary that maps each source to the score it has
     sources_with_scores = {image_url_mapping_merged.get(source, source): score 
                          for source, score in sources_with_scores.items()}
     source_pages = {image_url_mapping_merged.get(source, source): page 
@@ -210,13 +213,15 @@ def refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_
     Only get first 20 sources
     Show them in the order they are found in the document
     Preserve image filenames but filter them based on context relevance using LLM
+    Source_pages: a dictionary that maps each source to the page number it is found in
+    Source_file_index: a dictionary that maps each source to the file index it is found in
+    Sources_with_scores: a dictionary that maps each source to the score it has
     """
     config = load_config()
     refined_sources = {}
     image_sources = {}
 
     # First separate image sources from text sources
-
 
     # TEST
     logger.info("TEST: image sources before refine:")

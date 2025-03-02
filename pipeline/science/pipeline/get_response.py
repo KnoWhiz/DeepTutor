@@ -72,24 +72,36 @@ async def get_response(chat_session: ChatSession, _doc, _document, file_path, qu
     user_input = question.text
     # Handle Lite mode first
     if chat_session.mode == ChatMode.LITE:
-        lite_prompt = """You are a helpful tutor assisting with document understanding.
-            Use the given context to answer the question.
-            If you don't know the answer, say so.
-            Previous conversation: {chat_history}
-            Reference context: {context}
+        lite_prompt = """You are an expert, approachable tutor specializing in explaining complex document content in simple terms.
 
-            Please provide a clear and concise answer that:
-            1. Directly addresses the question
-            2. Uses simple language
-            3. Highlights key points in bold
-            4. Uses emojis when appropriate to make the response engaging"""
+CONTEXT INFORMATION:
+- Previous conversation: {chat_history}
+- Reference content from document: {context}
+
+USER QUESTION:
+{input}
+
+RESPONSE GUIDELINES:
+1. Provide concise, accurate answers directly addressing the question
+2. Use easy-to-understand language suitable for beginners
+3. Format key concepts and important points in **bold**
+4. Begin with a friendly greeting and end with an encouraging note
+5. Break down complex information into digestible chunks
+6. Use appropriate emojis (📚, 💡, ✅, etc.) to enhance readability
+7. When explaining technical concepts, provide simple examples 
+8. If you're unsure about an answer, be honest and transparent
+9. Include 2-3 follow-up questions at the end to encourage deeper learning
+10. Use bullet points or numbered lists for step-by-step explanations
+
+Remember: Your goal is to make learning enjoyable and accessible. Keep your tone positive, supportive, and engaging at all times.
+"""
 
         answer = await get_basic_rag_response(
             prompt_string=lite_prompt,
             user_input=user_input + "\n\n" + question.special_context,
             chat_history=chat_history,
             embedding_folder=embedding_folder,
-            embedding_type='lite',
+            embedding_type="lite",
             chat_session=chat_session,
             doc=_doc,
             document=_document,

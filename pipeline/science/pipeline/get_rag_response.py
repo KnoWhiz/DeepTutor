@@ -23,7 +23,7 @@ async def get_basic_rag_response(
     user_input: str,
     chat_history: str,
     embedding_folder: str,
-    embedding_type: str = 'default',
+    embedding_type: str = "default",
     chat_session: ChatSession = None,
     doc: dict = None,
     document: dict = None,
@@ -48,8 +48,8 @@ async def get_basic_rag_response(
         str: The generated response
     """
     config = load_config()
-    para = config['llm']
-    llm = get_llm('basic', para)
+    para = config["llm"]
+    llm = get_llm("basic", para)
     parser = StrOutputParser()
     error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
 
@@ -59,29 +59,43 @@ async def get_basic_rag_response(
     try:
         # Handle different embedding folders based on type
         if chat_session.mode == ChatMode.LITE:
-            actual_embedding_folder = os.path.join(embedding_folder, 'lite_embedding')
+            actual_embedding_folder = os.path.join(embedding_folder, "lite_embedding")
         elif chat_session.mode == ChatMode.BASIC or chat_session.mode == ChatMode.ADVANCED:
-            actual_embedding_folder = os.path.join(embedding_folder, 'markdown')
+            actual_embedding_folder = os.path.join(embedding_folder, "markdown")
         else:
             actual_embedding_folder = embedding_folder
     except Exception as e:
         logger.exception(f"Failed to load session mode: {str(e)}")
-        actual_embedding_folder = os.path.join(embedding_folder, 'markdown')
+        actual_embedding_folder = os.path.join(embedding_folder, "markdown")
 
     try:
         db = load_embeddings(actual_embedding_folder, embedding_type)
     except Exception as e:
         logger.exception(f"Failed to load embeddings: {str(e)}")
+        return "I'm sorry, I couldn't access the document information. Please try again later."
 
-    retriever = db.as_retriever(search_kwargs={"k": config['retriever']['k']})
+    # Increase k for better context retrieval if in LITE mode
+    k_value = config["retriever"]["k"]
+    if chat_session.mode == ChatMode.LITE:
+        k_value = min(k_value + 2, 8)  # Add more context chunks for LITE mode, but cap at reasonable limit
+        
+    retriever = db.as_retriever(search_kwargs={"k": k_value})
 
+    # Process chat history to ensure proper formatting
+    processed_chat_history = truncate_chat_history(chat_history) if chat_history else ""
+    
+    # Create prompt template with better messaging sequence
     prompt = ChatPromptTemplate.from_messages([
         ("system", prompt_string),
         ("human", "{input}")
     ])
 
     def format_docs(docs):
-        return "\n\n".join(doc.page_content for doc in docs)
+        # Enhanced document formatting that emphasizes document structure
+        formatted_docs = []
+        for i, doc in enumerate(docs):
+            formatted_docs.append(f"Document {i+1}:\n{doc.page_content}")
+        return "\n\n".join(formatted_docs)
 
     rag_chain = (
         {
@@ -99,18 +113,16 @@ async def get_basic_rag_response(
         answer=rag_chain
     )
 
-    if not stream:
+    try:
         parsed_result = chain.invoke({
             "input": user_input,
-            "chat_history": truncate_chat_history(chat_history) if chat_history else ""
+            "chat_history": processed_chat_history
         })
-    else:
-        parsed_result = chain.invoke({
-            "input": user_input,
-            "chat_history": truncate_chat_history(chat_history) if chat_history else ""
-        })
+    except Exception as e:
+        logger.exception(f"Error generating response: {str(e)}")
+        return "I encountered an error while generating your response. Please try again with a different question."
 
     # Memory cleanup
     db = None
 
-    return parsed_result['answer']
+    return parsed_result["answer"]

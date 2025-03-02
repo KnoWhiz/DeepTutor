@@ -78,7 +78,16 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
         
     # Create a single mapping from description to image URL
     image_url_mapping = {}
+    for idx, (image_mapping, image_url_mapping) in enumerate(zip(image_mapping_list, image_url_mapping_list)):
+        for description, image_name in image_mapping.items():
+            if image_name in image_url_mapping.keys():
+                # If the image name exists in URL mapping, link the description directly to the URL
+                image_url_mapping[description] = image_url_mapping[image_name]
+            else:
+                # If image URL not found, log a warning but don't break the process
+                logger.warning(f"Image URL not found for {image_name} in embedding folder {idx}")
     
+    logger.info(f"Created image URL mapping with {len(image_url_mapping)} entries")
 
     # Load / generate embeddings for each file and merge them
     db_list = []
@@ -162,9 +171,9 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
         sources_with_scores[chunk.page_content] = max(normalized_score, sources_with_scores.get(chunk.page_content, 0))
 
     # Replace matching sources with image names while preserving scores
-    sources_with_scores = {image_mapping.get(source, source): score 
+    sources_with_scores = {image_url_mapping.get(source, source): score 
                          for source, score in sources_with_scores.items()}
-    source_pages = {image_mapping.get(source, source): page 
+    source_pages = {image_url_mapping.get(source, source): page 
                          for source, page in source_pages.items()}
     
 

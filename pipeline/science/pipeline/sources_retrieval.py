@@ -38,7 +38,7 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
     config = load_config()
     para = config['llm']
 
-    # Load image context
+    # Load image context, mapping from image file name to image descriptions
     logger.info(f"TEST: loading from embedding_folder_list: {embedding_folder_list}")
     image_context_path_list = [os.path.join(embedding_folder, "markdown/image_context.json") for embedding_folder in embedding_folder_list]
     image_context_list = []
@@ -53,7 +53,7 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
                 json.dump(image_context, f)
         image_context_list.append(image_context)
 
-    # Load images URL list
+    # Load images URL list mapping from images file name to image URL
     image_url_mapping_list = []
     for embedding_folder in embedding_folder_list:
         image_url_path = os.path.join(embedding_folder, "markdown/image_urls.json")
@@ -75,6 +75,10 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
             for desc in descriptions:
                 image_mapping[desc] = image_name
         image_mapping_list.append(image_mapping)
+        
+    # Create a single mapping from description to image URL
+    image_url_mapping = {}
+    
 
     # Load / generate embeddings for each file and merge them
     db_list = []
@@ -163,7 +167,7 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
     source_pages = {image_mapping.get(source, source): page 
                          for source, page in source_pages.items()}
     
-    
+
 
     # TEST
     logger.info("TEST: sources before refine:")

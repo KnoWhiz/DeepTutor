@@ -221,7 +221,12 @@ def refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_
     image_sources = {}
     text_sources = {}
 
-    # First separate image sources from text sources. The image sources are the ones mapping from image URL to image score.
+    # First separate image sources from text sources. The image sources are the ones mapping from image URL to image score. If the source is an http image URL, add it to image_sources. Otherwise, add it to text_sources.
+    for source, score in sources_with_scores.items():
+        if source.startswith('https://knowhiztutorrag.blob'):
+            image_sources[source] = score
+        else:
+            text_sources[source] = score
     
     # TEST
     logger.info("TEST: image sources before refine:")

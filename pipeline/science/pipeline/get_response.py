@@ -68,7 +68,7 @@ class Question:
         }
 
 
-async def get_response(chat_session: ChatSession, _doc, _document, file_path, question: Question, chat_history, embedding_folder, deep_thinking = True, stream=False):
+async def get_response(chat_session: ChatSession, file_path, question: Question, chat_history, embedding_folder, deep_thinking = True, stream=False):
     user_input = question.text
     # Handle Lite mode first
     if chat_session.mode == ChatMode.LITE:
@@ -119,7 +119,7 @@ Remember: Your goal is to make learning enjoyable and accessible. Keep your tone
     # Handle Advanced mode
     if chat_session.mode == ChatMode.ADVANCED:
         try:
-            answer = await get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embedding_folder, deep_thinking)
+            answer = await get_GraphRAG_global_response(user_input, chat_history, embedding_folder, deep_thinking)
             return answer
         except Exception as e:
             logger.exception("Error getting response from GraphRAG:", e)

@@ -38,8 +38,6 @@ async def get_basic_rag_response(
         embedding_folder: Path to the folder containing embeddings
         embedding_type: Type of embedding model to use (default, lite, small)
         chat_session: Optional ChatSession object for generating embeddings if needed
-        doc: Optional document dict for generating embeddings if needed
-        document: Optional document dict for generating embeddings if needed
         file_path: Optional file path for generating embeddings if needed
         stream: Whether to stream the response
     Returns:

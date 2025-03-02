@@ -212,7 +212,7 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
 
     # Get response
     response_start = time.time()
-    response = await get_response(chat_session, _doc, _document, file_path_list, question, context_chat_history, embedding_folder_list, deep_thinking=deep_thinking, stream=stream)
+    response = await get_response(chat_session, file_path_list, question, context_chat_history, embedding_folder_list, deep_thinking=deep_thinking, stream=stream)
     answer = response[0] if isinstance(response, tuple) else response
     time_tracking['response_generation'] = time.time() - response_start
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")

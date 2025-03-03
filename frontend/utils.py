@@ -8,19 +8,19 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def streamlit_tutor_agent(chat_session, file_path, user_input):
-    initial_message,\
-    sources,\
-    source_pages,\
-    source_annotations,\
-    refined_source_pages,\
+def streamlit_tutor_agent(chat_session, file_path, user_input):    
+    answer, \
+    sources, \
+    source_pages, \
+    source_annotations, \
+    refined_source_pages, \
     follow_up_questions = asyncio.run(tutor_agent(
         chat_session=chat_session,
         file_path=file_path,
         user_input=user_input,
         deep_thinking=True
     ))
-    return initial_message, sources, source_pages, source_annotations, refined_source_pages, follow_up_questions
+    return answer, sources, source_pages, source_annotations, refined_source_pages, follow_up_questions
 
 
 # Function to display the pdf

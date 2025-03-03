@@ -313,6 +313,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
             with st.spinner("Generating deep agentic response..."):
                 try:
                     # Get response
+                    # answer, sources, source_pages, source_annotations, refined_source_pages, follow_up_questions, refined_source_index
                     answer,\
                     sources,\
                     source_pages,\

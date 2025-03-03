@@ -18,6 +18,41 @@ logger = logging.getLogger("tutorpipeline.science.get_doc_summary")
 load_dotenv()
 
 
+def refine_document_summary(markdown_summary, llm):
+    """
+    Refine the document summary to remove duplicated titles.
+    
+    Args:
+        markdown_summary: The markdown summary to refine.
+        llm: The language model to use for refinement.
+        
+    Returns:
+        The refined markdown summary.
+    """
+    refine_prompt = """
+    Below is a document summary with potential duplicated titles. Please refine it to remove any redundancy where section titles are repeated in the content. 
+    Keep the emoji headers (like ### 📌 Topic) but remove any duplicated titles or numbering in the content that follow immediately after.
+    For example, change:
+    ### 📌 Revenue
+    #### 5. **Revenue**
+    
+    To just:
+    ### 📌 Revenue
+    
+    Only remove duplicated titles, don't change any other content. Return the complete refined summary.
+    
+    Summary to refine:
+    {summary}
+    """
+    
+    refine_prompt_template = ChatPromptTemplate.from_template(refine_prompt)
+    str_parser = StrOutputParser()
+    refine_chain = refine_prompt_template | llm | str_parser
+    refined_markdown_summary = refine_chain.invoke({"summary": markdown_summary})
+    
+    return refined_markdown_summary
+
+
 async def generate_document_summary(file_path, embedding_folder, md_document=None):
     """
     Given a file path, generate a comprehensive markdown-formatted summary of the document using multiple LLM calls.
@@ -196,11 +231,15 @@ I'm your AI tutor 🤖 ready to help you understand this document.
 Feel free to ask me any questions about the document! I'm here to help! ✨
 """
 
+        # Refine the document summary to remove duplicated titles
+        refined_markdown_summary = refine_document_summary(markdown_summary, llm)
+        
+        # Use the refined version
         document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
         with open(document_summary_path, "w", encoding='utf-8') as f:
-            f.write(markdown_summary)
+            f.write(refined_markdown_summary)
 
-        return markdown_summary
+        return refined_markdown_summary
 
     else:
         # If the document length is beyond the token limit, we need to do RAG for each query
@@ -208,17 +247,17 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
 
         # First generate the take-home message, user input is the prompt's first line
         try:
-            takehome = await get_basic_rag_response(takehome_prompt, takehome_prompt.split("\n")[0], "", os.path.join(embedding_folder, 'markdown'), 'default')
+            takehome = await get_basic_rag_response(takehome_prompt, takehome_prompt.split("\n")[0], "", embedding_folder, 'default')
         except Exception as e:
             logger.exception(f"Failed to generate take-home message: {str(e)}")
-            takehome = await get_basic_rag_response(takehome_prompt, takehome_prompt.split("\n")[0], "", embedding_folder)
+            takehome = await get_basic_rag_response(takehome_prompt, takehome_prompt.split("\n")[0], "", os.path.join(embedding_folder, 'markdown'), 'default')
 
         # Generate overview
         try:
-            overview = await get_basic_rag_response(overview_prompt, overview_prompt.split("\n")[0], "", os.path.join(embedding_folder, 'markdown'), 'default')
+            overview = await get_basic_rag_response(overview_prompt, overview_prompt.split("\n")[0], "", embedding_folder, 'default')
         except Exception as e:
             logger.exception(f"Failed to generate overview: {str(e)}")
-            overview = await get_basic_rag_response(overview_prompt, overview_prompt.split("\n")[0], "", embedding_folder)
+            overview = await get_basic_rag_response(overview_prompt, overview_prompt.split("\n")[0], "", os.path.join(embedding_folder, 'markdown'), 'default')
 
         # Generate summaries for each topic
         try:
@@ -231,10 +270,10 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
                 logger.info(f"Generating summary for topic: {topic}")
                 logger.info(f"Prompt: {topic_prompt_copy}")
                 try:
-                    summary = await get_basic_rag_response(topic_prompt_copy, topic_prompt_copy.split("\n")[0], "", os.path.join(embedding_folder, 'markdown'), 'default')
+                    summary = await get_basic_rag_response(topic_prompt_copy, topic_prompt_copy.split("\n")[0], "", embedding_folder, 'default')
                 except Exception as e:
                     logger.exception(f"Failed to generate summary for topic: {topic}, error: {str(e)}")
-                    summary = await get_basic_rag_response(topic_prompt_copy, topic_prompt_copy.split("\n")[0], "", embedding_folder)
+                    summary = await get_basic_rag_response(topic_prompt_copy, topic_prompt_copy.split("\n")[0], "", os.path.join(embedding_folder, 'markdown'), 'default')
                 summaries.append((topic, summary))
         except Exception as e:
             logger.exception(f"Failed to load topics: {str(e)}")
@@ -248,10 +287,10 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
                 logger.info(f"Generating summary for topic: {topic}")
                 logger.info(f"Prompt: {topic_prompt_copy}")
                 try:
-                    summary = await get_basic_rag_response(topic_prompt_copy, topic_prompt_copy.split("\n")[0], "", os.path.join(embedding_folder, 'markdown'), 'default')
+                    summary = await get_basic_rag_response(topic_prompt_copy, topic_prompt_copy.split("\n")[0], "", embedding_folder, 'default')
                 except Exception as e:
                     logger.exception(f"Failed to generate summary for topic: {topic}, error: {str(e)}")
-                    summary = await get_basic_rag_response(topic_prompt_copy, topic_prompt_copy.split("\n")[0], "", embedding_folder)
+                    summary = await get_basic_rag_response(topic_prompt_copy, topic_prompt_copy.split("\n")[0], "", os.path.join(embedding_folder, 'markdown'), 'default')
                 summaries.append((topic, summary))
 
         # Combine everything into markdown format with welcome message and take-home message
@@ -286,8 +325,12 @@ I'm your AI tutor 🤖 ready to help you understand this document.
 Feel free to ask me any questions about the document! I'm here to help! ✨
 """
 
+        # Refine the document summary to remove duplicated titles
+        refined_markdown_summary = refine_document_summary(markdown_summary, llm)
+        
+        # Use the refined version
         document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
         with open(document_summary_path, "w", encoding='utf-8') as f:
-            f.write(markdown_summary)
+            f.write(refined_markdown_summary)
 
-        return markdown_summary
+        return refined_markdown_summary

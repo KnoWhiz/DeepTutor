@@ -60,19 +60,21 @@ async def get_basic_rag_response(
         # Handle different embedding folders based on type
         if chat_session.mode == ChatMode.LITE:
             actual_embedding_folder = os.path.join(embedding_folder, "lite_embedding")
+            db = load_embeddings(actual_embedding_folder, embedding_type)
         elif chat_session.mode == ChatMode.BASIC or chat_session.mode == ChatMode.ADVANCED:
             actual_embedding_folder = os.path.join(embedding_folder, "markdown")
+            db = load_embeddings(actual_embedding_folder, embedding_type)
         else:
             actual_embedding_folder = embedding_folder
+            db = load_embeddings(actual_embedding_folder, embedding_type)
     except Exception as e:
         logger.exception(f"Failed to load session mode: {str(e)}")
-        actual_embedding_folder = os.path.join(embedding_folder, "markdown")
-
-    try:
+        actual_embedding_folder = embedding_folder
         db = load_embeddings(actual_embedding_folder, embedding_type)
-    except Exception as e:
-        logger.exception(f"Failed to load embeddings: {str(e)}")
-        return "I'm sorry, I couldn't access the document information. Please try again later."
+
+    # except Exception as e:
+    #     logger.exception(f"Failed to load embeddings: {str(e)}")
+    #     return "I'm sorry, I couldn't access the document information. Please try again later."
 
     # Increase k for better context retrieval if in LITE mode
     k_value = config["retriever"]["k"]

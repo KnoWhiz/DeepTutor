@@ -289,6 +289,8 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
     # Generate follow-up questions
     followup_start = time.time()
     follow_up_questions = generate_follow_up_questions(answer, chat_history)
+    follow_up_questions_wording = config['follow_up_questions_wording']
+    follow_up_questions = [follow_up_questions_wording + question for question in follow_up_questions]
     for i in range(len(follow_up_questions)):
         follow_up_questions[i] = translate_content(
             content=follow_up_questions[i],

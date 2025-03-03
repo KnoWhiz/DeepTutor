@@ -525,6 +525,8 @@ def responses_refine(answer, reference=''):
         - DO NOT alter the meaning of any statements
         - DO NOT change the language of the content
         - DO NOT remove any information from the original answer
+        - DO NOT add any prefixes like "Refined Answer:", "Here's the refined version:", etc.
+        - Start directly with the content
         """
     )
     human_prompt = (
@@ -540,7 +542,7 @@ def responses_refine(answer, reference=''):
         2. Adding **bold text** to important terms and concepts for better readability
         3. Including relevant emojis to make the content more engaging
         
-        Do not change the actual information or add new content.
+        Start directly with the content - do not add any prefixes or introductory phrases.
         """
     )
     prompt = ChatPromptTemplate.from_messages([
@@ -549,4 +551,22 @@ def responses_refine(answer, reference=''):
     ])
     chain = prompt | llm | error_parser
     response = chain.invoke({"answer": answer, "reference": reference})
+    
+    # Post-process to remove common prefixes
+    common_prefixes = [
+        "refined answer:",
+        "here's the refined version:",
+        "refined content:",
+        "here is the refined answer:",
+        "enhanced answer:",
+        "improved answer:",
+    ]
+    
+    # Case-insensitive removal of prefixes
+    response_lower = response.lower()
+    for prefix in common_prefixes:
+        if response_lower.startswith(prefix):
+            response = response[len(prefix):].strip()
+            break
+    
     return response

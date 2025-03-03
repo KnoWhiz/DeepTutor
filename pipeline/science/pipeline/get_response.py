@@ -107,7 +107,10 @@ Remember: Your goal is to make learning enjoyable and accessible. Keep your tone
         #     stream=stream
         # )
 
-        db = load_embeddings(embedding_folder_list, 'lite')
+        actual_embedding_folder_list = [os.path.join(embedding_folder, 'lite_embedding') for embedding_folder in embedding_folder_list]
+        
+        db = load_embeddings(actual_embedding_folder_list, 'lite')
+        logger.info(f"Type of db: {type(db)}")
         answer = await get_rag_response(
             prompt_string=lite_prompt,
             user_input=user_input + "\n\n" + question.special_context,

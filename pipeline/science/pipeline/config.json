@@ -59,5 +59,6 @@
     "default_topics": ["Overview", "Methods", "Results", "Discussion"],
     "image_extensions": [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".webp", ".svg"],
     "inference_token_limit": 2500,
-    "stream": false
+    "stream": false,
+    "follow_up_questions_wording": "Follow up questions: "
 }

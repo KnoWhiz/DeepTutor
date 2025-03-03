@@ -50,6 +50,12 @@ def graphrag_index_files_check(embedding_folder):
         if not os.path.exists(path):
             all_files_exist = False
             print(f"Missing directory: {path}")
+
+    # If there is "I'm sorry" in documents_summary.txt, return False
+    if os.path.exists(document_summary_path):
+        with open(document_summary_path, "r") as file:
+            if "I'm sorry" in file.read():
+                return False
     return all_files_exist
 
 
@@ -174,6 +180,12 @@ def vectorrag_index_files_check(embedding_folder):
         if not os.path.exists(path):
             all_files_exist = False
             print(f"Missing directory: {path}")
+
+    # If there is "I'm sorry" in documents_summary.txt, return False
+    if os.path.exists(document_summary_path):
+        with open(document_summary_path, "r") as file:
+            if "I'm sorry" in file.read():
+                return False
     return all_files_exist
 
 

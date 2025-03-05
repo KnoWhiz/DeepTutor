@@ -307,6 +307,7 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
     logger.info(f"TEST: question.question_type: {question.question_type}")
 
     if question_type == "image":
+        logger.info(f"question_type for input: {user_input} is --image-- ...")
         # Find a single chunk in the embedding folder
         db = load_embeddings(embedding_folder_list, 'default')
         image_chunks = db.similarity_search_with_score(user_input + "\n\n" + question.special_context, k=1)
@@ -315,6 +316,12 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
             Here is the context and visual understanding of the image:
             """ + image_chunks[0][0].page_content
         logger.info(f"TEST: question.special_context: {question.special_context}")
+    elif question_type == "local":
+        logger.info(f"question_type for input: {user_input} is --local-- ...")
+    elif question_type == "global":
+        logger.info(f"question_type for input: {user_input} is --global-- ...")
+    else:
+        logger.info(f"question_type for input: {user_input} is unknown ...")
     return question
 
 
@@ -322,6 +329,7 @@ def generate_follow_up_questions(answer, chat_history):
     """
     Generate 3 relevant follow-up questions based on the assistant's response and chat history.
     """
+    logger.info("Generating follow-up questions ...")
     config = load_config()
     para = config['llm']
     llm = get_llm('basic', para)
@@ -373,4 +381,5 @@ def generate_follow_up_questions(answer, chat_history):
         "chat_history": truncate_chat_history(chat_history)
     })
 
+    logger.info(f"Generated follow-up questions: {result['questions']}")
     return result["questions"]

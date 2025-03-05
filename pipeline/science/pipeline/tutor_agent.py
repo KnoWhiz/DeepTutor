@@ -195,7 +195,7 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
                 target_lang=chat_session.current_language
             )
 
-        return answer, sources, source_pages, source_annotations, refined_source_pages, follow_up_questions, refined_source_index
+        return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
 
     time_tracking['summary_message'] = time.time() - initial_message_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
@@ -317,10 +317,10 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
     _document = None
     _doc = None
 
-    logger.info(f"sources: {sources}")
-    logger.info(f"source_pages: {source_pages}")
-    logger.info(f"refined_source_pages: {refined_source_pages}")
-    logger.info(f"refined_source_index: {refined_source_index}")
-    logger.info(f"source_annotations: {source_annotations}")
+    # logger.info(f"sources: {sources}")
+    # logger.info(f"source_pages: {source_pages}")
+    # logger.info(f"refined_source_pages: {refined_source_pages}")
+    # logger.info(f"refined_source_index: {refined_source_index}")
+    # logger.info(f"source_annotations: {source_annotations}")
     
     return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions

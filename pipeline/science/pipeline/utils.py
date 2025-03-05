@@ -158,7 +158,7 @@ def generate_file_id(file_path):
 def count_tokens(text, model_name='gpt-4o'):
     """Count tokens in text using tiktoken"""
     try:
-        logger.info(f"Counting tokens for text: {text}")
+        # logger.info(f"Counting tokens for text: {text}")
         encoding = tiktoken.encoding_for_model(model_name)
         # tokens = encoding.encode(text)
         tokens = encoding.encode(text, disallowed_special=(encoding.special_tokens_set - {'<|endoftext|>'}))

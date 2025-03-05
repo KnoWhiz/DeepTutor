@@ -198,6 +198,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                 source_pages,\
                 source_annotations,\
                 refined_source_pages,\
+                refined_source_index,\
                 follow_up_questions = streamlit_tutor_agent(
                     chat_session=st.session_state.chat_session,
                     file_path=file_path,
@@ -222,6 +223,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                         "sources": sources,
                         "pages": refined_source_pages,
                         "annotations": source_annotations,
+                        "index": refined_source_index,
                         "timestamp": len(st.session_state.chat_session.chat_history)
                     })
                 
@@ -319,6 +321,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                     source_pages,\
                     source_annotations,\
                     refined_source_pages,\
+                    refined_source_index,\
                     follow_up_questions = streamlit_tutor_agent(
                         chat_session=st.session_state.chat_session,
                         file_path=file_path,

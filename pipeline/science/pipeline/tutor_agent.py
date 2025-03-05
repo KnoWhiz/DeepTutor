@@ -317,10 +317,10 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
     _document = None
     _doc = None
 
-#     logger.info(f"sources: {sources}")
-#     logger.info(f"source_pages: {source_pages}")
-#     logger.info(f"refined_source_pages: {refined_source_pages}")
-#     logger.info(f"refined_source_index: {refined_source_index}")
-#     logger.info(f"source_annotations: {source_annotations}")
+    logger.info(f"sources: {sources}")
+    logger.info(f"source_pages: {source_pages}")
+    logger.info(f"refined_source_pages: {refined_source_pages}")
+    logger.info(f"refined_source_index: {refined_source_index}")
+    logger.info(f"source_annotations: {source_annotations}")
     
-    return answer, sources, source_pages, source_annotations, refined_source_pages, follow_up_questions
+    return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions

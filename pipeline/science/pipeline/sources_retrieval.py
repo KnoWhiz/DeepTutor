@@ -63,7 +63,7 @@ def get_response_source(mode, _doc, _document, file_path, user_input, answer, ch
     # Check if all necessary files exist to load the embeddings
     if os.path.exists(faiss_path) and os.path.exists(pkl_path):
         # Load existing embeddings
-        # print("Loading existing embeddings...")
+        # print("Loading existing embeddings...")Time tracking:
         logger.info("Loading existing embeddings...")
         db = load_embeddings(embedding_folder, 'default')
     else:

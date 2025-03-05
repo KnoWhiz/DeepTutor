@@ -43,46 +43,44 @@ if SKIP_MARKER_API:
     from marker.settings import settings
 
 
-def format_time_tracking(time_tracking: Dict[str, float]) -> str:
+def format_time_tracking(time_tracking: Dict[str, float], length: int = 1) -> str:
     """
     Format time tracking dictionary into a readable string with appropriate units.
 
     Args:
+        length: Length of the document in words
         time_tracking: Dictionary of operation names and their durations in seconds
 
     Returns:
-        Formatted string with times converted to appropriate units
+        Formatted string with times converted to seconds per word (s/word) format.
     """
     formatted_times = []
     for key, value in time_tracking.items():
+        # Handle special metadata keys
         if key == "0. session_id" or key == "0. session_type":
             formatted_times.append(f"{key}: {value}")
             continue
+            
         if key == "0. start_time":
             datetime_str = datetime.fromtimestamp(value, UTC).strftime("%Y-%m-%d %H:%M:%S")
             formatted_times.append(f"{key}: {datetime_str}")
             continue
+            
         if key == "0. end_time" and "0. start_time" in time_tracking:
             total_time_cost = value - time_tracking["0. start_time"]
-            if total_time_cost >= 60:
-                minutes = int(total_time_cost // 60)
-                remaining_seconds = total_time_cost % 60
-                formatted_times.append(f"0. total time cost: {minutes}m {remaining_seconds:.2f}s, session_id: {time_tracking.get('0. session_id', 'none')}, mode: {time_tracking.get('0. session_type', 'default')}")
-            else:
-                formatted_times.append(f"0. total time cost: {total_time_cost:.2f}s, session_id: {time_tracking.get('0. session_id', 'none')}, mode: {time_tracking.get('0. session_type', 'default')}")
+            seconds_per_word = total_time_cost / length if length > 0 else 0
+            formatted_times.append(f"0. total time cost: {seconds_per_word:.12f} s/word (total: {total_time_cost:.2f}s), session_id: {time_tracking.get('0. session_id', 'none')}, mode: {time_tracking.get('0. session_type', 'default')}")
             continue
+            
         if key == "0. metrics_time" and "0. end_time" in time_tracking:
             metrics_time_cost = value - time_tracking["0. end_time"]
-            formatted_times.append(f"0. metrics record time cost: {metrics_time_cost:.2f}s")
+            seconds_per_word = metrics_time_cost / length if length > 0 else 0
+            formatted_times.append(f"0. metrics record time cost: {seconds_per_word:.12f} s/word (total: {metrics_time_cost:.2f}s)")
             continue
 
-
-        if value >= 60:
-            minutes = int(value // 60)
-            remaining_seconds = value % 60
-            formatted_times.append(f"{key}: {minutes}m {remaining_seconds:.2f}s")
-        else:
-            formatted_times.append(f"{key}: {value:.2f}s")
+        # Handle regular time entries
+        seconds_per_word = value / length if length > 0 else 0
+        formatted_times.append(f"{key}: {seconds_per_word:.12f} s/word (total: {value:.2f}s)")
 
     return "\n".join(formatted_times)
 

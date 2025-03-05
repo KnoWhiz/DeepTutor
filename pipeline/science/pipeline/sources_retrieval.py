@@ -141,6 +141,11 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
     for chunk in answer_chunks_with_scores:
         sources_chunks.append(chunk[0])
 
+    sources_chunks_text = [chunk.page_content for chunk in sources_chunks]
+
+    # logger.info(f"TEST: sources_chunks: {sources_chunks}")
+    logger.info(f"TEST: sources_chunks_text: {sources_chunks_text}")
+
     # Get source pages dictionary, which maps each source to the page number it is found in. the page number is in the metadata of the document chunks
     source_pages = {}
     source_file_index = {}
@@ -152,6 +157,7 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
             logger.info(f"Chunk metadata: {chunk.metadata}")
             source_pages[chunk.page_content] = 1
         try:
+            # FIXME: KeyError: 'file_index' is not in the metadata
             source_file_index[chunk.page_content] = chunk.metadata['file_index']
         except KeyError:
             logger.exception(f"Error getting source file index for {chunk.page_content}")
@@ -188,7 +194,7 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
                          for source, file_index in source_file_index.items()}
 
     # TEST
-    logger.info("TEST: sources before refine:")
+    logger.info(f"TEST: sources before refine: sources_with_scores - {sources_with_scores}")
     logger.info(f"TEST: length of sources before refine: {len(sources_with_scores)}")
 
     # Refine and limit sources while preserving scores
@@ -202,6 +208,11 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
         if source in sources_with_scores:
             refined_source_pages[source] = page + 1
             refined_source_index[source] = source_file_index[source]
+
+    # TEST
+    logger.info(f"TEST: sources after refine: sources_with_scores - {sources_with_scores}")
+    logger.info(f"TEST: length of sources after refine: {len(sources_with_scores)}")
+
 
     # TEST
     logger.info("TEST: refined source index:")
@@ -301,8 +312,11 @@ def refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_
 
         # Evaluate each image
         image_scores = []
-        for image_url, score in image_sources.items():
-            if image_url in image_url_mapping_merged:
+        for idx, (image_url, score) in enumerate(image_sources.items()):
+            if image_url in image_url_mapping_merged_reverse:
+                # TEST
+                logger.info(f"TEST: No. {idx} evaluting image with image_url: {image_url}")
+
                 # Get all context descriptions for this image
                 descriptions = image_url_mapping_merged_reverse[image_url]
                 descriptions_text = "\n".join([f"- {desc}" for desc in descriptions])
@@ -330,6 +344,9 @@ def refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_
                 except Exception as e:
                     logger.exception(f"Error evaluating image {image_url}: {e}")
                     continue
+            else:
+                logger.warning(f"Image URL {image_url} not found in image_url_mapping_merged_reverse")
+                logger.info(f"TEST: image_url_mapping_merged_reverse: {image_url_mapping_merged_reverse}")
 
         # Sort images by relevance score
         image_scores.sort(key=lambda x: x[1], reverse=True)

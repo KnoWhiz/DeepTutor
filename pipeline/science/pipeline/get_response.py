@@ -309,12 +309,19 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
     if question_type == "image":
         logger.info(f"question_type for input: {user_input} is --image-- ...")
         # Find a single chunk in the embedding folder
+        # markdown_embedding_folder_list = [os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]
+        # try:
+        #     db = load_embeddings(markdown_embedding_folder_list, 'default')
+        # except Exception as e:
+        #     logger.exception(f"Failed to load markdown embeddings for image mode: {str(e)}")
+        #     db = load_embeddings(embedding_folder_list, 'default')
+        # FIXME: Later we can have a separate embedding folder for images context as a sub-database
         db = load_embeddings(embedding_folder_list, 'default')
-        image_chunks = db.similarity_search_with_score(user_input + "\n\n" + question.special_context, k=1)
+        image_chunks = db.similarity_search_with_score(user_input + "\n\n" + question.special_context, k=2)
         if image_chunks:
             question.special_context = """
             Here is the context and visual understanding of the image:
-            """ + image_chunks[0][0].page_content
+            """ + image_chunks[0][0].page_content + "\n\n" + image_chunks[1][0].page_content
         logger.info(f"TEST: question.special_context: {question.special_context}")
     elif question_type == "local":
         logger.info(f"question_type for input: {user_input} is --local-- ...")

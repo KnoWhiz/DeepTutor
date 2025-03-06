@@ -497,7 +497,7 @@ def create_searchable_chunks(doc, chunk_size: int) -> list:
 
 def replace_latex_formulas(text):
     """
-    Replace LaTeX formulas in the format \( formula \) with $ formula $
+    Replace LaTeX formulas in various formats with $ formula $ format
     
     Args:
         text (str): Text containing LaTeX formulas
@@ -510,6 +510,18 @@ def replace_latex_formulas(text):
     
     # Replace \( formula \) with $ formula $
     result = re.sub(r'\\[\(](.+?)\\[\)]', r'$ \1 $', text)
+    
+    # Replace complex mathematical formulas in square brackets 
+    # This pattern specifically targets mathematical formulas containing the combination of:
+    # 1. Complex LaTeX structures like g^{(2)} 
+    # 2. LaTeX commands that start with backslash like \frac, \langle, etc.
+    # The comma at the end is optional (from the user's example)
+    result = re.sub(r'\[\s*([^\[\]]*?(?:\^\{.*?\}|\\\w+\{).*?)\s*,?\s*\]', r'$ \1 $', result)
+    
+    # Special case for the exact pattern from the user's example:
+    # [ g^{(2)}(\tau) = \frac{\langle \rho_1(\tau) \rho_2(\tau + \delta T) \rangle}{\langle \rho_1(\tau) \rangle \langle \rho_2(\tau + \delta T) \rangle}, ]
+    pattern = r'\[\s*(g\^\{.*?\}.*?\\frac\{.*?\}\{.*?\}),?\s*\]'
+    result = re.sub(pattern, r'$ \1 $', result)
     
     return result
 

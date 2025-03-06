@@ -10,9 +10,9 @@ llm:
   api_key: ${GRAPHRAG_API_KEY} # set this in the generated .env file
   type: azure_openai_chat # Or azure_openai_embedding for embeddings
   api_base: https://knowhiz-service-openai.openai.azure.com/
-  api_version: 2024-07-01-preview # You can customize this for other versions
-  deployment_name: gpt-4o-mini
-  model: gpt-4o-mini
+  api_version: 2024-06-01-preview # You can customize this for other versions
+  deployment_name: gpt-4o
+  model: gpt-4o
   model_supports_json: true # recommended if this is available for your model.
   # audience: "https://cognitiveservices.azure.com/.default"
   # api_base: https://<instance>.openai.azure.com

@@ -196,7 +196,6 @@ async def generate_document_summary(file_path, embedding_folder, md_document=Non
     {{"topics": ["topic1", "topic2", ...]}}
 
     Guidelines:
-    - Include maximum 3-4 topics
     - Focus only on critical sections
     - Use short, descriptive names (1-2 words per topic)
     - Avoid overlapping topics

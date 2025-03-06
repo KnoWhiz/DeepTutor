@@ -535,7 +535,7 @@ def responses_refine(answer, reference=''):
     system_prompt = (
         """
         You are an expert at refining educational content while maintaining its original meaning and language.
-        Your task is to enhance the display of content by:
+        Your task is to improve the display of content by:
         
         1. Properly formatting all mathematical formulas with LaTeX syntax:
            - Surround inline formulas with single dollar signs ($formula$)
@@ -562,6 +562,7 @@ def responses_refine(answer, reference=''):
         - DO NOT change the language of the content
         - DO NOT remove any information from the original answer that is relevant to the educational content
         - DO remove irrelevant technical artifacts like data reports, debug logs, or system messages
+        - DO NOT start the answer with wording like "Here is the answer to your question:" or "Here is ..." or "Enhanced Answer" or "Refined Answer"
         """
     )
     human_prompt = (
@@ -577,6 +578,7 @@ def responses_refine(answer, reference=''):
         2. Adding **bold text** to important terms and concepts for better readability
         3. Including relevant emojis to make the content more engaging
         4. Removing any irrelevant content like data reports (e.g., ```[Data: Reports (19, 22, 21)]```), debug logs, or system messages
+        5. Avoid starting the answer with wording like "Here is ..." or "Enhanced Answer" or "Refined Answer"
         
         Do not change the actual educational information or add new content.
         """

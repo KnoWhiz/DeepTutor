@@ -324,7 +324,7 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
 """
 
         # Refine the document summary to remove duplicated titles
-        refined_markdown_summary = refine_document_summary(markdown_summary, llm)
+        refined_markdown_summary = refine_document_summary(markdown_summary, llm=get_llm("advanced", config['llm']))
         
         # Use the refined version
         document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
@@ -466,7 +466,7 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
 """
 
         # Refine the document summary to remove duplicated titles
-        refined_markdown_summary = refine_document_summary(markdown_summary, llm)
+        refined_markdown_summary = refine_document_summary(markdown_summary, llm=get_llm("advanced", config['llm']))
         
         # Use the refined version
         document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")

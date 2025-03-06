@@ -1,5 +1,6 @@
 import os
 import logging
+import re
 from langchain_community.vectorstores import FAISS
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.prompts import ChatPromptTemplate
@@ -35,9 +36,11 @@ class Question:
         text (str): The text content of the question
         language (str): The detected language of the question (e.g., "English")
         question_type (str): The type of question (e.g., "local" or "global" or "image")
+        special_context (str): Special context for the question
+        answer_planning (dict): Planning information for constructing the answer
     """
 
-    def __init__(self, text="", language="English", question_type="global", special_context=""):
+    def __init__(self, text="", language="English", question_type="global", special_context="", answer_planning=None):
         """
         Initialize a Question object.
 
@@ -45,6 +48,8 @@ class Question:
             text (str): The text content of the question
             language (str): The language of the question
             question_type (str): The type of the question (local or global or image)
+            special_context (str): Special context for the question
+            answer_planning (dict): Planning information for constructing the answer
         """
         self.text = text
         self.language = language
@@ -53,7 +58,8 @@ class Question:
         else:
             self.question_type = question_type
 
-        self.special_context =  special_context
+        self.special_context = special_context
+        self.answer_planning = answer_planning or {}
 
     def __str__(self):
         """Return string representation of the Question."""
@@ -64,7 +70,9 @@ class Question:
         return {
             "text": self.text,
             "language": self.language,
-            "question_type": self.question_type
+            "question_type": self.question_type,
+            "special_context": self.special_context,
+            "answer_planning": self.answer_planning
         }
 
 
@@ -144,7 +152,6 @@ Remember: Your goal is to make learning enjoyable and accessible. Keep your tone
             You are a patient and honest professor helping a student reading a paper.
             Use the given context to answer the question.
             If you don't know the answer, say you don't know.
-            The previous conversation is: {chat_history} make sure your answer follow the previous conversation but not repetitive.
             Reference context from the paper: ```{context}```
             If the concept can be better explained by formulas, use LaTeX syntax in markdown
             For inline formulas, use single dollar sign: $a/b = c/d$
@@ -152,7 +159,7 @@ Remember: Your goal is to make learning enjoyable and accessible. Keep your tone
             $$
             \frac{{a}}{{b}} = \frac{{c}}{{d}}
             $$
-            """
+            """ + "\n\nThis is a detailed plan for constructing the answer: " + str(question.answer_planning)
         
         # Load embeddings for Non-deep thinking mode
         try:
@@ -169,6 +176,7 @@ Remember: Your goal is to make learning enjoyable and accessible. Keep your tone
             db=db,
             stream=stream
         )
+        answer = responses_refine(answer)
         return answer
     else:
         logger.info("deep thinking ...")
@@ -200,8 +208,8 @@ Remember: Your goal is to make learning enjoyable and accessible. Keep your tone
 
         prompt = f"""
         You are a deep thinking tutor helping a student reading a paper.
-        The previous conversation is: {chat_history_string}
         Reference context from the paper: {context}
+        This is a detailed plan for constructing the answer: {str(question.answer_planning)}
         The student's query is: {user_input_string}
         """
         logger.info(f"user_input_string tokens: {count_tokens(user_input_string)}")
@@ -234,6 +242,10 @@ Remember: Your goal is to make learning enjoyable and accessible. Keep your tone
 
 
 def get_query_helper(chat_session: ChatSession, user_input, context_chat_history, embedding_folder_list):
+    # # Replace single "{" with "{{" and single "}" with "}}" in the user_input (match whole word)
+    # user_input = re.sub(r'(?<!{){(?!{)', '{{', user_input)
+    # user_input = re.sub(r'(?<!})}(?!})', '}}', user_input)
+    logger.info(f"TEST: user_input: {user_input}")
     # If we have "documents_summary" in the embedding folder, we can use it to speed up the search
     document_summary_path_list = [os.path.join(embedding_folder, "documents_summary.txt") for embedding_folder in embedding_folder_list]
     documents_summary_list = []
@@ -291,6 +303,9 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
                                   "context": documents_summary,
                                   "chat_history": truncate_chat_history(context_chat_history)})
     question = parsed_result['question']
+    # # Replace single "{" with "{{" and single "}" with "}}" in the question (match whole word)
+    # question = re.sub(r'(?<!{){(?!{)', '{{', question)
+    # question = re.sub(r'(?<!})}(?!})', '}}', question)
     question_type = parsed_result['question_type']
     try:
         language = detect_language(user_input)
@@ -301,9 +316,78 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
 
     chat_session.set_language(language)
 
+    # Create the answer planning using an additional LLM call
+    planning_system_prompt = (
+        """
+        You are an educational AI assistant tasked with deeply analyzing a student's question and planning a comprehensive answer.
+        
+        Your goal is to:
+        1. Understand what the student truly wants to know based on the conversation history and current question
+        2. Create a detailed plan for constructing the answer
+        3. Identify what information should be included in the answer
+        4. Identify what information should NOT be included (e.g., repeated information, information the student already knows)
+        
+        Document summary:
+        ```{context}```
+        
+        Previous conversation history:
+        ```{chat_history}```
+        
+        Organize your analysis in the following JSON format:
+        ```json
+        {{
+            "user_intent": "<detailed analysis of what the user truly wants to know. based on the previous conversation history and the current question analyse what user already knows and what user doesn't know>",
+            "things_explained_already": ["<list of things that has been explained in the previous conversation and should not be repeated in detail in the answer>"],
+            "key_focus_areas": ["<list of specific topics/concepts that should be explained>"],
+            "information_to_include": ["<list of specific information points that should be included>"],
+            "information_to_exclude": ["<list of information that should be excluded - already known/redundant>"],
+            "answer_structure": ["<outline of how the answer should be structured>"],
+            "explanation_depth": "<assessment of how detailed the explanation should be (basic/intermediate/advanced)>",
+            "misconceptions_to_address": ["<potential misconceptions that should be corrected>"]
+        }}
+        ```
+        """
+    )
+    
+    planning_human_prompt = (
+        """
+        The student's current question:
+        ```{input}```
+        
+        The rephrased question for RAG context:
+        ```{rephrased_question}```
+        
+        Question type: {question_type}
+        
+        Based on the conversation history, document summary, and the current question, create a detailed plan for constructing the answer.
+        """
+    )
+    
+    planning_prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", planning_system_prompt),
+            ("human", planning_human_prompt),
+        ]
+    )
+    
+    planning_chain = planning_prompt | llm | error_parser
+    answer_planning = planning_chain.invoke({
+        "input": user_input,
+        "rephrased_question": question,
+        "question_type": question_type,
+        "context": documents_summary,
+        "chat_history": truncate_chat_history(context_chat_history)
+    })
+    logger.info(f"TEST: answer_planning: {answer_planning}")
+
     # # TEST
     # print("question rephrased:", question)
-    question = Question(text=question, language=language, question_type=question_type)
+    question = Question(
+        text=question, 
+        language=language, 
+        question_type=question_type,
+        answer_planning=answer_planning
+    )
     logger.info(f"TEST: question.question_type: {question.question_type}")
 
     if question_type == "image":

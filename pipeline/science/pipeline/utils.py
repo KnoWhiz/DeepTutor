@@ -521,7 +521,7 @@ def responses_refine(answer, reference=''):
            - Using emojis that match the educational context and subject matter
         
         4. Cleaning up irrelevant content:
-           - Remove any code blocks containing only data reports like ```[Data: Reports (19, 22, 21)]```
+           - Remove any code blocks containing only data reports like ```[Data: Reports (19, 22, 21)]``` or ```[39]```
            - Remove any debugging information, log outputs, or system messages not relevant to the educational content
            - Remove any metadata markers or tags that aren't meant for the end user
         
@@ -542,7 +542,7 @@ def responses_refine(answer, reference=''):
         {reference}
         
         Please refine the original answer by:
-        1. Properly formatting all mathematical formulas with LaTeX syntax (using $ or $$ as appropriate)
+        1. Properly formatting all mathematical formulas with LaTeX syntax (add $ or $$ for all possible formulas as appropriate)
         2. Adding **bold text** to important terms and concepts for better readability
         3. Including relevant emojis to make the content more engaging
         4. Removing any irrelevant content like data reports (e.g., ```[Data: Reports (19, 22, 21)]```), debug logs, or system messages

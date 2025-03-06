@@ -34,6 +34,9 @@ from pipeline.science.pipeline.helper.index_files_saving import (
     graphrag_index_files_decompress,
 )
 
+import logging
+logger = logging.getLogger("graphrag_api_test.py")
+
 def setup_graphrag_environment(embedding_folder: str) -> None:
     """Set up the GraphRAG environment with necessary configurations.
 

@@ -3,6 +3,10 @@ import sys
 import json
 from dotenv import load_dotenv
 from openai import AzureOpenAI
+
+import logging
+logger = logging.getLogger("images_understanding_test.py")
+
 load_dotenv()
 
 # Add the project root directory to Python path

@@ -1,5 +1,4 @@
 import os
-import logging
 from pathlib import Path
 from typing import Dict, Tuple
 from PIL import Image
@@ -8,7 +7,8 @@ from marker.models import create_model_dict
 from marker.output import text_from_rendered
 from marker.settings import settings
 
-logger = logging.getLogger(__name__)
+import logging
+logger = logging.getLogger("images_extraction_test.py")
 
 def extract_pdf_content_to_markdown(
     file_path: str | Path,

@@ -3,14 +3,14 @@ import io
 import time
 import requests
 import base64
-import logging
 from pathlib import Path
 from typing import Dict, Tuple
 from PIL import Image
 
 from dotenv import load_dotenv
 
-logger = logging.getLogger(__name__)
+import logging
+logger = logging.getLogger("marker_api_test.py")
 
 def extract_pdf_content_to_markdown_via_api(
     file_path: str | Path,

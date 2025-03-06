@@ -2,6 +2,9 @@ import os
 import dotenv
 from typing import Optional, Dict, Any, Union, Iterator
 
+import logging
+logger = logging.getLogger("o3mini_test.py")
+
 # Load environment variables
 dotenv.load_dotenv()
 

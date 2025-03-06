@@ -3,6 +3,9 @@ from dotenv import load_dotenv
 from langchain_sambanova import ChatSambaNovaCloud
 from langchain_core.prompts import ChatPromptTemplate
 
+import logging
+logger = logging.getLogger("sambanova_llama_test.py")
+
 load_dotenv()
 
 def main():

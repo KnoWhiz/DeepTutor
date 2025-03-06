@@ -3,6 +3,9 @@ import openai
 from dotenv import load_dotenv
 from typing import Optional
 
+import logging
+logger = logging.getLogger("deepseek_test.py")
+
 load_dotenv()
 
 def deepseek_inference(

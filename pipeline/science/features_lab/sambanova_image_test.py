@@ -4,6 +4,9 @@ import requests
 import base64
 from dotenv import load_dotenv
 
+import logging
+logger = logging.getLogger("sambanova_image_test.py")
+
 load_dotenv()
 
 def process_image_with_llama(image_url, prompt_text, stream=False):

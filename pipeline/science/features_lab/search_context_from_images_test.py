@@ -3,6 +3,9 @@ import json
 import sys
 from typing import Dict, List, Set
 
+import logging
+logger = logging.getLogger("search_context_from_images_test.py")
+
 def count_tokens(text: str) -> int:
     """
     Estimate the number of tokens in a text string using a simple word-based approach.

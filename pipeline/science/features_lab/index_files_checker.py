@@ -6,6 +6,9 @@ import pickle
 from typing import Tuple, Dict, Any
 from langchain_community.docstore.in_memory import InMemoryDocstore
 
+import logging
+logger = logging.getLogger("index_files_checker.py")
+
 def check_index_file(index_file_path: str, pkl_file_path: str) -> None:
     """
     Check and display information about FAISS index file and its associated pickle file.

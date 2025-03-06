@@ -14,7 +14,8 @@ from pipeline.science.pipeline.utils import (
     get_llm,
     responses_refine,
     detect_language,
-    count_tokens
+    count_tokens,
+    replace_latex_formulas
 )
 from pipeline.science.pipeline.embeddings import (
     get_embedding_models,
@@ -237,6 +238,9 @@ Remember: Your goal is to make learning enjoyable and accessible. Keep your tone
         else:
             answer = responses_refine(answer)
 
+        # Replace LaTeX formulas in the final answer
+        answer = replace_latex_formulas(answer)
+
         logger.info("get_response done ...")
         return answer
 
@@ -245,6 +249,10 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
     # # Replace single "{" with "{{" and single "}" with "}}" in the user_input (match whole word)
     # user_input = re.sub(r'(?<!{){(?!{)', '{{', user_input)
     # user_input = re.sub(r'(?<!})}(?!})', '}}', user_input)
+    
+    # Replace LaTeX formulas in the format \( formula \) with $ formula $
+    user_input = replace_latex_formulas(user_input)
+    
     logger.info(f"TEST: user_input: {user_input}")
     # If we have "documents_summary" in the embedding folder, we can use it to speed up the search
     document_summary_path_list = [os.path.join(embedding_folder, "documents_summary.txt") for embedding_folder in embedding_folder_list]

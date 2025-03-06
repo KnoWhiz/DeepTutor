@@ -10,6 +10,7 @@ import requests
 import base64
 import time
 from datetime import datetime, UTC
+import re
 
 from dotenv import load_dotenv
 from typing import List, Tuple, Dict
@@ -492,6 +493,25 @@ def create_searchable_chunks(doc, chunk_size: int) -> list:
     ))
 
     return chunks
+
+
+def replace_latex_formulas(text):
+    """
+    Replace LaTeX formulas in the format \( formula \) with $ formula $
+    
+    Args:
+        text (str): Text containing LaTeX formulas
+        
+    Returns:
+        str: Text with replaced LaTeX formula format
+    """
+    if not text:
+        return text
+    
+    # Replace \( formula \) with $ formula $
+    result = re.sub(r'\\[\(](.+?)\\[\)]', r'$ \1 $', text)
+    
+    return result
 
 
 def responses_refine(answer, reference=''):

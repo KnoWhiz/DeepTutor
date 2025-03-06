@@ -13,8 +13,10 @@ from pipeline.science.pipeline.utils import (
 from pipeline.science.pipeline.doc_processor import process_pdf_file
 from pipeline.science.pipeline.get_rag_response import get_basic_rag_response
 from pipeline.science.pipeline.api_handler import ApiHandler
+
 import logging
 logger = logging.getLogger("tutorpipeline.science.get_doc_summary")
+
 load_dotenv()
 
 

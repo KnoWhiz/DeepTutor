@@ -4,6 +4,6 @@ from autogen_ext.models.openai import OpenAIChatCompletionClient
 
 async def main() -> None:
     agent = AssistantAgent("assistant", OpenAIChatCompletionClient(model="gpt-4o"))
-    print(await agent.run(task="Say 'Hello World!'"))
+    logger.info(await agent.run(task="Say 'Hello World!'"))
 
 asyncio.run(main())

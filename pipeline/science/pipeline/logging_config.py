@@ -1,5 +1,7 @@
-import logging
 import sys
+
+import logging
+logger = logging.getLogger("tutorpipeline.science.logging_config")
 
 def setup_logging():
     # Create a formatter that includes timestamp, level, and logger name

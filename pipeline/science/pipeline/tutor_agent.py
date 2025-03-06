@@ -30,6 +30,7 @@ from pipeline.science.pipeline.get_response import (
 )
 from pipeline.science.pipeline.sources_retrieval import get_response_source
 from pipeline.science.pipeline.config import load_config
+
 import logging
 logger = logging.getLogger("tutorpipeline.science.tutor_agent")
 
@@ -282,7 +283,7 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
         content=answer,
         target_lang=chat_session.current_language
     )
-    # print(f"translate_content Answer: {answer}")
+    # logger.info(f"translate_content Answer: {answer}")
     time_tracking['translation'] = time.time() - translation_start
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 

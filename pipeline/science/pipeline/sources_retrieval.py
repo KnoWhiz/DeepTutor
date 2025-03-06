@@ -47,7 +47,7 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
             with open(image_context_path, 'r') as f:
                 image_context = json.loads(f.read())
         else:
-            print(f"image_context_path: {image_context_path} does not exist")
+            logger.info(f"image_context_path: {image_context_path} does not exist")
             image_context = {}
             with open(image_context_path, 'w') as f:
                 json.dump(image_context, f)
@@ -340,8 +340,8 @@ def refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_
                             result["explanation"]
                         ))
                         # # TEST
-                        # print(f"image_scores for {image_url}: {image_scores}")
-                        # print(f"result for {image_url}: {result}")
+                        # logger.info(f"image_scores for {image_url}: {image_scores}")
+                        # logger.info(f"result for {image_url}: {result}")
                 except Exception as e:
                     logger.exception(f"Error evaluating image {image_url}: {e}")
                     continue

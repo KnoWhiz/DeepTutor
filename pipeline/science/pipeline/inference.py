@@ -1,6 +1,5 @@
 import os
 import openai
-import logging
 from typing import Optional, Dict, Any, Union, Iterator
 from dotenv import load_dotenv
 from langchain_openai import AzureChatOpenAI
@@ -8,6 +7,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from pipeline.science.pipeline.config import load_config
 load_dotenv()
 
+import logging
 logger = logging.getLogger("tutorpipeline.science.inference")
 
 
@@ -108,8 +108,8 @@ def deepseek_inference(
             # Process the streaming response
             for chunk in response:
                 if chunk.choices[0].delta.content is not None:
-                    print(chunk.choices[0].delta.content, end="", flush=True)
-            print()  # Add a newline at the end
+                    logger.info(chunk.choices[0].delta.content, end="", flush=True)
+            logger.info()  # Add a newline at the end
             return None
         else:
             # Return the complete response
@@ -175,10 +175,10 @@ def o3mini_inference(user_prompt: str,
 # Example usage
 if __name__ == "__main__":
     # Example with streaming
-    print("Streaming response:")
+    logger.info("Streaming response:")
     deepseek_inference("what is 1+1?", stream=True)
 
-    print("\nNon-streaming response:")
+    logger.info("\nNon-streaming response:")
     response = deepseek_inference("what is 1+1?", stream=False)
     if response:
-        print(response)
+        logger.info(response)

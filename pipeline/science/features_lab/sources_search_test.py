@@ -111,7 +111,7 @@ def test_source_search(file_path: str, chunk_size: int = 512) -> None:
         file_path: Path to the PDF file to test
         chunk_size: Maximum size of each text chunk in characters (default: 512)
     """
-    print(f"Testing source search for PDF: {file_path}")
+    logger.info(f"Testing source search for PDF: {file_path}")
 
     # Load the PDF file
     with open(file_path, "rb") as f:
@@ -120,12 +120,12 @@ def test_source_search(file_path: str, chunk_size: int = 512) -> None:
     # Process the PDF file
     document, doc = state_process_pdf_file(file_path)
 
-    print(f"Loaded PDF with {len(document)} document chunks")
+    logger.info(f"Loaded PDF with {len(document)} document chunks")
 
     # Create chunks directly from the PDF content to ensure better matching
     chunks = create_searchable_chunks(doc, chunk_size)
 
-    print(f"Created {len(chunks)} searchable chunks from PDF")
+    logger.info(f"Created {len(chunks)} searchable chunks from PDF")
 
     # Create temporary embedding folder
     temp_embedding_folder = "temp_embeddings"
@@ -140,7 +140,7 @@ def test_source_search(file_path: str, chunk_size: int = 512) -> None:
 
     # Get all chunks from the vector store by doing a similarity search with each chunk
     retrieved_chunks = []
-    print("\nRetrieving chunks from vector store...")
+    logger.info("\nRetrieving chunks from vector store...")
     for chunk in chunks:
         # Use the chunk's content to find similar chunks
         similar_chunks = db.similarity_search(chunk.page_content, k=1)
@@ -152,14 +152,14 @@ def test_source_search(file_path: str, chunk_size: int = 512) -> None:
     found_chunks = 0
     not_found_chunks = []
 
-    print("\nTesting each chunk...")
+    logger.info("\nTesting each chunk...")
     for i, chunk in enumerate(retrieved_chunks, 1):
-        print(f"\rTesting chunk {i}/{total_chunks}", end="", flush=True)
+        logger.info(f"\rTesting chunk {i}/{total_chunks}", end="", flush=True)
 
         # Get the page number from metadata
         page_num = chunk.metadata.get("page", 0)  # Already 0-based
         if page_num < 0 or page_num >= len(doc):
-            print(f"\nWarning: Invalid page number {page_num + 1} for chunk {i}")
+            logger.info(f"\nWarning: Invalid page number {page_num + 1} for chunk {i}")
             not_found_chunks.append((i, chunk.page_content))
             continue
 
@@ -174,21 +174,21 @@ def test_source_search(file_path: str, chunk_size: int = 512) -> None:
         else:
             not_found_chunks.append((i, chunk.page_content))
 
-    print("\n\nResults:")
-    print(f"Total chunks tested: {total_chunks}")
-    print(f"Chunks found in source: {found_chunks}")
-    print(f"Chunks not found in source: {len(not_found_chunks)}")
+    logger.info("\n\nResults:")
+    logger.info(f"Total chunks tested: {total_chunks}")
+    logger.info(f"Chunks found in source: {found_chunks}")
+    logger.info(f"Chunks not found in source: {len(not_found_chunks)}")
 
     if not_found_chunks:
-        print("\nChunks that couldn't be found in source:")
+        logger.info("\nChunks that couldn't be found in source:")
         for i, content in not_found_chunks:
-            print(f"\nChunk {i}:")
-            print("-" * 80)
-            print("Content:")
-            print(content[:200] + "..." if len(content) > 200 else content)
-            print("\nMetadata:")
-            print(retrieved_chunks[i-1].metadata)
-            print("-" * 80)
+            logger.info(f"\nChunk {i}:")
+            logger.info("-" * 80)
+            logger.info("Content:")
+            logger.info(content[:200] + "..." if len(content) > 200 else content)
+            logger.info("\nMetadata:")
+            logger.info(retrieved_chunks[i-1].metadata)
+            logger.info("-" * 80)
 
     # Cleanup
     if os.path.exists(temp_embedding_folder):

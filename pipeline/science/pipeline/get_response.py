@@ -1,5 +1,4 @@
 import os
-import logging
 import re
 from langchain_community.vectorstores import FAISS
 from langchain_core.runnables import RunnablePassthrough
@@ -26,6 +25,7 @@ from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
 from pipeline.science.pipeline.get_graphrag_response import get_GraphRAG_global_response
 from pipeline.science.pipeline.get_rag_response import get_basic_rag_response, get_rag_response
 
+import logging
 logger = logging.getLogger("tutorpipeline.science.get_response")
 
 
@@ -317,9 +317,9 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
     question_type = parsed_result['question_type']
     try:
         language = detect_language(user_input)
-        print("language detected:", language)
+        logger.info("language detected:", language)
     except Exception as e:
-        print("Error detecting language:", e)
+        logger.info("Error detecting language:", e)
         language = "English"
 
     chat_session.set_language(language)
@@ -389,7 +389,7 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
     logger.info(f"TEST: answer_planning: {answer_planning}")
 
     # # TEST
-    # print("question rephrased:", question)
+    # logger.info("question rephrased:", question)
     question = Question(
         text=question, 
         language=language, 

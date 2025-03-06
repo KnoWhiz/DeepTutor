@@ -1,5 +1,4 @@
 import os
-import logging
 import pandas as pd
 import tiktoken
 import asyncio
@@ -23,6 +22,7 @@ from pipeline.science.pipeline.utils import (
     responses_refine,
 )
 
+import logging
 logger = logging.getLogger("tutorpipeline.science.get_graphrag_response")
 
 
@@ -37,7 +37,7 @@ async def get_GraphRAG_global_response(user_input, chat_history, embedding_folde
     try:
         load_dotenv(".env")
     except Exception as e:
-        print("Error loading .env file:", e)
+        logger.info("Error loading .env file:", e)
         raise
         
     api_key = os.getenv("GRAPHRAG_API_KEY")
@@ -70,8 +70,8 @@ async def get_GraphRAG_global_response(user_input, chat_history, embedding_folde
     communities = read_indexer_communities(community_df, entity_df, report_df)
     reports = read_indexer_reports(report_df, entity_df, COMMUNITY_LEVEL)
     entities = read_indexer_entities(entity_df, entity_embedding_df, COMMUNITY_LEVEL)
-    print(f"Total report count: {len(report_df)}")
-    print(
+    logger.info(f"Total report count: {len(report_df)}")
+    logger.info(
         f"Report count after filtering by community level {COMMUNITY_LEVEL}: {len(reports)}"
     )
 

@@ -3,6 +3,9 @@ from dotenv import load_dotenv
 import os
 load_dotenv()
 
+import logging
+logger = logging.getLogger("tutorpipeline.science.helper.azure_blob")
+
 
 class AzureBlobHelper(object):
     def __init__(self):
@@ -14,10 +17,10 @@ class AzureBlobHelper(object):
             blob_client = self.blob_service_client.get_blob_client(container=container_name, blob=blob_name)
             with open(output_name, "wb") as download_file:
                 download_file.write(blob_client.download_blob().readall())
-            print(f"Downloaded {blob_name} to {output_name}")
+            logger.info(f"Downloaded {blob_name} to {output_name}")
             return f"https://{self.blob_service_client.account_name}.blob.core.windows.net/{container_name}/{blob_name}"
         except Exception as e:
-            print(f"Error downloading blob: {e}")
+            logger.info(f"Error downloading blob: {e}")
             raise
 
     def upload(self, file_path: str, blob_name: str, container_name: str):
@@ -25,10 +28,10 @@ class AzureBlobHelper(object):
             blob_client = self.blob_service_client.get_blob_client(container=container_name, blob=blob_name)
             with open(file_path, "rb") as data:
                 blob_client.upload_blob(data, overwrite=True)
-            print(f"Uploaded {file_path} as {blob_name} to container {container_name}")
-            print(f"https://{self.blob_service_client.account_name}.blob.core.windows.net/{container_name}/{blob_name}")
+            logger.info(f"Uploaded {file_path} as {blob_name} to container {container_name}")
+            logger.info(f"https://{self.blob_service_client.account_name}.blob.core.windows.net/{container_name}/{blob_name}")
         except Exception as e:
-            print(f"Error uploading blob: {e}")
+            logger.info(f"Error uploading blob: {e}")
             raise
 
 

@@ -10,6 +10,7 @@ from pipeline.science.pipeline.api_handler import ApiHandler
 
 import logging
 logger = logging.getLogger("tutorpipeline.science.embeddings")
+
 load_dotenv()
 
 # Control whether to use Marker API or not. Only for local environment we skip Marker API.
@@ -53,7 +54,7 @@ def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_s
     para = config['llm']
     embeddings = get_embedding_models('default', para)
 
-    print("Creating markdown embeddings...")
+    logger.info("Creating markdown embeddings...")
     if md_document:
         # Create markdown directory if it doesn't exist
         os.makedirs(output_dir, exist_ok=True)
@@ -72,9 +73,9 @@ def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_s
         # Create and save markdown embeddings
         db_markdown = FAISS.from_documents(markdown_texts, embeddings)
         db_markdown.save_local(output_dir)
-        print(f"Saved {len(markdown_texts)} markdown chunks to {output_dir}")
+        logger.info(f"Saved {len(markdown_texts)} markdown chunks to {output_dir}")
     else:
-        print("No markdown content available to create markdown embeddings")
+        logger.info("No markdown content available to create markdown embeddings")
 
 
 async def generate_LiteRAG_embedding(_doc, file_path, embedding_folder):

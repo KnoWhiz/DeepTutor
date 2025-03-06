@@ -5,7 +5,7 @@ from pipeline.science.pipeline.get_response import generate_follow_up_questions
 from pipeline.science.pipeline.session_manager import ChatSession
 
 import logging
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("tutorfrontend.utils")
 
 
 def streamlit_tutor_agent(chat_session, file_path, user_input):    

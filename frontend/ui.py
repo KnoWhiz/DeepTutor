@@ -1,7 +1,6 @@
 import json
 import base64
 import PyPDF2
-import logging
 import streamlit as st
 from typing import Set
 from streamlit_pdf_viewer import pdf_viewer
@@ -18,7 +17,8 @@ from pipeline.science.pipeline.config import load_config
 from pipeline.science.pipeline.session_manager import ChatMode
 from frontend.utils import streamlit_tutor_agent
 
-logger = logging.getLogger(__name__)
+import logging
+logger = logging.getLogger("tutorfrontend.ui")
 
 def to_emoji_number(num: int) -> str:
     """Convert an integer to a bold circled number (1-20).
@@ -406,7 +406,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                                                 except Exception as e:
                                                     logger.exception(f"Failed to get annotations: {str(e)}")
                                                     st.session_state.annotations = []
-                                                # print(f"type of st.session_state.annotations: {type(st.session_state.annotations)}")
+                                                # logger.info(f"type of st.session_state.annotations: {type(st.session_state.annotations)}")
                         
                         # Then display follow-up questions
                         st.write("\n\n**📝 Follow-up Questions:**")
@@ -442,7 +442,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                     except Exception as e:
                         logger.exception(f"Failed to get annotations: {str(e)}")
                         st.session_state.annotations = []
-                    # print(f"type of st.session_state.annotations: {type(st.session_state.annotations)}")
+                    # logger.info(f"type of st.session_state.annotations: {type(st.session_state.annotations)}")
 
 
 # Function to display the pdf viewer

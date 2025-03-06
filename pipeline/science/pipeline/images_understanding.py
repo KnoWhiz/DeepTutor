@@ -1,7 +1,6 @@
 import os
 import json
 import sys
-import logging
 import openai
 import requests
 import base64
@@ -13,7 +12,8 @@ from pipeline.science.pipeline.utils import generate_file_id
 from pipeline.science.pipeline.config import load_config
 load_dotenv()
 
-logger = logging.getLogger(__name__)
+import logging
+logger = logging.getLogger("tutorpipeline.science.images_understanding")
 
 
 # Add the project root to Python path for direct script execution
@@ -87,13 +87,13 @@ def initialize_image_files(folder_dir: str | Path) -> tuple[str, str]:
 
     # Create empty image context file if it doesn't exist
     if not image_context_path.exists():
-        print("Initializing empty image context file...")
+        logger.info("Initializing empty image context file...")
         with open(image_context_path, "w", encoding="utf-8") as f:
             json.dump({}, f)
 
     # Create empty image URLs file if it doesn't exist
     if not image_urls_path.exists():
-        print("Initializing empty image URLs file...")
+        logger.info("Initializing empty image URLs file...")
         with open(image_urls_path, "w", encoding="utf-8") as f:
             json.dump({}, f)
 
@@ -125,7 +125,7 @@ def upload_images_to_azure(folder_dir: str | Path, file_path) -> None:
     # List all image files in the folder
     image_files = [f for f in os.listdir(folder_path) if os.path.splitext(f.lower())[1] in image_extensions]
     if not image_files:
-        print("No image files found in the folder.")
+        logger.info("No image files found in the folder.")
         return
 
     # Initialize Azure Blob helper
@@ -135,13 +135,13 @@ def upload_images_to_azure(folder_dir: str | Path, file_path) -> None:
     # Load existing image URLs
     with open(output_path, 'r', encoding='utf-8') as infile:
         image_urls = json.load(infile)
-        print("Loaded existing image_urls.json")
+        logger.info("Loaded existing image_urls.json")
 
     # Upload each image and store its URL if not already uploaded
     for image_file in image_files:
         # Skip if image is already in our mapping
         if image_file in image_urls:
-            print(f"Skipping {image_file} - already uploaded")
+            logger.info(f"Skipping {image_file} - already uploaded")
             continue
 
         local_path = folder_path / image_file
@@ -153,23 +153,23 @@ def upload_images_to_azure(folder_dir: str | Path, file_path) -> None:
             if blob_client.exists():
                 url = f"https://{azure_blob.blob_service_client.account_name}.blob.core.windows.net/{container_name}/{blob_name}"
                 image_urls[image_file] = url
-                print(f"Skipping {image_file} - already exists in Azure storage")
+                logger.info(f"Skipping {image_file} - already exists in Azure storage")
                 continue
 
             # Upload only if doesn't exist
             azure_blob.upload(str(local_path), blob_name, container_name)
             url = f"https://{azure_blob.blob_service_client.account_name}.blob.core.windows.net/{container_name}/{blob_name}"
             image_urls[image_file] = url
-            print(f"Uploaded {image_file}")
+            logger.info(f"Uploaded {image_file}")
         except Exception as e:
-            print(f"Error processing {image_file}: {e}")
+            logger.info(f"Error processing {image_file}: {e}")
             continue
 
     # Write the updated URL mapping to JSON file
     with open(output_path, 'w', encoding='utf-8') as outfile:
         json.dump(image_urls, outfile, indent=2, ensure_ascii=False)
 
-    print(f"Image URLs mapping saved to: {output_path}")
+    logger.info(f"Image URLs mapping saved to: {output_path}")
 
 
 def upload_markdown_to_azure(folder_dir: str | Path, file_path: str) -> None:
@@ -267,7 +267,7 @@ def extract_image_context(folder_dir: str | Path, file_path: str = "", context_t
     # Process folder images
     process_folder_images(folder_dir)
 
-    print(f"Image context data saved to: {image_context_path}")
+    logger.info(f"Image context data saved to: {image_context_path}")
 
 
 def analyze_image(image_url=None):
@@ -375,7 +375,7 @@ def process_folder_images(folder_path):
         return contexts
 
     except Exception as e:
-        print(f"Error processing folder images: {str(e)}")
+        logger.info(f"Error processing folder images: {str(e)}")
         raise
 
 

@@ -5,6 +5,9 @@ import requests  # pip install requests
 
 from dotenv import load_dotenv
 
+import logging
+logger = logging.getLogger("tutorfrontend.forms.contact")
+
 # WEBHOOK_URL = st.secrets["WEBHOOK_URL"]
 WEBHOOK_URL = str(os.getenv("WEBHOOK_URL"))
 

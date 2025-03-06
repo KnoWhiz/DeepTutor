@@ -28,7 +28,6 @@ from pipeline.science.pipeline.config import load_config
 from pipeline.science.pipeline.api_handler import ApiHandler
 
 import logging
-
 logger = logging.getLogger("tutorpipeline.science.utils")
 
 load_dotenv()
@@ -221,13 +220,13 @@ def truncate_document(_document, model_name='gpt-4o'):
     max_tokens = int(api.models[model_level]['context_window']/1.2)
 
     # # TEST
-    # print(f"max_tokens: {max_tokens}")
-    # print(f"model_name: {model_name}")
-    # print(f"model_level: {model_level}")
-    # print(f"api.models[model_level]: {api.models[model_level]}")
-    # print(f"api.models[model_level]['context_window']: {api.models[model_level]['context_window']}")
-    # print(f"api.models[model_level]['context_window']/1.2: {api.models[model_level]['context_window']/1.2}")
-    # print(f"int(api.models[model_level]['context_window']/1.2): {int(api.models[model_level]['context_window']/1.2)}")
+    # logger.info(f"max_tokens: {max_tokens}")
+    # logger.info(f"model_name: {model_name}")
+    # logger.info(f"model_level: {model_level}")
+    # logger.info(f"api.models[model_level]: {api.models[model_level]}")
+    # logger.info(f"api.models[model_level]['context_window']: {api.models[model_level]['context_window']}")
+    # logger.info(f"api.models[model_level]['context_window']/1.2: {api.models[model_level]['context_window']/1.2}")
+    # logger.info(f"int(api.models[model_level]['context_window']/1.2): {int(api.models[model_level]['context_window']/1.2)}")
     # # TEST
 
     _document = str(_document)

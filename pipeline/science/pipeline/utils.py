@@ -520,11 +520,17 @@ def responses_refine(answer, reference=''):
            - Adding relevant emojis at appropriate places (section headings, important points, examples)
            - Using emojis that match the educational context and subject matter
         
+        4. Cleaning up irrelevant content:
+           - Remove any code blocks containing only data reports like ```[Data: Reports (19, 22, 21)]```
+           - Remove any debugging information, log outputs, or system messages not relevant to the educational content
+           - Remove any metadata markers or tags that aren't meant for the end user
+        
         IMPORTANT RULES:
         - DO NOT add any new information or change the actual content
         - DO NOT alter the meaning of any statements
         - DO NOT change the language of the content
-        - DO NOT remove any information from the original answer
+        - DO NOT remove any information from the original answer that is relevant to the educational content
+        - DO remove irrelevant technical artifacts like data reports, debug logs, or system messages
         """
     )
     human_prompt = (
@@ -539,8 +545,9 @@ def responses_refine(answer, reference=''):
         1. Properly formatting all mathematical formulas with LaTeX syntax (using $ or $$ as appropriate)
         2. Adding **bold text** to important terms and concepts for better readability
         3. Including relevant emojis to make the content more engaging
+        4. Removing any irrelevant content like data reports (e.g., ```[Data: Reports (19, 22, 21)]```), debug logs, or system messages
         
-        Do not change the actual information or add new content.
+        Do not change the actual educational information or add new content.
         """
     )
     prompt = ChatPromptTemplate.from_messages([

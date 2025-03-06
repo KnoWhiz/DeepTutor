@@ -158,7 +158,8 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
             source_pages[chunk.page_content] = 1
         try:
             # FIXME: KeyError: 'file_index' is not in the metadata
-            source_file_index[chunk.page_content] = chunk.metadata['file_index']
+            # source_file_index[chunk.page_content] = chunk.metadata['file_index']
+            source_file_index[chunk.page_content] = 1
         except KeyError:
             logger.exception(f"Error getting source file index for {chunk.page_content}")
             logger.info(f"Chunk metadata: {chunk.metadata}")

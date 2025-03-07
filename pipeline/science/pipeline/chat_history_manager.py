@@ -6,6 +6,9 @@ import uuid
 from typing import Dict, List, Optional
 from datetime import datetime
 
+import logging
+logger = logging.getLogger("tutorpipeline.science.chat_history_manager")
+
 
 def get_chat_history_path(session_id: str) -> str:
     """Get the full path for a chat history file.
@@ -52,7 +55,7 @@ def save_chat_history(session_id: str, chat_history: List[Dict]) -> None:
                 "messages": chat_history
             }, f, indent=2, ensure_ascii=False)
     except Exception as e:
-        print(f"Error saving chat history: {e}")
+        logger.info(f"Error saving chat history: {e}")
 
 
 def load_chat_history(session_id: str) -> Optional[List[Dict]]:
@@ -74,7 +77,7 @@ def load_chat_history(session_id: str) -> Optional[List[Dict]]:
             data = json.load(f)
             return data.get("messages", [])
     except Exception as e:
-        print(f"Error loading chat history: {e}")
+        logger.info(f"Error loading chat history: {e}")
         return None
 
 
@@ -96,7 +99,7 @@ def delete_chat_history(session_id: str) -> bool:
         os.remove(file_path)
         return True
     except Exception as e:
-        print(f"Error deleting chat history: {e}")
+        logger.info(f"Error deleting chat history: {e}")
         return False
 
 
@@ -120,4 +123,4 @@ def cleanup_old_sessions() -> None:
             if (current_time - file_time).total_seconds() > 86400:  # 24 hours in seconds
                 os.remove(file_path)
         except Exception as e:
-            print(f"Error cleaning up old session {filename}: {e}")
+            logger.info(f"Error cleaning up old session {filename}: {e}")

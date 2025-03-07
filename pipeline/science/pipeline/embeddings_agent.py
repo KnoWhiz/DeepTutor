@@ -29,6 +29,7 @@ from pipeline.science.pipeline.embeddings import (
 
 import logging
 logger = logging.getLogger("tutorpipeline.science.embeddings_agent")
+
 load_dotenv()
 
 # Control whether to use Marker API or not. Only for local environment we skip Marker API.

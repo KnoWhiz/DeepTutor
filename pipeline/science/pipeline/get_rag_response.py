@@ -14,6 +14,7 @@ from pipeline.science.pipeline.embeddings import (
     load_embeddings,
 )
 from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
+
 import logging
 logger = logging.getLogger("tutorpipeline.science.get_rag_response")
 

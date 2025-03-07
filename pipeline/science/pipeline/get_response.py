@@ -1,5 +1,5 @@
 import os
-import logging
+import re
 from langchain_community.vectorstores import FAISS
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.prompts import ChatPromptTemplate
@@ -13,7 +13,8 @@ from pipeline.science.pipeline.utils import (
     get_llm,
     responses_refine,
     detect_language,
-    count_tokens
+    count_tokens,
+    replace_latex_formulas
 )
 from pipeline.science.pipeline.embeddings import (
     get_embedding_models,
@@ -24,6 +25,7 @@ from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
 from pipeline.science.pipeline.get_graphrag_response import get_GraphRAG_global_response
 from pipeline.science.pipeline.get_rag_response import get_basic_rag_response
 
+import logging
 logger = logging.getLogger("tutorpipeline.science.get_response")
 
 
@@ -35,9 +37,11 @@ class Question:
         text (str): The text content of the question
         language (str): The detected language of the question (e.g., "English")
         question_type (str): The type of question (e.g., "local" or "global" or "image")
+        special_context (str): Special context for the question
+        answer_planning (dict): Planning information for constructing the answer
     """
 
-    def __init__(self, text="", language="English", question_type="global", special_context=""):
+    def __init__(self, text="", language="English", question_type="global", special_context="", answer_planning=None):
         """
         Initialize a Question object.
 
@@ -45,6 +49,8 @@ class Question:
             text (str): The text content of the question
             language (str): The language of the question
             question_type (str): The type of the question (local or global or image)
+            special_context (str): Special context for the question
+            answer_planning (dict): Planning information for constructing the answer
         """
         self.text = text
         self.language = language
@@ -53,7 +59,8 @@ class Question:
         else:
             self.question_type = question_type
 
-        self.special_context =  special_context
+        self.special_context = special_context
+        self.answer_planning = answer_planning or {}
 
     def __str__(self):
         """Return string representation of the Question."""
@@ -64,7 +71,9 @@ class Question:
         return {
             "text": self.text,
             "language": self.language,
-            "question_type": self.question_type
+            "question_type": self.question_type,
+            "special_context": self.special_context,
+            "answer_planning": self.answer_planning
         }
 
 
@@ -135,7 +144,6 @@ Remember: Your goal is to make learning enjoyable and accessible. Keep your tone
             You are a patient and honest professor helping a student reading a paper.
             Use the given context to answer the question.
             If you don't know the answer, say you don't know.
-            The previous conversation is: {chat_history} make sure your answer follow the previous conversation but not repetitive.
             Reference context from the paper: ```{context}```
             If the concept can be better explained by formulas, use LaTeX syntax in markdown
             For inline formulas, use single dollar sign: $a/b = c/d$
@@ -143,7 +151,15 @@ Remember: Your goal is to make learning enjoyable and accessible. Keep your tone
             $$
             \frac{{a}}{{b}} = \frac{{c}}{{d}}
             $$
-            """
+            """ + "\n\nThis is a detailed plan for constructing the answer: " + str(question.answer_planning)
+        
+        # Load embeddings for Non-deep thinking mode
+        try:
+            logger.info(f"Loading markdown embeddings from {[os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]}")
+            db = load_embeddings(embedding_folder_list, 'default')
+        except Exception as e:
+            logger.exception(f"Failed to load markdown embeddings for Non-deep thinking mode: {str(e)}")
+            db = load_embeddings(embedding_folder_list, 'default')
 
         answer = await get_basic_rag_response(
             prompt_string=basic_prompt,
@@ -152,6 +168,7 @@ Remember: Your goal is to make learning enjoyable and accessible. Keep your tone
             embedding_folder=embedding_folder,
             stream=stream
         )
+        answer = responses_refine(answer)
         return answer
     else:
         logger.info("deep thinking ...")
@@ -183,8 +200,8 @@ Remember: Your goal is to make learning enjoyable and accessible. Keep your tone
 
         prompt = f"""
         You are a deep thinking tutor helping a student reading a paper.
-        The previous conversation is: {chat_history_string}
         Reference context from the paper: {context}
+        This is a detailed plan for constructing the answer: {str(question.answer_planning)}
         The student's query is: {user_input_string}
         """
         logger.info(f"user_input_string tokens: {count_tokens(user_input_string)}")
@@ -212,11 +229,22 @@ Remember: Your goal is to make learning enjoyable and accessible. Keep your tone
         else:
             answer = responses_refine(answer)
 
+        # Replace LaTeX formulas in the final answer
+        answer = replace_latex_formulas(answer)
+
         logger.info("get_response done ...")
         return answer
 
 
-def get_query_helper(chat_session: ChatSession, user_input, context_chat_history, embedding_folder):
+def get_query_helper(chat_session: ChatSession, user_input, context_chat_history, embedding_folder_list):
+    # # Replace single "{" with "{{" and single "}" with "}}" in the user_input (match whole word)
+    # user_input = re.sub(r'(?<!{){(?!{)', '{{', user_input)
+    # user_input = re.sub(r'(?<!})}(?!})', '}}', user_input)
+    
+    # Replace LaTeX formulas in the format \( formula \) with $ formula $
+    user_input = replace_latex_formulas(user_input)
+    
+    logger.info(f"TEST: user_input: {user_input}")
     # If we have "documents_summary" in the embedding folder, we can use it to speed up the search
     document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
     if os.path.exists(document_summary_path):
@@ -268,30 +296,116 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
                                   "context": documents_summary,
                                   "chat_history": truncate_chat_history(context_chat_history)})
     question = parsed_result['question']
+    # # Replace single "{" with "{{" and single "}" with "}}" in the question (match whole word)
+    # question = re.sub(r'(?<!{){(?!{)', '{{', question)
+    # question = re.sub(r'(?<!})}(?!})', '}}', question)
     question_type = parsed_result['question_type']
     try:
         language = detect_language(user_input)
-        print("language detected:", language)
+        logger.info("language detected:", language)
     except Exception as e:
-        print("Error detecting language:", e)
+        logger.info("Error detecting language:", e)
         language = "English"
 
     chat_session.set_language(language)
 
+    # Create the answer planning using an additional LLM call
+    planning_system_prompt = (
+        """
+        You are an educational AI assistant tasked with deeply analyzing a student's question and planning a comprehensive answer.
+        
+        Your goal is to:
+        1. Understand what the student truly wants to know based on the conversation history and current question
+        2. Create a detailed plan for constructing the answer
+        3. Identify what information should be included in the answer
+        4. Identify what information should NOT be included (e.g., repeated information, information the student already knows)
+        
+        Document summary:
+        ```{context}```
+        
+        Previous conversation history:
+        ```{chat_history}```
+        
+        Organize your analysis in the following JSON format:
+        ```json
+        {{
+            "user_intent": "<detailed analysis of what the user truly wants to know. based on the previous conversation history and the current question analyse what user already knows and what user doesn't know>",
+            "things_explained_already": ["<list of things that has been explained in the previous conversation and should not be repeated in detail in the answer>"],
+            "key_focus_areas": ["<list of specific topics/concepts that should be explained>"],
+            "information_to_include": ["<list of specific information points that should be included>"],
+            "information_to_exclude": ["<list of information that should be excluded - already known/redundant>"],
+            "answer_structure": ["<outline of how the answer should be structured>"],
+            "explanation_depth": "<assessment of how detailed the explanation should be (basic/intermediate/advanced)>",
+            "misconceptions_to_address": ["<potential misconceptions that should be corrected>"]
+        }}
+        ```
+        """
+    )
+    
+    planning_human_prompt = (
+        """
+        The student's current question:
+        ```{input}```
+        
+        The rephrased question for RAG context:
+        ```{rephrased_question}```
+        
+        Question type: {question_type}
+        
+        Based on the conversation history, document summary, and the current question, create a detailed plan for constructing the answer.
+        """
+    )
+    
+    planning_prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", planning_system_prompt),
+            ("human", planning_human_prompt),
+        ]
+    )
+    
+    planning_chain = planning_prompt | llm | error_parser
+    answer_planning = planning_chain.invoke({
+        "input": user_input,
+        "rephrased_question": question,
+        "question_type": question_type,
+        "context": documents_summary,
+        "chat_history": truncate_chat_history(context_chat_history)
+    })
+    logger.info(f"TEST: answer_planning: {answer_planning}")
+
     # # TEST
-    # print("question rephrased:", question)
-    question = Question(text=question, language=language, question_type=question_type)
+    # logger.info("question rephrased:", question)
+    question = Question(
+        text=question, 
+        language=language, 
+        question_type=question_type,
+        answer_planning=answer_planning
+    )
     logger.info(f"TEST: question.question_type: {question.question_type}")
 
     if question_type == "image":
+        logger.info(f"question_type for input: {user_input} is --image-- ...")
         # Find a single chunk in the embedding folder
-        db = load_embeddings(embedding_folder, 'default')
-        image_chunks = db.similarity_search_with_score(user_input + "\n\n" + question.special_context, k=1)
+        # markdown_embedding_folder_list = [os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]
+        # try:
+        #     db = load_embeddings(markdown_embedding_folder_list, 'default')
+        # except Exception as e:
+        #     logger.exception(f"Failed to load markdown embeddings for image mode: {str(e)}")
+        #     db = load_embeddings(embedding_folder_list, 'default')
+        # FIXME: Later we can have a separate embedding folder for images context as a sub-database
+        db = load_embeddings(embedding_folder_list, 'default')
+        image_chunks = db.similarity_search_with_score(user_input + "\n\n" + question.special_context, k=2)
         if image_chunks:
             question.special_context = """
             Here is the context and visual understanding of the image:
-            """ + image_chunks[0][0].page_content
+            """ + image_chunks[0][0].page_content + "\n\n" + image_chunks[1][0].page_content
         logger.info(f"TEST: question.special_context: {question.special_context}")
+    elif question_type == "local":
+        logger.info(f"question_type for input: {user_input} is --local-- ...")
+    elif question_type == "global":
+        logger.info(f"question_type for input: {user_input} is --global-- ...")
+    else:
+        logger.info(f"question_type for input: {user_input} is unknown ...")
     return question
 
 
@@ -299,6 +413,7 @@ def generate_follow_up_questions(answer, chat_history):
     """
     Generate 3 relevant follow-up questions based on the assistant's response and chat history.
     """
+    logger.info("Generating follow-up questions ...")
     config = load_config()
     para = config['llm']
     llm = get_llm('basic', para)
@@ -350,4 +465,5 @@ def generate_follow_up_questions(answer, chat_history):
         "chat_history": truncate_chat_history(chat_history)
     })
 
+    logger.info(f"Generated follow-up questions: {result['questions']}")
     return result["questions"]

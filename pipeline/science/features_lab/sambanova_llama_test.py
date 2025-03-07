@@ -3,6 +3,9 @@ from dotenv import load_dotenv
 from langchain_sambanova import ChatSambaNovaCloud
 from langchain_core.prompts import ChatPromptTemplate
 
+import logging
+logger = logging.getLogger("sambanova_llama_test.py")
+
 load_dotenv()
 
 def main():
@@ -27,7 +30,7 @@ def main():
     ]
 
     response = llm.invoke(messages)
-    print("Translation 1:", response.content)
+    logger.info("Translation 1:", response.content)
 
     # === Example 2: Using ChatPromptTemplate for dynamic input ===
     prompt = ChatPromptTemplate(
@@ -50,7 +53,7 @@ def main():
             "input": "I love programming.",
         }
     )
-    print("Translation 2:", response2.content)
+    logger.info("Translation 2:", response2.content)
 
 if __name__ == "__main__":
     main()

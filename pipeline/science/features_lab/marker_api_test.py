@@ -3,14 +3,14 @@ import io
 import time
 import requests
 import base64
-import logging
 from pathlib import Path
 from typing import Dict, Tuple
 from PIL import Image
 
 from dotenv import load_dotenv
 
-logger = logging.getLogger(__name__)
+import logging
+logger = logging.getLogger("marker_api_test.py")
 
 def extract_pdf_content_to_markdown_via_api(
     file_path: str | Path,
@@ -71,7 +71,7 @@ def extract_pdf_content_to_markdown_via_api(
         raise Exception(f"API request failed: {data.get('error')}")
 
     request_check_url = data.get("request_check_url")
-    print(f"Submitted request. Polling for results...")
+    logger.info(f"Submitted request. Polling for results...")
 
     # Poll until processing is complete
     max_polls = 300
@@ -83,7 +83,7 @@ def extract_pdf_content_to_markdown_via_api(
         poll_response = requests.get(request_check_url, headers=headers)
         result = poll_response.json()
         status = result.get("status")
-        print(f"Poll {i+1}: status = {status}")
+        logger.info(f"Poll {i+1}: status = {status}")
         if status == "complete":
             break
     else:
@@ -105,7 +105,7 @@ def extract_pdf_content_to_markdown_via_api(
     images = result.get("images", {})
 
     if images:
-        print(f"Processing {len(images)} images...")
+        logger.info(f"Processing {len(images)} images...")
         for filename, b64data in images.items():
             try:
                 # Create PIL Image from base64 data
@@ -119,11 +119,11 @@ def extract_pdf_content_to_markdown_via_api(
                 # Save the image
                 img.save(output_path)
                 saved_images[filename] = img
-                print(f"Saved image: {output_path}")
+                logger.info(f"Saved image: {output_path}")
             except Exception as e:
-                print(f"Error saving image {filename}: {e}")
+                logger.info(f"Error saving image {filename}: {e}")
     else:
-        print("No images were returned with the result")
+        logger.info("No images were returned with the result")
 
     return str(md_path), saved_images
 
@@ -134,7 +134,7 @@ if __name__ == "__main__":
 
     try:
         md_path, saved_images = extract_pdf_content_to_markdown_via_api(file_path, output_dir)
-        print(f"Successfully processed PDF. Markdown saved to: {md_path}")
-        print(f"Number of images extracted: {len(saved_images)}")
+        logger.info(f"Successfully processed PDF. Markdown saved to: {md_path}")
+        logger.info(f"Number of images extracted: {len(saved_images)}")
     except Exception as e:
-        print(f"Error: {str(e)}")
+        logger.info(f"Error: {str(e)}")

@@ -25,6 +25,7 @@ from pipeline.science.pipeline.utils import robust_search_for
 
 import logging
 logger = logging.getLogger("tutorpipeline.science.doc_processor")
+
 load_dotenv()
 # Control whether to use Marker API or not. Only for local environment we skip Marker API.
 SKIP_MARKER_API = True if os.getenv("ENVIRONMENT") == "local" else False
@@ -75,7 +76,7 @@ def save_file_txt_locally(file_path, filename, embedding_folder):
     # Write the extracted text into a .txt file
     # If the file does not exist, it will be created
     if os.path.exists(output_file_path):
-        print(f"File already exists: {output_file_path}")
+        logger.info(f"File already exists: {output_file_path}")
         return
 
     try:
@@ -85,9 +86,9 @@ def save_file_txt_locally(file_path, filename, embedding_folder):
                 if hasattr(doc, 'page_content') and doc.page_content:
                     # Write the text, followed by a newline for clarity
                     f.write(doc.page_content.strip() + "\n")
-        print(f"Text successfully saved to: {output_file_path}")
+        logger.info(f"Text successfully saved to: {output_file_path}")
     except OSError as e:
-        print(f"Error saving file: {e}")
+        logger.info(f"Error saving file: {e}")
         # Create a mapping file to track original filenames if needed
         mapping_file = os.path.join(GraphRAG_embedding_folder, "filename_mapping.json")
         try:
@@ -125,7 +126,7 @@ def get_highlight_info(doc, excerpts):
     for page_num, page in enumerate(doc):
         for excerpt in excerpts:
             text_instances = robust_search_for(page, excerpt)
-            # print(f"text_instances: {text_instances}")
+            # logger.info(f"text_instances: {text_instances}")
             if text_instances:
                 for inst in text_instances:
                     annotations.append({
@@ -154,7 +155,7 @@ def get_highlight_info(doc, excerpts):
                             "pageNumber": page_num + 1,
                         }
                     )
-    # print(f"annotations: {annotations}")
+    # logger.info(f"annotations: {annotations}")
     return annotations, react_annotations
 
 
@@ -242,7 +243,7 @@ def extract_pdf_content_to_markdown_via_api(
         raise Exception(f"API request failed: {data.get('error')}")
 
     request_check_url = data.get("request_check_url")
-    print("Submitted request. Polling for results...")
+    logger.info("Submitted request. Polling for results...")
 
     # Poll until processing is complete
     max_polls = 300
@@ -254,7 +255,7 @@ def extract_pdf_content_to_markdown_via_api(
         poll_response = requests.get(request_check_url, headers=headers)
         result = poll_response.json()
         status = result.get("status")
-        print(f"Poll {i+1}: status = {status}")
+        logger.info(f"Poll {i+1}: status = {status}")
         if status == "complete":
             break
     else:
@@ -276,7 +277,7 @@ def extract_pdf_content_to_markdown_via_api(
     images = result.get("images", {})
 
     if images:
-        print(f"Processing {len(images)} images...")
+        logger.info(f"Processing {len(images)} images...")
         for filename, b64data in images.items():
             try:
                 # Create PIL Image from base64 data
@@ -290,11 +291,11 @@ def extract_pdf_content_to_markdown_via_api(
                 # Save the image
                 img.save(output_path)
                 saved_images[filename] = img
-                print(f"Saved image: {output_path}")
+                logger.info(f"Saved image: {output_path}")
             except Exception as e:
                 logger.exception(f"Error saving image {filename}: {e}")
     else:
-        print("No images were returned with the result")
+        logger.info("No images were returned with the result")
 
     # Save markdown file and images to Azure Blob Storage
     try:
@@ -371,7 +372,7 @@ def extract_pdf_content_to_markdown(
         # Save images
         saved_images = {}
         if images:
-            print(f"Saving {len(images)} images to {output_dir}")
+            logger.info(f"Saving {len(images)} images to {output_dir}")
             for img_name, img in images.items():
                 try:
                     # Create a valid filename from the image name
@@ -381,11 +382,11 @@ def extract_pdf_content_to_markdown(
                     # Save the image
                     img.save(output_path)
                     saved_images[img_name] = img
-                    print(f"Saved image: {output_path}")
+                    logger.info(f"Saved image: {output_path}")
                 except Exception as e:
                     logger.exception(f"Error saving image {img_name}: {str(e)}")
         else:
-            print("No images found in the PDF")
+            logger.info("No images found in the PDF")
 
         # Save markdown file and images to Azure Blob Storage
         try:

@@ -3,6 +3,9 @@ import json
 import sys
 from typing import Dict, List, Set
 
+import logging
+logger = logging.getLogger("search_context_from_images_test.py")
+
 def count_tokens(text: str) -> int:
     """
     Estimate the number of tokens in a text string using a simple word-based approach.
@@ -82,13 +85,13 @@ def extract_image_context(folder_dir: str, context_tokens: int = 1000) -> None:
     # List all image files in the folder (case-insensitive match)
     image_files = [f for f in os.listdir(folder_dir) if os.path.splitext(f.lower())[1] in image_extensions]
     if not image_files:
-        print("No image files found in the folder.")
+        logger.info("No image files found in the folder.")
         return
 
     # Find the markdown file (assuming there's only one .md file)
     md_files = [f for f in os.listdir(folder_dir) if f.lower().endswith('.md')]
     if not md_files:
-        print("No markdown file found in the folder.")
+        logger.info("No markdown file found in the folder.")
         return
 
     md_file = md_files[0]
@@ -118,7 +121,7 @@ def extract_image_context(folder_dir: str, context_tokens: int = 1000) -> None:
     with open(output_path, 'w', encoding='utf-8') as outfile:
         json.dump(image_context, outfile, indent=2, ensure_ascii=False)
 
-    print(f"Image context data saved to: {output_path}")
+    logger.info(f"Image context data saved to: {output_path}")
 
 if __name__ == "__main__":
     # Example usage with custom context window size

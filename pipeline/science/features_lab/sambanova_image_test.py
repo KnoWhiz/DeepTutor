@@ -4,6 +4,9 @@ import requests
 import base64
 from dotenv import load_dotenv
 
+import logging
+logger = logging.getLogger("sambanova_image_test.py")
+
 load_dotenv()
 
 def process_image_with_llama(image_url, prompt_text, stream=False):
@@ -88,10 +91,10 @@ if __name__ == "__main__":
     
     # Get the regular response
     result = process_image_with_llama(image_url, prompt)
-    print(result)
+    logger.info(result)
     
     # Example with streaming
-    print("\nStreaming response:")
+    logger.info("\nStreaming response:")
     stream_response = process_image_with_llama(image_url, prompt, stream=True)
     
     # Process the streaming response
@@ -100,7 +103,7 @@ if __name__ == "__main__":
             if hasattr(chunk, 'choices') and chunk.choices:
                 content = chunk.choices[0].delta.content
                 if content:
-                    print(content, end="", flush=True)
-        print()  # Add a newline at the end
+                    logger.info(content, end="", flush=True)
+        logger.info()  # Add a newline at the end
     except Exception as e:
-        print(f"Error processing stream: {e}")
+        logger.info(f"Error processing stream: {e}")

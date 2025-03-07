@@ -10,6 +10,7 @@ import requests
 import base64
 import time
 from datetime import datetime, UTC
+import re
 
 from dotenv import load_dotenv
 from typing import List, Tuple, Dict
@@ -27,7 +28,6 @@ from pipeline.science.pipeline.config import load_config
 from pipeline.science.pipeline.api_handler import ApiHandler
 
 import logging
-
 logger = logging.getLogger("tutorpipeline.science.utils")
 
 load_dotenv()
@@ -158,7 +158,7 @@ def generate_file_id(file_path):
 def count_tokens(text, model_name='gpt-4o'):
     """Count tokens in text using tiktoken"""
     try:
-        logger.info(f"Counting tokens for text: {text}")
+        # logger.info(f"Counting tokens for text: {text}")
         encoding = tiktoken.encoding_for_model(model_name)
         # tokens = encoding.encode(text)
         tokens = encoding.encode(text, disallowed_special=(encoding.special_tokens_set - {'<|endoftext|>'}))
@@ -220,13 +220,13 @@ def truncate_document(_document, model_name='gpt-4o'):
     max_tokens = int(api.models[model_level]['context_window']/1.2)
 
     # # TEST
-    # print(f"max_tokens: {max_tokens}")
-    # print(f"model_name: {model_name}")
-    # print(f"model_level: {model_level}")
-    # print(f"api.models[model_level]: {api.models[model_level]}")
-    # print(f"api.models[model_level]['context_window']: {api.models[model_level]['context_window']}")
-    # print(f"api.models[model_level]['context_window']/1.2: {api.models[model_level]['context_window']/1.2}")
-    # print(f"int(api.models[model_level]['context_window']/1.2): {int(api.models[model_level]['context_window']/1.2)}")
+    # logger.info(f"max_tokens: {max_tokens}")
+    # logger.info(f"model_name: {model_name}")
+    # logger.info(f"model_level: {model_level}")
+    # logger.info(f"api.models[model_level]: {api.models[model_level]}")
+    # logger.info(f"api.models[model_level]['context_window']: {api.models[model_level]['context_window']}")
+    # logger.info(f"api.models[model_level]['context_window']/1.2: {api.models[model_level]['context_window']/1.2}")
+    # logger.info(f"int(api.models[model_level]['context_window']/1.2): {int(api.models[model_level]['context_window']/1.2)}")
     # # TEST
 
     _document = str(_document)
@@ -494,6 +494,37 @@ def create_searchable_chunks(doc, chunk_size: int) -> list:
     return chunks
 
 
+def replace_latex_formulas(text):
+    """
+    Replace LaTeX formulas in various formats with $ formula $ format
+    
+    Args:
+        text (str): Text containing LaTeX formulas
+        
+    Returns:
+        str: Text with replaced LaTeX formula format
+    """
+    if not text:
+        return text
+    
+    # Replace \( formula \) with $ formula $
+    result = re.sub(r'\\[\(](.+?)\\[\)]', r'$ \1 $', text)
+    
+    # Replace complex mathematical formulas in square brackets 
+    # This pattern specifically targets mathematical formulas containing the combination of:
+    # 1. Complex LaTeX structures like g^{(2)} 
+    # 2. LaTeX commands that start with backslash like \frac, \langle, etc.
+    # The comma at the end is optional (from the user's example)
+    result = re.sub(r'\[\s*([^\[\]]*?(?:\^\{.*?\}|\\\w+\{).*?)\s*,?\s*\]', r'$ \1 $', result)
+    
+    # Special case for the exact pattern from the user's example:
+    # [ g^{(2)}(\tau) = \frac{\langle \rho_1(\tau) \rho_2(\tau + \delta T) \rangle}{\langle \rho_1(\tau) \rangle \langle \rho_2(\tau + \delta T) \rangle}, ]
+    pattern = r'\[\s*(g\^\{.*?\}.*?\\frac\{.*?\}\{.*?\}),?\s*\]'
+    result = re.sub(pattern, r'$ \1 $', result)
+    
+    return result
+
+
 def responses_refine(answer, reference=''):
     # return answer
     config = load_config()
@@ -504,7 +535,7 @@ def responses_refine(answer, reference=''):
     system_prompt = (
         """
         You are an expert at refining educational content while maintaining its original meaning and language.
-        Your task is to enhance the display of content by:
+        Your task is to improve the display of content by:
         
         1. Properly formatting all mathematical formulas with LaTeX syntax:
            - Surround inline formulas with single dollar signs ($formula$)
@@ -520,11 +551,18 @@ def responses_refine(answer, reference=''):
            - Adding relevant emojis at appropriate places (section headings, important points, examples)
            - Using emojis that match the educational context and subject matter
         
+        4. Cleaning up irrelevant content:
+           - Remove any code blocks containing only data reports like ```[Data: Reports (19, 22, 21)]``` or ```[39]```
+           - Remove any debugging information, log outputs, or system messages not relevant to the educational content
+           - Remove any metadata markers or tags that aren't meant for the end user
+        
         IMPORTANT RULES:
         - DO NOT add any new information or change the actual content
         - DO NOT alter the meaning of any statements
         - DO NOT change the language of the content
-        - DO NOT remove any information from the original answer
+        - DO NOT remove any information from the original answer that is relevant to the educational content
+        - DO remove irrelevant technical artifacts like data reports, debug logs, or system messages
+        - DO NOT start the answer with wording like "Here is the answer to your question:" or "Here is ..." or "Enhanced Answer" or "Refined Answer"
         """
     )
     human_prompt = (
@@ -536,11 +574,13 @@ def responses_refine(answer, reference=''):
         {reference}
         
         Please refine the original answer by:
-        1. Properly formatting all mathematical formulas with LaTeX syntax (using $ or $$ as appropriate)
+        1. Properly formatting all mathematical formulas with LaTeX syntax (add $ or $$ for all possible formulas as appropriate)
         2. Adding **bold text** to important terms and concepts for better readability
         3. Including relevant emojis to make the content more engaging
+        4. Removing any irrelevant content like data reports (e.g., ```[Data: Reports (19, 22, 21)]```), debug logs, or system messages
+        5. Avoid starting the answer with wording like "Here is ..." or "Enhanced Answer" or "Refined Answer"
         
-        Do not change the actual information or add new content.
+        Do not change the actual educational information or add new content.
         """
     )
     prompt = ChatPromptTemplate.from_messages([

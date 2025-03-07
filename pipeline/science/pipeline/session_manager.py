@@ -12,6 +12,9 @@ from .chat_history_manager import (
     delete_chat_history
 )
 
+import logging
+logger = logging.getLogger("tutorpipeline.science.session_manager")
+
 
 class ChatMode(Enum):
     """Enum for different chat modes."""

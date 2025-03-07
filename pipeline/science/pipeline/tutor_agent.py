@@ -30,6 +30,7 @@ from pipeline.science.pipeline.get_response import (
 )
 from pipeline.science.pipeline.sources_retrieval import get_response_source
 from pipeline.science.pipeline.config import load_config
+
 import logging
 logger = logging.getLogger("tutorpipeline.science.tutor_agent")
 
@@ -179,7 +180,7 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
                 target_lang=chat_session.current_language
             )
 
-        return answer, sources, source_pages, source_annotations, refined_source_pages, follow_up_questions
+        return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
 
     time_tracking['summary_message'] = time.time() - initial_message_start_time
     logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
@@ -254,7 +255,7 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
         content=answer,
         target_lang=chat_session.current_language
     )
-    # print(f"translate_content Answer: {answer}")
+    # logger.info(f"translate_content Answer: {answer}")
     time_tracking['translation'] = time.time() - translation_start
     logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
@@ -292,9 +293,10 @@ async def tutor_agent(chat_session: ChatSession, file_path, user_input, time_tra
     _document = None
     _doc = None
 
-    logger.info(f"sources: {sources}")
-    logger.info(f"source_pages: {source_pages}")
-    logger.info(f"refined_source_pages: {refined_source_pages}")
-    logger.info(f"source_annotations: {source_annotations}")
-
-    return answer, sources, source_pages, source_annotations, refined_source_pages, follow_up_questions
+    # logger.info(f"sources: {sources}")
+    # logger.info(f"source_pages: {source_pages}")
+    # logger.info(f"refined_source_pages: {refined_source_pages}")
+    # logger.info(f"refined_source_index: {refined_source_index}")
+    # logger.info(f"source_annotations: {source_annotations}")
+    
+    return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions

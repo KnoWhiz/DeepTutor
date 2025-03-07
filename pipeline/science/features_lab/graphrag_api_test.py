@@ -34,6 +34,9 @@ from pipeline.science.pipeline.helper.index_files_saving import (
     graphrag_index_files_decompress,
 )
 
+import logging
+logger = logging.getLogger("graphrag_api_test.py")
+
 def setup_graphrag_environment(embedding_folder: str) -> None:
     """Set up the GraphRAG environment with necessary configurations.
 
@@ -111,7 +114,7 @@ async def generate_embeddings(document_text: str, embedding_folder: str) -> bool
         await api.build_index(config=graphrag_config)
         return True
     except Exception as e:
-        print(f"Error generating embeddings: {e}")
+        logger.info(f"Error generating embeddings: {e}")
         return False
 
 def get_response(query: str, chat_history: str, embedding_folder: str) -> str:
@@ -239,17 +242,17 @@ async def main():
     # Generate embeddings
     success = await generate_embeddings(document_text, embedding_folder)
     if success:
-        print("Successfully generated embeddings")
+        logger.info("Successfully generated embeddings")
 
         # Test response generation
         query = "How does GraphRAG improve context understanding?"
         chat_history = "Previous conversation about NLP models."
 
         response = get_response(query, chat_history, embedding_folder)
-        print("\nGenerated Response:")
-        print(response)
+        logger.info("\nGenerated Response:")
+        logger.info(response)
     else:
-        print("Failed to generate embeddings")
+        logger.info("Failed to generate embeddings")
 
 if __name__ == "__main__":
     asyncio.run(main())

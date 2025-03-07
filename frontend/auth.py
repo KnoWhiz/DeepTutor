@@ -3,6 +3,9 @@ import boto3
 import streamlit as st
 from dotenv import load_dotenv
 
+import logging
+logger = logging.getLogger("tutorfrontend.auth")
+
 
 # Cognito User Pool Details
 load_dotenv(".env")

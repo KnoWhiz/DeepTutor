@@ -3,6 +3,10 @@ import sys
 import json
 from dotenv import load_dotenv
 from openai import AzureOpenAI
+
+import logging
+logger = logging.getLogger("images_understanding_test.py")
+
 load_dotenv()
 
 # Add the project root directory to Python path
@@ -67,7 +71,7 @@ def analyze_image(image_url=None):
         return response.choices[0].message.content
 
     except Exception as e:
-        print(f"Error occurred: {str(e)}")
+        logger.info(f"Error occurred: {str(e)}")
         raise
 
 def process_folder_images(folder_path):
@@ -111,7 +115,7 @@ def process_folder_images(folder_path):
         return contexts
 
     except Exception as e:
-        print(f"Error processing folder images: {str(e)}")
+        logger.info(f"Error processing folder images: {str(e)}")
         raise
 
 if __name__ == '__main__':
@@ -119,14 +123,14 @@ if __name__ == '__main__':
     try:
         # Test single image analysis
         # result = analyze_image("https://knowhiztutorrag.blob.core.windows.net/knowhiztutorrag/file_appendix/3671da1e844b53ffbdccac7bc8c57341/images/_page_1_Figure_1.jpeg")
-        # print("\nSingle Image Analysis Result:")
-        # print(result)
+        # logger.info("\nSingle Image Analysis Result:")
+        # logger.info(result)
 
         # Test folder processing
         folder_path = "/Users/bingranyou/Documents/GitHub_Mac_mini/DeepTutor/embedded_content/3671da1e844b53ffbdccac7bc8c57341/markdown"
-        print("\nProcessing folder images...")
+        logger.info("\nProcessing folder images...")
         updated_contexts = process_folder_images(folder_path)
-        print("Folder processing completed. Updated contexts saved.")
+        logger.info("Folder processing completed. Updated contexts saved.")
 
     except Exception as e:
-        print(f"Failed to process: {str(e)}")
+        logger.info(f"Failed to process: {str(e)}")

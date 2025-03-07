@@ -5,7 +5,7 @@ from pipeline.science.pipeline.logging_config import setup_logging
 
 # Set up logging configuration
 setup_logging()
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("tutor.py")
 
 from frontend.ui import setup_page_config
 

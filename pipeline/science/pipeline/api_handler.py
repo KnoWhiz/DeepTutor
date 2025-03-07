@@ -8,6 +8,9 @@ from langchain_deepseek import ChatDeepSeek
 from langchain_sambanova import ChatSambaNovaCloud
 from langchain_core.prompts import ChatPromptTemplate
 
+import logging
+logger = logging.getLogger("tutorpipeline.science.api_handler")
+
 
 def create_env_file(GraphRAG_embedding_folder):
     api_key = str(os.getenv("AZURE_OPENAI_API_KEY"))

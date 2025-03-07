@@ -1,11 +1,12 @@
 import os
 import yaml
 import time
-import logging
 from typing import Dict
 from pathlib import Path
 from pipeline.science.pipeline.utils import format_time_tracking
-logger = logging.getLogger(__name__)
+
+import logging
+logger = logging.getLogger("tutorpipeline.science.embeddings_graphrag")
 
 # GraphRAG imports
 import graphrag.api as api
@@ -120,7 +121,7 @@ async def generate_GraphRAG_embedding(embedding_folder, time_tracking: Dict[str,
 
         create_graphrag_config_start_time = time.time()
         settings = yaml.safe_load(open("./pipeline/science/pipeline/graphrag_settings.yaml"))
-        # print(f"root_dir: {GraphRAG_embedding_folder}")
+        # logger.info(f"root_dir: {GraphRAG_embedding_folder}")
         graphrag_config = create_graphrag_config(
             values=settings, root_dir=GraphRAG_embedding_folder
         )
@@ -128,14 +129,14 @@ async def generate_GraphRAG_embedding(embedding_folder, time_tracking: Dict[str,
         logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
         # graphrag_config.storage.base_dir = os.path.join(GraphRAG_embedding_folder, "output")
         # graphrag_config.reporting.base_dir = os.path.join(GraphRAG_embedding_folder, "logs")
-        # # print(f"graphrag_config before build: {graphrag_config}")
+        # # logger.info(f"graphrag_config before build: {graphrag_config}")
 
         try:
             build_index_start_time = time.time()
             await api.build_index(config=graphrag_config)
             time_tracking['graphrag_build_index'] = time.time() - build_index_start_time
             logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-            # print(f"graphrag_config after build: {graphrag_config}")
+            # logger.info(f"graphrag_config after build: {graphrag_config}")
         except Exception as e:
             logger.exception(f"Index building error: {e}")
 

@@ -8,11 +8,14 @@ from pipeline.science.pipeline.doc_processor import extract_document_from_file
 from pipeline.science.pipeline.chat_history_manager import create_session_id
 from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
 
+import logging
+logger = logging.getLogger("tutorfrontend.state")
+
 
 load_dotenv()
 # Control whether to skip authentication for local or staging environment.
 SKIP_AUTH = True if os.getenv("ENVIRONMENT") == "local" or os.getenv("ENVIRONMENT") == "staging" else False
-print(f"SKIP_AUTH: {SKIP_AUTH}")
+logger.info(f"SKIP_AUTH: {SKIP_AUTH}")
 
 
 # Function to initialize the session state

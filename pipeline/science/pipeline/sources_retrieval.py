@@ -38,18 +38,35 @@ def get_response_source(mode, _doc, _document, file_path, user_input, answer, ch
     config = load_config()
     para = config['llm']
 
-    # Load image context
-    logger.info(f"TEST: loading from embedding_folder: {embedding_folder}")
-    image_context_path = os.path.join(embedding_folder, "markdown/image_context.json")
-    if os.path.exists(image_context_path):
-        with open(image_context_path, 'r') as f:
-            image_context = json.loads(f.read())
-    else:
-        print("image_context_path does not exist")
-        image_context = {}
-        with open(image_context_path, 'w') as f:
-            json.dump(image_context, f)
+    # Load image context, mapping from image file name to image descriptions
+    logger.info(f"TEST: loading from embedding_folder_list: {embedding_folder_list}")
+    image_context_path_list = [os.path.join(embedding_folder, "markdown/image_context.json") for embedding_folder in embedding_folder_list]
+    image_context_list = []
+    for image_context_path in image_context_path_list:
+        if os.path.exists(image_context_path):
+            with open(image_context_path, 'r') as f:
+                image_context = json.loads(f.read())
+        else:
+            logger.info(f"image_context_path: {image_context_path} does not exist")
+            image_context = {}
+            with open(image_context_path, 'w') as f:
+                json.dump(image_context, f)
+        image_context_list.append(image_context)
 
+    # Load images URL list mapping from images file name to image URL
+    image_url_mapping_list = []
+    for embedding_folder in embedding_folder_list:
+        image_url_path = os.path.join(embedding_folder, "markdown/image_urls.json")
+        if os.path.exists(image_url_path):
+            with open(image_url_path, 'r') as f:
+                image_url_mapping = json.load(f)
+        else:
+            logger.info("Image URL mapping file not found. Creating a new one.")
+            image_url_mapping = {}
+            with open(image_url_path, 'w') as f:
+                json.dump(image_url_mapping, f)
+        image_url_mapping_list.append(image_url_mapping)
+        
     # Create reverse mapping from description to image name
     image_mapping = {}
     for image_name, descriptions in image_context.items():
@@ -82,6 +99,11 @@ def get_response_source(mode, _doc, _document, file_path, user_input, answer, ch
     for chunk in answer_chunks_with_scores:
         sources_chunks.append(chunk[0])
 
+    sources_chunks_text = [chunk.page_content for chunk in sources_chunks]
+
+    # logger.info(f"TEST: sources_chunks: {sources_chunks}")
+    logger.info(f"TEST: sources_chunks_text: {sources_chunks_text}")
+
     # Get source pages dictionary, which maps each source to the page number it is found in. the page number is in the metadata of the document chunks
     source_pages = {}
     for chunk in sources_chunks:
@@ -91,6 +113,14 @@ def get_response_source(mode, _doc, _document, file_path, user_input, answer, ch
             print(f"Error getting source pages for {chunk.page_content}")
             print(f"Chunk metadata: {chunk.metadata}")
             source_pages[chunk.page_content] = 1
+        try:
+            # FIXME: KeyError: 'file_index' is not in the metadata
+            # source_file_index[chunk.page_content] = chunk.metadata['file_index']
+            source_file_index[chunk.page_content] = 1
+        except KeyError:
+            logger.exception(f"Error getting source file index for {chunk.page_content}")
+            logger.info(f"Chunk metadata: {chunk.metadata}")
+            source_file_index[chunk.page_content] = 1
 
     # Extract page content and scores, normalize scores to 0-1 range
     max_score = max(max(score for _, score in question_chunks_with_scores), 
@@ -117,7 +147,7 @@ def get_response_source(mode, _doc, _document, file_path, user_input, answer, ch
                          for source, page in source_pages.items()}
 
     # TEST
-    logger.info("TEST: sources before refine:")
+    logger.info(f"TEST: sources before refine: sources_with_scores - {sources_with_scores}")
     logger.info(f"TEST: length of sources before refine: {len(sources_with_scores)}")
 
     # Refine and limit sources while preserving scores
@@ -129,6 +159,18 @@ def get_response_source(mode, _doc, _document, file_path, user_input, answer, ch
     for source, page in source_pages.items():
         if source in sources_with_scores:
             refined_source_pages[source] = page + 1
+            refined_source_index[source] = source_file_index[source]
+
+    # TEST
+    logger.info(f"TEST: sources after refine: sources_with_scores - {sources_with_scores}")
+    logger.info(f"TEST: length of sources after refine: {len(sources_with_scores)}")
+
+
+    # TEST
+    logger.info("TEST: refined source index:")
+    for source, index in refined_source_index.items():
+        logger.info(f"{source}: {index}")
+    logger.info(f"TEST: length of refined source index: {len(refined_source_index)}")
 
     # TEST
     logger.info("TEST: sources after refine:")
@@ -231,8 +273,11 @@ def refine_sources(_doc, _document, sources_with_scores, markdown_dir, user_inpu
 
         # Evaluate each image
         image_scores = []
-        for image, score in image_sources.items():
-            if image in image_context:
+        for idx, (image_url, score) in enumerate(image_sources.items()):
+            if image_url in image_url_mapping_merged_reverse:
+                # TEST
+                logger.info(f"TEST: No. {idx} evaluting image with image_url: {image_url}")
+
                 # Get all context descriptions for this image
                 descriptions = image_context[image]
                 descriptions_text = "\n".join([f"- {desc}" for desc in descriptions])
@@ -255,11 +300,15 @@ def refine_sources(_doc, _document, sources_with_scores, markdown_dir, user_inpu
                             result["explanation"]
                         ))
                         # # TEST
-                        # print(f"image_scores for {image}: {image_scores}")
-                        # print(f"result for {image}: {result}")
+                        # logger.info(f"image_scores for {image_url}: {image_scores}")
+                        # logger.info(f"result for {image_url}: {result}")
+
                 except Exception as e:
                     logger.exception(f"Error evaluating image {image}: {e}")
                     continue
+            else:
+                logger.warning(f"Image URL {image_url} not found in image_url_mapping_merged_reverse")
+                logger.info(f"TEST: image_url_mapping_merged_reverse: {image_url_mapping_merged_reverse}")
 
         # Sort images by relevance score
         image_scores.sort(key=lambda x: x[1], reverse=True)

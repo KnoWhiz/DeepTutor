@@ -13,14 +13,18 @@ from pipeline.science.pipeline.utils import (
 from pipeline.science.pipeline.doc_processor import process_pdf_file
 from pipeline.science.pipeline.get_rag_response import get_basic_rag_response
 from pipeline.science.pipeline.api_handler import ApiHandler
+
 import logging
 logger = logging.getLogger("tutorpipeline.science.get_doc_summary")
+
 load_dotenv()
 
 
 def refine_document_summary(markdown_summary, llm):
     """
-    Refine the document summary to remove duplicated titles.
+    Refine the document summary to remove duplicated titles and redundant information,
+    creating a concise and coherent document summary with brief bullet points.
+    Aggressively merge or remove sections with redundant information while preserving core sections.
     
     Args:
         markdown_summary: The markdown summary to refine.
@@ -29,26 +33,110 @@ def refine_document_summary(markdown_summary, llm):
     Returns:
         The refined markdown summary.
     """
-    refine_prompt = """
-    Below is a document summary with potential duplicated titles. Please refine it to remove any redundancy where section titles are repeated in the content. 
-    Keep the emoji headers (like ### 📌 Topic) but remove any duplicated titles or numbering in the content that follow immediately after.
-    For example, change:
-    ### 📌 Revenue
-    #### 5. **Revenue**
+    # First step: Analyze and identify redundancies
+    analysis_prompt = """
+    Analyze this document summary, identifying all redundancies with special attention to section consolidation:
+
+    1. Identify specific facts that appear in multiple sections
+    2. Note sections with overlapping content that should be merged or removed
+    3. List repeated metrics or measurements (like "$g^{(2)}(0) = 0.060(13)$")
+    4. Flag concepts explained multiple times across different sections
+    5. Identify all bullet points exceeding 15 words
+    6. Catalog phrases that could be expressed more concisely
     
-    To just:
-    ### 📌 Revenue
-    
-    Only remove duplicated titles, don't change any other content. Return the complete refined summary.
-    
-    Summary to refine:
+    Document to analyze:
     {summary}
+    
+    Return your analysis in JSON format with these keys:
+    - "redundant_facts": [list of specific facts/phrases that appear multiple times]
+    - "overlapping_sections": [pairs of section names that have significant overlap]
+    - "sections_to_remove": [sections that can be removed entirely as their content is covered elsewhere]
+    - "sections_to_merge": [{"new_section_name": "name", "sections_to_combine": ["section1", "section2"]}]
+    - "repeated_metrics": [specific measurements/numbers that are mentioned multiple times]
+    - "verbose_bullets": [bullet points exceeding 15 words, with word count noted]
+    - "wordy_phrases": [common phrases that could be expressed more concisely]
+    - "consolidated_structure": [brief outline of how the summary should be restructured with minimal sections]
+    """
+    
+    analysis_prompt_template = ChatPromptTemplate.from_template(analysis_prompt)
+    json_parser = JsonOutputParser()
+    # Add error handling with a fixing parser
+    fixing_parser = OutputFixingParser.from_llm(parser=json_parser, llm=llm)
+    analysis_chain = analysis_prompt_template | llm | fixing_parser
+    
+    try:
+        analysis_result = analysis_chain.invoke({"summary": markdown_summary})
+    except Exception as e:
+        logger.warning(f"Error during summary analysis: {e}. Proceeding with basic refinement.")
+        analysis_result = {
+            "redundant_facts": [],
+            "overlapping_sections": [],
+            "sections_to_remove": [],
+            "sections_to_merge": [],
+            "repeated_metrics": [],
+            "verbose_bullets": [],
+            "wordy_phrases": [],
+            "consolidated_structure": "Use original structure but remove redundancies"
+        }
+    
+    # Second step: Create refined summary based on analysis
+    refine_prompt = """
+    Refine this document summary to create an extremely concise final version. Be aggressive about combining and removing sections.
+    
+    DOCUMENT ANALYSIS:
+    {analysis}
+    
+    CORE SECTIONS TO PRESERVE:
+    - "👋 Welcome to DeepTutor!" (Keep this exactly as is)
+    - "💡 Key Takeaway" (Keep this exactly as is)
+    - "📚 Document Overview" (Keep this section but refine content)
+    - "💬 Ask Me Anything!" (Keep this exactly as is at the end)
+    
+    REFINEMENT RULES:
+    1. PRESERVE ONLY CORE SECTIONS:
+       - Keep the four core sections listed above
+       - AGGRESSIVELY merge or completely remove all other sections
+       - Move unique content from removed sections into "Document Overview" or merged sections
+    
+    2. ELIMINATE ALL REDUNDANCY:
+       - Include each piece of information EXACTLY ONCE in the most relevant section
+       - Combine all similar topics into a single section with a general title
+       - Use each metric/measurement only once
+    
+    3. BULLET POINT CONSTRAINTS:
+       - STRICT LIMIT: Each bullet point MUST be 15 words or fewer without exception
+       - Remove all introductory phrases like "We demonstrate", "This study shows", etc.
+       - Use active voice and technical terminology to reduce word count
+       - Break longer points into multiple concise bullets if necessary
+       - Eliminate all filler words (quickly, effectively, significantly, etc.)
+    
+    4. CONTENT TRANSFORMATION:
+       - Convert verbose explanations to precise technical statements
+       - Replace wordy descriptions with specific metrics where available
+       - Remove adjectives and adverbs unless absolutely necessary for meaning
+       - Use technical abbreviations when appropriate
+    
+    5. CRITICAL REQUIREMENTS:
+       - Preserve all unique information while eliminating redundancy
+       - Maintain the markdown formatting style
+       - Do not add new information not present in the original
+       - EVERY bullet point MUST be 15 words or fewer
+       - The final summary should have MINIMAL sections beyond the core sections
+    
+    Original document to refine:
+    {summary}
+    
+    Return the complete refined summary with dramatically reduced word count and minimal sections.
     """
     
     refine_prompt_template = ChatPromptTemplate.from_template(refine_prompt)
     str_parser = StrOutputParser()
     refine_chain = refine_prompt_template | llm | str_parser
-    refined_markdown_summary = refine_chain.invoke({"summary": markdown_summary})
+    
+    refined_markdown_summary = refine_chain.invoke({
+        "summary": markdown_summary,
+        "analysis": analysis_result
+    })
     
     return refined_markdown_summary
 
@@ -88,7 +176,7 @@ async def generate_document_summary(file_path, embedding_folder, md_document=Non
     Provide a single, impactful sentence that captures the most important takeaway from this document.
 
     Guidelines:
-    - Be extremely concise and specific
+    - Be extremely concise and specific (maximum 15 words)
     - Focus on the main contribution or finding
     - Use bold for key terms
     - Keep it to one sentence
@@ -110,21 +198,25 @@ async def generate_document_summary(file_path, embedding_folder, md_document=Non
     {{"topics": ["topic1", "topic2", ...]}}
 
     Guidelines:
-    - Include maximum 4-5 topics
     - Focus only on critical sections
-    - Use short, descriptive names
+    - Use short, descriptive names (1-2 words per topic)
+    - Avoid overlapping topics
+    - Consider if topics can be covered in the Document Overview instead
 
     Document: {context}
     """
 
     # Generate overview
     overview_prompt = """
-    Provide a clear and engaging overview using bullet points.
+    Provide a clear and engaging overview using bullet points that summarizes all key aspects of the document.
 
     Guidelines:
-    - Use 3-4 concise bullet points
+    - Use 4-5 concise bullet points
     - **Bold** for key terms
-    - Each bullet point should be one short sentence
+    - STRICT LIMIT: Each bullet point MUST be 15 words or fewer
+    - Focus on technical accuracy over narrative flow
+    - Remove all introductory phrases, filler words, and unnecessary adjectives
+    - Cover the most important aspects from all parts of the document
     - For inline formulas use single $ marks. For example, $E = mc^2$
     - For block formulas use double $$ marks. For example,
     $$
@@ -140,10 +232,12 @@ async def generate_document_summary(file_path, embedding_folder, md_document=Non
 
     Guidelines:
     - Use 2-3 bullet points
-    - Each bullet point should be one short sentence
+    - STRICT LIMIT: Each bullet point MUST be 15 words or fewer
     - **Bold** for key terms
-    - Use simple, clear language
+    - Use technical terminology to reduce word count
     - Include specific metrics only if crucial
+    - Remove all introductory phrases, filler words, and unnecessary adjectives
+    - Ensure no overlap with content in the Document Overview
     - For inline formulas use single $ marks. For example, $E = mc^2$
     - For block formulas use double $$ marks. For example,
     $$
@@ -232,7 +326,7 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
 """
 
         # Refine the document summary to remove duplicated titles
-        refined_markdown_summary = refine_document_summary(markdown_summary, llm)
+        refined_markdown_summary = refine_document_summary(markdown_summary, llm=get_llm("advanced", config['llm']))
         
         # Use the refined version
         document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
@@ -326,7 +420,7 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
 """
 
         # Refine the document summary to remove duplicated titles
-        refined_markdown_summary = refine_document_summary(markdown_summary, llm)
+        refined_markdown_summary = refine_document_summary(markdown_summary, llm=get_llm("advanced", config['llm']))
         
         # Use the refined version
         document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")

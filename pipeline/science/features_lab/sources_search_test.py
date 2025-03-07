@@ -157,7 +157,7 @@ def test_source_search(file_path: str, chunk_size: int = 512) -> None:
 
     logger.info("\nTesting each chunk...")
     for i, chunk in enumerate(retrieved_chunks, 1):
-        logger.info(f"\rTesting chunk {i}/{total_chunks}", end="", flush=True)
+        print(f"\rTesting chunk {i}/{total_chunks}", end="", flush=True)
 
         # Get the page number from metadata
         page_num = chunk.metadata.get("page", 0)  # Already 0-based
@@ -185,13 +185,13 @@ def test_source_search(file_path: str, chunk_size: int = 512) -> None:
     if not_found_chunks:
         logger.info("\nChunks that couldn't be found in source:")
         for i, content in not_found_chunks:
-            logger.info(f"\nChunk {i}:")
-            logger.info("-" * 80)
-            logger.info("Content:")
-            logger.info(content[:200] + "..." if len(content) > 200 else content)
-            logger.info("\nMetadata:")
-            logger.info(retrieved_chunks[i-1].metadata)
-            logger.info("-" * 80)
+            print(f"\nChunk {i}:")
+            print("-" * 80)
+            print("Content:")
+            print(content[:200] + "..." if len(content) > 200 else content)
+            print("\nMetadata:")
+            print(retrieved_chunks[i-1].metadata)
+            print("-" * 80)
 
     # Cleanup
     if os.path.exists(temp_embedding_folder):

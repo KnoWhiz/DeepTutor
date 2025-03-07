@@ -85,4 +85,4 @@ if __name__ == "__main__":
                 # Print the actual content chunk
                 logger.info(chunk[1], end="", flush=True)
     
-    logger.info()  
+    logger.info()

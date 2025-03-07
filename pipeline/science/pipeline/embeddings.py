@@ -22,10 +22,8 @@ def get_embedding_models(embedding_type, para):
     para = para
     api = ApiHandler(para)
     embedding_model_default = api.embedding_models['default']['instance']
-    embedding_model_lite = api.embedding_models['default']['instance']
-    embedding_model_small = api.embedding_models['default']['instance']
-    # embedding_model_lite = api.embedding_models['lite']['instance']
-    # embedding_model_small = api.embedding_models['small']['instance']
+    embedding_model_lite = api.embedding_models['lite']['instance']
+    embedding_model_small = api.embedding_models['small']['instance']
     if embedding_type == 'default':
         return embedding_model_default
     elif embedding_type == 'lite':
@@ -106,17 +104,12 @@ async def generate_LiteRAG_embedding(_doc, file_path, embedding_folder):
         db.save_local(lite_embedding_folder)
 
 
-def load_embeddings(embedding_folder_list: list[str | Path], embedding_type: str = 'default'):
+def load_embeddings(embedding_folder: str | Path, embedding_type: str = 'default'):
     """
     Load embeddings from the specified folder
     """
     config = load_config()
     para = config['llm']
     embeddings = get_embedding_models(embedding_type, para)
-    # Create a large db that contains all the embeddings
-    db_merged = FAISS.load_local(embedding_folder_list[0], embeddings, allow_dangerous_deserialization=True)
-    for embedding_folder in embedding_folder_list[1:]:
-        db = FAISS.load_local(embedding_folder, embeddings, allow_dangerous_deserialization=True)
-        db_merged.merge_from(db)
-
-    return db_merged
+    db = FAISS.load_local(embedding_folder, embeddings, allow_dangerous_deserialization=True)
+    return db

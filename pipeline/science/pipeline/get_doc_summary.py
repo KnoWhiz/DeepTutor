@@ -341,41 +341,17 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
 
         # First generate the take-home message, user input is the prompt's first line
         try:
-            takehome = await get_basic_rag_response(
-                prompt_string=takehome_prompt,
-                user_input=takehome_prompt.split("\n")[0],
-                chat_history="",
-                embedding_folder=os.path.join(embedding_folder, 'markdown'),
-                embedding_type='default',
-            )
+            takehome = await get_basic_rag_response(takehome_prompt, takehome_prompt.split("\n")[0], "", embedding_folder, 'default')
         except Exception as e:
             logger.exception(f"Failed to generate take-home message: {str(e)}")
-            takehome = await get_basic_rag_response(
-                prompt_string=takehome_prompt,
-                user_input=takehome_prompt.split("\n")[0],
-                chat_history="",
-                embedding_folder=embedding_folder,
-                embedding_type='default'
-            )
+            takehome = await get_basic_rag_response(takehome_prompt, takehome_prompt.split("\n")[0], "", os.path.join(embedding_folder, 'markdown'), 'default')
 
         # Generate overview
         try:
-            overview = await get_basic_rag_response(
-                prompt_string=overview_prompt,
-                user_input=overview_prompt.split("\n")[0],
-                chat_history="",
-                embedding_folder=os.path.join(embedding_folder, 'markdown'),
-                embedding_type='default'
-            )
+            overview = await get_basic_rag_response(overview_prompt, overview_prompt.split("\n")[0], "", embedding_folder, 'default')
         except Exception as e:
             logger.exception(f"Failed to generate overview: {str(e)}")
-            overview = await get_basic_rag_response(
-                prompt_string=overview_prompt,
-                user_input=overview_prompt.split("\n")[0],
-                chat_history="",
-                embedding_folder=embedding_folder,
-                embedding_type='default'
-            )
+            overview = await get_basic_rag_response(overview_prompt, overview_prompt.split("\n")[0], "", os.path.join(embedding_folder, 'markdown'), 'default')
 
         # Generate summaries for each topic
         try:
@@ -388,22 +364,10 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
                 logger.info(f"Generating summary for topic: {topic}")
                 logger.info(f"Prompt: {topic_prompt_copy}")
                 try:
-                    summary = await get_basic_rag_response(
-                        prompt_string=topic_prompt_copy,
-                        user_input=topic_prompt_copy.split("\n")[0],
-                        chat_history="",
-                        embedding_folder=os.path.join(embedding_folder, 'markdown'),
-                        embedding_type='default'
-                    )
+                    summary = await get_basic_rag_response(topic_prompt_copy, topic_prompt_copy.split("\n")[0], "", embedding_folder, 'default')
                 except Exception as e:
                     logger.exception(f"Failed to generate summary for topic: {topic}, error: {str(e)}")
-                    summary = await get_basic_rag_response(
-                        prompt_string=topic_prompt_copy,
-                        user_input=topic_prompt_copy.split("\n")[0],
-                        chat_history="",
-                        embedding_folder=embedding_folder,
-                        embedding_type='default'
-                    )
+                    summary = await get_basic_rag_response(topic_prompt_copy, topic_prompt_copy.split("\n")[0], "", os.path.join(embedding_folder, 'markdown'), 'default')
                 summaries.append((topic, summary))
         except Exception as e:
             logger.exception(f"Failed to load topics: {str(e)}")
@@ -417,22 +381,10 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
                 logger.info(f"Generating summary for topic: {topic}")
                 logger.info(f"Prompt: {topic_prompt_copy}")
                 try:
-                    summary = await get_basic_rag_response(
-                        prompt_string=topic_prompt_copy,
-                        user_input=topic_prompt_copy.split("\n")[0],
-                        chat_history="",
-                        embedding_folder=os.path.join(embedding_folder, 'markdown'),
-                        embedding_type='default'
-                    )
+                    summary = await get_basic_rag_response(topic_prompt_copy, topic_prompt_copy.split("\n")[0], "", embedding_folder, 'default')
                 except Exception as e:
                     logger.exception(f"Failed to generate summary for topic: {topic}, error: {str(e)}")
-                    summary = await get_basic_rag_response(
-                        prompt_string=topic_prompt_copy,
-                        user_input=topic_prompt_copy.split("\n")[0],
-                        chat_history="",
-                        embedding_folder=embedding_folder,
-                        embedding_type='default'
-                    )
+                    summary = await get_basic_rag_response(topic_prompt_copy, topic_prompt_copy.split("\n")[0], "", os.path.join(embedding_folder, 'markdown'), 'default')
                 summaries.append((topic, summary))
 
         # Combine everything into markdown format with welcome message and take-home message

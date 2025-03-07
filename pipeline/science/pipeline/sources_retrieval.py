@@ -19,12 +19,12 @@ from pipeline.science.pipeline.embeddings import (
     load_embeddings,
 )
 from pipeline.science.pipeline.embeddings_agent import embeddings_agent
-from pipeline.science.pipeline.doc_processor import process_pdf_file
+
 
 import logging
 logger = logging.getLogger("tutorpipeline.science.sources_retrieval")
 
-def get_response_source(mode, file_path_list, user_input, answer, chat_history, embedding_folder_list):
+def get_response_source(mode, _doc, _document, file_path, user_input, answer, chat_history, embedding_folder):
     """
     Get the sources for the response
     Return a dictionary of sources with scores and metadata
@@ -68,73 +68,31 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
         image_url_mapping_list.append(image_url_mapping)
         
     # Create reverse mapping from description to image name
-    image_mapping_list = []
-    for image_context in image_context_list:
-        image_mapping = {}
-        for image_name, descriptions in image_context.items():
-            for desc in descriptions:
-                image_mapping[desc] = image_name
-        image_mapping_list.append(image_mapping)
-        
-    # Create a single mapping from description to image URL, mapping from image description to image URL
-    image_url_mapping_merged = {}
-    for idx, (image_mapping, image_url_mapping_merged) in enumerate(zip(image_mapping_list, image_url_mapping_list)):
-        for description, image_name in image_mapping.items():
-            if image_name in image_url_mapping_merged.keys():
-                # If the image name exists in URL mapping, link the description directly to the URL
-                image_url_mapping_merged[description] = image_url_mapping_merged[image_name]
-            else:
-                # If image URL not found, log a warning but don't break the process
-                logger.warning(f"Image URL not found for {image_name} in embedding folder {idx}")
-    logger.info(f"Created image URL mapping with {len(image_url_mapping_merged)} entries")
+    image_mapping = {}
+    for image_name, descriptions in image_context.items():
+        for desc in descriptions:
+            image_mapping[desc] = image_name
 
-    # Create a reverse mapping based on image_url_mapping_merged
-    image_url_mapping_merged_reverse = {v: k for k, v in image_url_mapping_merged.items()}
+    # Define the default filenames used by FAISS when saving
+    faiss_path = os.path.join(embedding_folder, "index.faiss")
+    pkl_path = os.path.join(embedding_folder, "index.pkl")
 
-    # Load / generate embeddings for each file and merge them
-    db_list = []
-    faiss_path_0 = os.path.join(embedding_folder_list[0], "index.faiss")
-    pkl_path_0 = os.path.join(embedding_folder_list[0], "index.pkl")
-    if os.path.exists(faiss_path_0) and os.path.exists(pkl_path_0):
-        db_merged = load_embeddings([embedding_folder_list[0]], 'default')
-        db_list.append(db_merged)
+    # Check if all necessary files exist to load the embeddings
+    if os.path.exists(faiss_path) and os.path.exists(pkl_path):
+        # Load existing embeddings
+        # print("Loading existing embeddings...")
+        logger.info("Loading existing embeddings...")
+        db = load_embeddings(embedding_folder, 'default')
     else:
-        _document, _doc = process_pdf_file(file_path_list[0])
-        embeddings_agent(mode, _document, _doc, file_path_list[0], embedding_folder_list[0])
-        db_merged = load_embeddings([embedding_folder_list[0]], 'default')
-        db_list.append(db_merged)
-    file_index = 0
-    for file_path, embedding_folder in zip(file_path_list[1:], embedding_folder_list[1:]):
-        file_index += 1
-        # Define the default filenames used by FAISS when saving
-        faiss_path = os.path.join(embedding_folder, "index.faiss")
-        pkl_path = os.path.join(embedding_folder, "index.pkl")
-        # Check if all necessary files exist to load the embeddings
-        if os.path.exists(faiss_path) and os.path.exists(pkl_path):
-            # Load existing embeddings
-            logger.info(f"Loading existing embeddings for {embedding_folder}...")
-            db = load_embeddings([embedding_folder], 'default')
-            # For each document chunk in db, add "file_index" to the metadata
-            for doc in db.get_collection().find():
-                doc['metadata']['file_index'] = file_index
-            db_merged = db_merged.merge_from(db)
-            db_list.append(db)
-        else:
-            logger.info(f"No existing embeddings found for {embedding_folder}, creating new ones...")
-            _document, _doc = process_pdf_file(file_path)
-            embeddings_agent(mode, _document, _doc, file_path, embedding_folder)
-            db = load_embeddings([embedding_folder], 'default')
-            # For each document chunk in db, add "file_index" to the metadata
-            for doc in db.get_collection().find():
-                doc['metadata']['file_index'] = file_index
-            db_merged = db_merged.merge_from(db)
-            db_list.append(db)
+        print("No existing embeddings found, creating new ones...")
+        embeddings_agent(mode, _document, _doc, file_path, embedding_folder)
+        db = load_embeddings(embedding_folder, 'default')
 
     # Get relevant chunks for both question and answer with scores
-    question_chunks_with_scores = db_merged.similarity_search_with_score(user_input, k=config['sources_retriever']['k'])
-    answer_chunks_with_scores = db_merged.similarity_search_with_score(answer, k=config['sources_retriever']['k'])
+    question_chunks_with_scores = db.similarity_search_with_score(user_input, k=config['sources_retriever']['k'])
+    answer_chunks_with_scores = db.similarity_search_with_score(answer, k=config['sources_retriever']['k'])
 
-    # The total list of sources chunks from question and answer
+    # The total list of sources chunks
     sources_chunks = []
     for chunk in question_chunks_with_scores:
         sources_chunks.append(chunk[0])
@@ -148,13 +106,12 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
 
     # Get source pages dictionary, which maps each source to the page number it is found in. the page number is in the metadata of the document chunks
     source_pages = {}
-    source_file_index = {}
     for chunk in sources_chunks:
         try:
             source_pages[chunk.page_content] = chunk.metadata['page']
         except KeyError:
-            logger.exception(f"Error getting source pages for {chunk.page_content}")
-            logger.info(f"Chunk metadata: {chunk.metadata}")
+            print(f"Error getting source pages for {chunk.page_content}")
+            print(f"Chunk metadata: {chunk.metadata}")
             source_pages[chunk.page_content] = 1
         try:
             # FIXME: KeyError: 'file_index' is not in the metadata
@@ -184,27 +141,21 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
         sources_with_scores[chunk.page_content] = max(normalized_score, sources_with_scores.get(chunk.page_content, 0))
 
     # Replace matching sources with image names while preserving scores
-    #     Source_pages: a dictionary that maps each source to the page number it is found in
-    #     Source_file_index: a dictionary that maps each source to the file index it is found in
-    #     Sources_with_scores: a dictionary that maps each source to the score it has
-    sources_with_scores = {image_url_mapping_merged.get(source, source): score 
+    sources_with_scores = {image_mapping.get(source, source): score 
                          for source, score in sources_with_scores.items()}
-    source_pages = {image_url_mapping_merged.get(source, source): page 
+    source_pages = {image_mapping.get(source, source): page 
                          for source, page in source_pages.items()}
-    source_file_index = {image_url_mapping_merged.get(source, source): file_index 
-                         for source, file_index in source_file_index.items()}
 
     # TEST
     logger.info(f"TEST: sources before refine: sources_with_scores - {sources_with_scores}")
     logger.info(f"TEST: length of sources before refine: {len(sources_with_scores)}")
 
     # Refine and limit sources while preserving scores
-    markdown_dir_list = [os.path.join(embedding_folder, "markdown") for embedding_folder in embedding_folder_list]
-    sources_with_scores = refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_input, image_url_mapping_merged, source_pages, source_file_index, image_url_mapping_merged_reverse)
+    markdown_dir = os.path.join(embedding_folder, "markdown")
+    sources_with_scores = refine_sources(_doc, _document, sources_with_scores, markdown_dir, user_input)
 
     # Refine source pages while preserving scores
     refined_source_pages = {}
-    refined_source_index = {}
     for source, page in source_pages.items():
         if source in sources_with_scores:
             refined_source_pages[source] = page + 1
@@ -222,39 +173,48 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
     logger.info(f"TEST: length of refined source index: {len(refined_source_index)}")
 
     # TEST
-    logger.info("TEST: refined source pages:")
-    for source, page in refined_source_pages.items():
-        logger.info(f"{source}: {page}")
-    logger.info(f"TEST: length of refined source pages: {len(refined_source_pages)}")
+    logger.info("TEST: sources after refine:")
+    for source, score in sources_with_scores.items():
+        logger.info(f"{source}: {score}")
+    logger.info(f"TEST: length of sources after refine: {len(sources_with_scores)}")
 
     # Memory cleanup
     db = None
     
-    return sources_with_scores, source_pages, refined_source_pages, refined_source_index
+    return sources_with_scores, source_pages, refined_source_pages
 
 
-def refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_input, image_url_mapping_merged, source_pages, source_file_index, image_url_mapping_merged_reverse):
+def refine_sources(_doc, _document, sources_with_scores, markdown_dir, user_input):
     """
     Refine sources by checking if they can be found in the document
     Only get first 20 sources
     Show them in the order they are found in the document
     Preserve image filenames but filter them based on context relevance using LLM
-    Source_pages: a dictionary that maps each source to the page number it is found in. For images, it is mapping from the image URL to the page number.
-    Source_file_index: a dictionary that maps each source to the file index it is found in. For images, it is mapping from the image URL to the file index.
-    Sources_with_scores: a dictionary that maps each source to the score it has. For images, it is mapping from the image URL to the score.
     """
     config = load_config()
     refined_sources = {}
     image_sources = {}
-    text_sources = {}
 
-    # First separate image sources from text sources. The image sources are the ones mapping from image URL to image score. If the source is an http image URL, add it to image_sources. Otherwise, add it to text_sources.
+    # Load image context
+    image_context_path = os.path.join(markdown_dir, "image_context.json")
+    if os.path.exists(image_context_path):
+        with open(image_context_path, 'r') as f:
+            image_context = json.load(f)
+    else:
+        print("image_context_path does not exist")
+        image_context = {}
+        with open(image_context_path, 'w') as f:
+            json.dump(image_context, f)
+
+    # First separate image sources from text sources
+    text_sources = {}
     for source, score in sources_with_scores.items():
-        if source.startswith('https://knowhiztutorrag.blob'):
+        # Check if source looks like an image filename (has image extension)
+        if any(source.lower().endswith(ext) for ext in config["image_extensions"]):
             image_sources[source] = score
         else:
             text_sources[source] = score
-    
+
     # TEST
     logger.info("TEST: image sources before refine:")
     logger.info(f"TEST: length of image sources before refine: {len(image_sources)}")
@@ -319,7 +279,7 @@ def refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_
                 logger.info(f"TEST: No. {idx} evaluting image with image_url: {image_url}")
 
                 # Get all context descriptions for this image
-                descriptions = image_url_mapping_merged_reverse[image_url]
+                descriptions = image_context[image]
                 descriptions_text = "\n".join([f"- {desc}" for desc in descriptions])
 
                 # Evaluate relevance using LLM
@@ -334,7 +294,7 @@ def refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_
                         # Combine vector similarity score with LLM relevance score
                         combined_score = (score + result["relevance_score"]) / 2
                         image_scores.append((
-                            image_url,
+                            image,
                             combined_score,
                             result["actual_figure_number"],
                             result["explanation"]
@@ -342,8 +302,9 @@ def refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_
                         # # TEST
                         # logger.info(f"image_scores for {image_url}: {image_scores}")
                         # logger.info(f"result for {image_url}: {result}")
+
                 except Exception as e:
-                    logger.exception(f"Error evaluating image {image_url}: {e}")
+                    logger.exception(f"Error evaluating image {image}: {e}")
                     continue
             else:
                 logger.warning(f"Image URL {image_url} not found in image_url_mapping_merged_reverse")
@@ -353,56 +314,48 @@ def refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_
         image_scores.sort(key=lambda x: x[1], reverse=True)
 
         # Filter images with high relevance score (score > 0.2)
-        filtered_images = {img_url: score for img_url, score, fig_num, expl in image_scores if score > 0.5}
+        filtered_images = {img: score for img, score, fig_num, expl in image_scores if score > 0.5}
 
-        # if filtered_images:
-        #     # If asking about a specific figure, prioritize exact figure number match
-        #     import re
-        #     figure_pattern = re.compile(r'fig(?:ure)?\.?\s*(\d+)', re.IGNORECASE)
-        #     user_figure_match = figure_pattern.search(user_input)
-
-        #     if user_figure_match:
-        #         user_figure_num = user_figure_match.group(1)
-        #         # Look for exact figure number match first
-        #         exact_matches = {
-        #             img_url: score for img_url, score, fig_num, expl in image_scores 
-        #             if re.search(rf'(?:figure|fig)\.?\s*{user_figure_num}\b', fig_num, re.IGNORECASE)
-        #         }
-        #         if exact_matches:
-        #             # Take the highest scored exact match
-        #             highest_match = max(exact_matches.items(), key=lambda x: x[1])
-        #             filtered_images = {highest_match[0]: highest_match[1]}
-        #         else:
-        #             # If no exact match found, include images with scores close to the highest score
-        #             if filtered_images:
-        #                 # Get the highest score
-        #                 highest_score = max(filtered_images.values())
-        #                 # Keep images with scores within 10% of the highest score
-        #                 score_threshold = highest_score * 0.9
-        #                 filtered_images = {img: score for img, score in filtered_images.items() if score >= score_threshold}
-        #     else:
-        # If no specific figure was asked for, include images with scores close to the highest score
         if filtered_images:
-            # Get the highest score
-            highest_score = max(filtered_images.values())
-            # Keep images with scores within 10% of the highest score
-            score_threshold = highest_score * 0.9
-            filtered_images = {img_url: score for img_url, score in filtered_images.items() if score >= score_threshold}
+            # If asking about a specific figure, prioritize exact figure number match
+            import re
+            figure_pattern = re.compile(r'fig(?:ure)?\.?\s*(\d+)', re.IGNORECASE)
+            user_figure_match = figure_pattern.search(user_input)
+
+            if user_figure_match:
+                user_figure_num = user_figure_match.group(1)
+                # Look for exact figure number match first
+                exact_matches = {
+                    img: score for img, score, fig_num, expl in image_scores 
+                    if re.search(rf'(?:figure|fig)\.?\s*{user_figure_num}\b', fig_num, re.IGNORECASE)
+                }
+                if exact_matches:
+                    # Take the highest scored exact match
+                    highest_match = max(exact_matches.items(), key=lambda x: x[1])
+                    filtered_images = {highest_match[0]: highest_match[1]}
+                else:
+                    # If no exact match found, include images with scores close to the highest score
+                    if filtered_images:
+                        # Get the highest score
+                        highest_score = max(filtered_images.values())
+                        # Keep images with scores within 10% of the highest score
+                        score_threshold = highest_score * 0.9
+                        filtered_images = {img: score for img, score in filtered_images.items() if score >= score_threshold}
+            else:
+                # If no specific figure was asked for, include images with scores close to the highest score
+                if filtered_images:
+                    # Get the highest score
+                    highest_score = max(filtered_images.values())
+                    # Keep images with scores within 10% of the highest score
+                    score_threshold = highest_score * 0.9
+                    filtered_images = {img: score for img, score in filtered_images.items() if score >= score_threshold}
 
     # Process text sources as before
-    _docs = []
-    for file_path in file_path_list:
-        try:
-            _, _doc = process_pdf_file(file_path)
-            _docs.append(_doc)
-        except Exception as e:
-            logger.exception(f"Error opening document {file_path}: {e}")
-    for _doc in _docs:
-        for page in _doc:
-            for source, score in text_sources.items():
-                text_instances = robust_search_for(page, source)
-                if text_instances:
-                    refined_sources[source] = score
+    for page in _doc:
+        for source, score in text_sources.items():
+            text_instances = robust_search_for(page, source)
+            if text_instances:
+                refined_sources[source] = score
 
     # Combine filtered image sources with refined text sources
     final_sources = {**filtered_images, **refined_sources}
@@ -416,13 +369,6 @@ def refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_
     
     # Further limit to top 20 if needed
     sorted_sources = dict(list(sorted_sources.items())[:20])
-
-    # TEST
-    logger.info("TEST: sorted sources after refine:")
-    for source, score in sorted_sources.items():
-        logger.info(f"{source}: {score}")
-    logger.info(f"TEST: length of sorted sources after refine: {len(sorted_sources)}")
-
     return sorted_sources
 
 

@@ -51,6 +51,20 @@ def graphrag_index_files_check(embedding_folder):
         if not os.path.exists(path):
             all_files_exist = False
             logger.info(f"Missing directory: {path}")
+    
+    # If there is "I'm sorry" in documents_summary.txt, return False
+    if os.path.exists(document_summary_path):
+        with open(document_summary_path, "r") as file:
+            if "I'm sorry" in file.read():
+                all_files_exist = False
+                logger.info(f"GraphRAG index files status: {all_files_exist}")
+                return False
+    else:
+        all_files_exist = False
+        logger.info(f"GraphRAG index files status: {all_files_exist}")
+        return False
+    
+    logger.info(f"GraphRAG index files status: {all_files_exist}")
     return all_files_exist
 
 
@@ -134,6 +148,13 @@ def graphrag_index_files_decompress(embedding_folder):
             return True
         else:
             logger.info("Index files are not ready after being decompressed, zip file in Azure blob may be unhealthy!")
+
+            # CLEANUP: Clear the downloaded zip file and the corresponding folder
+            if os.path.exists(compressed_file + ".zip"):
+                os.remove(compressed_file + ".zip")
+            if os.path.exists(folder):
+                shutil.rmtree(folder)
+
             return False
     except Exception as e:
         # CLEANUP: Clear the downloaded zip file and the corresponding folder if an error occurs
@@ -175,6 +196,21 @@ def vectorrag_index_files_check(embedding_folder):
         if not os.path.exists(path):
             all_files_exist = False
             logger.info(f"Missing directory: {path}")
+
+    # If there is "I'm sorry" in documents_summary.txt, return False
+    if os.path.exists(document_summary_path):
+        with open(document_summary_path, "r") as file:
+            if "I'm sorry" in file.read():
+                all_files_exist = False
+                logger.info(f"VectorRAG index files status: {all_files_exist}")
+                return False
+    else:
+        all_files_exist = False
+        logger.info(f"VectorRAG index files status: {all_files_exist}")
+        return False
+    
+    logger.info(f"VectorRAG index files status: {all_files_exist}")
+
     return all_files_exist
 
 
@@ -266,7 +302,14 @@ def vectorrag_index_files_decompress(embedding_folder):
             return True
         else:
             logger.info("VectorRAG index files are not ready after being decompressed, zip file in Azure blob may be unhealthy!")
+
+            # CLEANUP: Clear the downloaded zip file and the corresponding folder
+            if os.path.exists(compressed_file + ".zip"):
+                os.remove(compressed_file + ".zip")
+            if os.path.exists(folder):
+                shutil.rmtree(folder)
             return False
+          
     except Exception as e:
         # CLEANUP: Clear the downloaded zip file if an error occurs
         if os.path.exists(compressed_file + ".zip"):

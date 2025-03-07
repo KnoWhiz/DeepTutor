@@ -222,6 +222,17 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
     logger.info(f"TEST: length of refined source index: {len(refined_source_index)}")
 
     # TEST
+    logger.info(f"TEST: sources after refine: sources_with_scores - {sources_with_scores}")
+    logger.info(f"TEST: length of sources after refine: {len(sources_with_scores)}")
+
+
+    # TEST
+    logger.info("TEST: refined source index:")
+    for source, index in refined_source_index.items():
+        logger.info(f"{source}: {index}")
+    logger.info(f"TEST: length of refined source index: {len(refined_source_index)}")
+
+    # TEST
     logger.info("TEST: refined source pages:")
     for source, page in refined_source_pages.items():
         logger.info(f"{source}: {page}")
@@ -342,6 +353,7 @@ def refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_
                         # # TEST
                         # logger.info(f"image_scores for {image_url}: {image_scores}")
                         # logger.info(f"result for {image_url}: {result}")
+                        
                 except Exception as e:
                     logger.exception(f"Error evaluating image {image_url}: {e}")
                     continue

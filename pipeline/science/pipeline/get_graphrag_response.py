@@ -28,7 +28,7 @@ logger = logging.getLogger("tutorpipeline.science.get_graphrag_response")
 
 async def get_GraphRAG_global_response(user_input, chat_history, embedding_folder_list, deep_thinking = True):
     embedding_folder = embedding_folder_list[0]
-    
+
     # Chat history and user input
     chat_history_text = truncate_chat_history(chat_history)
     user_input_text = str(user_input)

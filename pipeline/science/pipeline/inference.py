@@ -54,7 +54,7 @@ def deepseek_inference(
     stream: bool = False,
     temperature: float = 0.6,
     top_p: float = 0.1,
-    max_tokens: int = 2500,
+    max_tokens: int = 2000,
     model: str = "DeepSeek-R1-Distill-Llama-70B"
 ) -> Optional[str]:
     """

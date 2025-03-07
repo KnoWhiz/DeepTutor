@@ -317,9 +317,9 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
     question_type = parsed_result['question_type']
     try:
         language = detect_language(user_input)
-        logger.info("language detected:", language)
+        logger.info(f"language detected: {language}")
     except Exception as e:
-        logger.info("Error detecting language:", e)
+        logger.info(f"Error detecting language: {e}")
         language = "English"
 
     chat_session.set_language(language)

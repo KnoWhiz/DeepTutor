@@ -29,7 +29,7 @@ def previous_page():
     logger.info("previous_page")
     if st.session_state.current_page > 1:
         st.session_state.current_page = st.session_state.current_page - 1
-    logger.info("st.session_state.current_page is %s", st.session_state.current_page)
+    logger.info(f"st.session_state.current_page is {st.session_state.current_page}")
 
 
 # Function to display the pdf
@@ -37,7 +37,7 @@ def next_page():
     logger.info("next_page")
     if st.session_state.current_page < st.session_state.total_pages:
         st.session_state.current_page = st.session_state.current_page + 1
-    logger.info("st.session_state.current_page is %s", st.session_state.current_page)
+    logger.info(f"st.session_state.current_page is {st.session_state.current_page}")
 
 
 # Function to close the pdf

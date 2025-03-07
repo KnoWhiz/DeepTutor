@@ -23,7 +23,7 @@ from pipeline.science.pipeline.embeddings import (
 from pipeline.science.pipeline.inference import deep_inference_agent
 from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
 from pipeline.science.pipeline.get_graphrag_response import get_GraphRAG_global_response
-from pipeline.science.pipeline.get_rag_response import get_basic_rag_response
+from pipeline.science.pipeline.get_rag_response import get_basic_rag_response, get_rag_response
 
 import logging
 logger = logging.getLogger("tutorpipeline.science.get_response")
@@ -77,7 +77,7 @@ class Question:
         }
 
 
-async def get_response(chat_session: ChatSession, _doc, _document, file_path, question: Question, chat_history, embedding_folder, deep_thinking = True, stream=False):
+async def get_response(chat_session: ChatSession, file_path_list, question: Question, chat_history, embedding_folder_list, deep_thinking = True, stream=False):
     user_input = question.text
     # Handle Lite mode first
     if chat_session.mode == ChatMode.LITE:
@@ -105,17 +105,26 @@ RESPONSE GUIDELINES:
 Remember: Your goal is to make learning enjoyable and accessible. Keep your tone positive, supportive, and engaging at all times.
 """
 
-        answer = await get_basic_rag_response(
+        # answer = await get_basic_rag_response(
+        #     prompt_string=lite_prompt,
+        #     user_input=user_input + "\n\n" + question.special_context,
+        #     chat_history=chat_history,
+        #     embedding_folder=embedding_folder,
+        #     embedding_type="lite",
+        #     chat_session=chat_session,
+        #     file_path=file_path,
+        #     stream=stream
+        # )
+
+        actual_embedding_folder_list = [os.path.join(embedding_folder, 'lite_embedding') for embedding_folder in embedding_folder_list]
+        
+        db = load_embeddings(actual_embedding_folder_list, 'lite')
+        logger.info(f"Type of db: {type(db)}")
+        answer = await get_rag_response(
             prompt_string=lite_prompt,
             user_input=user_input + "\n\n" + question.special_context,
             chat_history=chat_history,
-            embedding_folder=embedding_folder,
-            embedding_type="lite",
-            chat_session=chat_session,
-            doc=_doc,
-            document=_document,
-            file_path=file_path,
-            stream=stream
+            db=db
         )
 
         # # For Lite mode, we return empty containers for sources and follow-up questions
@@ -130,7 +139,7 @@ Remember: Your goal is to make learning enjoyable and accessible. Keep your tone
     # Handle Advanced mode
     if chat_session.mode == ChatMode.ADVANCED:
         try:
-            answer = await get_GraphRAG_global_response(_doc, _document, user_input, chat_history, embedding_folder, deep_thinking)
+            answer = await get_GraphRAG_global_response(user_input, chat_history, embedding_folder_list, deep_thinking)
             return answer
         except Exception as e:
             logger.exception("Error getting response from GraphRAG:", e)
@@ -161,27 +170,27 @@ Remember: Your goal is to make learning enjoyable and accessible. Keep your tone
             logger.exception(f"Failed to load markdown embeddings for Non-deep thinking mode: {str(e)}")
             db = load_embeddings(embedding_folder_list, 'default')
 
-        answer = await get_basic_rag_response(
+        answer = await get_rag_response(
             prompt_string=basic_prompt,
             user_input=user_input + "\n\n" + question.special_context,
             chat_history=chat_history,
-            embedding_folder=embedding_folder,
+            db=db,
             stream=stream
         )
         answer = responses_refine(answer)
         return answer
     else:
         logger.info("deep thinking ...")
-        # Load config and embeddings for deep thinking mode
+        try:
+            logger.info(f"Loading markdown embeddings from {[os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]}")
+            db = load_embeddings(embedding_folder_list, 'default')
+        except Exception as e:
+            logger.exception(f"Failed to load markdown embeddings for deep thinking mode: {str(e)}")
+            db = load_embeddings(embedding_folder_list, 'default')
+        
+        # Load config for deep thinking mode
         config = load_config()
         token_limit = config["inference_token_limit"]
-
-        try:
-            logger.info(f"Loading markdown embeddings from {os.path.join(embedding_folder, 'markdown')}")
-            db = load_embeddings(os.path.join(embedding_folder, 'markdown'), 'default')
-        except Exception as e:
-            logger.exception(f"Failed to load markdown embeddings for deep thinking: {str(e)}")
-            db = load_embeddings(embedding_folder, 'default')
 
         chat_history_string = truncate_chat_history(chat_history, token_limit=token_limit)
         user_input_string = str(user_input + "\n\n" + question.special_context)
@@ -246,12 +255,18 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
     
     logger.info(f"TEST: user_input: {user_input}")
     # If we have "documents_summary" in the embedding folder, we can use it to speed up the search
-    document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
-    if os.path.exists(document_summary_path):
-        with open(document_summary_path, "r") as f:
-            documents_summary = f.read()
-    else:
-        documents_summary = " "
+    document_summary_path_list = [os.path.join(embedding_folder, "documents_summary.txt") for embedding_folder in embedding_folder_list]
+    documents_summary_list = []
+    for document_summary_path in document_summary_path_list:
+        if os.path.exists(document_summary_path):
+            with open(document_summary_path, "r") as f:
+                documents_summary_list.append(f.read())
+        else:
+            documents_summary_list.append(" ")
+
+    # Join all the documents summaries into one string
+    # FIXME: Add a function to combine the initial messages into a single summary message
+    documents_summary = "\n".join(documents_summary_list)
 
     # Load languages from config
     config = load_config()

@@ -17,7 +17,7 @@ def streamlit_tutor_agent(chat_session, file_path, user_input):
     refined_source_index, \
     follow_up_questions = asyncio.run(tutor_agent(
         chat_session=chat_session,
-        file_path=file_path,
+        file_path_list=[file_path],
         user_input=user_input,
         deep_thinking=True
     ))

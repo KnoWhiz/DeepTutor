@@ -10,6 +10,7 @@ from langchain_core.prompts import ChatPromptTemplate
 
 import logging
 logger = logging.getLogger("tutorpipeline.science.api_handler")
+load_dotenv()
 
 
 def create_env_file(GraphRAG_embedding_folder):

@@ -64,13 +64,13 @@ async def get_db_rag_response(
         # logger.info(f"Stream: {stream}")
         llm = get_llm("backup", para, stream)
         parser = StrOutputParser()
-        error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
+        # error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
     else:
         logger.info("RAG response in other modes")
         k_value = config["retriever"]["k"]
         llm = get_llm("advanced", para)
         parser = StrOutputParser()
-        error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
+        # error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
 
     retriever = db.as_retriever(search_kwargs={"k": k_value})
 
@@ -98,7 +98,7 @@ async def get_db_rag_response(
         }
         | prompt
         | llm
-        | error_parser
+        | parser
     )
 
     retrieve_docs = (lambda x: x["input"]) | retriever
@@ -107,7 +107,7 @@ async def get_db_rag_response(
     )
 
     try:
-        parsed_result = chain.invoke({
+        parsed_result = chain.stream({
             "input": user_input,
             "chat_history": processed_chat_history
         })

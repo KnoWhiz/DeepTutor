@@ -1,10 +1,20 @@
 import os
+import sys
+import logging
 from typing import Any
+
+# Add the project root to the Python path to make imports work
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+# After adding root to path, import the modules
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain.output_parsers import OutputFixingParser
 
+# Import from within the package structure
 from pipeline.science.pipeline.config import load_config
 from pipeline.science.pipeline.utils import (
     truncate_chat_history,
@@ -15,7 +25,6 @@ from pipeline.science.pipeline.embeddings import (
 )
 from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
 
-import logging
 logger = logging.getLogger("tutorpipeline.science.get_rag_response")
 
 
@@ -41,7 +50,8 @@ async def get_rag_response(
     """
     config = load_config()
     para = config["llm"]
-    llm = get_llm("basic", para)
+    # llm = get_llm("basic", para)
+    llm = get_llm("advanced", para)
     parser = StrOutputParser()
     error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
 
@@ -129,8 +139,12 @@ async def get_basic_rag_response(
         chat_session = ChatSession()
 
     try:
-        # Handle different embedding folders based on type
-        if chat_session.mode == ChatMode.LITE:
+        # Check if the path is a direct reference to a markdown folder
+        if "markdown" in embedding_folder and os.path.exists(embedding_folder):
+            logger.info(f"Using direct markdown folder: {embedding_folder}")
+            actual_embedding_folder = embedding_folder
+        # Handle different embedding folders based on mode
+        elif chat_session.mode == ChatMode.LITE:
             actual_embedding_folder = os.path.join(embedding_folder, "lite_embedding")
         elif chat_session.mode == ChatMode.BASIC or chat_session.mode == ChatMode.ADVANCED:
             actual_embedding_folder = os.path.join(embedding_folder, "markdown")
@@ -140,6 +154,7 @@ async def get_basic_rag_response(
         logger.exception(f"Failed to load session mode: {str(e)}")
         actual_embedding_folder = os.path.join(embedding_folder, "markdown")
 
+    logger.info(f"Loading embeddings from: {actual_embedding_folder}")
     try:
         db = load_embeddings([actual_embedding_folder], embedding_type)
     except Exception as e:
@@ -162,3 +177,149 @@ async def get_basic_rag_response(
     db = None
 
     return answer
+
+# Testing function - only used when file is run directly
+def _run_tests():
+    """Run tests for the RAG pipeline when the file is executed directly."""
+    import asyncio
+    import time
+    
+    # Setup logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    logger.info("Starting direct test execution of get_rag_response.py")
+    
+    # Class for mock components (only used if real ones fail)
+    class MockDB:
+        def __init__(self):
+            self.name = "MockDB"
+            
+        def as_retriever(self, search_kwargs=None):
+            return MockRetriever()
+    
+    class MockRetriever:
+        def __init__(self):
+            pass
+            
+        def get_relevant_documents(self, query):
+            return [
+                MockDocument("This is a sample document for testing. It contains information about RAG (Retrieval Augmented Generation)."),
+                MockDocument("RAG systems combine retrieval mechanisms with generative models to produce more accurate and contextual responses.")
+            ]
+    
+    class MockDocument:
+        def __init__(self, content):
+            self.page_content = content
+            self.metadata = {"source": "mock_source"}
+    
+    class MockLLM:
+        async def ainvoke(self, prompt):
+            return "This is a mock response from the LLM for testing purposes. RAG (Retrieval Augmented Generation) is a technique that enhances generative AI by retrieving relevant information from external sources."
+    
+    # Test configuration
+    test_prompt = "You are a helpful AI assistant that answers questions based on the provided context."
+    test_user_input = "What is the main purpose of the RAG pipeline?"
+    test_chat_history = ""
+    
+    # Use the specific embedded content path for testing
+    def find_embeddings_folder():
+        # Use the specified embedded content path as first priority
+        specified_path = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/f7a7da83acea518683b13f634079fbfc/markdown"
+        if os.path.exists(specified_path):
+            logger.info(f"Using specified embedded content path: {specified_path}")
+            return os.path.dirname(specified_path)  # Return parent folder so markdown gets appended properly
+        
+        # Fallback options if the specified path doesn't exist
+        possibilities = [
+            # Project structure embedding locations
+            os.path.join(project_root, "data", "embeddings"),
+            os.path.join(project_root, "pipeline", "data", "embeddings"),
+            os.path.join(project_root, "pipeline", "science", "data", "embeddings"),
+            # Current directory for testing
+            os.path.join(os.path.dirname(__file__), "test_embeddings"),
+        ]
+        
+        for folder in possibilities:
+            if os.path.exists(folder):
+                logger.info(f"Found embeddings folder: {folder}")
+                return folder
+        
+        # If none found, create a test folder
+        test_folder = os.path.join(os.path.dirname(__file__), "test_embeddings")
+        os.makedirs(test_folder, exist_ok=True)
+        logger.info(f"Created test embeddings folder: {test_folder}")
+        return test_folder
+    
+    # Simple test runner
+    async def run_test():
+        print("\n🔍 RUNNING RAG PIPELINE TESTS 🔍\n")
+        
+        embedding_folder = find_embeddings_folder()
+        
+        # Try the real implementation first
+        try:
+            print("\nTest: Using get_basic_rag_response with embedded content path")
+            response = await get_basic_rag_response(
+                prompt_string=test_prompt,
+                user_input=test_user_input,
+                chat_history=test_chat_history,
+                embedding_folder=embedding_folder,
+                embedding_type="default"
+            )
+            print(f"Response: {response}")
+            
+            # If the first test succeeds, try with a more complex query
+            complex_query = "Please explain how retrieval augmented generation works in detail."
+            print("\nTest: Using a more complex query")
+            response = await get_basic_rag_response(
+                prompt_string=test_prompt,
+                user_input=complex_query,
+                chat_history=test_chat_history,
+                embedding_folder=embedding_folder,
+                embedding_type="default"
+            )
+            print(f"Complex query response: {response}")
+                
+        except Exception as e:
+            print(f"Test with real implementation failed: {str(e)}")
+            logger.exception("Error with real implementation")
+            
+            # Try with mock implementation
+            print("\nFalling back to mock implementation for testing")
+            
+            # Create mocks
+            original_load_embeddings = globals().get("load_embeddings")
+            original_get_llm = globals().get("get_llm")
+            
+            # Replace with mocks temporarily
+            globals()["load_embeddings"] = lambda folders, embedding_type="default": MockDB()
+            globals()["get_llm"] = lambda mode, para: MockLLM()
+            
+            try:
+                response = await get_basic_rag_response(
+                    prompt_string=test_prompt,
+                    user_input=test_user_input,
+                    chat_history=test_chat_history,
+                    embedding_folder=embedding_folder
+                )
+                print(f"Response with mocks: {response}")
+            except Exception as e:
+                print(f"Test with mock implementation failed: {str(e)}")
+                logger.exception("Error with mock implementation")
+            finally:
+                # Restore original functions
+                if original_load_embeddings:
+                    globals()["load_embeddings"] = original_load_embeddings
+                if original_get_llm:
+                    globals()["get_llm"] = original_get_llm
+        
+        print("\n🔍 TESTS COMPLETED 🔍")
+    
+    # Run the tests
+    asyncio.run(run_test())
+
+# This block only runs when the file is executed directly
+if __name__ == "__main__":
+    _run_tests()

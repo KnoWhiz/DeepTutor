@@ -28,7 +28,7 @@ from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
 logger = logging.getLogger("tutorpipeline.science.get_rag_response")
 
 
-async def get_rag_response(
+async def get_db_rag_response(
     prompt_string: str,
     user_input: str,
     chat_history: str,
@@ -38,6 +38,8 @@ async def get_rag_response(
 ):
     """
     Basic function for RAG-based response generation. For single file response only.
+
+    The most basic version of RAG response generation, also used in get_embedding_folder_rag_response
 
     Args:
         prompt_string: The system prompt to use
@@ -108,7 +110,7 @@ async def get_rag_response(
     return parsed_result["answer"]
 
 
-async def get_basic_rag_response(
+async def get_embedding_folder_rag_response(
     prompt_string: str,
     user_input: str,
     chat_history: str,
@@ -120,6 +122,8 @@ async def get_basic_rag_response(
 ):
     """
     Basic function for RAG-based response generation. For single file response only.
+
+    Mainly used in doc_summary generation
 
     Args:
         prompt_string: The system prompt to use
@@ -166,7 +170,7 @@ async def get_basic_rag_response(
     if chat_session.mode == ChatMode.LITE:
         k_value = min(k_value + 2, 8)  # Add more context chunks for LITE mode, but cap at reasonable limit
         
-    answer = await get_rag_response(
+    answer = await get_db_rag_response(
         prompt_string=prompt_string,
         user_input=user_input,
         chat_history=chat_history,
@@ -189,7 +193,7 @@ def _run_tests():
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
-    logger.info("Starting direct test execution of get_rag_response.py")
+    logger.info("Starting direct test execution of get_embedding_folder_rag_response.py")
     
     # Class for mock components (only used if real ones fail)
     class MockDB:
@@ -260,8 +264,8 @@ def _run_tests():
         
         # Try the real implementation first
         try:
-            print("\nTest: Using get_basic_rag_response with embedded content path")
-            response = await get_basic_rag_response(
+            print("\nTest: Using get_embedding_folder_rag_response with embedded content path")
+            response = await get_embedding_folder_rag_response(
                 prompt_string=test_prompt,
                 user_input=test_user_input,
                 chat_history=test_chat_history,
@@ -273,7 +277,7 @@ def _run_tests():
             # If the first test succeeds, try with a more complex query
             complex_query = "Please explain how retrieval augmented generation works in detail."
             print("\nTest: Using a more complex query")
-            response = await get_basic_rag_response(
+            response = await get_embedding_folder_rag_response(
                 prompt_string=test_prompt,
                 user_input=complex_query,
                 chat_history=test_chat_history,
@@ -298,7 +302,7 @@ def _run_tests():
             globals()["get_llm"] = lambda mode, para: MockLLM()
             
             try:
-                response = await get_basic_rag_response(
+                response = await get_embedding_folder_rag_response(
                     prompt_string=test_prompt,
                     user_input=test_user_input,
                     chat_history=test_chat_history,

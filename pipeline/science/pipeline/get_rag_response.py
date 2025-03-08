@@ -112,12 +112,14 @@ async def get_db_rag_response(
                 "input": user_input,
                 "chat_history": processed_chat_history
             })
+            logger.info(f"Response type: {type(parsed_result)}")
         else:
             parsed_result = chain.invoke({
                 "input": user_input,
                 "chat_history": processed_chat_history
             })
             parsed_result = parsed_result["answer"]
+            logger.info(f"Response type: {type(parsed_result)}")
     except Exception as e:
         logger.exception(f"Error generating response: {str(e)}")
         return "I encountered an error while generating your response. Please try again with a different question."

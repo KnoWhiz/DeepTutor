@@ -275,17 +275,18 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
     time_tracking['image_processing'] = time.time() - images_processing_start
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
-    # Refine and translate the answer to the selected language
-    translation_start = time.time()
-    # answer = f"""**{refined_user_input}**
-    # """ + "\n" + answer
-    answer = translate_content(
-        content=answer,
-        target_lang=chat_session.current_language
-    )
-    # logger.info(f"translate_content Answer: {answer}")
-    time_tracking['translation'] = time.time() - translation_start
-    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    if chat_session.mode != ChatMode.LITE:
+        # Refine and translate the answer to the selected language
+        translation_start = time.time()
+        # answer = f"""**{refined_user_input}**
+        # """ + "\n" + answer
+        answer = translate_content(
+            content=answer,
+            target_lang=chat_session.current_language
+        )
+        # logger.info(f"translate_content Answer: {answer}")
+        time_tracking['translation'] = time.time() - translation_start
+        logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Append images URL in markdown format to the end of the answer
     annotations_start = time.time()

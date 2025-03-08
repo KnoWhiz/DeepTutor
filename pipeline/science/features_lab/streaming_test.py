@@ -58,9 +58,12 @@ def main():
     
     # Stream the response using LCEL
     response_chunks = []
-    for chunk in chain.stream({"question": question}):
+    print(type(chain))
+    response_generator = chain.stream({"question": question})
+    print(type(response_generator))
+    for chunk in response_generator:
         response_chunks.append(chunk)
-        # Print the chunk in real-time
+        # Print the chunk in real-time. End="" is used to prevent the cursor from moving to the next line. And flush=True is used to flush the output buffer.
         print(chunk, end="", flush=True)
     
     print("\n" + "-" * 50)

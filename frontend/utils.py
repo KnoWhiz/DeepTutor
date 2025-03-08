@@ -3,6 +3,7 @@ import asyncio
 from pipeline.science.pipeline.tutor_agent import tutor_agent
 from pipeline.science.pipeline.get_response import generate_follow_up_questions
 from pipeline.science.pipeline.session_manager import ChatSession
+from typing import Generator
 
 import logging
 logger = logging.getLogger("tutorfrontend.utils")
@@ -22,6 +23,35 @@ def streamlit_tutor_agent(chat_session, file_path, user_input):
         deep_thinking=True
     ))
     return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
+
+
+def process_response_phase(response_placeholder, stream_response: Generator):
+    """
+    Process the response phase of the assistant's response.
+    Args:
+        stream_response: The generator object from the stream response.
+    Returns:
+        The response content as a string.
+    """
+    response_content = ""
+    for chunk in stream_response:
+        # Get the content from the chunk 'answer', if there is no 'answer' key, then get ""
+        content = str(chunk.get("answer", ""))
+        response_content += content
+        # In the terminal, print the content in real-time. End="" is used to prevent the cursor from moving to the next line. And flush=True is used to flush the output buffer.
+        print(content, end="", flush=True)
+        # Need to avoid each chunk being displayed in a new line.
+        response_placeholder.markdown(content)
+    return response_content
+
+
+# def process_response_phase(response_placeholder, stream_response: Generator):
+#     response_content = ""
+#     for chunk in stream_response:
+#         content = chunk.get("answer", "")
+#         response_content += content  # accumulate text
+#         response_placeholder.markdown(response_content)
+#     return response_content
 
 
 # Function to display the pdf

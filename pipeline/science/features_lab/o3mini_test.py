@@ -64,10 +64,10 @@ if __name__ == "__main__":
     
     # Non-streaming example
     response = o3mini_inference(user_prompt, system_prompt=system_prompt)
-    logger.info(response)
+    print(response)
     
     # Streaming example
-    logger.info("\nStreaming response example:")
+    print("\nStreaming response example:")
     streaming_response = o3mini_inference(user_prompt, system_prompt=system_prompt, stream=True)
     
     # Create a dictionary to store collected response parts
@@ -83,6 +83,6 @@ if __name__ == "__main__":
             # If this is a content chunk and has a value
             if key == "content" and len(chunk) > 1:
                 # Print the actual content chunk
-                logger.info(chunk[1], end="", flush=True)
+                print(chunk[1], end="", flush=True)
     
-    logger.info()
+    print()

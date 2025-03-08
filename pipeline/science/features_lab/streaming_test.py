@@ -55,7 +55,7 @@ def main():
     print(f"Question: {question}\n")
     print("Streaming response:")
     print("-" * 50)
-    f
+    
     # Stream the response using LCEL
     response_chunks = []
     for chunk in chain.stream({"question": question}):

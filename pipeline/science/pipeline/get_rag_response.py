@@ -61,7 +61,8 @@ async def get_db_rag_response(
         logger.info("RAG response in LITE mode")
         k_value = config["retriever"]["k"]  # Increase k for better context retrieval if in LITE mode
         k_value = min(k_value + 2, 8)  # Add more context chunks for LITE mode, but cap at reasonable limit
-        llm = get_llm("backup", para)
+        # logger.info(f"Stream: {stream}")
+        llm = get_llm("backup", para, stream)
         parser = StrOutputParser()
         error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
     else:

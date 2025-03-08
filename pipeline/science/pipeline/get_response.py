@@ -124,6 +124,7 @@ Remember: Your goal is to make learning enjoyable and accessible. Keep your tone
             prompt_string=lite_prompt,
             user_input=user_input + "\n\n" + question.special_context,
             chat_history=chat_history,
+            chat_session=chat_session,
             db=db,
             stream=True
         )
@@ -175,6 +176,7 @@ Remember: Your goal is to make learning enjoyable and accessible. Keep your tone
             prompt_string=basic_prompt,
             user_input=user_input + "\n\n" + question.special_context,
             chat_history=chat_history,
+            chat_session=chat_session,
             db=db,
             stream=True
         )

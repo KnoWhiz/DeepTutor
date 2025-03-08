@@ -32,7 +32,7 @@ async def get_db_rag_response(
     prompt_string: str,
     user_input: str,
     chat_history: str,
-    chat_session: ChatSession = None,
+    chat_session: Any = None,
     db: Any = None,
     stream: bool = False
 ):
@@ -50,25 +50,32 @@ async def get_db_rag_response(
     Returns:
         str: The generated response
     """
+    if chat_session is None:
+        logger.info("Session not specified, creating new chat session")
+        chat_session = ChatSession()
+
     config = load_config()
     para = config["llm"]
-    # llm = get_llm("basic", para)
-    llm = get_llm("advanced", para)
-    parser = StrOutputParser()
-    error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
 
-    # Increase k for better context retrieval if in LITE mode
-    k_value = config["retriever"]["k"]
-    if chat_session is None:
-        chat_session = ChatSession()
     if chat_session.mode == ChatMode.LITE:
+        logger.info("RAG response in LITE mode")
+        k_value = config["retriever"]["k"]  # Increase k for better context retrieval if in LITE mode
         k_value = min(k_value + 2, 8)  # Add more context chunks for LITE mode, but cap at reasonable limit
-        
+        llm = get_llm("backup", para)
+        parser = StrOutputParser()
+        error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
+    else:
+        logger.info("RAG response in other modes")
+        k_value = config["retriever"]["k"]
+        llm = get_llm("advanced", para)
+        parser = StrOutputParser()
+        error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
+
     retriever = db.as_retriever(search_kwargs={"k": k_value})
 
     # Process chat history to ensure proper formatting
     processed_chat_history = truncate_chat_history(chat_history) if chat_history else ""
-    
+
     # Create prompt template with better messaging sequence
     prompt = ChatPromptTemplate.from_messages([
         ("system", prompt_string),
@@ -116,7 +123,7 @@ async def get_embedding_folder_rag_response(
     chat_history: str,
     embedding_folder: str,
     embedding_type: str = "default",
-    chat_session: ChatSession = None,
+    chat_session: Any = None,
     file_path: str = None,
     stream: bool = False
 ):
@@ -174,6 +181,7 @@ async def get_embedding_folder_rag_response(
         prompt_string=prompt_string,
         user_input=user_input,
         chat_history=chat_history,
+        chat_session=chat_session,
         db=db
     )
 

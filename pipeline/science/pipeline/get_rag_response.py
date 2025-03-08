@@ -107,15 +107,22 @@ async def get_db_rag_response(
     )
 
     try:
-        parsed_result = chain.stream({
-            "input": user_input,
-            "chat_history": processed_chat_history
-        })
+        if stream:
+            parsed_result = chain.stream({
+                "input": user_input,
+                "chat_history": processed_chat_history
+            })
+        else:
+            parsed_result = chain.invoke({
+                "input": user_input,
+                "chat_history": processed_chat_history
+            })
+            parsed_result = parsed_result["answer"]
     except Exception as e:
         logger.exception(f"Error generating response: {str(e)}")
         return "I encountered an error while generating your response. Please try again with a different question."
 
-    return parsed_result["answer"]
+    return parsed_result
 
 
 async def get_embedding_folder_rag_response(

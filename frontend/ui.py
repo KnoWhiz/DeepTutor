@@ -358,8 +358,8 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                         # We just need to capture the content and format it for storage
                         answer_content = process_thinking_phase(answer)
                         
-                        # Display the content directly as markdown
-                        # The thinking UI was already shown by process_thinking_phase
+                        # # Display the content directly as markdown
+                        # # The thinking UI was already shown by process_thinking_phase
                         # st.markdown(answer_content)
                         
                         # First display source buttons

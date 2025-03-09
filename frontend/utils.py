@@ -33,6 +33,7 @@ def process_response_phase(response_placeholder, stream_response: Generator):
     Returns:
         The response content as a string.
     """
+    response_placeholder.write_stream(stream_response)
     response_content = ""
     for chunk in stream_response:
         # Get the content from the chunk 'answer', if there is no 'answer' key, then get ""
@@ -40,8 +41,6 @@ def process_response_phase(response_placeholder, stream_response: Generator):
         response_content += content
         # In the terminal, print the content in real-time. End="" is used to prevent the cursor from moving to the next line. And flush=True is used to flush the output buffer.
         print(content, end="", flush=True)
-        # Need to avoid each chunk being displayed in a new line.
-        response_placeholder.markdown(content)
     return response_content
 
 

@@ -35,7 +35,7 @@ import logging
 logger = logging.getLogger("tutorpipeline.science.tutor_agent")
 
 
-async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True):
+async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
     """
     Taking the user input, document, and chat history, generate a response and sources.
     If user_input is None, generates the initial welcome message.
@@ -46,20 +46,23 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
     if time_tracking is None:
         time_tracking = {}
     
+    config = load_config()
+    stream = config["stream"]
+    
     # Route to appropriate specialized agent based on mode
     if chat_session.mode == ChatMode.LITE:
-        return await tutor_agent_lite(chat_session, file_path_list, user_input, time_tracking, deep_thinking)
+        return await tutor_agent_lite(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream)
     elif chat_session.mode == ChatMode.BASIC:
-        return await tutor_agent_basic(chat_session, file_path_list, user_input, time_tracking, deep_thinking)
+        return await tutor_agent_basic(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream)
     elif chat_session.mode == ChatMode.ADVANCED:
-        return await tutor_agent_advanced(chat_session, file_path_list, user_input, time_tracking, deep_thinking)
+        return await tutor_agent_advanced(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream)
     else:
         logger.error(f"Invalid chat mode: {chat_session.mode}")
         error_message = "Error: Invalid chat mode."
         return error_message, {}, {}, {}, {}, {}, []
 
 
-async def tutor_agent_lite(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True):
+async def tutor_agent_lite(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
     """
     Lightweight tutor agent that provides basic tutoring capabilities with minimal resource usage.
     Uses LiteRAG for document processing and doesn't perform advanced source retrieval.
@@ -76,7 +79,7 @@ async def tutor_agent_lite(chat_session: ChatSession, file_path_list, user_input
                          refined_source_pages, refined_source_index, follow_up_questions)
     """
     config = load_config()
-    stream = config["stream"]
+    stream = stream
     if time_tracking is None:
         time_tracking = {}
 
@@ -169,7 +172,7 @@ async def tutor_agent_lite(chat_session: ChatSession, file_path_list, user_input
     return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
 
 
-async def tutor_agent_basic(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True):
+async def tutor_agent_basic(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
     """
     Standard tutor agent that provides comprehensive tutoring capabilities with vector-based RAG.
     Uses VectorRAG for document processing and performs source retrieval.
@@ -186,7 +189,7 @@ async def tutor_agent_basic(chat_session: ChatSession, file_path_list, user_inpu
                          refined_source_pages, refined_source_index, follow_up_questions)
     """
     config = load_config()
-    stream = config["stream"]
+    stream = stream
     if time_tracking is None:
         time_tracking = {}
 
@@ -368,7 +371,7 @@ async def tutor_agent_basic(chat_session: ChatSession, file_path_list, user_inpu
     return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
 
 
-async def tutor_agent_advanced(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True):
+async def tutor_agent_advanced(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
     """
     Advanced tutor agent that provides sophisticated tutoring capabilities with graph-based RAG.
     Uses GraphRAG for document processing and performs enhanced source retrieval.
@@ -385,7 +388,7 @@ async def tutor_agent_advanced(chat_session: ChatSession, file_path_list, user_i
                          refined_source_pages, refined_source_index, follow_up_questions)
     """
     config = load_config()
-    stream = config["stream"]
+    stream = stream
     if time_tracking is None:
         time_tracking = {}
 

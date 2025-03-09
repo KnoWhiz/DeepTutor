@@ -79,7 +79,7 @@ async def tutor_agent_lite(chat_session: ChatSession, file_path_list, user_input
                          refined_source_pages, refined_source_index, follow_up_questions)
     """
     config = load_config()
-    stream = stream
+    # stream = config["stream"]
     if time_tracking is None:
         time_tracking = {}
 
@@ -196,7 +196,7 @@ async def tutor_agent_basic(chat_session: ChatSession, file_path_list, user_inpu
                          refined_source_pages, refined_source_index, follow_up_questions)
     """
     config = load_config()
-    stream = stream
+    # stream = config["stream"]
     if time_tracking is None:
         time_tracking = {}
 
@@ -395,7 +395,6 @@ async def tutor_agent_advanced(chat_session: ChatSession, file_path_list, user_i
                          refined_source_pages, refined_source_index, follow_up_questions)
     """
     config = load_config()
-    stream = stream
     if time_tracking is None:
         time_tracking = {}
 

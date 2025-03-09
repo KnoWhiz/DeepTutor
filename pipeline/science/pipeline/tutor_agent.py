@@ -1,7 +1,7 @@
 import os
 import json
 import time
-from typing import Dict
+from typing import Dict, Generator
 
 from pipeline.science.pipeline.utils import (
     translate_content,
@@ -196,6 +196,11 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
                 target_lang=chat_session.current_language
             )
 
+        # if type(answer) is not Generator:
+        #     def answer_generator_func(answer):
+        #         yield answer
+        #     answer = answer_generator_func(answer)
+
         return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
 
     time_tracking['summary_message'] = time.time() - initial_message_start_time
@@ -212,6 +217,7 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
         time_tracking['query_refinement'] = time.time() - query_start
         logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
     else:
+        # For Lite mode, we don't need to refine the user input
         question = Question(text=refined_user_input, language=chat_session.current_language, question_type="local")
 
     # Get response
@@ -324,5 +330,10 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
     # logger.info(f"refined_source_pages: {refined_source_pages}")
     # logger.info(f"refined_source_index: {refined_source_index}")
     # logger.info(f"source_annotations: {source_annotations}")
+
+    # if type(answer) is not Generator:
+    #     def answer_generator_func(answer):
+    #         yield answer
+    #     answer = answer_generator_func(answer)
     
     return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions

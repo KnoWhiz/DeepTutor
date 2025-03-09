@@ -33,14 +33,17 @@ def process_response_phase(response_placeholder, stream_response: Generator):
     Returns:
         The response content as a string.
     """
-    response_placeholder.write_stream(stream_response)
-    response_content = ""
-    for chunk in stream_response:
-        # Get the content from the chunk 'answer', if there is no 'answer' key, then get ""
-        content = str(chunk.get("answer", ""))
-        response_content += content
-        # In the terminal, print the content in real-time. End="" is used to prevent the cursor from moving to the next line. And flush=True is used to flush the output buffer.
-        print(content, end="", flush=True)
+    response_content = response_placeholder.write_stream(stream_response)
+    logger.info(f"Final whole response content: {response_content}")
+    # response_content = ""
+    # for chunk in stream_response:
+    #     # Get the content from the chunk 'answer', if there is no 'answer' key, then get ""
+    #     content = chunk
+    #     response_content += content
+    #     # # In the terminal, print the content in real-time. End="" is used to prevent the cursor from moving to the next line. And flush=True is used to flush the output buffer.
+    #     # print(content, end="", flush=True)
+
+    # logger.info(f"Final whole response content: {response_content}")
     return response_content
 
 

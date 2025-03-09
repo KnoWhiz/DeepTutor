@@ -108,21 +108,31 @@ async def get_db_rag_response(
 
     try:
         if stream:
-            parsed_result = chain.stream({
-                "input": user_input,
-                "chat_history": processed_chat_history
-            })
-            logger.info(f"Response type: {type(parsed_result)}")
+            def parsed_result_stream_response(chain, user_input, processed_chat_history):
+                parsed_result = chain.stream({
+                    "input": user_input,
+                    "chat_history": processed_chat_history
+                })
+                logger.info(f"Response type: {type(parsed_result)}")
+                # Use chat_string in your chain
+                for chunk in parsed_result:
+                    chunk_content = chunk.get("answer", "")
+                    print(chunk_content, end="", flush=True)
+                    yield chunk_content
+            parsed_result = parsed_result_stream_response(chain, user_input, processed_chat_history)
         else:
-            parsed_result = chain.invoke({
-                "input": user_input,
-                "chat_history": processed_chat_history
-            })
-            parsed_result = parsed_result["answer"]
-            logger.info(f"Response type: {type(parsed_result)}")
+            def parsed_result_invoke_response(chain, user_input, processed_chat_history):
+                parsed_result = chain.invoke({
+                    "input": user_input,
+                    "chat_history": processed_chat_history
+                })
+                parsed_result = parsed_result["answer"]
+                logger.info(f"Response type: {type(parsed_result)}")
+                yield parsed_result
+            parsed_result = parsed_result_invoke_response(chain, user_input, processed_chat_history)
     except Exception as e:
         logger.exception(f"Error generating response: {str(e)}")
-        return "I encountered an error while generating your response. Please try again with a different question."
+        # return "I encountered an error while generating your response. Please try again with a different question."
 
     return parsed_result
 

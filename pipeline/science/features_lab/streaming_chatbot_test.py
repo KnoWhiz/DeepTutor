@@ -182,7 +182,7 @@ def create_chat_chain(params: Optional[Dict[str, Any]] = None,
     
     # Initialize API handler with streaming explicitly enabled
     params["stream"] = True
-    api_handler = ApiHandler(params, stream=True)
+    api_handler = ApiHandler(params, stream = True)
     
     # Get the requested model
     if model_type not in api_handler.models:

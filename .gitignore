@@ -42,3 +42,4 @@ logs/logs.json
 /output
 *.pem
 ~/.ssh/config
+/pipeline/science/features_lab/chat_histories

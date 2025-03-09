@@ -15,7 +15,7 @@ from frontend.utils import (
 from frontend.forms.contact import contact_form
 from pipeline.science.pipeline.config import load_config
 from pipeline.science.pipeline.session_manager import ChatMode
-from frontend.utils import streamlit_tutor_agent
+from frontend.utils import streamlit_tutor_agent, process_response_phase
 
 import logging
 logger = logging.getLogger("tutorfrontend.ui")
@@ -336,27 +336,10 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                         # Validate sources is a dictionary
                         sources = sources if isinstance(sources, dict) else {}
                     
-                    # Add response with follow-up questions to chat history
-                    st.session_state.chat_session.chat_history.append(
-                        {
-                            "role": "assistant", 
-                            "content": answer,
-                            "follow_up_questions": follow_up_questions
-                        }
-                    )
-                    
-                    # Add source buttons to chat history
-                    st.session_state.chat_session.chat_history.append({
-                        "role": "source_buttons",
-                        "sources": sources,
-                        "pages": refined_source_pages,
-                        "annotations": st.session_state.source_annotations,
-                        "timestamp": len(st.session_state.chat_session.chat_history)
-                    })
-                    
                     # Display current response
-                    with st.chat_message("assistant", avatar=tutor_avatar):
-                        st.write(answer)
+                    response_placeholder = st.chat_message("assistant", avatar=tutor_avatar)
+                    with response_placeholder:
+                        answer_content = process_response_phase(response_placeholder, answer, mode=st.session_state.chat_session.mode)
                         
                         # First display source buttons
                         if sources and len(sources) > 0:
@@ -407,6 +390,8 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                                                     logger.exception(f"Failed to get annotations: {str(e)}")
                                                     st.session_state.annotations = []
                                                 # logger.info(f"type of st.session_state.annotations: {type(st.session_state.annotations)}")
+
+                                            # Add response with follow-up questions to chat history
                         
                         # Then display follow-up questions
                         st.write("\n\n**📝 Follow-up Questions:**")
@@ -417,8 +402,26 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                     st.session_state.sources = sources
                     st.session_state.chat_occurred = True
 
+                    st.session_state.chat_session.chat_history.append(
+                        {
+                            "role": "assistant", 
+                            "content": answer_content,
+                            "follow_up_questions": follow_up_questions
+                        }
+                    )
+
+                    # Add source buttons to chat history
+                    st.session_state.chat_session.chat_history.append({
+                        "role": "source_buttons",
+                        "sources": sources,
+                        "pages": refined_source_pages,
+                        "annotations": st.session_state.source_annotations,
+                        "timestamp": len(st.session_state.chat_session.chat_history)
+                    })
+
                 except json.JSONDecodeError:
                     st.error("There was an error parsing the response. Please try again.")
+
 
             # Highlight PDF excerpts
             if doc and st.session_state.get("chat_occurred", False):

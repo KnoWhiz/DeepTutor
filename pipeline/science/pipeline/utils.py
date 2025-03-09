@@ -236,20 +236,24 @@ def truncate_document(_document, model_name='gpt-4o'):
     return _document
 
 
-def get_llm(llm_type, para):
+def get_llm(llm_type, para, stream=False):
     para = para
-    api = ApiHandler(para)
+    api = ApiHandler(para, stream)
     llm_basic = api.models['basic']['instance']
     llm_advanced = api.models['advanced']['instance']
     llm_creative = api.models['creative']['instance']
     llm_backup = api.models['backup']['instance']
     if llm_type == 'basic':
+        logger.info(f"Using basic LLM: {llm_basic}")
         return llm_basic
     elif llm_type == 'advanced':
+        logger.info(f"Using advanced LLM: {llm_advanced}")
         return llm_advanced
     elif llm_type == 'creative':
+        logger.info(f"Using creative LLM: {llm_creative}")
         return llm_creative
     elif llm_type == 'backup':
+        logger.info(f"Using backup LLM: {llm_backup}")
         return llm_backup
     return llm_basic
 

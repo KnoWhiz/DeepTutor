@@ -10,6 +10,7 @@ from langchain_core.prompts import ChatPromptTemplate
 
 import logging
 logger = logging.getLogger("tutorpipeline.science.api_handler")
+load_dotenv()
 
 
 def create_env_file(GraphRAG_embedding_folder):
@@ -25,9 +26,10 @@ GRAPHRAG_API_KEY={api_key}
 
 
 class ApiHandler:
-    def __init__(self, para):
+    def __init__(self, para, stream=False):
         load_dotenv(para['openai_key_dir'])
         self.para = para
+        self.para['stream'] = stream
         self.api_key = str(os.getenv("AZURE_OPENAI_API_KEY"))
         self.azure_endpoint = str(os.getenv("AZURE_OPENAI_ENDPOINT"))
         # self.openai_api_key = str(os.getenv("OPENAI_API_KEY"))
@@ -37,7 +39,7 @@ class ApiHandler:
         self.embedding_models = self.load_embedding_models()
 
 
-    def get_models(self, api_key, temperature=0, deployment_name=None, endpoint=None, api_version=None, host='azure'):
+    def get_models(self, api_key, temperature=0, deployment_name=None, endpoint=None, api_version=None, host='azure', stream=False):
         """
         Get language model instances based on the specified host platform.
 
@@ -54,7 +56,7 @@ class ApiHandler:
         """
         if host == 'openai':
             return ChatOpenAI(
-                streaming=False,
+                streaming=stream,
                 api_key=api_key,
                 model_name=deployment_name,
                 temperature=temperature,
@@ -66,6 +68,7 @@ class ApiHandler:
                 openai_api_version=api_version,
                 azure_deployment=deployment_name,
                 temperature=temperature,
+                streaming=stream,
             )
         elif host == 'sambanova':
             return ChatSambaNovaCloud(
@@ -74,7 +77,8 @@ class ApiHandler:
                 base_url="https://api.sambanova.ai/v1",
                 max_tokens=1024,
                 temperature=temperature,
-                top_p=0.1
+                top_p=0.1,
+                streaming=stream
             )
         # elif host == 'deepseek':
         #     return ChatDeepSeek(
@@ -92,26 +96,30 @@ class ApiHandler:
                                     deployment_name='gpt-4o-mini',
                                     endpoint=self.azure_endpoint,
                                     api_version='2024-07-01-preview',
-                                    host='azure')
+                                    host='azure',
+                                    stream=self.para['stream'])
         llm_advance = self.get_models(api_key=self.api_key,
                                       temperature=self.para['temperature'],
                                       deployment_name='gpt-4o',
                                       endpoint=self.azure_endpoint,
                                       api_version='2024-06-01',
-                                      host='azure')
+                                      host='azure',
+                                      stream=self.para['stream'])
         llm_creative = self.get_models(api_key=self.api_key,
                                       temperature=self.para['creative_temperature'],
                                       deployment_name='gpt-4o',
                                       endpoint=self.azure_endpoint,
                                       api_version='2024-06-01',
-                                      host='azure')
+                                      host='azure',
+                                      stream=self.para['stream'])
         # llm_deepseek = self.get_models(api_key=self.deepseek_api_key,
         #                                temperature=self.para['temperature'],
         #                                host='deepseek')
         llm_llama = self.get_models(api_key=self.sambanova_api_key,
                                     temperature=self.para['temperature'],
                                     deployment_name='Meta-Llama-3.3-70B-Instruct',
-                                    host='sambanova')
+                                    host='sambanova',
+                                    stream=self.para['stream'])
 
         if self.para['llm_source'] == 'azure' or self.para['llm_source'] == 'openai':
             models = {

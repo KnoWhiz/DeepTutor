@@ -9,7 +9,7 @@ logger = logging.getLogger("sambanova_image_test.py")
 
 load_dotenv()
 
-def process_image_with_llama(image_url, prompt_text, stream=False):
+def process_image_with_llama(image_url, prompt_text, stream = False):
     """
     Process an image with Llama-3.2-90B-Vision-Instruct model.
     

@@ -7,8 +7,6 @@ logger = logging.getLogger("autogen_test.py")
 
 async def main() -> None:
     agent = AssistantAgent("assistant", OpenAIChatCompletionClient(model="gpt-4o"))
-    result = await agent.run(task="Say 'Hello World!'")
-    logger.info(result)
-
+    logger.info(await agent.run(task="Say 'Hello World!'"))
 
 asyncio.run(main())

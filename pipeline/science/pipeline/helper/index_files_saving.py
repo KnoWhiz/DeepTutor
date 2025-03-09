@@ -51,7 +51,7 @@ def graphrag_index_files_check(embedding_folder):
         if not os.path.exists(path):
             all_files_exist = False
             logger.info(f"Missing directory: {path}")
-
+    
     # If there is "I'm sorry" in documents_summary.txt, return False
     if os.path.exists(document_summary_path):
         with open(document_summary_path, "r") as file:
@@ -63,7 +63,7 @@ def graphrag_index_files_check(embedding_folder):
         all_files_exist = False
         logger.info(f"GraphRAG index files status: {all_files_exist}")
         return False
-
+    
     logger.info(f"GraphRAG index files status: {all_files_exist}")
     return all_files_exist
 
@@ -174,7 +174,7 @@ def vectorrag_index_files_check(embedding_folder):
     :return: True if all necessary files exist, False otherwise
     """
     markdown_embedding_folder = os.path.join(embedding_folder, "markdown")
-
+    
     # Define the index files path for VectorRAG embedding
     faiss_path = os.path.join(embedding_folder, "index.faiss")
     pkl_path = os.path.join(embedding_folder, "index.pkl")
@@ -208,7 +208,7 @@ def vectorrag_index_files_check(embedding_folder):
         all_files_exist = False
         logger.info(f"VectorRAG index files status: {all_files_exist}")
         return False
-
+    
     logger.info(f"VectorRAG index files status: {all_files_exist}")
 
     return all_files_exist
@@ -277,7 +277,7 @@ def vectorrag_index_files_decompress(embedding_folder):
         document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
         markdown_faiss_path = os.path.join(markdown_embedding_folder, "index.faiss")
         markdown_pkl_path = os.path.join(markdown_embedding_folder, "index.pkl")
-
+        
         for path in [faiss_path, pkl_path, document_summary_path, markdown_faiss_path, markdown_pkl_path]:
             if os.path.exists(path):
                 os.remove(path)
@@ -309,7 +309,7 @@ def vectorrag_index_files_decompress(embedding_folder):
             if os.path.exists(folder):
                 shutil.rmtree(folder)
             return False
-
+          
     except Exception as e:
         # CLEANUP: Clear the downloaded zip file if an error occurs
         if os.path.exists(compressed_file + ".zip"):

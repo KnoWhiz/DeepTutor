@@ -23,7 +23,7 @@ from pipeline.science.pipeline.embeddings import (
 from pipeline.science.pipeline.inference import deep_inference_agent
 from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
 from pipeline.science.pipeline.get_graphrag_response import get_GraphRAG_global_response
-from pipeline.science.pipeline.get_rag_response import get_embedding_folder_rag_response, get_db_rag_response
+from pipeline.science.pipeline.get_rag_response import get_basic_rag_response, get_rag_response
 
 import logging
 logger = logging.getLogger("tutorpipeline.science.get_response")
@@ -105,7 +105,7 @@ RESPONSE GUIDELINES:
 Remember: Your goal is to make learning enjoyable and accessible. Keep your tone positive, supportive, and engaging at all times.
 """
 
-        # answer = await get_embedding_folder_rag_response(
+        # answer = await get_basic_rag_response(
         #     prompt_string=lite_prompt,
         #     user_input=user_input + "\n\n" + question.special_context,
         #     chat_history=chat_history,
@@ -120,13 +120,11 @@ Remember: Your goal is to make learning enjoyable and accessible. Keep your tone
         
         db = load_embeddings(actual_embedding_folder_list, 'lite')
         logger.info(f"Type of db: {type(db)}")
-        answer = await get_db_rag_response(
+        answer = await get_rag_response(
             prompt_string=lite_prompt,
             user_input=user_input + "\n\n" + question.special_context,
             chat_history=chat_history,
-            chat_session=chat_session,
-            db=db,
-            stream=True
+            db=db
         )
 
         # # For Lite mode, we return empty containers for sources and follow-up questions
@@ -172,13 +170,12 @@ Remember: Your goal is to make learning enjoyable and accessible. Keep your tone
             logger.exception(f"Failed to load markdown embeddings for Non-deep thinking mode: {str(e)}")
             db = load_embeddings(embedding_folder_list, 'default')
 
-        answer = await get_db_rag_response(
+        answer = await get_rag_response(
             prompt_string=basic_prompt,
             user_input=user_input + "\n\n" + question.special_context,
             chat_history=chat_history,
-            chat_session=chat_session,
             db=db,
-            stream=True
+            stream=stream
         )
         answer = responses_refine(answer)
         return answer
@@ -320,9 +317,9 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
     question_type = parsed_result['question_type']
     try:
         language = detect_language(user_input)
-        logger.info(f"language detected: {language}")
+        logger.info("language detected:", language)
     except Exception as e:
-        logger.info(f"Error detecting language: {e}")
+        logger.info("Error detecting language:", e)
         language = "English"
 
     chat_session.set_language(language)

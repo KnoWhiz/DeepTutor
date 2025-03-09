@@ -2,8 +2,7 @@ import streamlit as st
 import asyncio
 from pipeline.science.pipeline.tutor_agent import tutor_agent
 from pipeline.science.pipeline.get_response import generate_follow_up_questions
-from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
-from typing import Generator
+from pipeline.science.pipeline.session_manager import ChatSession
 
 import logging
 logger = logging.getLogger("tutorfrontend.utils")
@@ -25,47 +24,12 @@ def streamlit_tutor_agent(chat_session, file_path, user_input):
     return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
 
 
-def process_response_phase(response_placeholder, stream_response: Generator, mode: ChatMode = None):
-    """
-    Process the response phase of the assistant's response.
-    Args:
-        stream_response: The generator object from the stream response.
-    Returns:
-        The response content as a string.
-    """
-    if mode == ChatMode.LITE:
-        response_content = response_placeholder.write_stream(stream_response)
-    else:
-        response_placeholder.write(stream_response)
-        response_content = stream_response
-    logger.info(f"Final whole response content: {response_content}")
-    # response_content = ""
-    # for chunk in stream_response:
-    #     # Get the content from the chunk 'answer', if there is no 'answer' key, then get ""
-    #     content = chunk
-    #     response_content += content
-    #     # # In the terminal, print the content in real-time. End="" is used to prevent the cursor from moving to the next line. And flush=True is used to flush the output buffer.
-    #     # print(content, end="", flush=True)
-
-    # logger.info(f"Final whole response content: {response_content}")
-    return response_content
-
-
-# def process_response_phase(response_placeholder, stream_response: Generator):
-#     response_content = ""
-#     for chunk in stream_response:
-#         content = chunk.get("answer", "")
-#         response_content += content  # accumulate text
-#         response_placeholder.markdown(response_content)
-#     return response_content
-
-
 # Function to display the pdf
 def previous_page():
     logger.info("previous_page")
     if st.session_state.current_page > 1:
         st.session_state.current_page = st.session_state.current_page - 1
-    logger.info(f"st.session_state.current_page is {st.session_state.current_page}")
+    logger.info("st.session_state.current_page is %s", st.session_state.current_page)
 
 
 # Function to display the pdf
@@ -73,7 +37,7 @@ def next_page():
     logger.info("next_page")
     if st.session_state.current_page < st.session_state.total_pages:
         st.session_state.current_page = st.session_state.current_page + 1
-    logger.info(f"st.session_state.current_page is {st.session_state.current_page}")
+    logger.info("st.session_state.current_page is %s", st.session_state.current_page)
 
 
 # Function to close the pdf

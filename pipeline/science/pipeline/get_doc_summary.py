@@ -11,7 +11,7 @@ from pipeline.science.pipeline.utils import (
     count_tokens,
 )
 from pipeline.science.pipeline.doc_processor import process_pdf_file
-from pipeline.science.pipeline.get_rag_response import get_embedding_folder_rag_response
+from pipeline.science.pipeline.get_rag_response import get_basic_rag_response
 from pipeline.science.pipeline.api_handler import ApiHandler
 
 import logging
@@ -341,7 +341,7 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
 
         # First generate the take-home message, user input is the prompt's first line
         try:
-            takehome = await get_embedding_folder_rag_response(
+            takehome = await get_basic_rag_response(
                 prompt_string=takehome_prompt,
                 user_input=takehome_prompt.split("\n")[0],
                 chat_history="",
@@ -350,7 +350,7 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
             )
         except Exception as e:
             logger.exception(f"Failed to generate take-home message: {str(e)}")
-            takehome = await get_embedding_folder_rag_response(
+            takehome = await get_basic_rag_response(
                 prompt_string=takehome_prompt,
                 user_input=takehome_prompt.split("\n")[0],
                 chat_history="",
@@ -360,7 +360,7 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
 
         # Generate overview
         try:
-            overview = await get_embedding_folder_rag_response(
+            overview = await get_basic_rag_response(
                 prompt_string=overview_prompt,
                 user_input=overview_prompt.split("\n")[0],
                 chat_history="",
@@ -369,7 +369,7 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
             )
         except Exception as e:
             logger.exception(f"Failed to generate overview: {str(e)}")
-            overview = await get_embedding_folder_rag_response(
+            overview = await get_basic_rag_response(
                 prompt_string=overview_prompt,
                 user_input=overview_prompt.split("\n")[0],
                 chat_history="",
@@ -388,7 +388,7 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
                 logger.info(f"Generating summary for topic: {topic}")
                 logger.info(f"Prompt: {topic_prompt_copy}")
                 try:
-                    summary = await get_embedding_folder_rag_response(
+                    summary = await get_basic_rag_response(
                         prompt_string=topic_prompt_copy,
                         user_input=topic_prompt_copy.split("\n")[0],
                         chat_history="",
@@ -397,7 +397,7 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
                     )
                 except Exception as e:
                     logger.exception(f"Failed to generate summary for topic: {topic}, error: {str(e)}")
-                    summary = await get_embedding_folder_rag_response(
+                    summary = await get_basic_rag_response(
                         prompt_string=topic_prompt_copy,
                         user_input=topic_prompt_copy.split("\n")[0],
                         chat_history="",
@@ -417,7 +417,7 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
                 logger.info(f"Generating summary for topic: {topic}")
                 logger.info(f"Prompt: {topic_prompt_copy}")
                 try:
-                    summary = await get_embedding_folder_rag_response(
+                    summary = await get_basic_rag_response(
                         prompt_string=topic_prompt_copy,
                         user_input=topic_prompt_copy.split("\n")[0],
                         chat_history="",
@@ -426,7 +426,7 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
                     )
                 except Exception as e:
                     logger.exception(f"Failed to generate summary for topic: {topic}, error: {str(e)}")
-                    summary = await get_embedding_folder_rag_response(
+                    summary = await get_basic_rag_response(
                         prompt_string=topic_prompt_copy,
                         user_input=topic_prompt_copy.split("\n")[0],
                         chat_history="",

@@ -3,7 +3,7 @@ import asyncio
 from pipeline.science.pipeline.tutor_agent import tutor_agent
 from pipeline.science.pipeline.get_response import generate_follow_up_questions
 from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
-from typing import Generator, Any, Union
+from typing import Generator
 
 import logging
 logger = logging.getLogger("tutorfrontend.utils")
@@ -25,27 +25,16 @@ def streamlit_tutor_agent(chat_session, file_path, user_input):
     return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
 
 
-def process_response_phase(response_placeholder, stream_response: Union[Generator, Any], mode: ChatMode = None, stream: bool = False):
+def process_response_phase(response_placeholder, stream_response: Generator, mode: ChatMode = None, stream: bool = False):
     """
     Process the response phase of the assistant's response.
     Args:
-        stream_response: The generator object from the stream response (can be sync or async generator).
+        stream_response: The generator object from the stream response.
     Returns:
         The response content as a string.
     """
     if stream:
-        # Check if we're dealing with an async generator
-        if hasattr(stream_response, '__anext__'):
-            # For async generators
-            import asyncio
-            from streamlit.type_util import async_generator_to_sync
-            
-            # Convert async generator to sync generator
-            sync_generator = async_generator_to_sync(stream_response)
-            response_content = response_placeholder.write_stream(sync_generator)
-        else:
-            # For regular generators
-            response_content = response_placeholder.write_stream(stream_response)
+        response_content = response_placeholder.write_stream(stream_response)
     else:
         response_placeholder.write(stream_response)
         response_content = stream_response

@@ -265,7 +265,7 @@ def refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_
             image_sources[source] = score
         else:
             text_sources[source] = score
-
+    
     # TEST
     logger.info("TEST: image sources before refine:")
     logger.info(f"TEST: length of image sources before refine: {len(image_sources)}")
@@ -353,7 +353,7 @@ def refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_
                         # # TEST
                         # logger.info(f"image_scores for {image_url}: {image_scores}")
                         # logger.info(f"result for {image_url}: {result}")
-
+                        
                 except Exception as e:
                     logger.exception(f"Error evaluating image {image_url}: {e}")
                     continue

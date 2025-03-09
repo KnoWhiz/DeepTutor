@@ -108,18 +108,36 @@ async def get_db_rag_response(
 
     try:
         if stream:
-            def parsed_result_stream_response(chain, user_input, processed_chat_history):
-                parsed_result = chain.stream({
+            async def parsed_result_stream_response(chain, user_input, processed_chat_history):
+                parsed_result = chain.astream({
                     "input": user_input,
                     "chat_history": processed_chat_history
                 })
                 logger.info(f"Response type: {type(parsed_result)}")
                 # Use chat_string in your chain
-                for chunk in parsed_result:
+                async for chunk in parsed_result:
                     chunk_content = chunk.get("answer", "")
                     print(chunk_content, end="", flush=True)
                     yield chunk_content
-            parsed_result = parsed_result_stream_response(chain, user_input, processed_chat_history)
+                    
+            # Create a regular generator adapter for the async generator
+            def sync_generator_adapter():
+                import asyncio
+                async_gen = parsed_result_stream_response(chain, user_input, processed_chat_history)
+                loop = asyncio.new_event_loop()
+                
+                try:
+                    while True:
+                        try:
+                            # Get the next value from the async generator
+                            next_value = loop.run_until_complete(async_gen.__anext__())
+                            yield next_value
+                        except StopAsyncIteration:
+                            break
+                finally:
+                    loop.close()
+                    
+            parsed_result = sync_generator_adapter()
         else:
             def parsed_result_invoke_response(chain, user_input, processed_chat_history):
                 parsed_result = chain.invoke({

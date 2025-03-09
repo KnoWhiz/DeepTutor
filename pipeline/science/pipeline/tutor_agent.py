@@ -91,6 +91,7 @@ async def tutor_agent_lite(chat_session: ChatSession, file_path_list, user_input
         if not os.path.exists(embedding_folder):
             os.makedirs(embedding_folder)
     time_tracking["file_hashing_setup_dirs"] = time.time() - hashing_start_time
+
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Save the file txt content locally
@@ -492,6 +493,7 @@ async def tutor_agent_advanced(chat_session: ChatSession, file_path_list, user_i
     response = await get_response(chat_session, file_path_list, question, context_chat_history, embedding_folder_list, deep_thinking=deep_thinking, stream=stream)
     answer = response[0] if isinstance(response, tuple) else response
     time_tracking["response_generation"] = time.time() - response_start
+
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Get sources

@@ -42,4 +42,4 @@ logs/logs.json
 /output
 *.pem
 ~/.ssh/config
-/pipeline/science/features_lab/chat_histories
+pipeline/science/features_lab/chat_histories/session-20250308-142213-6fd680ff.json

@@ -242,17 +242,17 @@ async def main():
     # Generate embeddings
     success = await generate_embeddings(document_text, embedding_folder)
     if success:
-        logger.info("Successfully generated embeddings")
+        print("Successfully generated embeddings")
 
         # Test response generation
         query = "How does GraphRAG improve context understanding?"
         chat_history = "Previous conversation about NLP models."
 
         response = get_response(query, chat_history, embedding_folder)
-        logger.info("\nGenerated Response:")
-        logger.info(response)
+        print("\nGenerated Response:")
+        print(response)
     else:
-        logger.info("Failed to generate embeddings")
+        print("Failed to generate embeddings")
 
 if __name__ == "__main__":
     asyncio.run(main())

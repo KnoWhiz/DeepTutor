@@ -52,8 +52,8 @@ def deepseek_inference(
             # Process the streaming response
             for chunk in response:
                 if chunk.choices[0].delta.content is not None:
-                    logger.info(chunk.choices[0].delta.content, end="", flush=True)
-            logger.info()  # Add a newline at the end
+                    print(chunk.choices[0].delta.content, end="", flush=True)
+            print()  # Add a newline at the end
             return None
         else:
             # Return the complete response
@@ -69,10 +69,10 @@ def deepseek_inference(
 # Example usage
 if __name__ == "__main__":
     # Example with streaming
-    logger.info("Streaming response:")
+    print("Streaming response:")
     deepseek_inference("what is 1+1?", stream=True)
 
-    logger.info("\nNon-streaming response:")
+    print("\nNon-streaming response:")
     response = deepseek_inference("what is 1+1?", stream=False)
     if response:
-        logger.info(response)
+        print(response)

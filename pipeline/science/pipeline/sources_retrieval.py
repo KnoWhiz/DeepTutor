@@ -66,7 +66,7 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
             with open(image_url_path, 'w') as f:
                 json.dump(image_url_mapping, f)
         image_url_mapping_list.append(image_url_mapping)
-        
+
     # Create reverse mapping from description to image name
     image_mapping_list = []
     for image_context in image_context_list:
@@ -75,7 +75,7 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
             for desc in descriptions:
                 image_mapping[desc] = image_name
         image_mapping_list.append(image_mapping)
-        
+
     # Create a single mapping from description to image URL, mapping from image description to image URL
     image_url_mapping_merged = {}
     for idx, (image_mapping, image_url_mapping_merged) in enumerate(zip(image_mapping_list, image_url_mapping_list)):
@@ -166,9 +166,9 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
             source_file_index[chunk.page_content] = 1
 
     # Extract page content and scores, normalize scores to 0-1 range
-    max_score = max(max(score for _, score in question_chunks_with_scores), 
+    max_score = max(max(score for _, score in question_chunks_with_scores),
                    max(score for _, score in answer_chunks_with_scores))
-    min_score = min(min(score for _, score in question_chunks_with_scores), 
+    min_score = min(min(score for _, score in question_chunks_with_scores),
                    min(score for _, score in answer_chunks_with_scores))
     score_range = max_score - min_score if max_score != min_score else 1
 
@@ -187,11 +187,11 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
     #     Source_pages: a dictionary that maps each source to the page number it is found in
     #     Source_file_index: a dictionary that maps each source to the file index it is found in
     #     Sources_with_scores: a dictionary that maps each source to the score it has
-    sources_with_scores = {image_url_mapping_merged.get(source, source): score 
+    sources_with_scores = {image_url_mapping_merged.get(source, source): score
                          for source, score in sources_with_scores.items()}
-    source_pages = {image_url_mapping_merged.get(source, source): page 
+    source_pages = {image_url_mapping_merged.get(source, source): page
                          for source, page in source_pages.items()}
-    source_file_index = {image_url_mapping_merged.get(source, source): file_index 
+    source_file_index = {image_url_mapping_merged.get(source, source): file_index
                          for source, file_index in source_file_index.items()}
 
     # TEST
@@ -240,7 +240,7 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
 
     # Memory cleanup
     db = None
-    
+
     return sources_with_scores, source_pages, refined_source_pages, refined_source_index
 
 
@@ -377,7 +377,7 @@ def refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_
         #         user_figure_num = user_figure_match.group(1)
         #         # Look for exact figure number match first
         #         exact_matches = {
-        #             img_url: score for img_url, score, fig_num, expl in image_scores 
+        #             img_url: score for img_url, score, fig_num, expl in image_scores
         #             if re.search(rf'(?:figure|fig)\.?\s*{user_figure_num}\b', fig_num, re.IGNORECASE)
         #         }
         #         if exact_matches:
@@ -421,11 +421,11 @@ def refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_
 
     # Sort by score
     sorted_sources = dict(sorted(final_sources.items(), key=lambda x: x[1], reverse=True))
-    
+
     # Keep only the top 50% of sources by score
     num_sources_to_keep = max(1, len(sorted_sources) // 2)  # Keep at least 1 source
     sorted_sources = dict(list(sorted_sources.items())[:num_sources_to_keep])
-    
+
     # Further limit to top 20 if needed
     sorted_sources = dict(list(sorted_sources.items())[:20])
 

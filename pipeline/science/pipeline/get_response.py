@@ -119,13 +119,6 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
             stream=stream
         )
 
-        # # For Lite mode, we return empty containers for sources and follow-up questions
-        # sources = {}
-        # source_pages = {}
-        # source_annotations = {}
-        # refined_source_pages = {}
-        # follow_up_questions = []
-
         return answer
 
     # Handle Advanced mode

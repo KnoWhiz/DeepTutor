@@ -117,7 +117,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
             chat_session=chat_session,
             db=db,
             stream=stream
-        )
+        )   # If stream is True, the answer is a generator; otherwise, it's a string
 
         return answer
 

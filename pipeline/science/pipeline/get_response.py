@@ -225,8 +225,6 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
             answer_thinking = answer.split("<think>")[1].split("</think>")[0]
             answer_summary = answer.split("<think>")[1].split("</think>")[1]
             answer_summary_refined = responses_refine(answer_summary, "")
-            # answer = "### Here is my thinking process\n\n" + answer_thinking + "\n\n### Here is my summarized answer\n\n" + answer_summary
-            # answer = answer_summary + "\n\n" + answer_summary_refined
             answer = answer_summary_refined
         else:
             answer = responses_refine(answer)
@@ -239,10 +237,6 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
 
 
 def get_query_helper(chat_session: ChatSession, user_input, context_chat_history, embedding_folder_list):
-    # # Replace single "{" with "{{" and single "}" with "}}" in the user_input (match whole word)
-    # user_input = re.sub(r'(?<!{){(?!{)', '{{', user_input)
-    # user_input = re.sub(r'(?<!})}(?!})', '}}', user_input)
-    
     # Replace LaTeX formulas in the format \( formula \) with $ formula $
     user_input = replace_latex_formulas(user_input)
     
@@ -304,9 +298,6 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
                                   "context": documents_summary,
                                   "chat_history": truncate_chat_history(context_chat_history)})
     question = parsed_result['question']
-    # # Replace single "{" with "{{" and single "}" with "}}" in the question (match whole word)
-    # question = re.sub(r'(?<!{){(?!{)', '{{', question)
-    # question = re.sub(r'(?<!})}(?!})', '}}', question)
     question_type = parsed_result['question_type']
     try:
         language = detect_language(user_input)
@@ -381,8 +372,6 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
     })
     logger.info(f"TEST: answer_planning: {answer_planning}")
 
-    # # TEST
-    # logger.info("question rephrased:", question)
     question = Question(
         text=question, 
         language=language, 

@@ -10,7 +10,8 @@ from streamlit_extras.stylable_container import stylable_container
 from frontend.utils import (
     previous_page,
     next_page,
-    handle_follow_up_click
+    handle_follow_up_click,
+    format_reasoning_response
 )
 from frontend.forms.contact import contact_form
 from pipeline.science.pipeline.config import load_config
@@ -18,6 +19,8 @@ from pipeline.science.pipeline.session_manager import ChatMode
 from frontend.utils import streamlit_tutor_agent, process_response_phase, process_thinking_phase
 
 import logging
+import re
+
 logger = logging.getLogger("tutorfrontend.ui")
 
 def to_emoji_number(num: int) -> str:
@@ -237,7 +240,19 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
             elif msg["role"] == "assistant":
                 avatar = professor_avatar if st.session_state.chat_session.mode == ChatMode.ADVANCED else tutor_avatar
                 with st.chat_message(msg["role"], avatar=avatar):
-                    st.write(msg["content"])
+                    # For chat history, we need to recreate the expandable UI for thinking content
+                    content = msg["content"]
+                    pattern = r"<think>(.*?)</think>"
+                    think_match = re.search(pattern, content, re.DOTALL)
+                    if think_match:
+                        think_content = think_match.group(0)
+                        response_content = content.replace(think_content, "")
+                        think_content = format_reasoning_response(think_content)
+                        with st.expander("Thinking complete!"):
+                            st.markdown(think_content)
+                        st.markdown(response_content)
+                    else:
+                        st.markdown(content)
                     
                     # First display source buttons if this message has associated sources
                     next_msg = st.session_state.chat_session.chat_history[idx + 1] if idx + 1 < len(st.session_state.chat_session.chat_history) else None
@@ -339,8 +354,13 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                     # Display current response
                     response_placeholder = st.chat_message("assistant", avatar=tutor_avatar)
                     with response_placeholder:
-                        # answer_content = process_response_phase(response_placeholder, answer, mode=st.session_state.chat_session.mode, stream = config["stream"])
+                        # For live responses, process_thinking_phase already displays the thinking UI
+                        # We just need to capture the content and format it for storage
                         answer_content = process_thinking_phase(answer)
+                        
+                        # Display the content directly as markdown
+                        # The thinking UI was already shown by process_thinking_phase
+                        # st.markdown(answer_content)
                         
                         # First display source buttons
                         if sources and len(sources) > 0:

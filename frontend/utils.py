@@ -25,7 +25,7 @@ def streamlit_tutor_agent(chat_session, file_path, user_input):
     return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
 
 
-def process_response_phase(response_placeholder, stream_response: Generator, mode: ChatMode = None):
+def process_response_phase(response_placeholder, stream_response: Generator, mode: ChatMode = None, stream: bool = False):
     """
     Process the response phase of the assistant's response.
     Args:
@@ -33,7 +33,7 @@ def process_response_phase(response_placeholder, stream_response: Generator, mod
     Returns:
         The response content as a string.
     """
-    if mode == ChatMode.LITE:
+    if stream:
         response_content = response_placeholder.write_stream(stream_response)
     else:
         response_placeholder.write(stream_response)

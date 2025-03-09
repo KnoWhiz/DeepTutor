@@ -177,6 +177,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
     learner_avatar = "frontend/images/learner.svg"
     tutor_avatar = "frontend/images/tutor.svg"
     professor_avatar = "frontend/images/professor.svg"
+    config = load_config()
 
     with st.container():
         float_init(theme=True, include_unstable_primary=False)
@@ -279,7 +280,6 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                                             # Display the highlight info for that single source button
                                             # st.session_state.annotations, st.session_state.react_annotations = get_highlight_info(doc, [source])
                                             try:
-                                                config = load_config()
                                                 image_extensions: Set[str] = set(config["image_extensions"])
                                                 is_image_file = any(source.lower().endswith(ext.lower()) for ext in image_extensions)
                                                 
@@ -339,7 +339,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                     # Display current response
                     response_placeholder = st.chat_message("assistant", avatar=tutor_avatar)
                     with response_placeholder:
-                        answer_content = process_response_phase(response_placeholder, answer, mode=st.session_state.chat_session.mode)
+                        answer_content = process_response_phase(response_placeholder, answer, mode=st.session_state.chat_session.mode, stream = config["stream"])
                         
                         # First display source buttons
                         if sources and len(sources) > 0:
@@ -376,7 +376,6 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                                                 # st.session_state.annotations, st.session_state.react_annotations = get_highlight_info(doc, [source])
                                                 # i = list(sources.keys()).index(source)
                                                 try:
-                                                    config = load_config()
                                                     image_extensions: Set[str] = set(config["image_extensions"])
                                                     is_image_file = any(source.lower().endswith(ext.lower()) for ext in image_extensions)
                                                     
@@ -430,7 +429,6 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                 if st.session_state.get("sources"):
                     # st.session_state.annotations, st.session_state.react_annotations = get_highlight_info(doc, list(st.session_state.sources.keys()))
                     # i = list(st.session_state.sources.keys()).index(source)
-                    config = load_config()
                     image_extensions: Set[str] = set(config["image_extensions"])
                     try:
                         # Check if source is an image file by checking its extension

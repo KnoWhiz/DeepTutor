@@ -35,6 +35,14 @@ import logging
 logger = logging.getLogger("tutorpipeline.science.tutor_agent")
 
 
+def answer_generator_next_step(answer_generator, tag):
+    yield from answer_generator
+    yield f"\n\n<{tag}>\n"
+    time.sleep(1)
+    yield f"\n\n</{tag}>\n"
+
+
+
 async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
     """
     Taking the user input, document, and chat history, generate a response and sources.
@@ -169,12 +177,7 @@ async def tutor_agent_lite(chat_session: ChatSession, file_path_list, user_input
     _document = None
     _doc = None
 
-    def answer_generator_next_step(answer):
-        yield from answer
-        yield "\n\n<Next processing step>\n"
-        time.sleep(1)
-        yield "\n\n</Next processing step>\n"
-    answer = answer_generator_next_step(answer)
+    answer = answer_generator_next_step(answer, "Next processing step")
     
     return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
 

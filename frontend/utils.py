@@ -69,7 +69,7 @@ def process_thinking_phase(stream):
                 break
             think_placeholder.markdown(format_reasoning_response(thinking_content))
     
-    return thinking_content
+    return format_reasoning_response(thinking_content)
 
 
 # Function to display the pdf

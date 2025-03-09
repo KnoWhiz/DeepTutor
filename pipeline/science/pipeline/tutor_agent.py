@@ -168,6 +168,13 @@ async def tutor_agent_lite(chat_session: ChatSession, file_path_list, user_input
     # Memory clean up 
     _document = None
     _doc = None
+
+    def answer_generator_next_step(answer):
+        yield from answer
+        yield "<Next processing step>"
+        time.sleep(1)
+        yield "</Next processing step>"
+    answer = answer_generator_next_step(answer)
     
     return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
 

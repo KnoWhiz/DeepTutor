@@ -136,8 +136,8 @@ def o3mini_inference(user_prompt: str,
         stream: Whether to stream the response (default: False)
     
     Returns:
-        If stream=False: The text content of the model's response as a string
-        If stream=True: A streaming response iterator that can be iterated over
+        If stream = False: The text content of the model's response as a string
+        If stream = True: A streaming response iterator that can be iterated over
     """
     # Azure OpenAI credentials
     endpoint = os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP")
@@ -176,9 +176,9 @@ def o3mini_inference(user_prompt: str,
 if __name__ == "__main__":
     # Example with streaming
     logger.info("Streaming response:")
-    deepseek_inference("what is 1+1?", stream=True)
+    deepseek_inference("what is 1+1?", stream = True)
 
     logger.info("\nNon-streaming response:")
-    response = deepseek_inference("what is 1+1?", stream=False)
+    response = deepseek_inference("what is 1+1?", stream = False)
     if response:
         logger.info(response)

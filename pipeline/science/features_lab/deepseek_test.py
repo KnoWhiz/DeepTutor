@@ -70,9 +70,9 @@ def deepseek_inference(
 if __name__ == "__main__":
     # Example with streaming
     print("Streaming response:")
-    deepseek_inference("what is 1+1?", stream=True)
+    deepseek_inference("what is 1+1?", stream = True)
 
     print("\nNon-streaming response:")
-    response = deepseek_inference("what is 1+1?", stream=False)
+    response = deepseek_inference("what is 1+1?", stream = False)
     if response:
         print(response)

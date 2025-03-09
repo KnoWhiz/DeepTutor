@@ -78,44 +78,34 @@ class Question:
 
 
 async def get_response(chat_session: ChatSession, file_path_list, question: Question, chat_history, embedding_folder_list, deep_thinking = True, stream=False):
+    config = load_config()
     user_input = question.text
     # Handle Lite mode first
     if chat_session.mode == ChatMode.LITE:
-        lite_prompt = """You are an expert, approachable tutor specializing in explaining complex document content in simple terms.
+        lite_prompt = """
+        You are an expert, approachable tutor specializing in explaining complex document content in simple terms.
 
-CONTEXT INFORMATION:
-- Previous conversation: {chat_history}
-- Reference content from document: {context}
+        CONTEXT INFORMATION:
+        - Previous conversation: {chat_history}
+        - Reference content from document: {context}
 
-USER QUESTION:
-{input}
+        USER QUESTION:
+        {input}
 
-RESPONSE GUIDELINES:
-1. Provide concise, accurate answers directly addressing the question
-2. Use easy-to-understand language suitable for beginners
-3. Format key concepts and important points in **bold**
-4. Begin with a friendly greeting and end with an encouraging note
-5. Break down complex information into digestible chunks
-6. Use appropriate emojis (📚, 💡, ✅, etc.) to enhance readability
-7. When explaining technical concepts, provide simple examples 
-8. If you're unsure about an answer, be honest and transparent
-9. Include 2-3 follow-up questions at the end to encourage deeper learning
-10. Use bullet points or numbered lists for step-by-step explanations
+        RESPONSE GUIDELINES:
+        1. Provide concise, accurate answers directly addressing the question
+        2. Use easy-to-understand language suitable for beginners
+        3. Format key concepts and important points in **bold**
+        4. Begin with a friendly greeting and end with an encouraging note
+        5. Break down complex information into digestible chunks
+        6. Use appropriate emojis (📚, 💡, ✅, etc.) to enhance readability
+        7. When explaining technical concepts, provide simple examples 
+        8. If you're unsure about an answer, be honest and transparent
+        9. Include 2-3 follow-up questions at the end to encourage deeper learning
+        10. Use bullet points or numbered lists for step-by-step explanations
 
-Remember: Your goal is to make learning enjoyable and accessible. Keep your tone positive, supportive, and engaging at all times.
-"""
-
-        # answer = await get_embedding_folder_rag_response(
-        #     prompt_string=lite_prompt,
-        #     user_input=user_input + "\n\n" + question.special_context,
-        #     chat_history=chat_history,
-        #     embedding_folder=embedding_folder,
-        #     embedding_type="lite",
-        #     chat_session=chat_session,
-        #     file_path=file_path,
-        #     stream=stream
-        # )
-
+        Remember: Your goal is to make learning enjoyable and accessible. Keep your tone positive, supportive, and engaging at all times.
+        """
         actual_embedding_folder_list = [os.path.join(embedding_folder, 'lite_embedding') for embedding_folder in embedding_folder_list]
         
         db = load_embeddings(actual_embedding_folder_list, 'lite')
@@ -126,7 +116,7 @@ Remember: Your goal is to make learning enjoyable and accessible. Keep your tone
             chat_history=chat_history,
             chat_session=chat_session,
             db=db,
-            stream=True
+            stream=stream
         )
 
         # # For Lite mode, we return empty containers for sources and follow-up questions
@@ -178,7 +168,7 @@ Remember: Your goal is to make learning enjoyable and accessible. Keep your tone
             chat_history=chat_history,
             chat_session=chat_session,
             db=db,
-            stream=True
+            stream=stream
         )
         answer = responses_refine(answer)
         return answer
@@ -235,8 +225,6 @@ Remember: Your goal is to make learning enjoyable and accessible. Keep your tone
             answer_thinking = answer.split("<think>")[1].split("</think>")[0]
             answer_summary = answer.split("<think>")[1].split("</think>")[1]
             answer_summary_refined = responses_refine(answer_summary, "")
-            # answer = "### Here is my thinking process\n\n" + answer_thinking + "\n\n### Here is my summarized answer\n\n" + answer_summary
-            # answer = answer_summary + "\n\n" + answer_summary_refined
             answer = answer_summary_refined
         else:
             answer = responses_refine(answer)
@@ -249,10 +237,6 @@ Remember: Your goal is to make learning enjoyable and accessible. Keep your tone
 
 
 def get_query_helper(chat_session: ChatSession, user_input, context_chat_history, embedding_folder_list):
-    # # Replace single "{" with "{{" and single "}" with "}}" in the user_input (match whole word)
-    # user_input = re.sub(r'(?<!{){(?!{)', '{{', user_input)
-    # user_input = re.sub(r'(?<!})}(?!})', '}}', user_input)
-    
     # Replace LaTeX formulas in the format \( formula \) with $ formula $
     user_input = replace_latex_formulas(user_input)
     
@@ -314,9 +298,6 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
                                   "context": documents_summary,
                                   "chat_history": truncate_chat_history(context_chat_history)})
     question = parsed_result['question']
-    # # Replace single "{" with "{{" and single "}" with "}}" in the question (match whole word)
-    # question = re.sub(r'(?<!{){(?!{)', '{{', question)
-    # question = re.sub(r'(?<!})}(?!})', '}}', question)
     question_type = parsed_result['question_type']
     try:
         language = detect_language(user_input)
@@ -391,8 +372,6 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
     })
     logger.info(f"TEST: answer_planning: {answer_planning}")
 
-    # # TEST
-    # logger.info("question rephrased:", question)
     question = Question(
         text=question, 
         language=language, 

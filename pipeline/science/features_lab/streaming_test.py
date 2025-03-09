@@ -35,7 +35,7 @@ def main():
     }
     
     # Initialize ApiHandler with streaming enabled
-    api_handler = ApiHandler(parameters, stream=True)
+    api_handler = ApiHandler(parameters, stream = True)
     
     # Get the model instance (using the 'basic' model for simplicity)
     model = api_handler.models["basic"]["instance"]

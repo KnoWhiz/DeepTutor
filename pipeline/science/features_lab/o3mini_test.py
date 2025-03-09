@@ -22,8 +22,8 @@ def o3mini_inference(user_prompt: str, system_prompt: str = "", stream: bool = F
         stream: Whether to stream the response (default: False)
     
     Returns:
-        If stream=False: The text content of the model's response as a string
-        If stream=True: A streaming response iterator that can be iterated over
+        If stream = False: The text content of the model's response as a string
+        If stream = True: A streaming response iterator that can be iterated over
     """
     # Azure OpenAI credentials
     endpoint = os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP")
@@ -68,7 +68,7 @@ if __name__ == "__main__":
     
     # Streaming example
     print("\nStreaming response example:")
-    streaming_response = o3mini_inference(user_prompt, system_prompt=system_prompt, stream=True)
+    streaming_response = o3mini_inference(user_prompt, system_prompt=system_prompt, stream = True)
     
     # Create a dictionary to store collected response parts
     response_parts = {}

@@ -389,7 +389,7 @@ def process_image_with_llama(image_url, prompt_text, stream=False):
         stream (bool): Whether to stream the response incrementally (default: False)
         
     Returns:
-        str or generator: The model's response as text, or a generator of response chunks if stream=True
+        str or generator: The model's response as text, or a generator of response chunks if stream = True
     """
     # Initialize the client
     client = openai.OpenAI(

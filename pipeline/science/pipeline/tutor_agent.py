@@ -91,7 +91,6 @@ async def tutor_agent_lite(chat_session: ChatSession, file_path_list, user_input
         if not os.path.exists(embedding_folder):
             os.makedirs(embedding_folder)
     time_tracking["file_hashing_setup_dirs"] = time.time() - hashing_start_time
-
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Save the file txt content locally
@@ -228,10 +227,8 @@ async def tutor_agent_basic(chat_session: ChatSession, file_path_list, user_inpu
             if vectorrag_index_files_compress(embedding_folder):
                 logger.info(f"VectorRAG index files for {file_id} are ready and uploaded to Azure Blob Storage.")
             else:
-                # Files are missing and have been cleaned up
-                _document, _doc = process_pdf_file(file_path)
+                # Retry once if first attempt fails
                 save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
-                logger.info(f"VectorRAG embedding for {file_id} ...")
                 time_tracking = await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
                 logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
                 if vectorrag_index_files_compress(embedding_folder):
@@ -428,10 +425,8 @@ async def tutor_agent_advanced(chat_session: ChatSession, file_path_list, user_i
             if graphrag_index_files_compress(embedding_folder):
                 logger.info(f"GraphRAG index files for {file_id} are ready and uploaded to Azure Blob Storage.")
             else:
-                # Files are missing and have been cleaned up
-                _document, _doc = process_pdf_file(file_path)
+                # Retry once if first attempt fails
                 save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
-                logger.info(f"GraphRAG embedding for {file_id} ...")
                 time_tracking = await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
                 logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
                 if graphrag_index_files_compress(embedding_folder):
@@ -497,7 +492,6 @@ async def tutor_agent_advanced(chat_session: ChatSession, file_path_list, user_i
     response = await get_response(chat_session, file_path_list, question, context_chat_history, embedding_folder_list, deep_thinking=deep_thinking, stream=stream)
     answer = response[0] if isinstance(response, tuple) else response
     time_tracking["response_generation"] = time.time() - response_start
-
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Get sources

@@ -109,6 +109,7 @@ async def get_db_rag_response(
     try:
         if stream:
             def parsed_result_stream_response(chain, user_input, processed_chat_history):
+                yield "<think>"
                 parsed_result = chain.stream({
                     "input": user_input,
                     "chat_history": processed_chat_history
@@ -119,6 +120,7 @@ async def get_db_rag_response(
                     chunk_content = chunk.get("answer", "")
                     print(chunk_content, end="", flush=True)
                     yield chunk_content
+                yield "</think>\n\n"
             parsed_result = parsed_result_stream_response(chain, user_input, processed_chat_history)
         else:
             def parsed_result_invoke_response(chain, user_input, processed_chat_history):

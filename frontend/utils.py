@@ -25,6 +25,15 @@ def streamlit_tutor_agent(chat_session, file_path, user_input):
     return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
 
 
+def format_reasoning_response(thinking_content):
+    """Format assistant content by removing think tags."""
+    return (
+        thinking_content.replace("<think>\n\n</think>", "")
+        .replace("<think>", "")
+        .replace("</think>", "")
+    )
+
+
 def process_response_phase(response_placeholder, stream_response: Generator, mode: ChatMode = None, stream: bool = False):
     """
     Process the response phase of the assistant's response.
@@ -40,6 +49,27 @@ def process_response_phase(response_placeholder, stream_response: Generator, mod
         response_content = stream_response
     logger.info(f"Final whole response content: {response_content}")
     return response_content
+
+
+def process_thinking_phase(stream):
+    """Process the thinking phase of the assistant's response."""
+    thinking_content = ""
+    with st.status("Thinking...", expanded=True) as status:
+        think_placeholder = st.empty()
+        
+        for chunk in stream:
+            content = chunk or ""
+            thinking_content += content
+            
+            if "<think>" in content:
+                continue
+            if "</think>" in content:
+                content = content.replace("</think>", "")
+                status.update(label="Thinking complete!", state="complete", expanded=False)
+                break
+            think_placeholder.markdown(format_reasoning_response(thinking_content))
+    
+    return thinking_content
 
 
 # Function to display the pdf

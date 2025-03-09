@@ -42,6 +42,13 @@ def answer_generator_next_step(answer_generator, tag):
     yield f"\n\n</{tag}>\n"
 
 
+def combine_generators(generator_1, generator_2, tag):
+    yield from generator_1
+    yield f"\n\n<{tag}>\n"
+    yield from generator_2
+    yield f"\n\n</{tag}>\n"
+
+
 async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
     """
     Taking the user input, document, and chat history, generate a response and sources.

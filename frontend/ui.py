@@ -15,7 +15,7 @@ from frontend.utils import (
 from frontend.forms.contact import contact_form
 from pipeline.science.pipeline.config import load_config
 from pipeline.science.pipeline.session_manager import ChatMode
-from frontend.utils import streamlit_tutor_agent, process_response_phase
+from frontend.utils import streamlit_tutor_agent, process_response_phase, process_thinking_phase
 
 import logging
 logger = logging.getLogger("tutorfrontend.ui")
@@ -339,7 +339,8 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                     # Display current response
                     response_placeholder = st.chat_message("assistant", avatar=tutor_avatar)
                     with response_placeholder:
-                        answer_content = process_response_phase(response_placeholder, answer, mode=st.session_state.chat_session.mode, stream = config["stream"])
+                        # answer_content = process_response_phase(response_placeholder, answer, mode=st.session_state.chat_session.mode, stream = config["stream"])
+                        answer_content = process_thinking_phase(answer)
                         
                         # First display source buttons
                         if sources and len(sources) > 0:

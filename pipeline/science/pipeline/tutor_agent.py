@@ -171,9 +171,9 @@ async def tutor_agent_lite(chat_session: ChatSession, file_path_list, user_input
 
     def answer_generator_next_step(answer):
         yield from answer
-        yield "<Next processing step>"
+        yield "\n\n<Next processing step>\n"
         time.sleep(1)
-        yield "</Next processing step>"
+        yield "\n\n</Next processing step>\n"
     answer = answer_generator_next_step(answer)
     
     return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions

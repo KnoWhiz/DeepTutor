@@ -2,7 +2,7 @@ import streamlit as st
 import asyncio
 from pipeline.science.pipeline.tutor_agent import tutor_agent
 from pipeline.science.pipeline.get_response import generate_follow_up_questions
-from pipeline.science.pipeline.session_manager import ChatSession
+from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
 from typing import Generator
 
 import logging
@@ -25,7 +25,7 @@ def streamlit_tutor_agent(chat_session, file_path, user_input):
     return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
 
 
-def process_response_phase(response_placeholder, stream_response: Generator):
+def process_response_phase(response_placeholder, stream_response: Generator, mode: ChatMode = None):
     """
     Process the response phase of the assistant's response.
     Args:
@@ -33,7 +33,11 @@ def process_response_phase(response_placeholder, stream_response: Generator):
     Returns:
         The response content as a string.
     """
-    response_content = response_placeholder.write_stream(stream_response)
+    if mode == ChatMode.LITE:
+        response_content = response_placeholder.write_stream(stream_response)
+    else:
+        response_placeholder.write(stream_response)
+        response_content = stream_response
     logger.info(f"Final whole response content: {response_content}")
     # response_content = ""
     # for chunk in stream_response:

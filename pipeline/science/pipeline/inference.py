@@ -207,10 +207,13 @@ def o3mini_inference(user_prompt: str,
         # Return the streaming response generator
         def o3mini_stream_response(model, messages, stream):
             yield "<think>"
-            yield "</think>"
-            yield "<response>"
+            first_token = True
             for chunk in model.stream(messages):
                 if hasattr(chunk, "content"):
+                    if first_token:
+                        yield "</think>"
+                        yield "<response>"
+                        first_token = False
                     yield chunk.content
             yield "</response>"
         return o3mini_stream_response(model, messages, stream)

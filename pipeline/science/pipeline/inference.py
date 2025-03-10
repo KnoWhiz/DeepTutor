@@ -4,7 +4,22 @@ from typing import Optional, Dict, Any, Union, Iterator
 from dotenv import load_dotenv
 from langchain_openai import AzureChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
-from pipeline.science.pipeline.config import load_config
+import sys
+import os.path
+
+# Handle imports for both direct execution and external import cases
+try:
+    # When imported as a module from elsewhere
+    from pipeline.science.pipeline.config import load_config
+except ModuleNotFoundError:
+    try:
+        # When run directly
+        from config import load_config
+    except ModuleNotFoundError:
+        # If in the pipeline directory and running the script
+        sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+        from science.pipeline.config import load_config
+
 load_dotenv()
 
 import logging

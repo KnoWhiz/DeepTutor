@@ -181,7 +181,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
     tutor_avatar = "frontend/images/tutor.svg"
     professor_avatar = "frontend/images/professor.svg"
     config = load_config()
-
+    stream = config["stream"]
     with st.container():
         float_init(theme=True, include_unstable_primary=False)
         user_input = st.chat_input(key='user_input')
@@ -356,7 +356,8 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                     with response_placeholder:
                         # For live responses, process_thinking_phase already displays the thinking UI
                         # We just need to capture the content and format it for storage
-                        answer_content = process_thinking_phase(answer)
+                        # answer_content = process_thinking_phase(answer)
+                        answer_content = process_response_phase(response_placeholder, answer, mode=st.session_state.chat_session.mode, stream = stream)
                         
                         # # Display the content directly as markdown
                         # # The thinking UI was already shown by process_thinking_phase

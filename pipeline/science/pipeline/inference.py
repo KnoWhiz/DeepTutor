@@ -33,9 +33,9 @@ def deep_inference_agent(
 ):
     try:
         response = deepseek_inference(prompt=user_prompt, 
-                                      system_message=system_prompt, 
-                                      stream=stream,
-                                      model="DeepSeek-R1")
+                                    system_message=system_prompt, 
+                                    stream=stream,
+                                    model="DeepSeek-R1")
         if response == None:
             raise Exception("No response from DeepSeek-R1")
         return response
@@ -43,9 +43,9 @@ def deep_inference_agent(
         logger.exception(f"An error occurred when calling DeepSeek-R1: {str(e)}")
         try:
             response = deepseek_inference(prompt=user_prompt, 
-                                          system_message=system_prompt, 
-                                          stream=stream,
-                                          model="DeepSeek-R1-Distill-Llama-70B")
+                                        system_message=system_prompt, 
+                                        stream=stream,
+                                        model="DeepSeek-R1-Distill-Llama-70B")
             if response == None:
                 raise Exception("No response from DeepSeek-R1-Distill-Llama-70B")
             return response
@@ -61,6 +61,9 @@ def deep_inference_agent(
                 logger.exception(f"An error occurred when calling o3mini: {str(e)}")
                 response = "I'm sorry, I don't know the answer to that question."
                 return response
+                
+    if stream is True:
+        pass
 
 
 def deepseek_inference(
@@ -176,25 +179,52 @@ def o3mini_inference(user_prompt: str,
         HumanMessage(content=user_prompt)
     ]
     
-    # Generate response
-    response = model.invoke(messages)
-    
-    # Return appropriate response based on streaming mode
+    # Generate response - use different methods depending on streaming mode
     if stream:
-        print(f"Streaming response type: {type(response)}")
-        return response  # Return the streaming response iterator
+        # Return the streaming response generator
+        return model.stream(messages)
     else:
-        # Return just the content string
+        # Return just the content string from the complete response
+        response = model.invoke(messages)
         return response.content
 
 
 # Example usage
 if __name__ == "__main__":
-    # Example with streaming
-    print("Streaming response:")
-    deepseek_inference("what is 1+1?", stream = True)
+    # Example with DeepSeek streaming
+    print("DeepSeek streaming response:")
+    deepseek_inference("what is 1+1?", stream=True)
 
-    print("\nNon-streaming response:")
-    response = deepseek_inference("what is 1+1?", stream = False)
-    if response:
-        print(response)
+    # DeepSeek non-streaming
+    # logger.info("\nNon-streaming response:")
+    # response = deepseek_inference("what is 1+1?", stream=False)
+    # if response:
+    #     logger.info(response)
+    
+    # Example with O3-mini streaming
+    print("\nO3-mini streaming response:")
+    stream_response = o3mini_inference("what is 1+1? Explain it in detail and deep-thinking way", stream=True)
+    
+    # Handle the streaming response correctly
+    try:
+        # Each chunk should be an AIMessageChunk when using .stream()
+        for chunk in stream_response:
+            # For AIMessageChunk objects, we need to check the content attribute
+            if hasattr(chunk, "content"):
+                # Content might be an empty string, but we still want to process it
+                # to maintain proper streaming format
+                print(chunk.content, end="", flush=True)
+            else:
+                print(f"[Unexpected chunk type: {type(chunk)}]", end="", flush=True)
+    except Exception as e:
+        print(f"\nError handling streaming response: {e}")
+        print(f"Chunk type: {type(chunk) if 'chunk' in locals() else 'Unknown'}")
+        if 'chunk' in locals():
+            print(f"Chunk value: {repr(chunk)}")
+    
+    print()  # Add a newline at the end
+    
+    # Example with O3-mini non-streaming
+    print("\nO3-mini non-streaming response:")
+    response = o3mini_inference("what is 1+1? Explain it in detail and deep-thinking way", stream=False)
+    print(response)

@@ -357,7 +357,8 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                         # For live responses, process_thinking_phase already displays the thinking UI
                         # We just need to capture the content and format it for storage
                         # answer_content = process_thinking_phase(answer)
-                        answer_content = process_response_phase(response_placeholder, answer, mode=st.session_state.chat_session.mode, stream = stream)
+                        response_content = process_response_phase(response_placeholder, answer, mode=st.session_state.chat_session.mode, stream = stream)
+                        answer_content = response_content
                         
                         # # Display the content directly as markdown
                         # # The thinking UI was already shown by process_thinking_phase

@@ -252,7 +252,15 @@ def o3mini_inference(user_prompt: str,
 if __name__ == "__main__":
     # Example with DeepSeek streaming
     print("DeepSeek streaming response:")
-    stream_response = deepseek_inference("what is 1+1?", stream=True)
+    # Use DeepSeek-R1 model
+    stream_response = deepseek_inference("what is 1+1?", stream=True, model="DeepSeek-R1")
+    for chunk in stream_response:
+        print(chunk, end="", flush=True)
+
+    # Example with DeepSeek streaming
+    print("DeepSeek streaming response:")
+    # Use DeepSeek-R1-Distill-Llama-70B model
+    stream_response = deepseek_inference("what is 1+1?", stream=True, model="DeepSeek-R1-Distill-Llama-70B")
     for chunk in stream_response:
         print(chunk, end="", flush=True)
     

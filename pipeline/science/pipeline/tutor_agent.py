@@ -57,6 +57,8 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
     This function acts as a router that calls the appropriate specialized function 
     based on the chat session mode.
     """
+    # Initialize the current message
+    chat_session.current_message = ""
     if time_tracking is None:
         time_tracking = {}
     

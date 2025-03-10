@@ -16,7 +16,7 @@ from graphrag.query.structured_search.global_search.community_context import (
     GlobalCommunityContext,
 )
 from graphrag.query.structured_search.global_search.search import GlobalSearch
-
+from pipeline.science.pipeline.session_manager import ChatSession
 from pipeline.science.pipeline.utils import (
     truncate_chat_history,
     responses_refine,
@@ -26,7 +26,7 @@ import logging
 logger = logging.getLogger("tutorpipeline.science.get_graphrag_response")
 
 
-async def get_GraphRAG_global_response(user_input, chat_history, embedding_folder_list, deep_thinking = True):
+async def get_GraphRAG_global_response(user_input, chat_history, embedding_folder_list, deep_thinking = True, chat_session: ChatSession = None, stream: bool = False):
     embedding_folder = embedding_folder_list[0]
 
     # Chat history and user input
@@ -141,7 +141,7 @@ async def get_GraphRAG_global_response(user_input, chat_history, embedding_folde
     if deep_thinking:
         from pipeline.science.pipeline.inference import deep_inference_agent
         try:
-            answer = str(deep_inference_agent(prompt))
+            answer = str(deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session))
         except Exception as e:
             logger.exception(f"Error in deep_inference_agent: {e}")
             prompt = f"""
@@ -149,7 +149,7 @@ async def get_GraphRAG_global_response(user_input, chat_history, embedding_folde
             Reference context from the paper: {context}
             The student's query is: {user_input_text}
             """
-            answer = str(deep_inference_agent(prompt))
+            answer = str(deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session))
 
         # If there is <think> in the answer, split it into thinking and summary
         if "<think>" in answer:

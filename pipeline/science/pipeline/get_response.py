@@ -128,7 +128,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
     # Handle Advanced mode
     if chat_session.mode == ChatMode.ADVANCED:
         try:
-            answer = await get_GraphRAG_global_response(user_input, chat_history, embedding_folder_list, deep_thinking)
+            answer = await get_GraphRAG_global_response(user_input, chat_history, embedding_folder_list, deep_thinking, chat_session=chat_session, stream=stream)
             return answer
         except Exception as e:
             logger.exception("Error getting response from GraphRAG:", e)
@@ -214,7 +214,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         logger.info("before deep_inference_agent ...")
         if stream is False:
             try:
-                answer = str(deep_inference_agent(prompt))
+                answer = str(deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session))
             except Exception as e:
                 logger.exception(f"Error in deep_inference_agent with chat history, retry with no chat history: {e}")
                 prompt = f"""
@@ -222,7 +222,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 Reference context from the paper: {context}
                 The student's query is: {user_input_string}
                 """
-                answer = str(deep_inference_agent(prompt))
+                answer = str(deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session))
 
             if "<think>" in answer:
                 answer_thinking = answer.split("<think>")[1].split("</think>")[0]
@@ -241,7 +241,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
             # If stream is True, the answer is a generator; otherwise, it's a string
             # FIXME: Later we can add response_refine and replace_latex_formulas to the generator
             try:
-                answer = deep_inference_agent(prompt, stream=stream)
+                answer = deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session)
             except Exception as e:
                 logger.exception(f"Error in deep_inference_agent with chat history, retry with no chat history: {e}")
                 prompt = f"""
@@ -249,7 +249,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 Reference context from the paper: {context}
                 The student's query is: {user_input_string}
                 """
-                answer = deep_inference_agent(prompt, stream=stream)
+                answer = deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session)
             return answer
 
 

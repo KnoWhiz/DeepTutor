@@ -134,6 +134,7 @@ async def get_db_rag_response(
                 parsed_result = parsed_result["answer"]
                 logger.info(f"Response type: {type(parsed_result)}")
                 yield parsed_result
+                chat_session.current_message += parsed_result
             parsed_result = parsed_result_invoke_response(chain, user_input, processed_chat_history)
     except Exception as e:
         logger.exception(f"Error generating response: {str(e)}")

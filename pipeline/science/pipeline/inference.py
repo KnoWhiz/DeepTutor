@@ -6,6 +6,7 @@ from langchain_openai import AzureChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 import sys
 import os.path
+from pipeline.science.pipeline.session_manager import ChatSession
 
 # Handle imports for both direct execution and external import cases
 try:
@@ -28,15 +29,20 @@ logger = logging.getLogger("tutorpipeline.science.inference")
 
 def deep_inference_agent(
     user_prompt: str,
-    system_prompt: str = "You are a deep thinking researcher reading a paper. If you don't know the answer, say you don't know.",
+    system_prompt: str = "You are a professional deep thinking researcher reading a paper. Analyze the paper context content and answer the question. If the information is not provided in the paper, say you cannot find the answer in the paper but will try to answer based on your knowledge.",
     stream: bool = False,
+    chat_session: ChatSession = None
 ):
+    if chat_session is None:
+        # Initialize the chat session
+        chat_session = ChatSession()
     if stream is False:
         try:
             response = deepseek_inference(prompt=user_prompt, 
                                         system_message=system_prompt, 
                                         stream=stream,
-                                        model="DeepSeek-R1")
+                                        model="DeepSeek-R1",
+                                        chat_session=chat_session)
             if response == None:
                 raise Exception("No response from DeepSeek-R1")
             return response
@@ -46,7 +52,8 @@ def deep_inference_agent(
                 response = deepseek_inference(prompt=user_prompt, 
                                             system_message=system_prompt, 
                                             stream=stream,
-                                            model="DeepSeek-R1-Distill-Llama-70B")
+                                            model="DeepSeek-R1-Distill-Llama-70B",
+                                            chat_session=chat_session)
                 if response == None:
                     raise Exception("No response from DeepSeek-R1-Distill-Llama-70B")
                 return response
@@ -54,7 +61,8 @@ def deep_inference_agent(
                 logger.exception(f"An error occurred when calling DeepSeek-R1-Distill-Llama-70B: {str(e)}")
                 try:
                     response = o3mini_inference(user_prompt=user_prompt, 
-                                                stream=stream)
+                                                stream=stream,
+                                                chat_session=chat_session)
                     if response == None:
                         raise Exception("No response from o3mini")
                     return response
@@ -69,7 +77,8 @@ def deep_inference_agent(
             stream_response = deepseek_inference(prompt=user_prompt, 
                                                 system_message=system_prompt, 
                                                 stream=stream,
-                                                model="DeepSeek-R1")
+                                                model="DeepSeek-R1",
+                                                chat_session=chat_session)
             if stream_response == None:
                 raise Exception("No response from DeepSeek-R1")
             return stream_response
@@ -79,7 +88,8 @@ def deep_inference_agent(
                 stream_response = deepseek_inference(prompt=user_prompt, 
                                                 system_message=system_prompt, 
                                                 stream=stream,
-                                                model="DeepSeek-R1-Distill-Llama-70B")
+                                                model="DeepSeek-R1-Distill-Llama-70B",
+                                                chat_session=chat_session)
                 if stream_response == None:
                     raise Exception("No response from DeepSeek-R1-Distill-Llama-70B")
                 return stream_response
@@ -87,12 +97,14 @@ def deep_inference_agent(
                 logger.exception(f"An error occurred when calling DeepSeek-R1-Distill-Llama-70B: {str(e)}")
                 try:
                     stream_response = o3mini_inference(user_prompt=user_prompt, 
-                                                stream=stream)
+                                                stream=stream,
+                                                chat_session=chat_session)
                     return stream_response
                 except Exception as e:
                     logger.exception(f"An error occurred when calling o3mini: {str(e)}")
                     def stream_response():
                         yield "I'm sorry, I don't know the answer to that question."
+                        chat_session.current_message += "I'm sorry, I don't know the answer to that question."
                     return stream_response()
 
 
@@ -103,7 +115,8 @@ def deepseek_inference(
     temperature: float = 0.6,
     top_p: float = 0.1,
     max_tokens: int = 2000,
-    model: str = "DeepSeek-R1-Distill-Llama-70B"
+    model: str = "DeepSeek-R1-Distill-Llama-70B",
+    chat_session: ChatSession = None
 ) -> Optional[str]:
     """
     Get completion from the DeepSeek model with optional streaming support.
@@ -119,6 +132,9 @@ def deepseek_inference(
     Returns:
         The generated text if streaming is False, None if streaming is True
     """
+    if chat_session is None:
+        # Initialize the chat session
+        chat_session = ChatSession()
     config = load_config()
     max_tokens = config["inference_token_limit"]
     if model == "DeepSeek-R1-Distill-Llama-70B":
@@ -166,7 +182,7 @@ def deepseek_inference(
         # If the response is streaming, process the streaming response. The response is a generator.
         logger.info("Streaming response from DeepSeek:")
         try:
-            def deepseek_stream_response(model, system_message, prompt, temperature, top_p, max_tokens, stream):
+            def deepseek_stream_response(chat_session, model, system_message, prompt, temperature, top_p, max_tokens, stream):
                 response = client.chat.completions.create(
                     model=model,
                     messages=[
@@ -195,8 +211,10 @@ def deepseek_inference(
                             if len(parts) > 1:
                                 # Yield everything up to and including "</think>"
                                 yield parts[0] + "</think>"
+                                chat_session.current_message += parts[0] + "</think>"
                                 # Yield the "<response>" tag
                                 yield "<response>"
+                                chat_session.current_message += "<response>"
                                 # Yield the remainder of the text after "</think>"
                                 if parts[1]:
                                     yield parts[1]
@@ -211,7 +229,8 @@ def deepseek_inference(
                 
                 # Add the closing response tag at the end
                 yield "</response>"
-            return deepseek_stream_response(model, system_message, prompt, temperature, top_p, max_tokens, stream)
+                chat_session.current_message += "</response>"
+            return deepseek_stream_response(chat_session, model, system_message, prompt, temperature, top_p, max_tokens, stream)
 
         except openai.APIError as e:
             logger.exception(f"API Error: {str(e)}")
@@ -222,7 +241,8 @@ def deepseek_inference(
 def o3mini_inference(user_prompt: str, 
                      system_prompt: str = "You are a deep thinking researcher reading a paper. \
                         If you don't know the answer, say you don't know.",
-                     stream: bool = False) -> Union[str, Iterator]:
+                     stream: bool = False,
+                     chat_session: ChatSession = None) -> Union[str, Iterator]:
     """
     Generate a response using Azure OpenAI through LangChain
     
@@ -300,6 +320,6 @@ if __name__ == "__main__":
     # for chunk in stream_response:
     #     print(chunk, end="", flush=True)
 
-    stream_response = deep_inference_agent("what is 1+1? Explain it in detail and deep-thinking way", stream=True)
+    stream_response = deep_inference_agent(user_prompt="what is 1+1? Explain it in detail and deep-thinking way", stream=True)
     for chunk in stream_response:
         print(chunk, end="", flush=True)

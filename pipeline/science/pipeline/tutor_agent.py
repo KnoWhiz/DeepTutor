@@ -316,69 +316,100 @@ async def tutor_agent_basic(chat_session: ChatSession, file_path_list, user_inpu
     time_tracking["response_generation"] = time.time() - response_start
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
-    # Get sources
-    sources = {}
-    source_pages = {}
-    refined_source_pages = {}
-    refined_source_index = {}
-    sources_start = time.time()
-    sources, source_pages, refined_source_pages, refined_source_index = get_response_source(
-        mode=chat_session.mode,
-        file_path_list=file_path_list,
-        user_input=refined_user_input,
-        answer=answer,
-        chat_history=chat_history,
-        embedding_folder_list=embedding_folder_list
-    )
-    time_tracking["source_retrieval"] = time.time() - sources_start
-    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    # # TEST
+    # sources = {}
+    # source_pages = {}
+    # source_annotations = {}
+    # refined_source_pages = {}
+    # refined_source_index = {}
+    # follow_up_questions = generate_follow_up_questions(answer, [])
+    # print("Type of answer: ", type(answer))
+    # return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
 
-    # Process image sources
-    images_processing_start = time.time()
-    image_url_list = []
-    for source, index, page in zip(refined_source_index.keys(), refined_source_index.values(), refined_source_pages.values()):
-        logger.info(f"TEST: source: {source}, index: {index}, page: {page}")
-        if source.startswith("https://knowhiztutorrag.blob"):
-            image_url = source
-            image_url_list.append(image_url)
-    time_tracking["image_processing"] = time.time() - images_processing_start
-    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
-    # Refine and translate the answer to the selected language
-    translation_start = time.time()
-    answer = translate_content(
-        content=answer,
-        target_lang=chat_session.current_language
-    )
-    time_tracking["translation"] = time.time() - translation_start
-    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    if stream is False:
+        # Get sources
+        sources = {}
+        source_pages = {}
+        refined_source_pages = {}
+        refined_source_index = {}
+        sources_start = time.time()
+        sources, source_pages, refined_source_pages, refined_source_index = get_response_source(
+            mode=chat_session.mode,
+            file_path_list=file_path_list,
+            user_input=refined_user_input,
+            answer=answer,
+            chat_history=chat_history,
+            embedding_folder_list=embedding_folder_list
+        )
+        time_tracking["source_retrieval"] = time.time() - sources_start
+        logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
-    # Append images URL in markdown format to the end of the answer
-    annotations_start = time.time()
-    if image_url_list:
-        for image_url in image_url_list:
-            if image_url:
-                answer += "\n"
-                answer += f"![]({image_url})"
+        # Process image sources
+        images_processing_start = time.time()
+        image_url_list = []
+        for source, index, page in zip(refined_source_index.keys(), refined_source_index.values(), refined_source_pages.values()):
+            logger.info(f"TEST: source: {source}, index: {index}, page: {page}")
+            if source.startswith("https://knowhiztutorrag.blob"):
+                image_url = source
+                image_url_list.append(image_url)
+        time_tracking["image_processing"] = time.time() - images_processing_start
+        logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
-    source_annotations = {}
-    for source, index in refined_source_index.items():
-        _doc = process_pdf_file(file_path_list[index-1])[1]
-        annotations, _ = get_highlight_info(_doc, [source])
-        source_annotations[source] = annotations
-    time_tracking["annotations"] = time.time() - annotations_start
-    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-
-    # Generate follow-up questions
-    followup_start = time.time()
-    follow_up_questions = generate_follow_up_questions(answer, chat_history)
-    for i in range(len(follow_up_questions)):
-        follow_up_questions[i] = translate_content(
-            content=follow_up_questions[i],
+        # Refine and translate the answer to the selected language
+        translation_start = time.time()
+        answer = translate_content(
+            content=answer,
             target_lang=chat_session.current_language
         )
-    time_tracking["followup_questions"] = time.time() - followup_start
-    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+        time_tracking["translation"] = time.time() - translation_start
+        logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+
+        # Append images URL in markdown format to the end of the answer
+        annotations_start = time.time()
+        if image_url_list:
+            for image_url in image_url_list:
+                if image_url:
+                    answer += "\n"
+                    answer += f"![]({image_url})"
+
+        source_annotations = {}
+        for source, index in refined_source_index.items():
+            _doc = process_pdf_file(file_path_list[index-1])[1]
+            annotations, _ = get_highlight_info(_doc, [source])
+            source_annotations[source] = annotations
+        time_tracking["annotations"] = time.time() - annotations_start
+        logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+
+        # Generate follow-up questions
+        followup_start = time.time()
+        follow_up_questions = generate_follow_up_questions(answer, chat_history)
+        for i in range(len(follow_up_questions)):
+            follow_up_questions[i] = translate_content(
+                content=follow_up_questions[i],
+                target_lang=chat_session.current_language
+            )
+        time_tracking["followup_questions"] = time.time() - followup_start
+        logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+
+    else:
+        # FIXME: Add sources, source_pages, refined_source_pages, refined_source_index, source_annotations
+        sources = {}
+        source_pages = {}
+        refined_source_pages = {}
+        refined_source_index = {}
+        source_annotations = {}
+
+        # Generate follow-up questions
+        followup_start = time.time()
+        follow_up_questions = generate_follow_up_questions(answer, chat_history)
+        for i in range(len(follow_up_questions)):
+            follow_up_questions[i] = translate_content(
+                content=follow_up_questions[i],
+                target_lang=chat_session.current_language
+            )
+        time_tracking["followup_questions"] = time.time() - followup_start
+        logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Memory clean up 
     _document = None

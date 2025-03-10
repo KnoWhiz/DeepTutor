@@ -241,7 +241,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
             # If stream is True, the answer is a generator; otherwise, it's a string
             # FIXME: Later we can add response_refine and replace_latex_formulas to the generator
             try:
-                answer = deep_inference_agent(prompt)
+                answer = deep_inference_agent(prompt, stream=stream)
             except Exception as e:
                 logger.exception(f"Error in deep_inference_agent with chat history, retry with no chat history: {e}")
                 prompt = f"""
@@ -249,7 +249,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 Reference context from the paper: {context}
                 The student's query is: {user_input_string}
                 """
-                answer = deep_inference_agent(prompt)
+                answer = deep_inference_agent(prompt, stream=stream)
             return answer
 
 

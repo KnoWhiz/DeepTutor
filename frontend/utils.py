@@ -34,6 +34,15 @@ def format_reasoning_response(thinking_content):
     )
 
 
+def format_response(response_content):
+    """Format assistant content by removing think tags."""
+    return (
+        response_content.replace("<response>\n\n</response>", "")
+        .replace("<response>", "")
+        .replace("</response>", "")
+    )
+
+
 def process_response_phase(response_placeholder, stream_response: Generator, mode: ChatMode = None, stream: bool = False):
     """
     Process the response phase of the assistant's response.
@@ -44,6 +53,24 @@ def process_response_phase(response_placeholder, stream_response: Generator, mod
     """
     if stream:
         response_content = response_placeholder.write_stream(stream_response)
+        # response_content = ""
+        # with st.status("Responding...", expanded=True) as status:
+        #     response_placeholder = st.empty()
+            
+        #     for chunk in stream_response:
+        #         content = chunk or ""
+        #         response_content += content
+                
+        #         if "<response>" in content:
+        #             continue
+        #         if "</response>" in content:
+        #             content = content.replace("</response>", "")
+        #             status.update(label="Responding complete!", state="complete", expanded=True)
+        #             return response_content
+        #         response_placeholder.markdown(format_response(response_content))
+
+        # return response_content
+
     else:
         response_placeholder.write(stream_response)
         response_content = stream_response
@@ -51,13 +78,13 @@ def process_response_phase(response_placeholder, stream_response: Generator, mod
     return response_content
 
 
-def process_thinking_phase(stream):
+def process_thinking_phase(response_placeholder, answer):
     """Process the thinking phase of the assistant's response."""
     thinking_content = ""
     with st.status("Thinking...", expanded=True) as status:
         think_placeholder = st.empty()
         
-        for chunk in stream:
+        for chunk in answer:
             content = chunk or ""
             thinking_content += content
             
@@ -66,7 +93,7 @@ def process_thinking_phase(stream):
             if "</think>" in content:
                 content = content.replace("</think>", "")
                 status.update(label="Thinking complete!", state="complete", expanded=False)
-                break
+                return thinking_content
             think_placeholder.markdown(format_reasoning_response(thinking_content))
     
     # return format_reasoning_response(thinking_content)

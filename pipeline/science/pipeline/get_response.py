@@ -79,6 +79,7 @@ class Question:
 
 
 async def get_response(chat_session: ChatSession, file_path_list, question: Question, chat_history, embedding_folder_list, deep_thinking = True, stream=False):
+    generators_list = []
     config = load_config()
     user_input = question.text
     # Handle Lite mode first
@@ -119,8 +120,10 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
             db=db,
             stream=stream
         )   # If stream is True, the answer is a generator; otherwise, it's a string
-
-        return answer
+        if stream is True:
+            return answer
+        else:
+            return answer
 
     # Handle Advanced mode
     if chat_session.mode == ChatMode.ADVANCED:
@@ -164,8 +167,13 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
             db=db,
             stream=stream
         )
-        answer = responses_refine(answer)
-        return answer
+        if stream is True:
+            # If stream is True, the answer is a generator; otherwise, it's a string
+            # FIXME: Later we can add response_refine to the generator
+            return answer
+        else:
+            answer = responses_refine(answer)
+            return answer
     else:
         logger.info("deep thinking ...")
         try:
@@ -204,30 +212,45 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         logger.info(f"chat_history_string tokens: {count_tokens(chat_history_string)}")
         logger.info(f"context tokens: {count_tokens(context)}")
         logger.info("before deep_inference_agent ...")
-        try:
-            answer = str(deep_inference_agent(prompt))
-        except Exception as e:
-            logger.exception(f"Error in deep_inference_agent with chat history, retry with no chat history: {e}")
-            prompt = f"""
-            You are a deep thinking tutor helping a student reading a paper.
-            Reference context from the paper: {context}
-            The student's query is: {user_input_string}
-            """
-            answer = str(deep_inference_agent(prompt))
+        if stream is False:
+            try:
+                answer = str(deep_inference_agent(prompt))
+            except Exception as e:
+                logger.exception(f"Error in deep_inference_agent with chat history, retry with no chat history: {e}")
+                prompt = f"""
+                You are a deep thinking tutor helping a student reading a paper.
+                Reference context from the paper: {context}
+                The student's query is: {user_input_string}
+                """
+                answer = str(deep_inference_agent(prompt))
 
-        if "<think>" in answer:
-            answer_thinking = answer.split("<think>")[1].split("</think>")[0]
-            answer_summary = answer.split("<think>")[1].split("</think>")[1]
-            answer_summary_refined = responses_refine(answer_summary, "")
-            answer = answer_summary_refined
+            if "<think>" in answer:
+                answer_thinking = answer.split("<think>")[1].split("</think>")[0]
+                answer_summary = answer.split("<think>")[1].split("</think>")[1]
+                answer_summary_refined = responses_refine(answer_summary, "")
+                answer = answer_summary_refined
+            else:
+                answer = responses_refine(answer)
+
+            # Replace LaTeX formulas in the final answer
+            answer = replace_latex_formulas(answer)
+
+            logger.info("get_response done ...")
+            return answer
         else:
-            answer = responses_refine(answer)
-
-        # Replace LaTeX formulas in the final answer
-        answer = replace_latex_formulas(answer)
-
-        logger.info("get_response done ...")
-        return answer
+            # If stream is True, the answer is a generator; otherwise, it's a string
+            # FIXME: Later we can add response_refine and replace_latex_formulas to the generator
+            try:
+                answer = deep_inference_agent(prompt)
+            except Exception as e:
+                logger.exception(f"Error in deep_inference_agent with chat history, retry with no chat history: {e}")
+                prompt = f"""
+                You are a deep thinking tutor helping a student reading a paper.
+                Reference context from the paper: {context}
+                The student's query is: {user_input_string}
+                """
+                answer = deep_inference_agent(prompt)
+            return answer
 
 
 def get_query_helper(chat_session: ChatSession, user_input, context_chat_history, embedding_folder_list):

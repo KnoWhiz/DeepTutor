@@ -31,39 +31,69 @@ def deep_inference_agent(
     system_prompt: str = "You are a deep thinking researcher reading a paper. If you don't know the answer, say you don't know.",
     stream: bool = False,
 ):
-    try:
-        response = deepseek_inference(prompt=user_prompt, 
-                                    system_message=system_prompt, 
-                                    stream=stream,
-                                    model="DeepSeek-R1")
-        if response == None:
-            raise Exception("No response from DeepSeek-R1")
-        return response
-    except Exception as e:
-        logger.exception(f"An error occurred when calling DeepSeek-R1: {str(e)}")
+    if stream is False:
         try:
             response = deepseek_inference(prompt=user_prompt, 
                                         system_message=system_prompt, 
                                         stream=stream,
-                                        model="DeepSeek-R1-Distill-Llama-70B")
+                                        model="DeepSeek-R1")
             if response == None:
-                raise Exception("No response from DeepSeek-R1-Distill-Llama-70B")
+                raise Exception("No response from DeepSeek-R1")
             return response
         except Exception as e:
-            logger.exception(f"An error occurred when calling DeepSeek-R1-Distill-Llama-70B: {str(e)}")
+            logger.exception(f"An error occurred when calling DeepSeek-R1: {str(e)}")
             try:
-                response = o3mini_inference(user_prompt=user_prompt, 
-                                            stream=stream)
+                response = deepseek_inference(prompt=user_prompt, 
+                                            system_message=system_prompt, 
+                                            stream=stream,
+                                            model="DeepSeek-R1-Distill-Llama-70B")
                 if response == None:
-                    raise Exception("No response from o3mini")
+                    raise Exception("No response from DeepSeek-R1-Distill-Llama-70B")
                 return response
             except Exception as e:
-                logger.exception(f"An error occurred when calling o3mini: {str(e)}")
-                response = "I'm sorry, I don't know the answer to that question."
-                return response
+                logger.exception(f"An error occurred when calling DeepSeek-R1-Distill-Llama-70B: {str(e)}")
+                try:
+                    response = o3mini_inference(user_prompt=user_prompt, 
+                                                stream=stream)
+                    if response == None:
+                        raise Exception("No response from o3mini")
+                    return response
+                except Exception as e:
+                    logger.exception(f"An error occurred when calling o3mini: {str(e)}")
+                    response = "I'm sorry, I don't know the answer to that question."
+                    return response
                 
-    if stream is True:
-        pass
+    else:
+        # The stream is True, the answer is a generator
+        try:
+            stream_response = deepseek_inference(prompt=user_prompt, 
+                                                system_message=system_prompt, 
+                                                stream=stream,
+                                                model="DeepSeek-R1")
+            if stream_response == None:
+                raise Exception("No response from DeepSeek-R1")
+            return stream_response
+        except Exception as e:
+            logger.exception(f"An error occurred when calling DeepSeek-R1: {str(e)}")
+            try:
+                stream_response = deepseek_inference(prompt=user_prompt, 
+                                                system_message=system_prompt, 
+                                                stream=stream,
+                                                model="DeepSeek-R1-Distill-Llama-70B")
+                if stream_response == None:
+                    raise Exception("No response from DeepSeek-R1-Distill-Llama-70B")
+                return stream_response
+            except Exception as e:
+                logger.exception(f"An error occurred when calling DeepSeek-R1-Distill-Llama-70B: {str(e)}")
+                try:
+                    stream_response = o3mini_inference(user_prompt=user_prompt, 
+                                                stream=stream)
+                    return stream_response
+                except Exception as e:
+                    logger.exception(f"An error occurred when calling o3mini: {str(e)}")
+                    def stream_response():
+                        yield "I'm sorry, I don't know the answer to that question."
+                    return stream_response()
 
 
 def deepseek_inference(
@@ -250,22 +280,26 @@ def o3mini_inference(user_prompt: str,
 
 # Example usage
 if __name__ == "__main__":
-    # Example with DeepSeek streaming
-    print("DeepSeek streaming response:")
-    # Use DeepSeek-R1 model
-    stream_response = deepseek_inference("what is 1+1?", stream=True, model="DeepSeek-R1")
-    for chunk in stream_response:
-        print(chunk, end="", flush=True)
+    # # Example with DeepSeek streaming
+    # print("DeepSeek streaming response:")
+    # # Use DeepSeek-R1 model
+    # stream_response = deepseek_inference("what is 1+1?", stream=True, model="DeepSeek-R1")
+    # for chunk in stream_response:
+    #     print(chunk, end="", flush=True)
 
-    # Example with DeepSeek streaming
-    print("DeepSeek streaming response:")
-    # Use DeepSeek-R1-Distill-Llama-70B model
-    stream_response = deepseek_inference("what is 1+1?", stream=True, model="DeepSeek-R1-Distill-Llama-70B")
-    for chunk in stream_response:
-        print(chunk, end="", flush=True)
+    # # Example with DeepSeek streaming
+    # print("DeepSeek streaming response:")
+    # # Use DeepSeek-R1-Distill-Llama-70B model
+    # stream_response = deepseek_inference("what is 1+1?", stream=True, model="DeepSeek-R1-Distill-Llama-70B")
+    # for chunk in stream_response:
+    #     print(chunk, end="", flush=True)
     
-    # Example with O3-mini streaming
-    print("\nO3-mini streaming response:")
-    stream_response = o3mini_inference("what is 1+1? Explain it in detail and deep-thinking way", stream=True)
+    # # Example with O3-mini streaming
+    # print("\nO3-mini streaming response:")
+    # stream_response = o3mini_inference("what is 1+1? Explain it in detail and deep-thinking way", stream=True)
+    # for chunk in stream_response:
+    #     print(chunk, end="", flush=True)
+
+    stream_response = deep_inference_agent("what is 1+1? Explain it in detail and deep-thinking way", stream=True)
     for chunk in stream_response:
         print(chunk, end="", flush=True)

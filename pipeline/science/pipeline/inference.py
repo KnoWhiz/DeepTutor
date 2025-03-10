@@ -181,6 +181,7 @@ def o3mini_inference(user_prompt: str,
     
     # Return appropriate response based on streaming mode
     if stream:
+        print(f"Streaming response type: {type(response)}")
         return response  # Return the streaming response iterator
     else:
         # Return just the content string
@@ -190,10 +191,10 @@ def o3mini_inference(user_prompt: str,
 # Example usage
 if __name__ == "__main__":
     # Example with streaming
-    logger.info("Streaming response:")
+    print("Streaming response:")
     deepseek_inference("what is 1+1?", stream = True)
 
-    logger.info("\nNon-streaming response:")
+    print("\nNon-streaming response:")
     response = deepseek_inference("what is 1+1?", stream = False)
     if response:
-        logger.info(response)
+        print(response)

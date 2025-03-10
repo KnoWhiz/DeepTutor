@@ -150,12 +150,37 @@ def deepseek_inference(
                 )
 
                 # Process the streaming response
+                found_think_end = False
+                accumulated_text = ""
+                
                 for chunk in response:
                     if chunk.choices[0].delta.content is not None:
                         chunk_content = chunk.choices[0].delta.content
-                        yield chunk_content
-                        # print(chunk_content, end="", flush=True)
-                # print()  # Add a newline at the end
+                        accumulated_text += chunk_content
+                        
+                        # Check if we just found the end of the thinking section
+                        if "</think>" in accumulated_text and not found_think_end:
+                            # Split the accumulated text at "</think>"
+                            parts = accumulated_text.split("</think>", 1)
+                            if len(parts) > 1:
+                                # Yield everything up to and including "</think>"
+                                yield parts[0] + "</think>"
+                                # Yield the "<response>" tag
+                                yield "<response>"
+                                # Yield the remainder of the text after "</think>"
+                                if parts[1]:
+                                    yield parts[1]
+                                # Mark that we've found the end of thinking
+                                found_think_end = True
+                                # Reset accumulated text since we've processed it
+                                accumulated_text = ""
+                        else:
+                            # If we've already found the thinking end or haven't found it yet in this chunk
+                            if found_think_end or "</think>" not in chunk_content:
+                                yield chunk_content
+                
+                # Add the closing response tag at the end
+                yield "</response>"
             return deepseek_stream_response(model, system_message, prompt, temperature, top_p, max_tokens, stream)
 
         except openai.APIError as e:

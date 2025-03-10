@@ -109,36 +109,59 @@ def deepseek_inference(
         base_url=base_url
     )
 
-    try:
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": system_message},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=temperature,
-            top_p=top_p,
-            max_tokens=max_tokens,
-            stream=stream
-        )
+    if stream is False:
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_message},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=temperature,
+                top_p=top_p,
+                max_tokens=max_tokens,
+                stream=stream
+            )
 
-        if stream:
-            # Process the streaming response
-            for chunk in response:
-                if chunk.choices[0].delta.content is not None:
-                    print(chunk.choices[0].delta.content, end="", flush=True)
-            print()  # Add a newline at the end
-            return None
-        else:
             # Return the complete response
             return response.choices[0].message.content
 
-    except openai.APIError as e:
-        logger.exception(f"API Error: {str(e)}")
-        return None
-    except Exception as e:
-        logger.exception(f"An error occurred: {str(e)}")
-        return None
+        except openai.APIError as e:
+            logger.exception(f"API Error: {str(e)}")
+            return None
+        except Exception as e:
+            logger.exception(f"An error occurred: {str(e)}")
+            return None
+    else:
+        # If the response is streaming, process the streaming response. The response is a generator.
+        logger.info("Streaming response from DeepSeek:")
+        try:
+            def deepseek_stream_response(model, system_message, prompt, temperature, top_p, max_tokens, stream):
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": system_message},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=temperature,
+                    top_p=top_p,
+                    max_tokens=max_tokens,
+                    stream=stream
+                )
+
+                # Process the streaming response
+                for chunk in response:
+                    if chunk.choices[0].delta.content is not None:
+                        chunk_content = chunk.choices[0].delta.content
+                        yield chunk_content
+                        # print(chunk_content, end="", flush=True)
+                # print()  # Add a newline at the end
+            return deepseek_stream_response(model, system_message, prompt, temperature, top_p, max_tokens, stream)
+
+        except openai.APIError as e:
+            logger.exception(f"API Error: {str(e)}")
+        except Exception as e:
+            logger.exception(f"An error occurred: {str(e)}")
 
 
 def o3mini_inference(user_prompt: str, 
@@ -182,7 +205,13 @@ def o3mini_inference(user_prompt: str,
     # Generate response - use different methods depending on streaming mode
     if stream:
         # Return the streaming response generator
-        return model.stream(messages)
+        def o3mini_stream_response(model, messages, stream):
+            yield "<response>"
+            for chunk in model.stream(messages):
+                if hasattr(chunk, "content"):
+                    yield chunk.content
+            yield "</response>"
+        return o3mini_stream_response(model, messages, stream)
     else:
         # Return just the content string from the complete response
         response = model.invoke(messages)
@@ -193,38 +222,12 @@ def o3mini_inference(user_prompt: str,
 if __name__ == "__main__":
     # Example with DeepSeek streaming
     print("DeepSeek streaming response:")
-    deepseek_inference("what is 1+1?", stream=True)
-
-    # DeepSeek non-streaming
-    # logger.info("\nNon-streaming response:")
-    # response = deepseek_inference("what is 1+1?", stream=False)
-    # if response:
-    #     logger.info(response)
+    stream_response = deepseek_inference("what is 1+1?", stream=True)
+    for chunk in stream_response:
+        print(chunk, end="", flush=True)
     
     # Example with O3-mini streaming
     print("\nO3-mini streaming response:")
     stream_response = o3mini_inference("what is 1+1? Explain it in detail and deep-thinking way", stream=True)
-    
-    # Handle the streaming response correctly
-    try:
-        # Each chunk should be an AIMessageChunk when using .stream()
-        for chunk in stream_response:
-            # For AIMessageChunk objects, we need to check the content attribute
-            if hasattr(chunk, "content"):
-                # Content might be an empty string, but we still want to process it
-                # to maintain proper streaming format
-                print(chunk.content, end="", flush=True)
-            else:
-                print(f"[Unexpected chunk type: {type(chunk)}]", end="", flush=True)
-    except Exception as e:
-        print(f"\nError handling streaming response: {e}")
-        print(f"Chunk type: {type(chunk) if 'chunk' in locals() else 'Unknown'}")
-        if 'chunk' in locals():
-            print(f"Chunk value: {repr(chunk)}")
-    
-    print()  # Add a newline at the end
-    
-    # Example with O3-mini non-streaming
-    print("\nO3-mini non-streaming response:")
-    response = o3mini_inference("what is 1+1? Explain it in detail and deep-thinking way", stream=False)
-    print(response)
+    for chunk in stream_response:
+        print(chunk, end="", flush=True)

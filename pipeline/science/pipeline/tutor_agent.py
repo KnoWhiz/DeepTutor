@@ -207,6 +207,7 @@ async def tutor_agent_basic(chat_session: ChatSession, file_path_list, user_inpu
                          refined_source_pages, refined_source_index, follow_up_questions)
     """
     config = load_config()
+    # chat_session.current_message += f"\n\nUser input: {user_input}"
     # stream = config["stream"]
     if time_tracking is None:
         time_tracking = {}
@@ -401,6 +402,20 @@ async def tutor_agent_basic(chat_session: ChatSession, file_path_list, user_inpu
         refined_source_pages = {}
         refined_source_index = {}
         source_annotations = {}
+
+        # Get sources
+        logger.info(f"===========================\nCurrent message: {chat_session.current_message}\n===========================")
+        sources_start = time.time()
+        sources, source_pages, refined_source_pages, refined_source_index = get_response_source(
+            mode=chat_session.mode,
+            file_path_list=file_path_list,
+            user_input=refined_user_input,
+            answer=chat_session.current_message,
+            chat_history=chat_history,
+            embedding_folder_list=embedding_folder_list
+        )
+        time_tracking["source_retrieval"] = time.time() - sources_start
+        logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
         # Generate follow-up questions
         followup_start = time.time()

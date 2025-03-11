@@ -179,7 +179,8 @@ async def tutor_agent_lite(chat_session: ChatSession, file_path_list, user_input
     source_annotations = {}
     refined_source_pages = {}
     refined_source_index = {}
-    follow_up_questions = generate_follow_up_questions(answer, [])
+    # follow_up_questions = generate_follow_up_questions(answer, [])
+    follow_up_questions = []
     
     # Memory clean up 
     _document = None
@@ -402,31 +403,31 @@ async def tutor_agent_basic(chat_session: ChatSession, file_path_list, user_inpu
         refined_source_pages = {}
         refined_source_index = {}
         source_annotations = {}
+        follow_up_questions = []
+        # # Get sources
+        # logger.info(f"===========================\nCurrent message: {chat_session.current_message}\n===========================")
+        # sources_start = time.time()
+        # sources, source_pages, refined_source_pages, refined_source_index = get_response_source(
+        #     mode=chat_session.mode,
+        #     file_path_list=file_path_list,
+        #     user_input=refined_user_input,
+        #     answer=chat_session.current_message,
+        #     chat_history=chat_history,
+        #     embedding_folder_list=embedding_folder_list
+        # )
+        # time_tracking["source_retrieval"] = time.time() - sources_start
+        # logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
-        # Get sources
-        logger.info(f"===========================\nCurrent message: {chat_session.current_message}\n===========================")
-        sources_start = time.time()
-        sources, source_pages, refined_source_pages, refined_source_index = get_response_source(
-            mode=chat_session.mode,
-            file_path_list=file_path_list,
-            user_input=refined_user_input,
-            answer=chat_session.current_message,
-            chat_history=chat_history,
-            embedding_folder_list=embedding_folder_list
-        )
-        time_tracking["source_retrieval"] = time.time() - sources_start
-        logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-
-        # Generate follow-up questions
-        followup_start = time.time()
-        follow_up_questions = generate_follow_up_questions(answer, chat_history)
-        for i in range(len(follow_up_questions)):
-            follow_up_questions[i] = translate_content(
-                content=follow_up_questions[i],
-                target_lang=chat_session.current_language
-            )
-        time_tracking["followup_questions"] = time.time() - followup_start
-        logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+        # # Generate follow-up questions
+        # followup_start = time.time()
+        # follow_up_questions = generate_follow_up_questions(answer, chat_history)
+        # for i in range(len(follow_up_questions)):
+        #     follow_up_questions[i] = translate_content(
+        #         content=follow_up_questions[i],
+        #         target_lang=chat_session.current_language
+        #     )
+        # time_tracking["followup_questions"] = time.time() - followup_start
+        # logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Memory clean up 
     _document = None

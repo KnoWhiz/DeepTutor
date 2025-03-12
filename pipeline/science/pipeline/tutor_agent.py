@@ -104,7 +104,7 @@ async def tutor_agent_lite(chat_session: ChatSession, file_path_list, user_input
         return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
     time_tracking["summary_message"] = time.time() - initial_message_start_time
 
-    answer = tutor_agent_lite_streaming(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream)
+    answer = tutor_agent_lite_streaming_tracking(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream)
 
     # For Lite mode, we have minimal sources and follow-up questions
     sources = {}
@@ -120,6 +120,13 @@ async def tutor_agent_lite(chat_session: ChatSession, file_path_list, user_input
     
     return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
 
+
+async def tutor_agent_lite_streaming_tracking(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
+    async for chunk in tutor_agent_lite_streaming(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream):
+        yield chunk
+        chat_session.current_message += chunk
+    logger.info(f"Current message: {chat_session.current_message}")
+    
 
 async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
     """

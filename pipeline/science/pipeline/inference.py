@@ -104,7 +104,7 @@ def deep_inference_agent(
                     logger.exception(f"An error occurred when calling o3mini: {str(e)}")
                     def stream_response():
                         yield "I'm sorry, I don't know the answer to that question."
-                        chat_session.current_message += "I'm sorry, I don't know the answer to that question."
+                        # chat_session.current_message += "I'm sorry, I don't know the answer to that question."
                     return stream_response()
 
 
@@ -211,10 +211,10 @@ def deepseek_inference(
                             if len(parts) > 1:
                                 # Yield everything up to and including "</think>"
                                 yield parts[0] + "</think>"
-                                chat_session.current_message += parts[0] + "</think>"
+                                # chat_session.current_message += parts[0] + "</think>"
                                 # Yield the "<response>" tag
                                 yield "<response>"
-                                chat_session.current_message += "<response>"
+                                # chat_session.current_message += "<response>"
                                 # Yield the remainder of the text after "</think>"
                                 if parts[1]:
                                     yield parts[1]
@@ -229,13 +229,15 @@ def deepseek_inference(
                 
                 # Add the closing response tag at the end
                 yield "</response>"
-                chat_session.current_message += "</response>"
+                # chat_session.current_message += "</response>"
             return deepseek_stream_response(chat_session, model, system_message, prompt, temperature, top_p, max_tokens, stream)
 
         except openai.APIError as e:
             logger.exception(f"API Error: {str(e)}")
+            return None
         except Exception as e:
             logger.exception(f"An error occurred: {str(e)}")
+            return None
 
 
 def o3mini_inference(user_prompt: str, 

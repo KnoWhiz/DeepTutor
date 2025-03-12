@@ -35,20 +35,6 @@ import logging
 logger = logging.getLogger("tutorpipeline.science.tutor_agent")
 
 
-# def answer_generator_next_step(answer_generator, tag):
-#     yield from answer_generator
-#     yield f"\n\n<{tag}>\n"
-#     time.sleep(1)
-#     yield f"\n\n</{tag}>\n"
-
-
-# def combine_generators(generator_1, generator_2, tag):
-#     yield from generator_1
-#     yield f"\n\n<{tag}>\n"
-#     yield from generator_2
-#     yield f"\n\n</{tag}>\n"
-
-
 async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
     """
     Taking the user input, document, and chat history, generate a response and sources.
@@ -78,28 +64,25 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
         return error_message, {}, {}, {}, {}, {}, []
 
 
-async def tutor_agent_lite(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
+async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
     """
-    Lightweight tutor agent that provides basic tutoring capabilities with minimal resource usage.
-    Uses LiteRAG for document processing and doesn't perform advanced source retrieval.
-    
+    Streaming tutor agent for Lite mode.
+
     Args:
         chat_session: Current chat session object
         file_path_list: List of paths to uploaded documents
         user_input: The user's query or input
         time_tracking: Dictionary to track execution time of various steps
         deep_thinking: Whether to use deep thinking for response generation
-        
+
     Returns:
-        Tuple containing (answer, sources, source_pages, source_annotations, 
-                         refined_source_pages, refined_source_index, follow_up_questions)
+        Generator of response chunks
     """
-    config = load_config()
-    # stream = config["stream"]
     if time_tracking is None:
         time_tracking = {}
 
     # Compute hashed ID and prepare embedding folder
+    yield "<doc_processing>"
     hashing_start_time = time.time()
     file_id_list = [generate_file_id(file_path) for file_path in file_path_list]
     embedding_folder_list = [os.path.join("embedded_content", file_id) for file_id in file_id_list]
@@ -110,7 +93,6 @@ async def tutor_agent_lite(chat_session: ChatSession, file_path_list, user_input
         if not os.path.exists(embedding_folder):
             os.makedirs(embedding_folder)
     time_tracking["file_hashing_setup_dirs"] = time.time() - hashing_start_time
-
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Save the file txt content locally
@@ -120,22 +102,30 @@ async def tutor_agent_lite(chat_session: ChatSession, file_path_list, user_input
         save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
     time_tracking["file_loading_save_text"] = time.time() - save_file_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    yield "</doc_processing>"
 
     # Process LiteRAG embeddings
     lite_embedding_start_time = time.time()
+    yield "<lite_embedding>"
+    yield "Generating LiteRAG embeddings ..."
     for file_id, embedding_folder, file_path in zip(file_id_list, embedding_folder_list, file_path_list):
         if literag_index_files_decompress(embedding_folder):
             # Check if the LiteRAG index files are ready locally
             logger.info(f"LiteRAG embedding index files for {file_id} are ready.")
+            yield f"LiteRAG embedding index files for {file_id} are ready."
         else:
             # Files are missing and have been cleaned up
             _document, _doc = process_pdf_file(file_path)
             save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
-            logger.info(f"LiteRAG embedding for {file_id} ...")
-            await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder)
+            logger.info(f"Generating LiteRAG embedding for {file_id} ...")
+            yield f"Generating LiteRAG embedding for {file_id} ..."
+            async for chunk in embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder):
+                yield chunk
     time_tracking["lite_embedding_total"] = time.time() - lite_embedding_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
     logger.info("LiteRAG embedding done ...")
+    yield "LiteRAG embedding done ..."
+    yield "</lite_embedding>"
 
     chat_history = chat_session.chat_history
     context_chat_history = chat_history
@@ -143,22 +133,9 @@ async def tutor_agent_lite(chat_session: ChatSession, file_path_list, user_input
     # Handle initial welcome message when chat history is empty
     initial_message_start_time = time.time()
     if user_input == "Can you give me a summary of this document?" or not chat_history:
-        initial_message = "Hello! How can I assist you today?"
-        
-        answer = initial_message
-        # Translate the initial message to the selected language
-        answer = translate_content(
-            content=answer,
-            target_lang=chat_session.current_language
-        )
-        sources = {}  # Return empty dictionary for sources
-        source_pages = {}
-        source_annotations = {}
-        refined_source_pages = {}
-        refined_source_index = {}
-        follow_up_questions = []
-
-        return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
+        yield "<response>"
+        yield "Hello! How can I assist you today?"
+        yield "</response>"
 
     time_tracking["summary_message"] = time.time() - initial_message_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
@@ -170,25 +147,38 @@ async def tutor_agent_lite(chat_session: ChatSession, file_path_list, user_input
     response_start = time.time()
     response = await get_response(chat_session, file_path_list, question, context_chat_history, embedding_folder_list, deep_thinking=deep_thinking, stream=stream)
     answer = response[0] if isinstance(response, tuple) else response
+    for chunk in answer:
+        yield chunk
     time_tracking["response_generation"] = time.time() - response_start
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # For Lite mode, we have minimal sources and follow-up questions
-    sources = {}
-    source_pages = {}
-    source_annotations = {}
-    refined_source_pages = {}
-    refined_source_index = {}
-    # follow_up_questions = generate_follow_up_questions(answer, [])
-    follow_up_questions = []
-    
+    yield "<followup_questions>"
+    follow_up_questions = generate_follow_up_questions(chat_session.current_message, [])
+    for chunk in follow_up_questions:
+        yield chunk
+    yield "</followup_questions>"
+
+    yield "<sources>"
+    yield "</sources>"
+
+    yield "<source_pages>"
+    yield "</source_pages>"
+
+    yield "<source_annotations>"
+    yield "</source_annotations>"
+
+    yield "<refined_source_pages>"
+    yield "</refined_source_pages>"
+
+    yield "<refined_source_index>"
+    yield "</refined_source_index>"
+
     # Memory clean up 
     _document = None
     _doc = None
 
-    # answer = answer_generator_next_step(answer, "Next processing step")
-    
-    return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
+    return
 
 
 async def tutor_agent_basic(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):

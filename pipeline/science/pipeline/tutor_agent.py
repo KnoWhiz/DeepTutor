@@ -64,6 +64,19 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
         return error_message, {}, {}, {}, {}, {}, []
 
 
+async def tutor_agent_lite(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
+    logger.info("Tutor agent Lite mode, streaming response ...")
+    answer = tutor_agent_lite_streaming(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream)
+    sources = {}
+    source_pages = {}
+    source_annotations = {}
+    refined_source_pages = {}
+    refined_source_index = {}
+    follow_up_questions = []
+    
+    return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
+
+
 async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
     """
     Streaming tutor agent for Lite mode.

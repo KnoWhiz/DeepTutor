@@ -65,14 +65,58 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
 
 
 async def tutor_agent_lite(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
-    logger.info("Tutor agent Lite mode, streaming response ...")
+    """
+    Lightweight tutor agent that provides basic tutoring capabilities with minimal resource usage.
+    Uses LiteRAG for document processing and doesn't perform advanced source retrieval.
+    
+    Args:
+        chat_session: Current chat session object
+        file_path_list: List of paths to uploaded documents
+        user_input: The user's query or input
+        time_tracking: Dictionary to track execution time of various steps
+        deep_thinking: Whether to use deep thinking for response generation
+        
+    Returns:
+        Tuple containing (answer, sources, source_pages, source_annotations, 
+                         refined_source_pages, refined_source_index, follow_up_questions)
+    """
+    if time_tracking is None:
+        time_tracking = {}
+
+    # Handle initial welcome message when chat history is empty
+    initial_message_start_time = time.time()
+    if user_input == "Can you give me a summary of this document?" or not chat_session.chat_history:
+        initial_message = "Hello! How can I assist you today?"
+        
+        answer = initial_message
+        # Translate the initial message to the selected language
+        answer = translate_content(
+            content=answer,
+            target_lang=chat_session.current_language
+        )
+        sources = {}  # Return empty dictionary for sources
+        source_pages = {}
+        source_annotations = {}
+        refined_source_pages = {}
+        refined_source_index = {}
+        follow_up_questions = []
+
+        return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
+    time_tracking["summary_message"] = time.time() - initial_message_start_time
+
     answer = tutor_agent_lite_streaming(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream)
+
+    # For Lite mode, we have minimal sources and follow-up questions
     sources = {}
     source_pages = {}
     source_annotations = {}
     refined_source_pages = {}
     refined_source_index = {}
     follow_up_questions = []
+    
+    # Memory clean up 
+    _document = None
+    _doc = None
     
     return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
 
@@ -249,14 +293,14 @@ async def tutor_agent_basic(chat_session: ChatSession, file_path_list, user_inpu
             _document, _doc = process_pdf_file(file_path)
             save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
             logger.info(f"VectorRAG embedding for {file_id} ...")
-            time_tracking = await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
+            await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
             logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
             if vectorrag_index_files_compress(embedding_folder):
                 logger.info(f"VectorRAG index files for {file_id} are ready and uploaded to Azure Blob Storage.")
             else:
                 # Retry once if first attempt fails
                 save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
-                time_tracking = await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
+                await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
                 logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
                 if vectorrag_index_files_compress(embedding_folder):
                     logger.info(f"VectorRAG index files for {file_id} are ready and uploaded to Azure Blob Storage.")
@@ -491,14 +535,14 @@ async def tutor_agent_advanced(chat_session: ChatSession, file_path_list, user_i
             _document, _doc = process_pdf_file(file_path)
             save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
             logger.info(f"GraphRAG embedding for {file_id} ...")
-            time_tracking = await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
+            await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
             logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
             if graphrag_index_files_compress(embedding_folder):
                 logger.info(f"GraphRAG index files for {file_id} are ready and uploaded to Azure Blob Storage.")
             else:
                 # Retry once if first attempt fails
                 save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
-                time_tracking = await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
+                await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
                 logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
                 if graphrag_index_files_compress(embedding_folder):
                     logger.info(f"GraphRAG index files for {file_id} are ready and uploaded to Azure Blob Storage.")

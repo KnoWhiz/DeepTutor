@@ -156,7 +156,7 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     yield "<followup_questions>"
     follow_up_questions = generate_follow_up_questions(chat_session.current_message, [])
     for chunk in follow_up_questions:
-        yield chunk
+        yield f"{chunk}"
     yield "</followup_questions>"
 
     yield "<sources>"

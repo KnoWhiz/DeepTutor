@@ -220,7 +220,8 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     yield "<followup_questions>"
     follow_up_questions = generate_follow_up_questions(chat_session.current_message, [])
     for chunk in follow_up_questions:
-        yield f"{chunk}"
+        # The content should be easy to extract as XML formats
+        yield f"<followup_question>{chunk}</followup_question>"
     yield "</followup_questions>"
 
     yield "<sources>"
@@ -238,7 +239,7 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     yield "<refined_source_index>"
     yield "</refined_source_index>"
 
-    # Memory clean up 
+    # Memory clean up
     _document = None
     _doc = None
 

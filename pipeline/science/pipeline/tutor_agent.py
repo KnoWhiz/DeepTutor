@@ -146,7 +146,8 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
         time_tracking = {}
 
     # Compute hashed ID and prepare embedding folder
-    yield "<doc_processing>"
+    yield "<thinking>"
+    yield "Processing documents ...\n\n"
     hashing_start_time = time.time()
     file_id_list = [generate_file_id(file_path) for file_path in file_path_list]
     embedding_folder_list = [os.path.join("embedded_content", file_id) for file_id in file_id_list]
@@ -166,12 +167,11 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
         save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
     time_tracking["file_loading_save_text"] = time.time() - save_file_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-    yield "</doc_processing>"
+    yield "Processing documents done ...\n\n"
 
     # Process LiteRAG embeddings
     lite_embedding_start_time = time.time()
-    yield "<lite_embedding>"
-    yield "Generating LiteRAG embeddings ..."
+    yield "Generating LiteRAG embeddings ...\n\n"
     for file_id, embedding_folder, file_path in zip(file_id_list, embedding_folder_list, file_path_list):
         if literag_index_files_decompress(embedding_folder):
             # Check if the LiteRAG index files are ready locally
@@ -188,8 +188,8 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     time_tracking["lite_embedding_total"] = time.time() - lite_embedding_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
     logger.info("LiteRAG embedding done ...")
-    yield "LiteRAG embedding done ..."
-    yield "</lite_embedding>"
+    yield "LiteRAG embedding done ...\n\n"
+    yield "</thinking>"
 
     chat_history = chat_session.chat_history
     context_chat_history = chat_history
@@ -216,28 +216,35 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     time_tracking["response_generation"] = time.time() - response_start
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
+    yield "<appendix>"
+
     # For Lite mode, we have minimal sources and follow-up questions
-    yield "<followup_questions>"
+    yield "Generating follow-up questions ...\n\n"
     follow_up_questions = generate_follow_up_questions(chat_session.current_message, [])
     for chunk in follow_up_questions:
         # The content should be easy to extract as XML formats
-        yield f"<followup_question>{chunk}</followup_question>"
-    yield "</followup_questions>"
+        yield "<followup_question>"
+        yield f"\n{chunk}"
+        yield "</followup_question>"
+        yield "\n\n"
+    yield "Generating follow-up questions done ...\n\n"
 
-    yield "<sources>"
-    yield "</sources>"
+    yield "Retrieving sources ...\n\n"
+    yield "Retrieving sources done ...\n\n"
 
-    yield "<source_pages>"
-    yield "</source_pages>"
+    yield "Retrieving source pages ...\n\n"
+    yield "Retrieving source pages done ...\n\n"
 
-    yield "<source_annotations>"
-    yield "</source_annotations>"
+    yield "Retrieving source annotations ...\n\n"
+    yield "Retrieving source annotations done ...\n\n"
 
-    yield "<refined_source_pages>"
-    yield "</refined_source_pages>"
+    yield "Refining source pages ...\n\n"
+    yield "Refining source pages done ...\n\n"
 
-    yield "<refined_source_index>"
-    yield "</refined_source_index>"
+    yield "Refining source index ...\n\n"
+    yield "Refining source index done ...\n\n"
+
+    yield "</appendix>"
 
     # Memory clean up
     _document = None

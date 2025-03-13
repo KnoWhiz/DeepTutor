@@ -47,7 +47,7 @@ async def embeddings_agent(_mode, _document, _doc, file_path, embedding_folder, 
     Save the embeddings to the specified folder
     Generate and save document summary using the texts we created
     """
-    yield "Generating embeddings..."
+    yield "Generating embeddings ...\n\n"
     file_id = generate_file_id(file_path)
     graphrag_start_time = time.time()
     logger.info(f"Current mode: {_mode}")
@@ -68,7 +68,7 @@ async def embeddings_agent(_mode, _document, _doc, file_path, embedding_folder, 
         doc_processor = None
         texts = None
 
-        yield "Embeddings generated successfully."
+        yield "Embeddings generated successfully.\n\n"
         return
     else:
         raise ValueError("Invalid mode")
@@ -251,5 +251,5 @@ async def embeddings_agent(_mode, _document, _doc, file_path, embedding_folder, 
     doc_processor = None
     texts = None
 
-    yield "Embeddings generated successfully."
+    yield "Embeddings generated successfully.\n\n"
     return

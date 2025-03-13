@@ -176,13 +176,13 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
         if literag_index_files_decompress(embedding_folder):
             # Check if the LiteRAG index files are ready locally
             logger.info(f"LiteRAG embedding index files for {file_id} are ready.")
-            yield f"LiteRAG embedding index files for {file_id} are ready."
+            yield f"LiteRAG embedding index files for {file_id} are ready.\n\n"
         else:
             # Files are missing and have been cleaned up
             _document, _doc = process_pdf_file(file_path)
             save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
             logger.info(f"Generating LiteRAG embedding for {file_id} ...")
-            yield f"Generating LiteRAG embedding for {file_id} ..."
+            yield f"Generating LiteRAG embedding for {file_id} ...\n\n"
             async for chunk in embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder):
                 yield chunk
     time_tracking["lite_embedding_total"] = time.time() - lite_embedding_start_time

@@ -126,7 +126,7 @@ async def tutor_agent_lite_streaming_tracking(chat_session: ChatSession, file_pa
         yield chunk
         chat_session.current_message += chunk
     logger.info(f"Current message: {chat_session.current_message}")
-    
+
 
 async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
     """
@@ -246,7 +246,7 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     return
 
 
-async def tutor_agent_basic(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
+async def tutor_agent_basic_streaming_tracking(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
     async for chunk in tutor_agent_basic_streaming(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream):
         yield chunk
         chat_session.current_message += chunk

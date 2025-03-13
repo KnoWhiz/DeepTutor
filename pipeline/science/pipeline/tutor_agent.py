@@ -2,6 +2,7 @@ import os
 import json
 import time
 from typing import Dict, Generator
+import re
 
 from pipeline.science.pipeline.utils import (
     translate_content,
@@ -33,6 +34,41 @@ from pipeline.science.pipeline.config import load_config
 
 import logging
 logger = logging.getLogger("tutorpipeline.science.tutor_agent")
+
+
+def extract_lite_mode_content(message_content):
+    """
+    Extracts structured content from the lite mode message content.
+    
+    Args:
+        message_content: The complete message string from chat_session.current_message
+        
+    Returns:
+        Tuple containing (answer, sources, source_pages, source_annotations, 
+                         refined_source_pages, refined_source_index, follow_up_questions)
+    """
+    # Default empty structures for lite mode
+    sources = {}
+    source_pages = {}
+    source_annotations = {}
+    refined_source_pages = {}
+    refined_source_index = {}
+    follow_up_questions = []
+    
+    # Extract the main answer (content between <response> tags)
+    answer = ""
+    response_match = re.search(r'<response>(.*?)</response>', message_content, re.DOTALL)
+    if response_match:
+        answer = response_match.group(1).strip()
+    
+    # Extract follow-up questions (content between <followup_question> tags)
+    followup_matches = re.finditer(r'<followup_question>(.*?)</followup_question>', message_content, re.DOTALL)
+    for match in followup_matches:
+        question = match.group(1).strip()
+        if question:
+            follow_up_questions.append(question)
+    
+    return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
 
 
 async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
@@ -114,10 +150,6 @@ async def tutor_agent_lite(chat_session: ChatSession, file_path_list, user_input
     refined_source_index = {}
     follow_up_questions = []
     
-    # Memory clean up 
-    _document = None
-    _doc = None
-    
     return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
 
 
@@ -125,6 +157,15 @@ async def tutor_agent_lite_streaming_tracking(chat_session: ChatSession, file_pa
     async for chunk in tutor_agent_lite_streaming(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream):
         yield chunk
         chat_session.current_message += chunk
+
+    answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions = extract_lite_mode_content(chat_session.current_message)
+    logger.info(f"Extracted answer: {answer}")
+    logger.info(f"Extracted sources: {sources}")
+    logger.info(f"Extracted source pages: {source_pages}")
+    logger.info(f"Extracted source annotations: {source_annotations}")
+    logger.info(f"Extracted refined source pages: {refined_source_pages}")
+    logger.info(f"Extracted refined source index: {refined_source_index}")
+    logger.info(f"Extracted follow-up questions: {follow_up_questions}")
     logger.info(f"Current message: {chat_session.current_message}")
 
 

@@ -247,10 +247,15 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
 
 
 async def tutor_agent_basic(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
+    async for chunk in tutor_agent_basic_streaming(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream):
+        yield chunk
+        chat_session.current_message += chunk
+    logger.info(f"Current message: {chat_session.current_message}")
+
+
+async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
     """
-    Standard tutor agent that provides comprehensive tutoring capabilities with vector-based RAG.
-    Uses VectorRAG for document processing and performs source retrieval.
-    
+    Streaming tutor agent for Basic mode.
     Args:
         chat_session: Current chat session object
         file_path_list: List of paths to uploaded documents
@@ -259,12 +264,8 @@ async def tutor_agent_basic(chat_session: ChatSession, file_path_list, user_inpu
         deep_thinking: Whether to use deep thinking for response generation
         
     Returns:
-        Tuple containing (answer, sources, source_pages, source_annotations, 
-                         refined_source_pages, refined_source_index, follow_up_questions)
+        Generator of response chunks
     """
-    config = load_config()
-    # chat_session.current_message += f"\n\nUser input: {user_input}"
-    # stream = config["stream"]
     if time_tracking is None:
         time_tracking = {}
 

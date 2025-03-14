@@ -10,14 +10,17 @@ from streamlit_extras.stylable_container import stylable_container
 from frontend.utils import (
     previous_page,
     next_page,
-    handle_follow_up_click
+    handle_follow_up_click,
+    format_reasoning_response
 )
 from frontend.forms.contact import contact_form
 from pipeline.science.pipeline.config import load_config
 from pipeline.science.pipeline.session_manager import ChatMode
-from frontend.utils import streamlit_tutor_agent, process_response_phase
+from frontend.utils import streamlit_tutor_agent, process_response_phase, process_thinking_phase
 
 import logging
+import re
+
 logger = logging.getLogger("tutorfrontend.ui")
 
 def to_emoji_number(num: int) -> str:
@@ -177,7 +180,8 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
     learner_avatar = "frontend/images/learner.svg"
     tutor_avatar = "frontend/images/tutor.svg"
     professor_avatar = "frontend/images/professor.svg"
-
+    config = load_config()
+    stream = config["stream"]
     with st.container():
         float_init(theme=True, include_unstable_primary=False)
         user_input = st.chat_input(key='user_input')
@@ -190,128 +194,126 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
     chat_container = st.container(border=st.session_state.show_chat_border, height=1005)
 
     with chat_container:
-        # Generate initial welcome message if chat history is empty
-        if not st.session_state.chat_session.chat_history:
-            with st.spinner("Generating deep document understanding..."):
-                initial_message,\
-                sources,\
-                source_pages,\
-                source_annotations,\
-                refined_source_pages,\
-                refined_source_index,\
-                follow_up_questions = streamlit_tutor_agent(
-                    chat_session=st.session_state.chat_session,
-                    file_path=file_path,
-                    user_input=None
-                )
-                st.session_state.source_annotations = source_annotations
-                # Convert sources to dict if it's a list (for backward compatibility)
-                if isinstance(sources, list):
-                    sources = {source: 1.0 for source in sources}  # Assign max relevance to initial sources
-                
-                st.session_state.chat_session.chat_history.append(
-                    {
-                        "role": "assistant", 
-                        "content": initial_message,
-                        "follow_up_questions": follow_up_questions
-                    }
-                )
-                
-                if sources:
-                    st.session_state.chat_session.chat_history.append({
-                        "role": "source_buttons",
-                        "sources": sources,
-                        "pages": refined_source_pages,
-                        "annotations": source_annotations,
-                        "index": refined_source_index,
-                        "timestamp": len(st.session_state.chat_session.chat_history)
-                    })
-                
-        # Display chat history
-        for idx, msg in enumerate(st.session_state.chat_session.chat_history):
-            if msg["role"] == "user":
-                avatar = learner_avatar
-                with st.chat_message(msg["role"], avatar=avatar):
-                    st.write(msg["content"])
-            elif msg["role"] == "assistant":
-                avatar = professor_avatar if st.session_state.chat_session.mode == ChatMode.ADVANCED else tutor_avatar
-                with st.chat_message(msg["role"], avatar=avatar):
-                    st.write(msg["content"])
-                    
-                    # First display source buttons if this message has associated sources
-                    next_msg = st.session_state.chat_session.chat_history[idx + 1] if idx + 1 < len(st.session_state.chat_session.chat_history) else None
-                    if next_msg and next_msg["role"] == "source_buttons":
-                        sources = next_msg["sources"]
-                        # Convert sources to dict if it's a list (for backward compatibility)
-                        if isinstance(sources, list):
-                            sources = {source: 1.0 for source in sources}  # Assign max relevance to old sources
-                            next_msg["sources"] = sources
-                        
-                        if sources and len(sources) > 0:
-                            st.write("\n\n**📚 Sources:**")
-                            # Sort sources by page numbers
-                            sorted_sources = sorted(sources.items(), key=lambda x: next_msg["pages"][x[0]])
-                            cols = st.columns(len(sources))
-                            for src_idx, (col, (source, score)) in enumerate(zip(cols, sorted_sources), 1):
-                                page_num = next_msg["pages"][source]
-                                with col:
-                                    # Create a stylable container for the button with custom color
-                                    button_color = get_relevance_color(score)
-                                    button_style = """
-                                    button {{
-                                        background-color: {button_color} !important;
-                                        border-color: {button_color} !important;
-                                        color: white !important;
-                                        transition: filter 0.2s !important;
-                                    }}
-                                    button:hover {{
-                                        background-color: {button_color} !important;
-                                        border-color: {button_color} !important;
-                                        filter: brightness(120%) !important;
-                                    }}
-                                    """
-                                    with stylable_container(
-                                        key=f"source_btn_container_{idx}_{src_idx}",
-                                        css_styles=button_style.format(button_color=button_color)
-                                    ):
-                                        if st.button(to_emoji_number(src_idx), key=f"source_btn_{idx}_{src_idx}", use_container_width=True):
-                                            st.session_state.current_page = page_num
-                                            # Display the highlight info for that single source button
-                                            # st.session_state.annotations, st.session_state.react_annotations = get_highlight_info(doc, [source])
-                                            try:
-                                                config = load_config()
-                                                image_extensions: Set[str] = set(config["image_extensions"])
-                                                is_image_file = any(source.lower().endswith(ext.lower()) for ext in image_extensions)
-                                                
-                                                if is_image_file:
-                                                    # For image files, use empty annotations
-                                                    st.session_state.annotations = []
-                                                else:
-                                                    # For other files, get annotations from source_annotations
-                                                    st.session_state.annotations = st.session_state.source_annotations[source]
-                                            except Exception as e:
-                                                logger.exception(f"Failed to get annotations: {str(e)}")
-                                                st.session_state.annotations = []
-                    
-                    # Then display follow-up questions
-                    if "follow_up_questions" in msg and msg["follow_up_questions"] != []:
-                        st.write("\n\n**📝 Follow-up Questions:**")
-                        for q_idx, question in enumerate(msg["follow_up_questions"], 1):
-                            if st.button(f"{q_idx}. {question}", key=f"follow_up_{idx}_{q_idx}"):
-                                handle_follow_up_click(st.session_state.chat_session, question)
-            elif msg["role"] == "source_buttons":
-                # Skip source buttons here since we're showing them with the assistant message
-                pass
+        if st.session_state.chat_session.chat_history:
+            # Display chat history
+            logger.info("Display chat history ...")
+            for idx, msg in enumerate(st.session_state.chat_session.chat_history):
+                # TEST
+                logger.info(f"chat history: {st.session_state.chat_session.chat_history}")
+                if msg["role"] == "user":
+                    avatar = learner_avatar
+                    with st.chat_message(msg["role"], avatar=avatar):
+                        st.write(msg["content"])
+                elif msg["role"] == "assistant":
+                    avatar = professor_avatar if st.session_state.chat_session.mode == ChatMode.ADVANCED else tutor_avatar
+                    with st.chat_message(msg["role"], avatar=avatar):
+                        # For chat history, we need to recreate the expandable UI for thinking content
+                        content = msg["content"]
 
-        # If there's a next question from follow-up click, process it
-        if "next_question" in st.session_state:
-            user_input = st.session_state.next_question
-            del st.session_state.next_question
+                        # Handle thinking tags first (before displaying main content)
+                        pattern = r"<thinking>(.*?)</thinking>"
+                        think_match = re.search(pattern, content, re.DOTALL)
+                        if think_match:
+                            think_content = think_match.group(0)
+                            content = content.replace(think_content, "")
+                            think_content = format_reasoning_response(think_content)
+                            with st.expander("Thinking complete!"):
+                                st.markdown(think_content)
+                        
+                        # Extract appendix content to display later
+                        appendix_content = None
+                        pattern = r"<appendix>(.*?)</appendix>"
+                        appendix_match = re.search(pattern, content, re.DOTALL)
+                        if appendix_match:
+                            appendix_content = appendix_match.group(0)
+                            content = content.replace(appendix_content, "")
+                            appendix_content = appendix_content.replace("<appendix>", "").replace("</appendix>", "")
+                        
+                        # Display the main content
+                        st.markdown(content)
+                        
+                        # Display appendix after the main content
+                        if appendix_content:
+                            with st.expander("Additional information"):
+                                st.markdown(appendix_content)
+                        
+                        # First display source buttons if this message has associated sources
+                        next_msg = st.session_state.chat_session.chat_history[idx + 1] if idx + 1 < len(st.session_state.chat_session.chat_history) else None
+                        if next_msg and next_msg["role"] == "source_buttons":
+                            sources = next_msg["sources"]
+                            # Convert sources to dict if it's a list (for backward compatibility)
+                            if isinstance(sources, list):
+                                sources = {source: 1.0 for source in sources}  # Assign max relevance to old sources
+                                next_msg["sources"] = sources
+                            
+                            if sources and len(sources) > 0:
+                                st.write("\n\n**📚 Sources:**")
+                                # Sort sources by page numbers
+                                sorted_sources = sorted(sources.items(), key=lambda x: next_msg["pages"][x[0]])
+                                cols = st.columns(len(sources))
+                                for src_idx, (col, (source, score)) in enumerate(zip(cols, sorted_sources), 1):
+                                    page_num = next_msg["pages"][source]
+                                    with col:
+                                        # Create a stylable container for the button with custom color
+                                        button_color = get_relevance_color(score)
+                                        button_style = """
+                                        button {{
+                                            background-color: {button_color} !important;
+                                            border-color: {button_color} !important;
+                                            color: white !important;
+                                            transition: filter 0.2s !important;
+                                        }}
+                                        button:hover {{
+                                            background-color: {button_color} !important;
+                                            border-color: {button_color} !important;
+                                            filter: brightness(120%) !important;
+                                        }}
+                                        """
+                                        with stylable_container(
+                                            key=f"source_btn_container_{idx}_{src_idx}",
+                                            css_styles=button_style.format(button_color=button_color)
+                                        ):
+                                            if st.button(to_emoji_number(src_idx), key=f"source_btn_{idx}_{src_idx}", use_container_width=True):
+                                                st.session_state.current_page = page_num
+                                                # Display the highlight info for that single source button
+                                                # st.session_state.annotations, st.session_state.react_annotations = get_highlight_info(doc, [source])
+                                                try:
+                                                    image_extensions: Set[str] = set(config["image_extensions"])
+                                                    is_image_file = any(source.lower().endswith(ext.lower()) for ext in image_extensions)
+                                                    
+                                                    if is_image_file:
+                                                        # For image files, use empty annotations
+                                                        st.session_state.annotations = []
+                                                    else:
+                                                        # For other files, get annotations from source_annotations
+                                                        st.session_state.annotations = st.session_state.source_annotations[source]
+                                                except Exception as e:
+                                                    logger.exception(f"Failed to get annotations: {str(e)}")
+                                                    st.session_state.annotations = []
+                        
+                        # Then display follow-up questions
+                        if "follow_up_questions" in msg and msg["follow_up_questions"] != []:
+                            # st.write("\n\n**📝 Follow-up Questions:**")
+                            for q_idx, question in enumerate(msg["follow_up_questions"], 1):
+                                if st.button(f"{q_idx}. {question}", key=f"follow_up_{idx}_{q_idx}"):
+                                    handle_follow_up_click(st.session_state.chat_session, question)
+                elif msg["role"] == "source_buttons":
+                    # Skip source buttons here since we're showing them with the assistant message
+                    pass
         else:
-            user_input = st.session_state.get('user_input', None)
+            user_input = config["summary_wording"]
+
+        if user_input != config["summary_wording"]:
+            # If there's a next question from follow-up click, process it
+            if "next_question" in st.session_state:
+                user_input = st.session_state.next_question
+                del st.session_state.next_question
+            else:
+                user_input = st.session_state.get('user_input', None)
 
         # If we have input to process
         if user_input:
+            logger.info(f"Processing user_input: {user_input}...")
             with st.spinner("Generating deep agentic response..."):
                 try:
                     # Get response
@@ -339,7 +341,17 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                     # Display current response
                     response_placeholder = st.chat_message("assistant", avatar=tutor_avatar)
                     with response_placeholder:
-                        answer_content = process_response_phase(response_placeholder, answer, mode=st.session_state.chat_session.mode)
+                        # For live responses, process_thinking_phase already displays the thinking UI
+                        # We just need to capture the content and format it for storage
+                        # answer_content = process_thinking_phase(response_placeholder, answer)
+                        # thinking_content = process_thinking_phase(response_placeholder, answer)
+                        response_content = process_response_phase(response_placeholder, stream_response=answer, mode=st.session_state.chat_session.mode, stream = stream)
+                        # def process_response_phase(response_placeholder, stream_response: Generator, mode: ChatMode = None, stream: bool = False):
+                        answer_content = response_content
+                        
+                        # # Display the content directly as markdown
+                        # # The thinking UI was already shown by process_thinking_phase
+                        # st.markdown(answer_content)
                         
                         # First display source buttons
                         if sources and len(sources) > 0:
@@ -376,7 +388,6 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                                                 # st.session_state.annotations, st.session_state.react_annotations = get_highlight_info(doc, [source])
                                                 # i = list(sources.keys()).index(source)
                                                 try:
-                                                    config = load_config()
                                                     image_extensions: Set[str] = set(config["image_extensions"])
                                                     is_image_file = any(source.lower().endswith(ext.lower()) for ext in image_extensions)
                                                     
@@ -394,7 +405,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                                             # Add response with follow-up questions to chat history
                         
                         # Then display follow-up questions
-                        st.write("\n\n**📝 Follow-up Questions:**")
+                        # st.write("\n\n**📝 Follow-up Questions:**")
                         for q_idx, question in enumerate(follow_up_questions, 1):
                             if st.button(f"{q_idx}. {question}", key=f"follow_up_current_{q_idx}"):
                                 handle_follow_up_click(st.session_state.chat_session, question)
@@ -430,7 +441,6 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                 if st.session_state.get("sources"):
                     # st.session_state.annotations, st.session_state.react_annotations = get_highlight_info(doc, list(st.session_state.sources.keys()))
                     # i = list(st.session_state.sources.keys()).index(source)
-                    config = load_config()
                     image_extensions: Set[str] = set(config["image_extensions"])
                     try:
                         # Check if source is an image file by checking its extension

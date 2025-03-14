@@ -16,7 +16,7 @@ from graphrag.query.structured_search.global_search.community_context import (
     GlobalCommunityContext,
 )
 from graphrag.query.structured_search.global_search.search import GlobalSearch
-
+from pipeline.science.pipeline.session_manager import ChatSession
 from pipeline.science.pipeline.utils import (
     truncate_chat_history,
     responses_refine,
@@ -26,7 +26,7 @@ import logging
 logger = logging.getLogger("tutorpipeline.science.get_graphrag_response")
 
 
-async def get_GraphRAG_global_response(user_input, chat_history, embedding_folder_list, deep_thinking = True):
+async def get_GraphRAG_global_response(user_input, chat_history, embedding_folder_list, deep_thinking = True, chat_session: ChatSession = None, stream: bool = False):
     embedding_folder = embedding_folder_list[0]
 
     # Chat history and user input
@@ -141,7 +141,7 @@ async def get_GraphRAG_global_response(user_input, chat_history, embedding_folde
     if deep_thinking:
         from pipeline.science.pipeline.inference import deep_inference_agent
         try:
-            answer = str(deep_inference_agent(prompt))
+            answer = deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session)
         except Exception as e:
             logger.exception(f"Error in deep_inference_agent: {e}")
             prompt = f"""
@@ -149,19 +149,26 @@ async def get_GraphRAG_global_response(user_input, chat_history, embedding_folde
             Reference context from the paper: {context}
             The student's query is: {user_input_text}
             """
-            answer = str(deep_inference_agent(prompt))
+            answer = deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session)
 
-        # If there is <think> in the answer, split it into thinking and summary
-        if "<think>" in answer:
-            answer_thinking = answer.split("<think>")[1].split("</think>")[0]
-            answer_summary = answer.split("<think>")[1].split("</think>")[1]
-            answer_summary_refined = responses_refine(search_engine_result.response, answer_summary)
-            # answer = "### Here is my thinking process\n\n" + answer_thinking + "\n\n### Here is my summarized answer\n\n" + answer_summary
-            # answer = answer_summary + "\n\n" + answer_summary_refined
-            answer = answer_summary_refined
+        if stream is False:
+            # If there is <think> in the answer, split it into thinking and summary
+            if "<think>" in answer:
+                answer_thinking = answer.split("<think>")[1].split("</think>")[0]
+                answer_summary = answer.split("<think>")[1].split("</think>")[1]
+                answer_summary_refined = responses_refine(search_engine_result.response, answer_summary)
+                # answer = "### Here is my thinking process\n\n" + answer_thinking + "\n\n### Here is my summarized answer\n\n" + answer_summary
+                # answer = answer_summary + "\n\n" + answer_summary_refined
+                answer = answer_summary_refined
+            else:
+                answer = responses_refine(answer)
         else:
-            answer = responses_refine(answer)
+            answer = answer
     else:
-        answer = responses_refine(search_engine_result.response)
+        if stream is False:
+            answer = responses_refine(search_engine_result.response)
+        else:
+            # FIXME: We need to return the response as a stream generator
+            answer = search_engine_result.response
 
     return answer

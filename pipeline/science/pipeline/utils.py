@@ -43,6 +43,15 @@ if SKIP_MARKER_API:
     from marker.settings import settings
 
 
+def generators_list_stream_response(generators_list):
+    """
+    Stream response from a list of generators.
+    """
+    for generator in generators_list:
+        for chunk in generator:
+            yield chunk
+
+
 def format_time_tracking(time_tracking: Dict[str, float]) -> str:
     """
     Format time tracking dictionary into a readable string with appropriate units.

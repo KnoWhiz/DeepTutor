@@ -25,7 +25,25 @@ def streamlit_tutor_agent(chat_session, file_path, user_input):
     return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
 
 
-def process_response_phase(response_placeholder, stream_response: Generator, mode: ChatMode = None):
+def format_reasoning_response(thinking_content):
+    """Format assistant content by removing think tags."""
+    return (
+        thinking_content.replace("<think>\n\n</think>", "")
+        .replace("<think>", "")
+        .replace("</think>", "")
+    )
+
+
+def format_response(response_content):
+    """Format assistant content by removing think tags."""
+    return (
+        response_content.replace("<response>\n\n</response>", "")
+        .replace("<response>", "")
+        .replace("</response>", "")
+    )
+
+
+def process_response_phase(response_placeholder, stream_response: Generator, mode: ChatMode = None, stream: bool = False):
     """
     Process the response phase of the assistant's response.
     Args:
@@ -33,31 +51,53 @@ def process_response_phase(response_placeholder, stream_response: Generator, mod
     Returns:
         The response content as a string.
     """
-    if mode == ChatMode.LITE:
+    if stream:
         response_content = response_placeholder.write_stream(stream_response)
+        # response_content = ""
+        # with st.status("Responding...", expanded=True) as status:
+        #     response_placeholder = st.empty()
+            
+        #     for chunk in stream_response:
+        #         content = chunk or ""
+        #         response_content += content
+                
+        #         if "<response>" in content:
+        #             continue
+        #         if "</response>" in content:
+        #             content = content.replace("</response>", "")
+        #             status.update(label="Responding complete!", state="complete", expanded=True)
+        #             return response_content
+        #         response_placeholder.markdown(format_response(response_content))
+
+        # return response_content
+
     else:
         response_placeholder.write(stream_response)
         response_content = stream_response
     logger.info(f"Final whole response content: {response_content}")
-    # response_content = ""
-    # for chunk in stream_response:
-    #     # Get the content from the chunk 'answer', if there is no 'answer' key, then get ""
-    #     content = chunk
-    #     response_content += content
-    #     # # In the terminal, print the content in real-time. End="" is used to prevent the cursor from moving to the next line. And flush=True is used to flush the output buffer.
-    #     # print(content, end="", flush=True)
-
-    # logger.info(f"Final whole response content: {response_content}")
     return response_content
 
 
-# def process_response_phase(response_placeholder, stream_response: Generator):
-#     response_content = ""
-#     for chunk in stream_response:
-#         content = chunk.get("answer", "")
-#         response_content += content  # accumulate text
-#         response_placeholder.markdown(response_content)
-#     return response_content
+def process_thinking_phase(response_placeholder, answer):
+    """Process the thinking phase of the assistant's response."""
+    thinking_content = ""
+    with st.status("Thinking...", expanded=True) as status:
+        think_placeholder = st.empty()
+        
+        for chunk in answer:
+            content = chunk or ""
+            thinking_content += content
+            
+            if "<think>" in content:
+                continue
+            if "</think>" in content:
+                content = content.replace("</think>", "")
+                status.update(label="Thinking complete!", state="complete", expanded=False)
+                return thinking_content
+            think_placeholder.markdown(format_reasoning_response(thinking_content))
+    
+    # return format_reasoning_response(thinking_content)
+    return thinking_content
 
 
 # Function to display the pdf

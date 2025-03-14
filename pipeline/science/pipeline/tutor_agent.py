@@ -584,10 +584,12 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     else:
         for chunk in answer:
             if "</think>" not in chunk:
+                if "<response>" in chunk:
+                    yield "\n\n**Here is the final response**\n\n"
                 yield chunk
-        else:
-            yield chunk
-            yield "</thinking>"
+            else:   # If the chunk contains "</think>", it means the response is done
+                yield chunk
+                yield "</thinking>"
     time_tracking["response_generation"] = time.time() - response_start
     yield "\n\n**Generating the response done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
@@ -901,6 +903,8 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
     else:
         for chunk in answer:
             if "</think>" not in chunk:
+                if "<response>" in chunk:
+                    yield "\n\n**Here is the final response**\n\n"
                 yield chunk
             else:   # If the chunk contains "</think>", it means the response is done
                 yield chunk

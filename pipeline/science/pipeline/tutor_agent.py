@@ -483,14 +483,18 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
             _document, _doc = process_pdf_file(file_path)
             save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
             logger.info(f"VectorRAG embedding for {file_id} ...")
-            await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
+            # await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
+            async for chunk in embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder):
+                yield chunk
             logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
             if vectorrag_index_files_compress(embedding_folder):
                 logger.info(f"VectorRAG index files for {file_id} are ready and uploaded to Azure Blob Storage.")
             else:
                 # Retry once if first attempt fails
                 save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
-                await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
+                # await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
+                async for chunk in embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder):
+                    yield chunk
                 logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
                 if vectorrag_index_files_compress(embedding_folder):
                     logger.info(f"VectorRAG index files for {file_id} are ready and uploaded to Azure Blob Storage.")
@@ -737,8 +741,7 @@ async def tutor_agent_advanced_streaming_tracking(chat_session: ChatSession, fil
 
 async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
     """
-    Advanced tutor agent that provides sophisticated tutoring capabilities with graph-based RAG.
-    Uses GraphRAG for document processing and performs enhanced source retrieval.
+    Streaming tutor agent for Advanced mode.
 
     Args:
         chat_session: Current chat session object
@@ -748,13 +751,14 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
         deep_thinking: Whether to use deep thinking for response generation
 
     Returns:
-        Tuple containing (answer, sources, source_pages, source_annotations, 
-                         refined_source_pages, refined_source_index, follow_up_questions)
+        Generator of response chunks
     """
     if time_tracking is None:
         time_tracking = {}
 
     # Compute hashed ID and prepare embedding folder
+    yield "<thinking>"
+    yield "\n\n**Processing documents ...**\n\n"
     hashing_start_time = time.time()
     file_id_list = [generate_file_id(file_path) for file_path in file_path_list]
     embedding_folder_list = [os.path.join("embedded_content", file_id) for file_id in file_id_list]
@@ -774,33 +778,45 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
         save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
     time_tracking["file_loading_save_text"] = time.time() - save_file_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    yield "\n\n**Processing documents done ...**\n\n"
 
     # Process GraphRAG embeddings
     graphrag_start_time = time.time()
+    yield "\n\n**Generating GraphRAG embeddings ...**\n\n"
     logger.info(f"Advanced (GraphRAG) mode for list of file ids: {file_id_list}")
     for file_id, embedding_folder, file_path in zip(file_id_list, embedding_folder_list, file_path_list):
         if graphrag_index_files_decompress(embedding_folder):
             logger.info(f"GraphRAG index files for {file_id} are ready.")
+            yield f"\n\n**GraphRAG index files for {file_id} are ready.**\n\n"
         else:
             # Files are missing and have been cleaned up
             _document, _doc = process_pdf_file(file_path)
             save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
             logger.info(f"GraphRAG embedding for {file_id} ...")
-            await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
+            yield f"\n\n**Generating GraphRAG embedding for {file_id} ...**\n\n"
+            # await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
+            async for chunk in embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder):
+                yield chunk
             logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
             if graphrag_index_files_compress(embedding_folder):
                 logger.info(f"GraphRAG index files for {file_id} are ready and uploaded to Azure Blob Storage.")
             else:
                 # Retry once if first attempt fails
+                yield f"\n\n**Retrying GraphRAG embedding for {file_id} ...**\n\n"
                 save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
-                await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
+                # await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
+                async for chunk in embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder):
+                    yield chunk
                 logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
                 if graphrag_index_files_compress(embedding_folder):
                     logger.info(f"GraphRAG index files for {file_id} are ready and uploaded to Azure Blob Storage.")
+                    # yield f"\n\n**GraphRAG index files for {file_id} are ready and uploaded to Azure Blob Storage.**\n\n"
                 else:
                     logger.info(f"Error compressing and uploading GraphRAG index files for {file_id} to Azure Blob Storage.")
+                    # yield f"\n\n**Error compressing and uploading GraphRAG index files for {file_id} to Azure Blob Storage.**\n\n"
     time_tracking["graphrag_generate_embedding_total"] = time.time() - graphrag_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    yield "\n\n**GraphRAG embedding done ...**\n\n"
 
     chat_history = chat_session.chat_history
     context_chat_history = chat_history
@@ -820,17 +836,23 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
         except FileNotFoundError:
             initial_message = "Hello! How can I assist you today?"
 
+        yield "</thinking>"
+
+        yield "<response>"
+        
         answer = initial_message
         # Translate the initial message to the selected language
         answer = translate_content(
             content=answer,
             target_lang=chat_session.current_language
         )
-        sources = {}  # Return empty dictionary for sources
-        source_pages = {}
-        source_annotations = {}
-        refined_source_pages = {}
-        refined_source_index = {}
+        yield answer
+        
+        yield "</response>"
+
+        yield "<appendix>"
+
+        yield "\n\n**Generating follow-up questions ...**\n\n"
         follow_up_questions = generate_follow_up_questions(answer, [])
 
         for i in range(len(follow_up_questions)):
@@ -838,7 +860,16 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
                 content=follow_up_questions[i],
                 target_lang=chat_session.current_language
             )
+        for chunk in follow_up_questions:
+            # The content should be easy to extract as XML formats
+            yield "<followup_question>"
+            yield f"\n{chunk}"
+            yield "</followup_question>"
+            yield "\n\n"
+        
+        yield "\n\n**Generating follow-up questions done ...**\n\n"
 
+        yield "</appendix>"
         return
 
     time_tracking["summary_message"] = time.time() - initial_message_start_time
@@ -846,27 +877,38 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
 
     # Regular chat flow
     # Refine user input
+    yield "\n\n**Understanding the user input ...**\n\n"
     query_start = time.time()
     question = get_query_helper(chat_session, user_input, context_chat_history, embedding_folder_list)
     refined_user_input = question.text
     logger.info(f"Refined user input: {refined_user_input}")
     time_tracking["query_refinement"] = time.time() - query_start
+    yield "\n\n**Understanding the user input done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Get response
+    yield "\n\n**Generating the response ...**\n\n"
     response_start = time.time()
     response = await get_response(chat_session, file_path_list, question, context_chat_history, embedding_folder_list, deep_thinking=deep_thinking, stream=stream)
     answer = response[0] if isinstance(response, tuple) else response
+    for chunk in answer:
+        if "</think>" not in chunk:
+            yield chunk
+        else:
+            yield chunk
+            yield "</thinking>"
     time_tracking["response_generation"] = time.time() - response_start
-
+    yield "\n\n**Generating the response done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Get sources
+    yield "<appendix>"
     sources = {}
     source_pages = {}
     refined_source_pages = {}
     refined_source_index = {}
     sources_start = time.time()
+    yield "\n\n**Retrieving sources ...**\n\n"
     sources, source_pages, refined_source_pages, refined_source_index = get_response_source(
         mode=chat_session.mode,
         file_path_list=file_path_list,
@@ -876,9 +918,11 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
         embedding_folder_list=embedding_folder_list
     )
     time_tracking["source_retrieval"] = time.time() - sources_start
+    yield "\n\n**Retrieving sources done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Process image sources
+    yield "\n\n**Processing image sources ...**\n\n"
     images_processing_start = time.time()
     image_url_list = []
     for source, index, page in zip(refined_source_index.keys(), refined_source_index.values(), refined_source_pages.values()):
@@ -887,6 +931,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
             image_url = source
             image_url_list.append(image_url)
     time_tracking["image_processing"] = time.time() - images_processing_start
+    yield "\n\n**Processing image sources done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Refine and translate the answer to the selected language
@@ -915,14 +960,22 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Generate follow-up questions
+    yield "\n\n**Generating follow-up questions ...**\n\n"
     followup_start = time.time()
-    follow_up_questions = generate_follow_up_questions(answer, chat_history)
+    follow_up_questions = generate_follow_up_questions(chat_session.current_message, chat_history)
     for i in range(len(follow_up_questions)):
         follow_up_questions[i] = translate_content(
             content=follow_up_questions[i],
             target_lang=chat_session.current_language
         )
+    for chunk in follow_up_questions:
+        yield "<followup_question>"
+        yield f"\n{chunk}"
+        yield "</followup_question>"
+        yield "\n\n"
     time_tracking["followup_questions"] = time.time() - followup_start
+    yield "\n\n**Generating follow-up questions done ...**\n\n"
+    yield "</appendix>"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Memory clean up 

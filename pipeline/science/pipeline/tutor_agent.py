@@ -243,7 +243,7 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
         save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
     time_tracking["file_loading_save_text"] = time.time() - save_file_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-    yield "Processing documents done ...\n\n"
+    yield "\n\n**Processing documents done ...**\n\n"
 
     # Process LiteRAG embeddings
     lite_embedding_start_time = time.time()
@@ -264,7 +264,7 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     time_tracking["lite_embedding_total"] = time.time() - lite_embedding_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
     logger.info("LiteRAG embedding done ...")
-    yield "LiteRAG embedding done ...\n\n"
+    yield "\n\n**LiteRAG embedding done ...**\n\n"
     yield "</thinking>"
 
     chat_history = chat_session.chat_history
@@ -295,7 +295,7 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     yield "<appendix>"
 
     # For Lite mode, we have minimal sources and follow-up questions
-    yield "Generating follow-up questions ...\n\n"
+    yield "\n\n**Generating follow-up questions ...**\n\n"
     follow_up_questions = generate_follow_up_questions(chat_session.current_message, [])
     for chunk in follow_up_questions:
         # The content should be easy to extract as XML formats
@@ -303,22 +303,22 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
         yield f"\n{chunk}"
         yield "</followup_question>"
         yield "\n\n"
-    yield "Generating follow-up questions done ...\n\n"
+    yield "\n\n**Generating follow-up questions done ...**\n\n"
 
-    yield "Retrieving sources ...\n\n"
-    yield "Retrieving sources done ...\n\n"
+    yield "\n\n**Retrieving sources ...**\n\n"
+    yield "\n\nRetrieving sources done ...**\n\n"
 
-    yield "Retrieving source pages ...\n\n"
-    yield "Retrieving source pages done ...\n\n"
+    yield "\n\n**Retrieving source pages ...**\n\n"
+    yield "\n\nRetrieving source pages done ...**\n\n"
 
-    yield "Retrieving source annotations ...\n\n"
-    yield "Retrieving source annotations done ...\n\n"
+    yield "\n\n**Retrieving source annotations ...**\n\n"
+    yield "\n\nRetrieving source annotations done ...**\n\n"
 
-    yield "Refining source pages ...\n\n"
-    yield "Refining source pages done ...\n\n"
+    yield "\n\n**Refining source pages ...**\n\n"
+    yield "\n\nRefining source pages done ...**\n\n"
 
-    yield "Refining source index ...\n\n"
-    yield "Refining source index done ...\n\n"
+    yield "\n\n**Refining source index ...**\n\n"
+    yield "\n\nRefining source index done ...**\n\n"
 
     yield "</appendix>"
 
@@ -502,7 +502,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         source_annotations = {}
         refined_source_pages = {}
         refined_source_index = {}
-        yield "Generating follow-up questions ...\n\n"
+        yield "\n\n**Generating follow-up questions ...**\n\n"
         follow_up_questions = generate_follow_up_questions(answer, [])
 
         for i in range(len(follow_up_questions)):
@@ -526,17 +526,17 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
 
     # Regular chat flow
     # Refine user input
-    yield "Understanding the user input ...\n\n"
+    yield "\n\n**Understanding the user input ...**\n\n"
     query_start = time.time()
     question = get_query_helper(chat_session, user_input, context_chat_history, embedding_folder_list)
     refined_user_input = question.text
     logger.info(f"Refined user input: {refined_user_input}")
     time_tracking["query_refinement"] = time.time() - query_start
-    yield "Understanding the user input done ...\n\n"
+    yield "\n\n**Understanding the user input done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Get response
-    yield "Generating the response ...\n\n"
+    yield "\n\n**Generating the response ...**\n\n"
     response_start = time.time()
     response = await get_response(chat_session, file_path_list, question, context_chat_history, embedding_folder_list, deep_thinking=deep_thinking, stream=stream)
     answer = response[0] if isinstance(response, tuple) else response
@@ -547,7 +547,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
             yield chunk
             yield "</thinking>"
     time_tracking["response_generation"] = time.time() - response_start
-    yield "Generating the response done ...\n\n"
+    yield "\n\n**Generating the response done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Get sources
@@ -557,7 +557,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     refined_source_pages = {}
     refined_source_index = {}
     sources_start = time.time()
-    yield "Retrieving sources ...\n\n"
+    yield "\n\n**Retrieving sources ...**\n\n"
     sources, source_pages, refined_source_pages, refined_source_index = get_response_source(
         mode=chat_session.mode,
         file_path_list=file_path_list,
@@ -567,11 +567,11 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         embedding_folder_list=embedding_folder_list
     )
     time_tracking["source_retrieval"] = time.time() - sources_start
-    yield "Retrieving sources done ...\n\n"
+    yield "\n\n**Retrieving sources done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Process image sources
-    yield "Processing image sources ...\n\n"
+    yield "\n\n**Processing image sources ...**\n\n"
     images_processing_start = time.time()
     image_url_list = []
     for source, index, page in zip(refined_source_index.keys(), refined_source_index.values(), refined_source_pages.values()):
@@ -580,7 +580,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
             image_url = source
             image_url_list.append(image_url)
     time_tracking["image_processing"] = time.time() - images_processing_start
-    yield "Processing image sources done ...\n\n"
+    yield "\n\n**Processing image sources done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # # Refine and translate the answer to the selected language
@@ -606,18 +606,18 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
                 yield "\n"
                 yield f"![]({image_url})"
 
-    yield "Retrieving source annotations ...\n\n"
+    yield "\n\n**Retrieving source annotations ...**\n\n"
     source_annotations = {}
     for source, index in refined_source_index.items():
         _doc = process_pdf_file(file_path_list[index-1])[1]
         annotations, _ = get_highlight_info(_doc, [source])
         source_annotations[source] = annotations
     time_tracking["annotations"] = time.time() - annotations_start
-    yield "Retrieving source annotations done ...\n\n"
+    yield "\n\n**Retrieving source annotations done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Generate follow-up questions
-    yield "Generating follow-up questions ...\n\n"
+    yield "\n\n**Generating follow-up questions ...**\n\n"
     followup_start = time.time()
     follow_up_questions = generate_follow_up_questions(answer, chat_history)
     for i in range(len(follow_up_questions)):
@@ -631,7 +631,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         yield "</followup_question>"
         yield "\n\n"
     time_tracking["followup_questions"] = time.time() - followup_start
-    yield "Generating follow-up questions done ...\n\n"
+    yield "\n\n**Generating follow-up questions done ...**\n\n"
     yield "</appendix>"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 

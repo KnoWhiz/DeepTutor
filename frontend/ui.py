@@ -242,17 +242,33 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                 with st.chat_message(msg["role"], avatar=avatar):
                     # For chat history, we need to recreate the expandable UI for thinking content
                     content = msg["content"]
+
+                    # Handle thinking tags first (before displaying main content)
                     pattern = r"<thinking>(.*?)</thinking>"
                     think_match = re.search(pattern, content, re.DOTALL)
                     if think_match:
                         think_content = think_match.group(0)
-                        response_content = content.replace(think_content, "")
+                        content = content.replace(think_content, "")
                         think_content = format_reasoning_response(think_content)
                         with st.expander("Thinking complete!"):
                             st.markdown(think_content)
-                        st.markdown(response_content)
-                    else:
-                        st.markdown(content)
+                    
+                    # Extract appendix content to display later
+                    appendix_content = None
+                    pattern = r"<appendix>(.*?)</appendix>"
+                    appendix_match = re.search(pattern, content, re.DOTALL)
+                    if appendix_match:
+                        appendix_content = appendix_match.group(0)
+                        content = content.replace(appendix_content, "")
+                        appendix_content = appendix_content.replace("<appendix>", "").replace("</appendix>", "")
+                    
+                    # Display the main content
+                    st.markdown(content)
+                    
+                    # Display appendix after the main content
+                    if appendix_content:
+                        with st.expander("Additional information"):
+                            st.markdown(appendix_content)
                     
                     # First display source buttons if this message has associated sources
                     next_msg = st.session_state.chat_session.chat_history[idx + 1] if idx + 1 < len(st.session_state.chat_session.chat_history) else None
@@ -310,7 +326,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                     
                     # Then display follow-up questions
                     if "follow_up_questions" in msg and msg["follow_up_questions"] != []:
-                        st.write("\n\n**📝 Follow-up Questions:**")
+                        # st.write("\n\n**📝 Follow-up Questions:**")
                         for q_idx, question in enumerate(msg["follow_up_questions"], 1):
                             if st.button(f"{q_idx}. {question}", key=f"follow_up_{idx}_{q_idx}"):
                                 handle_follow_up_click(st.session_state.chat_session, question)
@@ -418,7 +434,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                                             # Add response with follow-up questions to chat history
                         
                         # Then display follow-up questions
-                        st.write("\n\n**📝 Follow-up Questions:**")
+                        # st.write("\n\n**📝 Follow-up Questions:**")
                         for q_idx, question in enumerate(follow_up_questions, 1):
                             if st.button(f"{q_idx}. {question}", key=f"follow_up_current_{q_idx}"):
                                 handle_follow_up_click(st.session_state.chat_session, question)

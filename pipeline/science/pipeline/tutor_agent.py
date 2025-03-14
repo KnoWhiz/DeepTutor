@@ -958,8 +958,10 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
     if image_url_list:
         for image_url in image_url_list:
             if image_url:
-                answer += "\n"
-                answer += f"![]({image_url})"
+                # answer += "\n"
+                yield "\n"
+                # answer += f"![]({image_url})"
+                yield f"![]({image_url})"
 
     source_annotations = {}
     for source, index in refined_source_index.items():

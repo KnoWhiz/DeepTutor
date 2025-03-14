@@ -242,7 +242,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                 with st.chat_message(msg["role"], avatar=avatar):
                     # For chat history, we need to recreate the expandable UI for thinking content
                     content = msg["content"]
-                    pattern = r"<think>(.*?)</think>"
+                    pattern = r"<thinking>(.*?)</thinking>"
                     think_match = re.search(pattern, content, re.DOTALL)
                     if think_match:
                         think_content = think_match.group(0)

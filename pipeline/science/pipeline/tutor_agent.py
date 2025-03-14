@@ -383,27 +383,6 @@ async def tutor_agent_basic(chat_session: ChatSession, file_path_list, user_inpu
     if time_tracking is None:
         time_tracking = {}
 
-    # Handle initial welcome message when chat history is empty
-    initial_message_start_time = time.time()
-    if user_input == "Can you give me a summary of this document?" or not chat_session.chat_history:
-        initial_message = "Hello! How can I assist you today?"
-        
-        answer = initial_message
-        # Translate the initial message to the selected language
-        answer = translate_content(
-            content=answer,
-            target_lang=chat_session.current_language
-        )
-        sources = {}  # Return empty dictionary for sources
-        source_pages = {}
-        source_annotations = {}
-        refined_source_pages = {}
-        refined_source_index = {}
-        follow_up_questions = []
-
-        return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
-    time_tracking["summary_message"] = time.time() - initial_message_start_time
-
     answer = tutor_agent_basic_streaming_tracking(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream)
 
     # For Lite mode, we have minimal sources and follow-up questions
@@ -448,6 +427,48 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     """
     if time_tracking is None:
         time_tracking = {}
+
+    file_id_list = [generate_file_id(file_path) for file_path in file_path_list]
+    embedding_folder_list = [os.path.join("embedded_content", file_id) for file_id in file_id_list]
+
+    # Handle initial welcome message when chat history is empty
+    initial_message_start_time = time.time()
+    if user_input == "Can you give me a summary of this document?" or not chat_session.chat_history:
+        yield "<thinking>"
+        try:
+            # Try to load existing document summary
+            document_summary_path_list = [os.path.join(embedding_folder, "documents_summary.txt") for embedding_folder in embedding_folder_list]
+            initial_message_list = []
+            for document_summary_path in document_summary_path_list:
+                with open(document_summary_path, "r") as f:
+                    initial_message_list.append(f.read())
+            # FIXME: Add a function to combine the initial messages into a single summary message
+            initial_message = "\n".join(initial_message_list)
+        except FileNotFoundError:
+            initial_message = "Hello! How can I assist you today?"
+        yield "</thinking>"
+
+        yield "<response>"
+        answer = initial_message
+        # Translate the initial message to the selected language
+        answer = translate_content(
+            content=answer,
+            target_lang=chat_session.current_language
+        )
+        yield answer
+        yield "</response>"
+
+        yield "<appendix>"
+        yield "\n\n**Generating follow-up questions ...**\n\n"
+        follow_up_questions = generate_follow_up_questions(answer, [])
+        for chunk in follow_up_questions:
+            yield "<followup_question>"
+            yield f"\n{chunk}"
+            yield "</followup_question>"
+            yield "\n\n"
+        yield "\n\n**Generating follow-up questions done ...**\n\n"
+        yield "</appendix>"
+        return
 
     # Compute hashed ID and prepare embedding folder
     yield "<thinking>"

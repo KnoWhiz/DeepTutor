@@ -206,7 +206,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                 follow_up_questions = streamlit_tutor_agent(
                     chat_session=st.session_state.chat_session,
                     file_path=file_path,
-                    user_input=None
+                    user_input=config["summary_wording"]
                 )
                 st.session_state.source_annotations = source_annotations
                 # Convert sources to dict if it's a list (for backward compatibility)

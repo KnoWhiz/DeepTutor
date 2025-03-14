@@ -428,12 +428,16 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     if time_tracking is None:
         time_tracking = {}
 
+    config = load_config()
+    summary_wording = config["summary_wording"]
+    logger.info(f"Summary wording: {summary_wording}")
+
     file_id_list = [generate_file_id(file_path) for file_path in file_path_list]
     embedding_folder_list = [os.path.join("embedded_content", file_id) for file_id in file_id_list]
 
     # Handle initial welcome message when chat history is empty
     initial_message_start_time = time.time()
-    if user_input == "Can you give me a summary of this document?" or not chat_session.chat_history:
+    if user_input == summary_wording or not chat_session.chat_history:
         yield "<thinking>"
         try:
             # Try to load existing document summary

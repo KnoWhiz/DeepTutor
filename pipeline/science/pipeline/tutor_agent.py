@@ -579,9 +579,12 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     response_start = time.time()
     response = await get_response(chat_session, file_path_list, question, context_chat_history, embedding_folder_list, deep_thinking=deep_thinking, stream=stream)
     answer = response[0] if isinstance(response, tuple) else response
-    for chunk in answer:
-        if "</think>" not in chunk:
-            yield chunk
+    if deep_thinking is False:
+        yield "</thinking>"
+    else:
+        for chunk in answer:
+            if "</think>" not in chunk:
+                yield chunk
         else:
             yield chunk
             yield "</thinking>"
@@ -885,18 +888,25 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
     time_tracking["query_refinement"] = time.time() - query_start
     yield "\n\n**Understanding the user input done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    # yield "</thinking>"
 
     # Get response
     yield "\n\n**Generating the response ...**\n\n"
     response_start = time.time()
     response = await get_response(chat_session, file_path_list, question, context_chat_history, embedding_folder_list, deep_thinking=deep_thinking, stream=stream)
     answer = response[0] if isinstance(response, tuple) else response
-    for chunk in answer:
-        if "</think>" not in chunk:
-            yield chunk
-        else:
-            yield chunk
-            yield "</thinking>"
+
+    if deep_thinking is False:
+        yield "</thinking>"
+    else:
+        for chunk in answer:
+            if "</think>" not in chunk:
+                yield chunk
+            else:   # If the chunk contains "</think>", it means the response is done
+                yield chunk
+                yield "</thinking>"
+    # if thinking_model is not True:
+    #     yield "</thinking>"
     time_tracking["response_generation"] = time.time() - response_start
     yield "\n\n**Generating the response done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")

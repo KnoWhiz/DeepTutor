@@ -106,6 +106,41 @@ def extract_basic_mode_content(message_content):
     return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
 
 
+def extract_advanced_mode_content(message_content):
+    """
+    Extracts structured content from the advanced mode message content.
+    
+    Args:
+        message_content: The complete message string from chat_session.current_message
+        
+    Returns:
+        Tuple containing (answer, sources, source_pages, source_annotations, 
+                         refined_source_pages, refined_source_index, follow_up_questions)
+    """
+    # Default empty structures for advanced mode
+    sources = {}
+    source_pages = {}
+    source_annotations = {}
+    refined_source_pages = {}
+    refined_source_index = {}
+    follow_up_questions = []
+    
+    # Extract the main answer (content between <response> tags)
+    answer = ""
+    response_match = re.search(r'<response>(.*?)</response>', message_content, re.DOTALL)
+    if response_match:
+        answer = response_match.group(1).strip()
+    
+    # Extract follow-up questions (content between <followup_question> tags)
+    followup_matches = re.finditer(r'<followup_question>(.*?)</followup_question>', message_content, re.DOTALL)
+    for match in followup_matches:
+        question = match.group(1).strip()
+        if question:
+            follow_up_questions.append(question)
+    
+    return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
+
+
 async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
     """
     Taking the user input, document, and chat history, generate a response and sources.
@@ -646,19 +681,76 @@ async def tutor_agent_advanced(chat_session: ChatSession, file_path_list, user_i
     """
     Advanced tutor agent that provides sophisticated tutoring capabilities with graph-based RAG.
     Uses GraphRAG for document processing and performs enhanced source retrieval.
+    """
+    if time_tracking is None:
+        time_tracking = {}
+
+    # Handle initial welcome message when chat history is empty
+    initial_message_start_time = time.time()
+    if user_input == "Can you give me a summary of this document?" or not chat_session.chat_history:
+        initial_message = "Hello! How can I assist you today?"
+        
+        answer = initial_message
+        # Translate the initial message to the selected language
+        answer = translate_content(
+            content=answer,
+            target_lang=chat_session.current_language
+        )
+        sources = {}  # Return empty dictionary for sources
+        source_pages = {}
+        source_annotations = {}
+        refined_source_pages = {}
+        refined_source_index = {}
+        follow_up_questions = []
+
+        return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
+    time_tracking["summary_message"] = time.time() - initial_message_start_time
+
+    answer = tutor_agent_advanced_streaming_tracking(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream)
+
+    # For Advanced mode, we have minimal sources and follow-up questions
+    sources = {}
+    source_pages = {}
+    source_annotations = {}
+    refined_source_pages = {}
+    refined_source_index = {}
+    follow_up_questions = []
     
+    return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
+
+
+async def tutor_agent_advanced_streaming_tracking(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
+    async for chunk in tutor_agent_advanced_streaming(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream):
+        yield chunk
+        chat_session.current_message += chunk
+
+    answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions = extract_advanced_mode_content(chat_session.current_message)
+    logger.info(f"Extracted answer: {answer}")
+    logger.info(f"Extracted sources: {sources}")
+    logger.info(f"Extracted source pages: {source_pages}")
+    logger.info(f"Extracted source annotations: {source_annotations}")
+    logger.info(f"Extracted refined source pages: {refined_source_pages}")
+    logger.info(f"Extracted refined source index: {refined_source_index}")
+    logger.info(f"Extracted follow-up questions: {follow_up_questions}")
+    logger.info(f"Current message: {chat_session.current_message}")
+
+
+async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
+    """
+    Advanced tutor agent that provides sophisticated tutoring capabilities with graph-based RAG.
+    Uses GraphRAG for document processing and performs enhanced source retrieval.
+
     Args:
         chat_session: Current chat session object
         file_path_list: List of paths to uploaded documents
         user_input: The user's query or input
         time_tracking: Dictionary to track execution time of various steps
         deep_thinking: Whether to use deep thinking for response generation
-        
+
     Returns:
         Tuple containing (answer, sources, source_pages, source_annotations, 
                          refined_source_pages, refined_source_index, follow_up_questions)
     """
-    config = load_config()
     if time_tracking is None:
         time_tracking = {}
 
@@ -747,7 +839,7 @@ async def tutor_agent_advanced(chat_session: ChatSession, file_path_list, user_i
                 target_lang=chat_session.current_language
             )
 
-        return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
+        return
 
     time_tracking["summary_message"] = time.time() - initial_message_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
@@ -837,4 +929,4 @@ async def tutor_agent_advanced(chat_session: ChatSession, file_path_list, user_i
     _document = None
     _doc = None
     
-    return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
+    return

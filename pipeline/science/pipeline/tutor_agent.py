@@ -287,13 +287,13 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     context_chat_history = chat_history
 
     # Handle initial welcome message when chat history is empty
-    initial_message_start_time = time.time()
+    # initial_message_start_time = time.time()
     if user_input == config["summary_wording"] or not chat_history:
         yield "<response>"
         yield "Hello! How can I assist you today?"
         yield "</response>"
 
-    time_tracking["summary_message"] = time.time() - initial_message_start_time
+    # time_tracking["summary_message"] = time.time() - initial_message_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Regular chat flow - for Lite mode, we don't need to refine the user input
@@ -528,7 +528,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     
     if user_input == summary_wording or not chat_session.chat_history:
         # Handle initial welcome message when chat history is empty
-        initial_message_start_time = time.time()
+        # initial_message_start_time = time.time()
         # yield "<thinking>"
         try:
             # Try to load existing document summary
@@ -570,7 +570,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         yield "\n\n**Generating follow-up questions done ...**\n\n"
         yield "</appendix>"
 
-        time_tracking["summary_message"] = time.time() - initial_message_start_time
+        # time_tracking["summary_message"] = time.time() - initial_message_start_time
         logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
         return
@@ -821,7 +821,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
 
     if user_input == config["summary_wording"] or not chat_history:
         # Handle initial welcome message when chat history is empty
-        initial_message_start_time = time.time()
+        # initial_message_start_time = time.time()
         # yield "<thinking>"
         try:
             # Try to load existing document summary
@@ -868,7 +868,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
         yield "</appendix>"
         return
 
-    time_tracking["summary_message"] = time.time() - initial_message_start_time
+    # time_tracking["summary_message"] = time.time() - initial_message_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Regular chat flow

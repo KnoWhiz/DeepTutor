@@ -498,6 +498,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
 
     # Get response
     translation_response = False
+    current_status = "thinking"
     yield "\n\n**Generating the response ...**\n\n"
     response_start = time.time()
     response = await get_response(chat_session, file_path_list, question, context_chat_history, embedding_folder_list, deep_thinking=deep_thinking, stream=stream)
@@ -509,8 +510,12 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
             if "</think>" not in chunk:
                 if "<response>" in chunk:
                     if translation_response is False:
-                        yield "\n\n**Here is the final response**\n\n"
-                        yield chunk
+                        if current_status == "thinking":
+                            current_status = "response"
+                            yield "\n\n**Here is the final response**\n\n"
+                            yield chunk
+                        else:
+                            yield chunk.replace("<response>", "")
                     else:
                         yield "\n\n**Here is the original response**\n\n"
                         # Replace the "<response>" tag with "<original_response>" tag
@@ -861,6 +866,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
     answer = response[0] if isinstance(response, tuple) else response
 
     translation_response = False
+    current_status = "thinking"
     if deep_thinking is False:
         yield "</thinking>"
     else:
@@ -868,8 +874,12 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
             if "</think>" not in chunk:
                 if "<response>" in chunk:
                     if translation_response is False:
-                        yield "\n\n**Here is the final response**\n\n"
-                        yield chunk
+                        if current_status == "thinking":
+                            current_status = "response"
+                            yield "\n\n**Here is the final response**\n\n"
+                            yield chunk
+                        else:
+                            yield chunk.replace("<response>", "")
                     else:
                         yield "\n\n**Here is the original response**\n\n"
                         # Replace the "<response>" tag with "<original_response>" tag

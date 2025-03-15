@@ -319,16 +319,21 @@ def translate_content(content: str, target_lang: str, stream=False) -> str:
     Translate the following entire content to {target_lang} language.
     Maintain the meaning and original formatting, including markdown syntax, LaTeX formulas, and emojis.
     Only translate the text content - do not modify any formatting, code, or special syntax.
+    Do not include any additional information, such as "Here is the translated content:"
     """
 
     if target_lang == "zh":
         system_prompt = """
         你是一个专业的英文到中文的翻译者。
+        不要引入任何额外的信息，只返回翻译后的内容。
+        不要引入任何额外的信息， 比如"以下是翻译内容："
         """
 
         human_prompt = """
         你是一个专业的英文到中文的翻译者。
-        将以下内容全部翻译成中文，包括标题在内的每一句话
+        将以下内容全部翻译成中文，包括标题在内的每一句话。
+        不要引入任何额外的信息，只返回翻译后的内容。
+        不要引入任何额外的信息， 比如"以下是翻译内容："
         并返回翻译后的中文版本内容：
         {content}
         """

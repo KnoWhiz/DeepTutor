@@ -290,13 +290,14 @@ def detect_language(text):
     return language
 
 
-def translate_content(content: str, target_lang: str) -> str:
+def translate_content(content: str, target_lang: str, stream=False) -> str:
     """
     Translates content from source language to target language using the LLM.
 
     Args:
         content (str): The text content to translate
         target_lang (str): Target language code (e.g. "en", "zh") 
+        stream (bool): Whether to stream the translation
 
     Returns:
         str: Translated content
@@ -448,12 +449,18 @@ def translate_content(content: str, target_lang: str) -> str:
     ])
 
     # Create and execute translation chain
-    translation_chain = prompt | llm | error_parser
+    translation_chain = prompt | llm | parser   # error_parser
 
-    translated_content = translation_chain.invoke({
-        "target_lang": target_lang,
-        "content": content
-    })
+    if stream:
+        translated_content = translation_chain.stream({
+            "target_lang": target_lang,
+            "content": content
+        })
+    else:
+        translated_content = translation_chain.invoke({
+            "target_lang": target_lang,
+            "content": content
+        })
 
     return translated_content
 

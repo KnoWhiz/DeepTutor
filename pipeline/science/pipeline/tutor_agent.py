@@ -8,6 +8,7 @@ from pipeline.science.pipeline.utils import (
     translate_content,
     generate_file_id,
     format_time_tracking,
+    detect_language,
 )
 from pipeline.science.pipeline.doc_processor import (
     save_file_txt_locally,
@@ -544,15 +545,21 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         yield "</thinking>"
 
         yield "<response>"
-        answer = initial_message
+        # answer = initial_message
         # Translate the initial message to the selected language
         answer = translate_content(
-            content=answer,
-            target_lang=chat_session.current_language
+            content=initial_message,
+            target_lang=chat_session.current_language,
+            stream=stream
         )
-        yield "\n\n"
-        yield answer
-        yield "</response>"
+        if answer != initial_message:
+            yield "\n\n"
+            if (type(answer) is str):
+                yield answer
+            else:
+                for chunk in answer:
+                    yield chunk
+            yield "</response>"
 
         yield "<appendix>"
         yield "\n\n**Generating follow-up questions ...**\n\n"
@@ -560,7 +567,8 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         for i in range(len(follow_up_questions)):
             follow_up_questions[i] = translate_content(
                 content=follow_up_questions[i],
-                target_lang=chat_session.current_language
+                target_lang=chat_session.current_language,
+                stream=False
             )
         for chunk in follow_up_questions:
             yield "<followup_question>"
@@ -606,6 +614,28 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     yield "\n\n**Generating the response done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
+    # Refine and translate the answer to the selected language
+    content=extract_basic_mode_content(chat_session.current_message)[0]
+    language = detect_language(content)
+    if language != chat_session.current_language:
+        translation_start = time.time()
+        answer = translate_content(
+            content=content,
+            target_lang=chat_session.current_language,
+            stream=stream
+        )
+        if answer != content:
+            yield "<refined_response>"
+            yield "\n\n"
+            if (type(answer) is str):
+                yield answer
+            else:
+                for chunk in answer:
+                    yield chunk
+            yield "</refined_response>"
+        time_tracking["translation"] = time.time() - translation_start
+        logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+
     # Get sources
     yield "<appendix>"
     sources = {}
@@ -646,6 +676,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     # translated_answer = translate_content(
     #     content=chat_session.current_message,
     #     target_lang=chat_session.current_language
+    #     stream=stream
     # )
     # yield "<translated_answer>"
     # yield f"\n{translated_answer}\n"
@@ -679,7 +710,8 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     for i in range(len(follow_up_questions)):
         follow_up_questions[i] = translate_content(
             content=follow_up_questions[i],
-            target_lang=chat_session.current_language
+            target_lang=chat_session.current_language,
+            stream=False
         )
     for chunk in follow_up_questions:
         yield "<followup_question>"
@@ -837,15 +869,21 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
         yield "</thinking>"
 
         yield "<response>"
-        answer = initial_message
+        # answer = initial_message
         # Translate the initial message to the selected language
         answer = translate_content(
-            content=answer,
-            target_lang=chat_session.current_language
+            content=initial_message,
+            target_lang=chat_session.current_language,
+            stream=stream
         )
-        yield "\n\n"
-        yield answer
-        yield "</response>"
+        if answer != initial_message:
+            yield "\n\n"
+            if (type(answer) is str):
+                yield answer
+            else:
+                for chunk in answer:
+                    yield chunk
+            yield "</response>"
 
         yield "<appendix>"
         yield "\n\n**Generating follow-up questions ...**\n\n"
@@ -854,7 +892,8 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
         for i in range(len(follow_up_questions)):
             follow_up_questions[i] = translate_content(
                 content=follow_up_questions[i],
-                target_lang=chat_session.current_language
+                target_lang=chat_session.current_language,
+                stream=False
             )
         for chunk in follow_up_questions:
             # The content should be easy to extract as XML formats
@@ -906,6 +945,28 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
     yield "\n\n**Generating the response done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
+    # Refine and translate the answer to the selected language
+    content=extract_advanced_mode_content(chat_session.current_message)[0]
+    language = detect_language(content)
+    if language != chat_session.current_language:
+        yield "<refined_response>"
+        translation_start = time.time()
+        answer = translate_content(
+            content=content,
+            target_lang=chat_session.current_language,
+            stream=stream
+        )
+        if answer != content:
+            yield "\n\n"
+            if (type(answer) is str):
+                yield answer
+            else:
+                for chunk in answer:
+                    yield chunk
+            yield "</refined_response>"
+        time_tracking["translation"] = time.time() - translation_start
+        logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+
     # Get sources
     yield "<appendix>"
     sources = {}
@@ -939,15 +1000,6 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
     yield "\n\n**Processing image sources done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
-    # Refine and translate the answer to the selected language
-    translation_start = time.time()
-    answer = translate_content(
-        content=answer,
-        target_lang=chat_session.current_language
-    )
-    time_tracking["translation"] = time.time() - translation_start
-    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-
     # Append images URL in markdown format to the end of the answer
     annotations_start = time.time()
     if image_url_list:
@@ -973,7 +1025,8 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
     for i in range(len(follow_up_questions)):
         follow_up_questions[i] = translate_content(
             content=follow_up_questions[i],
-            target_lang=chat_session.current_language
+            target_lang=chat_session.current_language,
+            stream=False
         )
     for chunk in follow_up_questions:
         yield "<followup_question>"

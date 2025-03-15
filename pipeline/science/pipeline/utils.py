@@ -663,66 +663,84 @@ def replace_latex_formulas(text):
 
 def responses_refine(answer, reference=''):
     # return answer
-    config = load_config()
-    para = config['llm']
-    llm = get_llm(para["level"], para)
-    parser = StrOutputParser()
-    error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
-    system_prompt = (
-        """
-        You are an expert at refining educational content while maintaining its original meaning and language.
-        Your task is to improve the display of content by:
+    return answer
+
+
+def clean_translation_prefix(text):
+    """
+    Clean translation prefixes from text in all supported languages.
+    
+    Args:
+        text: The text to clean
         
-        1. Properly formatting all mathematical formulas with LaTeX syntax:
-           - Surround inline formulas with single dollar signs ($formula$)
-           - Surround block/display formulas with double dollar signs ($$formula$$)
-           - Ensure all mathematical symbols, equations, and expressions use proper LaTeX notation
+    Returns:
+        The cleaned text with translation prefixes removed
+    """
+    if not text:
+        return text
         
-        2. Improving readability by:
-           - Adding **bold text** to important terms, concepts, and key points
-           - Using proper markdown formatting for headings, lists, and other structural elements
-           - Maintaining paragraph structure and flow
-        
-        3. Making the content more engaging by:
-           - Adding relevant emojis at appropriate places (section headings, important points, examples)
-           - Using emojis that match the educational context and subject matter
-        
-        4. Cleaning up irrelevant content:
-           - Remove any code blocks containing only data reports like ```[Data: Reports (19, 22, 21)]``` or ```[39]```
-           - Remove any debugging information, log outputs, or system messages not relevant to the educational content
-           - Remove any metadata markers or tags that aren't meant for the end user
-        
-        IMPORTANT RULES:
-        - DO NOT add any new information or change the actual content
-        - DO NOT alter the meaning of any statements
-        - DO NOT change the language of the content
-        - DO NOT remove any information from the original answer that is relevant to the educational content
-        - DO remove irrelevant technical artifacts like data reports, debug logs, or system messages
-        - DO NOT start the answer with wording like "Here is the answer to your question:" or "Here is ..." or "Enhanced Answer" or "Refined Answer"
-        """
+    # First, handle the specific case that's still occurring
+    if "当然可以！以下是翻译内容：" in text:
+        text = text.replace("当然可以！以下是翻译内容：", "").strip()
+    
+    # Common starter words in different languages
+    starters = (
+        # English starters
+        r"Sure|Certainly|Of course|Here|Yes|Okay|"
+        # Chinese starters
+        r"当然|好的|是的|这是|以下是|"
+        # Spanish starters
+        r"Claro|Seguro|Por supuesto|Aquí|Sí|"
+        # French starters
+        r"Bien sûr|Certainement|Oui|Voici|Voilà|"
+        # German starters
+        r"Natürlich|Sicher|Klar|Hier ist|Ja|"
+        # Japanese starters
+        r"もちろん|はい|ここに|"
+        # Korean starters
+        r"물론|네|여기|"
+        # Hindi starters
+        r"ज़रूर|हां|यहां|निश्चित रूप से|"
+        # Portuguese starters
+        r"Claro|Certamente|Sim|Aqui|"
+        # Italian starters
+        r"Certo|Sicuro|Sì|Ecco"
     )
-    human_prompt = (
-        """
-        # Original answer
-        {answer}
-        
-        # Reference material (if available)
-        {reference}
-        
-        Please refine the original answer by:
-        1. Properly formatting all mathematical formulas with LaTeX syntax (add $ or $$ for all possible formulas as appropriate)
-        2. Adding **bold text** to important terms and concepts for better readability
-        3. Including relevant emojis to make the content more engaging
-        4. Removing any irrelevant content like data reports (e.g., ```[Data: Reports (19, 22, 21)]```), debug logs, or system messages
-        5. Avoid starting the answer with wording like "Here is ..." or "Enhanced Answer" or "Refined Answer"
-        
-        Do not change the actual educational information or add new content.
-        """
+    
+    # Translation-related terms in different languages
+    translation_terms = (
+        # English
+        r"translation|translated|"
+        # Chinese
+        r"翻译|译文|"
+        # Spanish
+        r"traducción|traducido|"
+        # French
+        r"traduction|traduit|"
+        # German
+        r"Übersetzung|übersetzt|"
+        # Japanese
+        r"翻訳|"
+        # Korean
+        r"번역|"
+        # Hindi
+        r"अनुवाद|"
+        # Portuguese
+        r"tradução|traduzido|"
+        # Italian
+        r"traduzione|tradotto"
     )
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", system_prompt),
-        ("human", human_prompt),
-    ])
-    chain = prompt | llm | error_parser
-    response = chain.invoke({"answer": answer, "reference": reference})
-    return response
+    
+    # More aggressive regex pattern for translation prefixes that handles newlines better
+    pattern = rf'^({starters})[^A-Za-z0-9]*?({translation_terms})[^:]*?:[ \n]*'
+    
+    # Apply the cleanup with a more permissive DOTALL flag to handle newlines
+    result = re.sub(pattern, '', text, flags=re.IGNORECASE|re.DOTALL)
+    
+    # Additional cleanup for common patterns with newlines
+    result = re.sub(r'^[^:]+:[ \n]+', '', result, flags=re.DOTALL)
+    
+    # Remove any leading newlines after cleanup
+    result = result.lstrip('\n')
+    
+    return result.strip()

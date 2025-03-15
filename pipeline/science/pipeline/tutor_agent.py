@@ -287,7 +287,7 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     context_chat_history = chat_history
 
     # Handle initial welcome message when chat history is empty
-    initial_message_start_time = time.time()
+    # initial_message_start_time = time.time()
     if user_input == config["summary_wording"] or not chat_history:
         yield "<response>"
         yield "Hello! How can I assist you today?"
@@ -528,7 +528,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     
     if user_input == summary_wording or not chat_session.chat_history:
         # Handle initial welcome message when chat history is empty
-        initial_message_start_time = time.time()
+        # initial_message_start_time = time.time()
         # yield "<thinking>"
         try:
             # Try to load existing document summary
@@ -821,7 +821,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
 
     if user_input == config["summary_wording"] or not chat_history:
         # Handle initial welcome message when chat history is empty
-        initial_message_start_time = time.time()
+        # initial_message_start_time = time.time()
         # yield "<thinking>"
         try:
             # Try to load existing document summary

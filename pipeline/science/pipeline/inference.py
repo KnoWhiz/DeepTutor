@@ -81,7 +81,10 @@ def deep_inference_agent(
                                                 chat_session=chat_session)
             if stream_response == None:
                 raise Exception("No response from DeepSeek-R1")
-            return stream_response
+            def stream_response_func():
+                for chunk in stream_response:
+                    yield chunk
+            return stream_response_func()
         except Exception as e:
             logger.exception(f"An error occurred when calling DeepSeek-R1: {str(e)}")
             try:
@@ -92,20 +95,28 @@ def deep_inference_agent(
                                                 chat_session=chat_session)
                 if stream_response == None:
                     raise Exception("No response from DeepSeek-R1-Distill-Llama-70B")
-                return stream_response
+                def stream_response_func():
+                    for chunk in stream_response:
+                        yield chunk
+                return stream_response_func()
             except Exception as e:
                 logger.exception(f"An error occurred when calling DeepSeek-R1-Distill-Llama-70B: {str(e)}")
                 try:
                     stream_response = o3mini_inference(user_prompt=user_prompt, 
                                                 stream=stream,
                                                 chat_session=chat_session)
-                    return stream_response
+                    if stream_response == None:
+                        raise Exception("No response from o3mini")
+                    def stream_response_func():
+                        for chunk in stream_response:
+                            yield chunk
+                    return stream_response_func()
                 except Exception as e:
                     logger.exception(f"An error occurred when calling o3mini: {str(e)}")
-                    def stream_response():
+                    def stream_response_func():
                         yield "I'm sorry, I don't know the answer to that question."
                         # chat_session.current_message += "I'm sorry, I don't know the answer to that question."
-                    return stream_response()
+                    return stream_response_func()
 
 
 def deepseek_inference(

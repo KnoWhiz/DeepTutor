@@ -499,7 +499,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     # Get response
     translation_response = False
     current_status = "thinking"
-    yield "\n\n**Generating the response ...**\n\n"
+    # yield "\n\n**Generating the response ...**\n\n"
     response_start = time.time()
     response = await get_response(chat_session, file_path_list, question, context_chat_history, embedding_folder_list, deep_thinking=deep_thinking, stream=stream)
     answer = response[0] if isinstance(response, tuple) else response
@@ -535,13 +535,13 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
                 language = detect_language(content)
                 if language != chat_session.current_language:
                     translation_response = True
-                    
+
                 if translation_response is False:
                     logger.info("Translation response is False")
                     yield chunk
                     yield "</thinking>"
     time_tracking["response_generation"] = time.time() - response_start
-    yield "\n\n**Generating the response done ...**\n\n"
+    # yield "\n\n**Generating the response done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Refine and translate the answer to the selected language
@@ -563,6 +563,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
             for chunk in answer:
                 yield chunk
         yield "</response>"
+        yield "\n\n**Generating the response done ...**\n\n"
         time_tracking["translation"] = time.time() - translation_start
         logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
@@ -864,7 +865,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
     # yield "</thinking>"
 
     # Get response
-    yield "\n\n**Generating the response ...**\n\n"
+    # yield "\n\n**Generating the response ...**\n\n"
     response_start = time.time()
     response = await get_response(chat_session, file_path_list, question, context_chat_history, embedding_folder_list, deep_thinking=deep_thinking, stream=stream)
     answer = response[0] if isinstance(response, tuple) else response
@@ -905,7 +906,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
                 if language != chat_session.current_language:
                     translation_response = True
     time_tracking["response_generation"] = time.time() - response_start
-    yield "\n\n**Generating the response done ...**\n\n"
+    # yield "\n\n**Generating the response done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Refine and translate the answer to the selected language
@@ -927,6 +928,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
             for chunk in answer:
                 yield chunk
         yield "</response>"
+        yield "\n\n**Generating the response done ...**\n\n"
         time_tracking["translation"] = time.time() - translation_start
         logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 

@@ -198,8 +198,8 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
             # Display chat history
             logger.info("Display chat history ...")
             for idx, msg in enumerate(st.session_state.chat_session.chat_history):
-                # TEST
-                logger.info(f"chat history: {st.session_state.chat_session.chat_history}")
+                # # TEST
+                # logger.info(f"chat history: {st.session_state.chat_session.chat_history}")
                 if msg["role"] == "user":
                     avatar = learner_avatar
                     with st.chat_message(msg["role"], avatar=avatar):

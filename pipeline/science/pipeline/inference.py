@@ -73,39 +73,59 @@ def deep_inference_agent(
                 
     else:
         # The stream is True, the answer is a generator
-        try:
-            stream_response = deepseek_inference(prompt=user_prompt, 
-                                                system_message=system_prompt, 
-                                                stream=stream,
-                                                model="DeepSeek-R1",
-                                                chat_session=chat_session)
-            if stream_response == None:
-                raise Exception("No response from DeepSeek-R1")
-            return stream_response
-        except Exception as e:
-            logger.exception(f"An error occurred when calling DeepSeek-R1: {str(e)}")
+        # We need to return a generator that handles errors internally
+        def safe_stream_generator():
+            # Try DeepSeek-R1
             try:
                 stream_response = deepseek_inference(prompt=user_prompt, 
-                                                system_message=system_prompt, 
-                                                stream=stream,
-                                                model="DeepSeek-R1-Distill-Llama-70B",
-                                                chat_session=chat_session)
-                if stream_response == None:
+                                                    system_message=system_prompt, 
+                                                    stream=stream,
+                                                    model="DeepSeek-R1",
+                                                    chat_session=chat_session)
+                if stream_response is None:
+                    raise Exception("No response from DeepSeek-R1")
+                
+                # Try to consume the generator - any errors will be caught here
+                for chunk in stream_response:
+                    yield chunk
+                return  # Exit if successful
+            except Exception as e:
+                logger.exception(f"An error occurred when calling DeepSeek-R1: {str(e)}")
+            
+            # Try DeepSeek-R1-Distill-Llama-70B as fallback
+            try:
+                stream_response = deepseek_inference(prompt=user_prompt, 
+                                                    system_message=system_prompt, 
+                                                    stream=stream,
+                                                    model="DeepSeek-R1-Distill-Llama-70B",
+                                                    chat_session=chat_session)
+                if stream_response is None:
                     raise Exception("No response from DeepSeek-R1-Distill-Llama-70B")
-                return stream_response
+                
+                # Try to consume the generator - any errors will be caught here
+                for chunk in stream_response:
+                    yield chunk
+                return  # Exit if successful
             except Exception as e:
                 logger.exception(f"An error occurred when calling DeepSeek-R1-Distill-Llama-70B: {str(e)}")
-                try:
-                    stream_response = o3mini_inference(user_prompt=user_prompt, 
+            
+            # Try o3mini as final fallback
+            try:
+                stream_response = o3mini_inference(user_prompt=user_prompt, 
                                                 stream=stream,
                                                 chat_session=chat_session)
-                    return stream_response
-                except Exception as e:
-                    logger.exception(f"An error occurred when calling o3mini: {str(e)}")
-                    def stream_response():
-                        yield "I'm sorry, I don't know the answer to that question."
-                        # chat_session.current_message += "I'm sorry, I don't know the answer to that question."
-                    return stream_response()
+                if stream_response is None:
+                    raise Exception("No response from o3mini")
+                
+                # Try to consume the generator - any errors will be caught here
+                for chunk in stream_response:
+                    yield chunk
+                return  # Exit if successful
+            except Exception as e:
+                logger.exception(f"An error occurred when calling o3mini: {str(e)}")
+                yield "I'm sorry, I don't know the answer to that question."
+        
+        return safe_stream_generator()
 
 
 def deepseek_inference(

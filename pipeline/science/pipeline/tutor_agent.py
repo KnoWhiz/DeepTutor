@@ -8,6 +8,7 @@ from pipeline.science.pipeline.utils import (
     translate_content,
     generate_file_id,
     format_time_tracking,
+    detect_language,
 )
 from pipeline.science.pipeline.doc_processor import (
     save_file_txt_locally,
@@ -36,18 +37,7 @@ import logging
 logger = logging.getLogger("tutorpipeline.science.tutor_agent")
 
 
-def extract_lite_mode_content(message_content):
-    """
-    Extracts structured content from the lite mode message content.
-    
-    Args:
-        message_content: The complete message string from chat_session.current_message
-        
-    Returns:
-        Tuple containing (answer, sources, source_pages, source_annotations, 
-                         refined_source_pages, refined_source_index, follow_up_questions)
-    """
-    # Default empty structures for lite mode
+def extract_answer_content(message_content):
     sources = {}
     source_pages = {}
     source_annotations = {}
@@ -56,10 +46,22 @@ def extract_lite_mode_content(message_content):
     follow_up_questions = []
     
     # Extract the main answer (content between <response> tags)
+    # The logic is: if we have <response> tags, we extract the content between them
+    # Otherwise, we extract the content between <original_response> and </original_response> tags
+    # If we have neither, we extract the content between <thinking> and </thinking> tags
+    # If we have none of the above, we return an empty string
     answer = ""
     response_match = re.search(r'<response>(.*?)</response>', message_content, re.DOTALL)
+    original_response_match = re.search(r'<original_response>(.*?)</original_response>', message_content, re.DOTALL)
+    thinking_match = re.search(r'<thinking>(.*?)</thinking>', message_content, re.DOTALL)
     if response_match:
         answer = response_match.group(1).strip()
+    elif original_response_match:
+        answer = original_response_match.group(1).strip()
+    elif thinking_match:
+        answer = thinking_match.group(1).strip()
+    else:
+        answer = ""
     
     # Extract follow-up questions (content between <followup_question> tags)
     followup_matches = re.finditer(r'<followup_question>(.*?)</followup_question>', message_content, re.DOTALL)
@@ -69,76 +71,18 @@ def extract_lite_mode_content(message_content):
             follow_up_questions.append(question)
     
     return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
+
+
+def extract_lite_mode_content(message_content):
+    return extract_answer_content(message_content)
 
 
 def extract_basic_mode_content(message_content):
-    """
-    Extracts structured content from the basic mode message content.
-    
-    Args:
-        message_content: The complete message string from chat_session.current_message
-        
-    Returns:
-        Tuple containing (answer, sources, source_pages, source_annotations, 
-                         refined_source_pages, refined_source_index, follow_up_questions)
-    """
-    # Default empty structures for basic mode
-    sources = {}
-    source_pages = {}
-    source_annotations = {}
-    refined_source_pages = {}
-    refined_source_index = {}
-    follow_up_questions = []
-    
-    # Extract the main answer (content between <response> tags)
-    answer = ""
-    response_match = re.search(r'<response>(.*?)</response>', message_content, re.DOTALL)
-    if response_match:
-        answer = response_match.group(1).strip()
-    
-    # Extract follow-up questions (content between <followup_question> tags)
-    followup_matches = re.finditer(r'<followup_question>(.*?)</followup_question>', message_content, re.DOTALL)
-    for match in followup_matches:
-        question = match.group(1).strip()
-        if question:
-            follow_up_questions.append(question)
-    
-    return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
+    return extract_answer_content(message_content)
 
 
 def extract_advanced_mode_content(message_content):
-    """
-    Extracts structured content from the advanced mode message content.
-    
-    Args:
-        message_content: The complete message string from chat_session.current_message
-        
-    Returns:
-        Tuple containing (answer, sources, source_pages, source_annotations, 
-                         refined_source_pages, refined_source_index, follow_up_questions)
-    """
-    # Default empty structures for advanced mode
-    sources = {}
-    source_pages = {}
-    source_annotations = {}
-    refined_source_pages = {}
-    refined_source_index = {}
-    follow_up_questions = []
-    
-    # Extract the main answer (content between <response> tags)
-    answer = ""
-    response_match = re.search(r'<response>(.*?)</response>', message_content, re.DOTALL)
-    if response_match:
-        answer = response_match.group(1).strip()
-    
-    # Extract follow-up questions (content between <followup_question> tags)
-    followup_matches = re.finditer(r'<followup_question>(.*?)</followup_question>', message_content, re.DOTALL)
-    for match in followup_matches:
-        question = match.group(1).strip()
-        if question:
-            follow_up_questions.append(question)
-    
-    return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
+    return extract_answer_content(message_content)
 
 
 async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
@@ -322,19 +266,19 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     yield "\n\n**Generating follow-up questions done ...**\n\n"
 
     yield "\n\n**Retrieving sources ...**\n\n"
-    yield "\n\nRetrieving sources done ...**\n\n"
+    yield "\n\n**Retrieving sources done ...**\n\n"
 
     yield "\n\n**Retrieving source pages ...**\n\n"
-    yield "\n\nRetrieving source pages done ...**\n\n"
+    yield "\n\n**Retrieving source pages done ...**\n\n"
 
     yield "\n\n**Retrieving source annotations ...**\n\n"
-    yield "\n\nRetrieving source annotations done ...**\n\n"
+    yield "\n\n**Retrieving source annotations done ...**\n\n"
 
     yield "\n\n**Refining source pages ...**\n\n"
-    yield "\n\nRefining source pages done ...**\n\n"
+    yield "\n\n**Refining source pages done ...**\n\n"
 
     yield "\n\n**Refining source index ...**\n\n"
-    yield "\n\nRefining source index done ...**\n\n"
+    yield "\n\n**Refining source index done ...**\n\n"
 
     yield "</appendix>"
 
@@ -472,59 +416,6 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
 
     chat_history = chat_session.chat_history
     context_chat_history = chat_history
-
-    # # Handle initial welcome message when chat history is empty
-    # initial_message_start_time = time.time()
-    # if user_input == "Can you give me a summary of this document?" or not chat_history:
-    #     try:
-    #         # Try to load existing document summary
-    #         document_summary_path_list = [os.path.join(embedding_folder, "documents_summary.txt") for embedding_folder in embedding_folder_list]
-    #         initial_message_list = []
-    #         for document_summary_path in document_summary_path_list:
-    #             with open(document_summary_path, "r") as f:
-    #                 initial_message_list.append(f.read())
-    #         # FIXME: Add a function to combine the initial messages into a single summary message
-    #         initial_message = "\n".join(initial_message_list)
-    #     except FileNotFoundError:
-    #         initial_message = "Hello! How can I assist you today?"
-
-    #     yield "</thinking>"
-
-    #     yield "<response>"
-
-    #     answer = initial_message
-    #     # Translate the initial message to the selected language
-    #     answer = translate_content(
-    #         content=answer,
-    #         target_lang=chat_session.current_language
-    #     )
-
-    #     yield "</response>"
-
-    #     yield "<appendix>"
-
-    #     sources = {}  # Return empty dictionary for sources
-    #     source_pages = {}
-    #     source_annotations = {}
-    #     refined_source_pages = {}
-    #     refined_source_index = {}
-    #     yield "\n\n**Generating follow-up questions ...**\n\n"
-    #     follow_up_questions = generate_follow_up_questions(answer, [])
-
-    #     for i in range(len(follow_up_questions)):
-    #         follow_up_questions[i] = translate_content(
-    #             content=follow_up_questions[i],
-    #             target_lang=chat_session.current_language
-    #         )
-    #     for chunk in follow_up_questions:
-    #         # The content should be easy to extract as XML formats
-    #         yield "<followup_question>"
-    #         yield f"\n{chunk}"
-    #         yield "</followup_question>"
-    #         yield "\n\n"
-
-    #     yield "</appendix>"
-    #     return
     
     if user_input == summary_wording or not chat_session.chat_history:
         # Handle initial welcome message when chat history is empty
@@ -541,26 +432,45 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
             initial_message = "\n".join(initial_message_list)
         except FileNotFoundError:
             initial_message = "Hello! How can I assist you today?"
-        yield "</thinking>"
+        # yield "</thinking>"
 
-        yield "<response>"
-        answer = initial_message
-        # Translate the initial message to the selected language
-        answer = translate_content(
-            content=answer,
-            target_lang=chat_session.current_language
-        )
-        yield "\n\n"
-        yield answer
-        yield "</response>"
+        language = detect_language(initial_message)
+        if language != chat_session.current_language:
+            translation_response = True
+            yield "<original_response>"
+            yield "\n\n"
+            yield initial_message
+            yield "</original_response>"
+            yield "</thinking>"
+            yield "<response>"        # Translate the initial message to the selected language
+            answer = translate_content(
+                content=initial_message,
+                target_lang=chat_session.current_language,
+                stream=stream
+            )
+            yield "\n\n"
+            if (type(answer) is str):
+                yield answer
+            else:
+                for chunk in answer:
+                    yield chunk
+            yield "</response>"
+        else:
+            translation_response = False
+            yield "</thinking>"
+            yield "<response>"        # Translate the initial message to the selected language
+            yield "\n\n"
+            yield initial_message
+            yield "</response>"
 
         yield "<appendix>"
         yield "\n\n**Generating follow-up questions ...**\n\n"
-        follow_up_questions = generate_follow_up_questions(answer, [])
+        follow_up_questions = generate_follow_up_questions(chat_session.current_message[0], [])
         for i in range(len(follow_up_questions)):
             follow_up_questions[i] = translate_content(
                 content=follow_up_questions[i],
-                target_lang=chat_session.current_language
+                target_lang=chat_session.current_language,
+                stream=False
             )
         for chunk in follow_up_questions:
             yield "<followup_question>"
@@ -587,6 +497,8 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Get response
+    translation_response = False
+    current_status = "thinking"
     yield "\n\n**Generating the response ...**\n\n"
     response_start = time.time()
     response = await get_response(chat_session, file_path_list, question, context_chat_history, embedding_folder_list, deep_thinking=deep_thinking, stream=stream)
@@ -597,14 +509,62 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         for chunk in answer:
             if "</think>" not in chunk:
                 if "<response>" in chunk:
-                    yield "\n\n**Here is the final response**\n\n"
-                yield chunk
+                    if translation_response is False:
+                        if current_status == "thinking":
+                            current_status = "response"
+                            yield "\n\n**Here is the final response**\n\n"
+                            yield chunk
+                        else:
+                            yield chunk.replace("<response>", "")
+                    else:
+                        yield "\n\n**Here is the original response**\n\n"
+                        # Replace the "<response>" tag with "<original_response>" tag
+                        yield chunk.replace("<response>", "<original_response>")
+                elif "</response>" in chunk:
+                    if translation_response is False:
+                        yield chunk
+                    else:
+                        # Replace the "</response>" tag with "<original_response>" tag
+                        yield chunk.replace("</response>", "</original_response>")
+                        yield "</thinking>"
+                else:
+                    yield chunk
+                # yield chunk
             else:   # If the chunk contains "</think>", it means the response is done
-                yield chunk
-                yield "</thinking>"
+                content=extract_basic_mode_content(chat_session.current_message)[0]
+                language = detect_language(content)
+                if language != chat_session.current_language:
+                    translation_response = True
+                    
+                if translation_response is False:
+                    logger.info("Translation response is False")
+                    yield chunk
+                    yield "</thinking>"
     time_tracking["response_generation"] = time.time() - response_start
     yield "\n\n**Generating the response done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+
+    # Refine and translate the answer to the selected language
+    content=extract_basic_mode_content(chat_session.current_message)[0]
+    language = detect_language(content)
+    if language != chat_session.current_language:
+        translation_start = time.time()
+        answer = translate_content(
+            content=content,
+            target_lang=chat_session.current_language,
+            stream=stream
+        )
+        # if answer != content:
+        yield "<response>"
+        yield "\n\n"
+        if (type(answer) is str):
+            yield answer
+        else:
+            for chunk in answer:
+                yield chunk
+        yield "</response>"
+        time_tracking["translation"] = time.time() - translation_start
+        logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Get sources
     yield "<appendix>"
@@ -646,6 +606,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     # translated_answer = translate_content(
     #     content=chat_session.current_message,
     #     target_lang=chat_session.current_language
+    #     stream=stream
     # )
     # yield "<translated_answer>"
     # yield f"\n{translated_answer}\n"
@@ -679,7 +640,8 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     for i in range(len(follow_up_questions)):
         follow_up_questions[i] = translate_content(
             content=follow_up_questions[i],
-            target_lang=chat_session.current_language
+            target_lang=chat_session.current_language,
+            stream=False
         )
     for chunk in follow_up_questions:
         yield "<followup_question>"
@@ -834,27 +796,45 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
             initial_message = "\n".join(initial_message_list)
         except FileNotFoundError:
             initial_message = "Hello! How can I assist you today?"
-        yield "</thinking>"
 
-        yield "<response>"
-        answer = initial_message
-        # Translate the initial message to the selected language
-        answer = translate_content(
-            content=answer,
-            target_lang=chat_session.current_language
-        )
-        yield "\n\n"
-        yield answer
-        yield "</response>"
+        language = detect_language(initial_message)
+        if language != chat_session.current_language:
+            translation_response = True
+            yield "<original_response>"
+            yield "\n\n"
+            yield initial_message
+            yield "</original_response>"
+            yield "</thinking>"
+            yield "<response>"        # Translate the initial message to the selected language
+            answer = translate_content(
+                content=initial_message,
+                target_lang=chat_session.current_language,
+                stream=stream
+            )
+            yield "\n\n"
+            if (type(answer) is str):
+                yield answer
+            else:
+                for chunk in answer:
+                    yield chunk
+            yield "</response>"
+        else:
+            translation_response = False
+            yield "</thinking>"
+            yield "<response>"        # Translate the initial message to the selected language
+            yield "\n\n"
+            yield initial_message
+            yield "</response>"
 
         yield "<appendix>"
         yield "\n\n**Generating follow-up questions ...**\n\n"
-        follow_up_questions = generate_follow_up_questions(answer, [])
+        follow_up_questions = generate_follow_up_questions(extract_advanced_mode_content(chat_session.current_message)[0], [])
 
         for i in range(len(follow_up_questions)):
             follow_up_questions[i] = translate_content(
                 content=follow_up_questions[i],
-                target_lang=chat_session.current_language
+                target_lang=chat_session.current_language,
+                stream=False
             )
         for chunk in follow_up_questions:
             # The content should be easy to extract as XML formats
@@ -889,22 +869,66 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
     response = await get_response(chat_session, file_path_list, question, context_chat_history, embedding_folder_list, deep_thinking=deep_thinking, stream=stream)
     answer = response[0] if isinstance(response, tuple) else response
 
+    translation_response = False
+    current_status = "thinking"
     if deep_thinking is False:
         yield "</thinking>"
     else:
         for chunk in answer:
             if "</think>" not in chunk:
                 if "<response>" in chunk:
-                    yield "\n\n**Here is the final response**\n\n"
-                yield chunk
+                    if translation_response is False:
+                        if current_status == "thinking":
+                            current_status = "response"
+                            yield "\n\n**Here is the final response**\n\n"
+                            yield chunk
+                        else:
+                            yield chunk.replace("<response>", "")
+                    else:
+                        yield "\n\n**Here is the original response**\n\n"
+                        # Replace the "<response>" tag with "<original_response>" tag
+                        yield chunk.replace("<response>", "<original_response>")
+                elif "</response>" in chunk:
+                    if translation_response is False:
+                        yield chunk
+                    else:
+                        # Replace the "</response>" tag with "<original_response>" tag
+                        yield chunk.replace("</response>", "</original_response>")
+                else:
+                    yield chunk
+                # yield chunk
             else:   # If the chunk contains "</think>", it means the response is done
                 yield chunk
                 yield "</thinking>"
-    # if thinking_model is not True:
-    #     yield "</thinking>"
+                content=extract_basic_mode_content(chat_session.current_message)[0]
+                language = detect_language(content)
+                if language != chat_session.current_language:
+                    translation_response = True
     time_tracking["response_generation"] = time.time() - response_start
     yield "\n\n**Generating the response done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+
+    # Refine and translate the answer to the selected language
+    content=extract_advanced_mode_content(chat_session.current_message)[0]
+    language = detect_language(content)
+    if language != chat_session.current_language:
+        translation_start = time.time()
+        answer = translate_content(
+            content=content,
+            target_lang=chat_session.current_language,
+            stream=stream
+        )
+        # if answer != content:
+        yield "<response>"
+        yield "\n\n"
+        if (type(answer) is str):
+            yield answer
+        else:
+            for chunk in answer:
+                yield chunk
+        yield "</response>"
+        time_tracking["translation"] = time.time() - translation_start
+        logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Get sources
     yield "<appendix>"
@@ -939,15 +963,6 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
     yield "\n\n**Processing image sources done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
-    # Refine and translate the answer to the selected language
-    translation_start = time.time()
-    answer = translate_content(
-        content=answer,
-        target_lang=chat_session.current_language
-    )
-    time_tracking["translation"] = time.time() - translation_start
-    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-
     # Append images URL in markdown format to the end of the answer
     annotations_start = time.time()
     if image_url_list:
@@ -973,7 +988,8 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
     for i in range(len(follow_up_questions)):
         follow_up_questions[i] = translate_content(
             content=follow_up_questions[i],
-            target_lang=chat_session.current_language
+            target_lang=chat_session.current_language,
+            stream=False
         )
     for chunk in follow_up_questions:
         yield "<followup_question>"

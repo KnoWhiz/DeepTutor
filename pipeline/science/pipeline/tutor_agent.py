@@ -595,6 +595,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Get response
+    translation_response = False
     yield "\n\n**Generating the response ...**\n\n"
     response_start = time.time()
     response = await get_response(chat_session, file_path_list, question, context_chat_history, embedding_folder_list, deep_thinking=deep_thinking, stream=stream)
@@ -605,11 +606,27 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         for chunk in answer:
             if "</think>" not in chunk:
                 if "<response>" in chunk:
-                    yield "\n\n**Here is the final response**\n\n"
-                yield chunk
+                    if translation_response is False:
+                        yield "\n\n**Here is the final response**\n\n"
+                        yield chunk
+                    else:
+                        yield "\n\n**Here is the original response**\n\n"
+                        # Replace the "<response>" tag with "<original_response>" tag
+                        yield chunk.replace("<response>", "<original_response>")
+                elif "</response>" in chunk:
+                    if translation_response is False:
+                        yield chunk
+                    else:
+                        # Replace the "</response>" tag with "<original_response>" tag
+                        yield chunk.replace("</response>", "</original_response>")
+                # yield chunk
             else:   # If the chunk contains "</think>", it means the response is done
                 yield chunk
                 yield "</thinking>"
+                content=extract_basic_mode_content(chat_session.current_message)[0]
+                language = detect_language(content)
+                if language != chat_session.current_language:
+                    translation_response = True
     time_tracking["response_generation"] = time.time() - response_start
     yield "\n\n**Generating the response done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
@@ -625,14 +642,14 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
             stream=stream
         )
         if answer != content:
-            yield "<refined_response>"
+            yield "<response>"
             yield "\n\n"
             if (type(answer) is str):
                 yield answer
             else:
                 for chunk in answer:
                     yield chunk
-            yield "</refined_response>"
+            yield "</response>"
         time_tracking["translation"] = time.time() - translation_start
         logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
@@ -883,7 +900,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
             else:
                 for chunk in answer:
                     yield chunk
-            yield "</response>"
+        yield "</response>"
 
         yield "<appendix>"
         yield "\n\n**Generating follow-up questions ...**\n\n"
@@ -949,7 +966,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
     content=extract_advanced_mode_content(chat_session.current_message)[0]
     language = detect_language(content)
     if language != chat_session.current_language:
-        yield "<refined_response>"
+        yield "<response>"
         translation_start = time.time()
         answer = translate_content(
             content=content,
@@ -963,7 +980,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
             else:
                 for chunk in answer:
                     yield chunk
-            yield "</refined_response>"
+            yield "</response>"
         time_tracking["translation"] = time.time() - translation_start
         logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 

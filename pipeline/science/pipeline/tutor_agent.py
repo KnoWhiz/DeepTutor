@@ -540,12 +540,12 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
                     if translation_response is False:
                         if current_status == "thinking":
                             current_status = "response"
-                            yield "\n\n**Here is the final response**\n\n"
+                            # yield "\n\n**Here is the final response**\n\n"
                             yield chunk
                         else:
                             yield chunk.replace("<response>", "")
                     else:
-                        yield "\n\n**Here is the original response**\n\n"
+                        # yield "\n\n**Here is the original response**\n\n"
                         # Replace the "<response>" tag with "<original_response>" tag
                         yield chunk.replace("<response>", "<original_response>")
                 elif "</response>" in chunk:
@@ -925,12 +925,12 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
                     if translation_response is False:
                         if current_status == "thinking":
                             current_status = "response"
-                            yield "\n\n**Here is the final response**\n\n"
+                            # yield "\n\n**Here is the final response**\n\n"
                             yield chunk
                         else:
                             yield chunk.replace("<response>", "")
                     else:
-                        yield "\n\n**Here is the original response**\n\n"
+                        # yield "\n\n**Here is the original response**\n\n"
                         # Replace the "<response>" tag with "<original_response>" tag
                         yield chunk.replace("<response>", "<original_response>")
                 elif "</response>" in chunk:

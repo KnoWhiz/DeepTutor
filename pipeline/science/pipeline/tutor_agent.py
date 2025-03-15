@@ -526,16 +526,20 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
                     else:
                         # Replace the "</response>" tag with "<original_response>" tag
                         yield chunk.replace("</response>", "</original_response>")
+                        yield "</thinking>"
                 else:
                     yield chunk
                 # yield chunk
             else:   # If the chunk contains "</think>", it means the response is done
-                yield chunk
-                yield "</thinking>"
                 content=extract_basic_mode_content(chat_session.current_message)[0]
                 language = detect_language(content)
                 if language != chat_session.current_language:
                     translation_response = True
+                    
+                if translation_response is False:
+                    logger.info("Translation response is False")
+                    yield chunk
+                    yield "</thinking>"
     time_tracking["response_generation"] = time.time() - response_start
     yield "\n\n**Generating the response done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")

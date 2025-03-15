@@ -613,6 +613,43 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         chat_history=chat_history,
         embedding_folder_list=embedding_folder_list
     )
+    # for source_key, source_value, source_page_key, source_page_value, refined_source_page_key, refined_source_page_value, refined_source_index_key, refined_source_index_value in zip(sources.keys(), sources.values(), source_pages.keys(), source_pages.values(), refined_source_pages.keys(), refined_source_pages.values(), refined_source_index.keys(), refined_source_index.values()):
+    #     logger.info(f"TEST: source_key: {source_key}, source_value: {source_value}, source_page_key: {source_page_key}, source_page_value: {source_page_value}, refined_source_page_key: {refined_source_page_key}, refined_source_page_value: {refined_source_page_value}, refined_source_index_key: {refined_source_index_key}, refined_source_index_value: {refined_source_index_value}")
+    #     logger.info(f"TEST: type(source_key): {type(source_key)}, type(source_value): {type(source_value)}, type(source_page_key): {type(source_page_key)}, type(source_page_value): {type(source_page_value)}, type(refined_source_page_key): {type(refined_source_page_key)}, type(refined_source_page_value): {type(refined_source_page_value)}, type(refined_source_index_key): {type(refined_source_index_key)}, type(refined_source_index_value): {type(refined_source_index_value)}")
+    #     yield "<source>"
+    #     yield str(source_value)
+    #     yield "</source>"
+    #     yield "<source_page>"
+    #     yield str(source_page_value)
+    #     yield "</source_page>"
+    #     yield "<refined_source_page>"
+    #     yield str(refined_source_page_value)
+    #     yield "</refined_source_page>"
+    #     yield "<refined_source_index>"
+    #     yield str(refined_source_index_value)
+    #     yield "</refined_source_index>"
+
+    for source_key, source_value in sources.items():
+        yield "<source>"
+        yield "{" + str(source_key) + "}"
+        yield "{" + str(source_value) + "}"
+        yield "</source>"
+    for source_page_key, source_page_value in source_pages.items():
+        yield "<source_page>"
+        yield "{" + str(source_page_key) + "}"
+        yield "{" + str(source_page_value) + "}"
+        yield "</source_page>"
+    for refined_source_page_key, refined_source_page_value in refined_source_pages.items():
+        yield "<refined_source_page>"
+        yield "{" + str(refined_source_page_key) + "}"
+        yield "{" + str(refined_source_page_value) + "}"
+        yield "</refined_source_page>"
+    for refined_source_index_key, refined_source_index_value in refined_source_index.items():
+        yield "<refined_source_index>"
+        yield "{" + str(refined_source_index_key) + "}"
+        yield "{" + str(refined_source_index_value) + "}"
+        yield "</refined_source_index>"
+
     time_tracking["source_retrieval"] = time.time() - sources_start
     yield "\n\n**Retrieving sources done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")

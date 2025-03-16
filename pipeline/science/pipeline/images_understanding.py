@@ -298,7 +298,7 @@ def extract_image_context(folder_dir: str | Path, file_path: str = "", context_t
     logger.info(f"Image context data saved to: {image_context_path}")
 
 
-def analyze_image(image_url=None):
+def analyze_image(image_url=None, system_prompt=None, user_prompt=None):
     """
     Analyze an image using Azure OpenAI's vision model.
 
@@ -308,6 +308,12 @@ def analyze_image(image_url=None):
     Returns:
         str: The analysis result from the vision model
     """
+    if system_prompt is None:
+        system_prompt = "You are an professor helping students to understand images in a research paper. Please describe what you see in detail, and explain the research concept in an easy-to-understand manner."
+
+    if user_prompt is None:
+        user_prompt = "Describe this picture and analyze all the statistics information in detail if needed:"
+
     # Initialize Azure OpenAI client
     api_base = os.getenv('AZURE_OPENAI_ENDPOINT')
     api_key = os.getenv('AZURE_OPENAI_KEY')
@@ -325,14 +331,14 @@ def analyze_image(image_url=None):
         messages = [
             {
                 "role": "system",
-                "content": "You are an professor helping students to understand images in a research paper. Please describe what you see in detail, and explain the research concept in an easy-to-understand manner."
+                "content": system_prompt
             },
             {
                 "role": "user",
                 "content": [
                     {
                         "type": "text",
-                        "text": "Describe this picture:"
+                        "text": user_prompt
                     },
                     {
                         "type": "image_url",
@@ -358,7 +364,7 @@ def analyze_image(image_url=None):
         logger.exception(f"Error occurred in analyze_image with Azure OpenAI: {str(e)}")
         
         # Try another model for image understanding
-        result = process_image_with_llama(image_url, "You are an professor helping students to understand images in a research paper. Please describe what you see in detail, and explain the research concept in an easy-to-understand manner.")
+        result = process_image_with_llama(image_url, system_prompt)
         return result
 
 

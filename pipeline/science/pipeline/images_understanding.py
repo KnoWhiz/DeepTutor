@@ -529,15 +529,89 @@ def aggregate_image_contexts_to_urls(folder_list: List[Union[str, Path]]) -> Dic
     return context_to_url_mapping
 
 
+def create_image_context_embeddings(folder_list: List[Union[str, Path]]) -> List[Dict[str, Union[str, Dict[str, str]]]]:
+    """
+    Process image contexts from multiple folders and format them as embedding chunks for database storage.
+    
+    Parameters:
+        folder_list (List[Union[str, Path]]): List of folder paths containing image_urls.json and image_context.json files
+    
+    Returns:
+        List[Dict[str, Union[str, Dict[str, str]]]]: List of embedding chunks with image contexts and metadata
+    """
+    embedding_chunks: List[Dict[str, Union[str, Dict[str, str]]]] = []
+    
+    for folder in folder_list:
+        folder_path = str(folder) if isinstance(folder, Path) else folder
+        
+        # Extract file_id from the folder path
+        # Assuming folder structure like: "/path/to/embedded_content/{file_id}/markdown"
+        try:
+            file_id = os.path.basename(os.path.dirname(folder_path))
+        except Exception:
+            file_id = "unknown"
+            logger.warning(f"Could not extract file_id from path: {folder_path}, using 'unknown'")
+        
+        # Get paths to the JSON files
+        image_context_path = os.path.join(folder_path, "image_context.json")
+        image_urls_path = os.path.join(folder_path, "image_urls.json")
+        
+        # Check if both files exist
+        if not os.path.exists(image_context_path) or not os.path.exists(image_urls_path):
+            logger.warning(f"Missing required JSON files in folder: {folder_path}")
+            continue
+        
+        # Load the JSON files
+        try:
+            with open(image_context_path, "r", encoding="utf-8") as f:
+                image_contexts = json.load(f)
+            
+            with open(image_urls_path, "r", encoding="utf-8") as f:
+                image_urls = json.load(f)
+            
+            # Process each image and its contexts
+            for image_name, contexts in image_contexts.items():
+                if image_name in image_urls:
+                    image_url = image_urls[image_name]
+                    
+                    # Create an embedding chunk for each context
+                    for i, context in enumerate(contexts):
+                        # Skip empty or None contexts
+                        if not context or not isinstance(context, str):
+                            logger.warning(f"Skipping invalid context for {image_name} at index {i}")
+                            continue
+                            
+                        # Create chunk with context and metadata
+                        chunk = {
+                            "text": context,
+                            "metadata": {
+                                "source_type": "image",
+                                "file_id": file_id,
+                                "image_name": image_name,
+                                "image_url": image_url,
+                                "chunk_id": f"{file_id}_{image_name}_{i}",
+                                "context_index": i
+                            }
+                        }
+                        embedding_chunks.append(chunk)
+        
+        except Exception as e:
+            logger.warning(f"Error processing files in folder {folder_path}: {str(e)}")
+            continue
+    
+    logger.info(f"Created {len(embedding_chunks)} embedding chunks from image contexts")
+    return embedding_chunks
+
+
 if __name__ == "__main__":
     # Simple check to make sure all needed imports are working
     print("Imports successful. Running the main function...")
     
     # folder_dir = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/16005aaa19145334b5605c6bf61661a0/markdown/"
     folder_dir = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/c5e6dadde391f97ac2ba65acf827248e/markdown"
-    file_path = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/16005aaa19145334b5605c6bf61661a0/16005aaa19145334b5605c6bf61661a0.pdf"
-    extract_image_context(folder_dir, file_path)
-    # upload_images_to_azure(folder_dir)
+    # file_path = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/16005aaa19145334b5605c6bf61661a0/16005aaa19145334b5605c6bf61661a0.pdf"
+    # extract_image_context(folder_dir, file_path)
+    # # upload_images_to_azure(folder_dir)
     
     # Test the aggregate_image_contexts_to_urls function
     test_folders = [
@@ -562,3 +636,20 @@ if __name__ == "__main__":
             print("")
     except Exception as e:
         print(f"Error testing aggregate_image_contexts_to_urls: {str(e)}")
+        
+    # Test the create_image_context_embeddings function
+    print("\nTesting create_image_context_embeddings function:")
+    try:
+        embedding_chunks = create_image_context_embeddings(test_folders)
+        print(f"Created {len(embedding_chunks)} embedding chunks")
+        
+        # Print a sample of the embedding chunks (up to all entries)
+        for i, chunk in enumerate(embedding_chunks):
+            # Truncate long texts for display
+            display_text = chunk["text"][:200] + "..." if len(chunk["text"]) > 200 else chunk["text"]
+            print(f"Sample Chunk {i+1}:")
+            print(f"Text: {display_text}")
+            print(f"Metadata: {json.dumps(chunk['metadata'], indent=2)}")
+            print("")
+    except Exception as e:
+        print(f"Error testing create_image_context_embeddings: {str(e)}")

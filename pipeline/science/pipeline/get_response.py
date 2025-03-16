@@ -414,6 +414,8 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
         # FIXME: Later we can have a separate embedding folder for images context as a sub-database
         db = load_embeddings(embedding_folder_list, 'default')
         image_chunks = db.similarity_search_with_score(user_input + "\n\n" + question.special_context, k=2)
+        markdown_folder_list = [os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]
+        image_url_mapping = aggregate_image_contexts_to_urls(markdown_folder_list)
         if image_chunks:
             question.special_context = """
             Here is the context and visual understanding of the image:

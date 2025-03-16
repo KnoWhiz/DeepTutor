@@ -404,21 +404,15 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
 
     if question_type == "image":
         logger.info(f"question_type for input: {user_input} is --image-- ...")
-        # Find a single chunk in the embedding folder
-        # markdown_embedding_folder_list = [os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]
-        # try:
-        #     db = load_embeddings(markdown_embedding_folder_list, 'default')
-        # except Exception as e:
-        #     logger.exception(f"Failed to load markdown embeddings for image mode: {str(e)}")
-        #     db = load_embeddings(embedding_folder_list, 'default')
-        # db = load_embeddings(embedding_folder_list, 'default')
         markdown_folder_list = [os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]
         db = create_image_context_embeddings_db(markdown_folder_list)
-        image_chunks = db.similarity_search_with_score(user_input, k=1)
+        # Replace variations of "fig" or "figure" with "Image" for better matching
+        processed_input = re.sub(r"\b(?:[Ff][Ii][Gg](?:ure)?\.?|[Ff]igure)\b", "Image", user_input)
+        image_chunks = db.similarity_search_with_score(processed_input, k=1)
         image_url_mapping = aggregate_image_contexts_to_urls(markdown_folder_list)
         if image_chunks:
             question.special_context = """
-            Here is the context and visual understanding of the image:
+            Here is the context and visual understanding of the corresponding image:
             """ + image_chunks[0][0].page_content # + "\n\n" + image_chunks[1][0].page_content
             
             # Get the image url from the image chunks

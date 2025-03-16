@@ -25,7 +25,7 @@ from pipeline.science.pipeline.inference import deep_inference_agent
 from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
 from pipeline.science.pipeline.get_graphrag_response import get_GraphRAG_global_response
 from pipeline.science.pipeline.get_rag_response import get_embedding_folder_rag_response, get_db_rag_response
-from pipeline.science.pipeline.images_understanding import aggregate_image_contexts_to_urls, create_image_context_embeddings_db
+from pipeline.science.pipeline.images_understanding import aggregate_image_contexts_to_urls, create_image_context_embeddings_db, analyze_image
 
 import logging
 logger = logging.getLogger("tutorpipeline.science.get_response")
@@ -432,6 +432,12 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
             if highest_score_url:
                 question.image_url = highest_score_url
                 logger.info(f"Setting image URL in question: {highest_score_url}")
+        
+        if question.image_url:
+            # Get the images understanding from the image url about the question
+            question.special_context = """
+            Here is the context and visual understanding of the corresponding image:
+            """ + analyze_image(question.image_url, f"The user's question is: {question.text}", f"The user's question is: {question.text}")
             
         logger.info(f"TEST: question.special_context: {question.special_context}")
     elif question_type == "local":

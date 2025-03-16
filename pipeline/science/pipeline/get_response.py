@@ -42,7 +42,7 @@ class Question:
         answer_planning (dict): Planning information for constructing the answer
     """
 
-    def __init__(self, text="", language="English", question_type="global", special_context="", answer_planning=None):
+    def __init__(self, text="", language="English", question_type="global", special_context="", answer_planning=None, image_url=None):
         """
         Initialize a Question object.
 
@@ -52,6 +52,7 @@ class Question:
             question_type (str): The type of the question (local or global or image)
             special_context (str): Special context for the question
             answer_planning (dict): Planning information for constructing the answer
+            image_url (str): The image url for the image question
         """
         self.text = text
         self.language = language
@@ -62,10 +63,11 @@ class Question:
 
         self.special_context = special_context
         self.answer_planning = answer_planning or {}
+        self.image_url = image_url   # This is the image url for the image question
 
     def __str__(self):
         """Return string representation of the Question."""
-        return f"Question(text='{self.text}', language='{self.language}', type='{self.question_type}')"
+        return f"Question(text='{self.text}', language='{self.language}', type='{self.question_type}', image_url='{self.image_url}')"
 
     def to_dict(self):
         """Convert Question object to dictionary."""
@@ -74,7 +76,8 @@ class Question:
             "language": self.language,
             "question_type": self.question_type,
             "special_context": self.special_context,
-            "answer_planning": self.answer_planning
+            "answer_planning": self.answer_planning,
+            "image_url": str(self.image_url)
         }
 
 
@@ -393,7 +396,8 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
         text=question, 
         language=language, 
         question_type=question_type,
-        answer_planning=answer_planning
+        answer_planning=answer_planning,
+        image_url=None,
     )
     logger.info(f"TEST: question.question_type: {question.question_type}")
 
@@ -413,6 +417,8 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
             question.special_context = """
             Here is the context and visual understanding of the image:
             """ + image_chunks[0][0].page_content + "\n\n" + image_chunks[1][0].page_content
+            # Get the image url from the image chunks
+            
         logger.info(f"TEST: question.special_context: {question.special_context}")
     elif question_type == "local":
         logger.info(f"question_type for input: {user_input} is --local-- ...")

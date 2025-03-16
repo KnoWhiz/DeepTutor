@@ -25,6 +25,7 @@ from pipeline.science.pipeline.inference import deep_inference_agent
 from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
 from pipeline.science.pipeline.get_graphrag_response import get_GraphRAG_global_response
 from pipeline.science.pipeline.get_rag_response import get_embedding_folder_rag_response, get_db_rag_response
+from pipeline.science.pipeline.images_understanding import aggregate_image_contexts_to_urls, create_image_context_embeddings_db, analyze_image
 
 import logging
 logger = logging.getLogger("tutorpipeline.science.get_response")
@@ -42,7 +43,7 @@ class Question:
         answer_planning (dict): Planning information for constructing the answer
     """
 
-    def __init__(self, text="", language="English", question_type="global", special_context="", answer_planning=None):
+    def __init__(self, text="", language="English", question_type="global", special_context="", answer_planning=None, image_url=None):
         """
         Initialize a Question object.
 
@@ -52,6 +53,7 @@ class Question:
             question_type (str): The type of the question (local or global or image)
             special_context (str): Special context for the question
             answer_planning (dict): Planning information for constructing the answer
+            image_url (str): The image url for the image question
         """
         self.text = text
         self.language = language
@@ -62,10 +64,11 @@ class Question:
 
         self.special_context = special_context
         self.answer_planning = answer_planning or {}
+        self.image_url = image_url   # This is the image url for the image question
 
     def __str__(self):
         """Return string representation of the Question."""
-        return f"Question(text='{self.text}', language='{self.language}', type='{self.question_type}')"
+        return f"Question(text='{self.text}', language='{self.language}', type='{self.question_type}', image_url='{self.image_url}')"
 
     def to_dict(self):
         """Convert Question object to dictionary."""
@@ -74,7 +77,8 @@ class Question:
             "language": self.language,
             "question_type": self.question_type,
             "special_context": self.special_context,
-            "answer_planning": self.answer_planning
+            "answer_planning": self.answer_planning,
+            "image_url": str(self.image_url)
         }
 
 
@@ -393,26 +397,48 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
         text=question, 
         language=language, 
         question_type=question_type,
-        answer_planning=answer_planning
+        answer_planning=answer_planning,
+        image_url=None,
     )
     logger.info(f"TEST: question.question_type: {question.question_type}")
 
     if question_type == "image":
         logger.info(f"question_type for input: {user_input} is --image-- ...")
-        # Find a single chunk in the embedding folder
-        # markdown_embedding_folder_list = [os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]
-        # try:
-        #     db = load_embeddings(markdown_embedding_folder_list, 'default')
-        # except Exception as e:
-        #     logger.exception(f"Failed to load markdown embeddings for image mode: {str(e)}")
-        #     db = load_embeddings(embedding_folder_list, 'default')
-        # FIXME: Later we can have a separate embedding folder for images context as a sub-database
-        db = load_embeddings(embedding_folder_list, 'default')
-        image_chunks = db.similarity_search_with_score(user_input + "\n\n" + question.special_context, k=2)
+        markdown_folder_list = [os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]
+        db = create_image_context_embeddings_db(markdown_folder_list)
+        # Replace variations of "fig" or "figure" with "Image" for better matching
+        processed_input = re.sub(r"\b(?:[Ff][Ii][Gg](?:ure)?\.?|[Ff]igure)\b", "Image", user_input)
+        image_chunks = db.similarity_search_with_score(processed_input, k=1)
+        image_url_mapping = aggregate_image_contexts_to_urls(markdown_folder_list)
         if image_chunks:
             question.special_context = """
-            Here is the context and visual understanding of the image:
-            """ + image_chunks[0][0].page_content + "\n\n" + image_chunks[1][0].page_content
+            Here is the context and visual understanding of the corresponding image:
+            """ + image_chunks[0][0].page_content # + "\n\n" + image_chunks[1][0].page_content
+            
+            # Get the image url from the image chunks
+            highest_score_url = None
+            highest_score = float('-inf')
+            
+            for chunk, score in image_chunks:
+                chunk_content = chunk.page_content
+                # Check if any key from image_url_mapping exists in the chunk content
+                for context_key, url in image_url_mapping.items():
+                    if context_key in chunk_content and score > highest_score:
+                        highest_score = score
+                        highest_score_url = url
+                        logger.info(f"Found matching image URL: {url} with score: {score}")
+            
+            # Set the image URL with the highest score in the question object
+            if highest_score_url:
+                question.image_url = highest_score_url
+                logger.info(f"Setting image URL in question: {highest_score_url}")
+        
+        if question.image_url:
+            # Get the images understanding from the image url about the question
+            question.special_context = """
+            Here is the context and visual understanding of the corresponding image:
+            """ + analyze_image(question.image_url, f"The user's question is: {question.text}", f"The user's question is: {question.text}")
+            
         logger.info(f"TEST: question.special_context: {question.special_context}")
     elif question_type == "local":
         logger.info(f"question_type for input: {user_input} is --local-- ...")
@@ -420,6 +446,9 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
         logger.info(f"question_type for input: {user_input} is --global-- ...")
     else:
         logger.info(f"question_type for input: {user_input} is unknown ...")
+
+    # TEST: print the question object
+    logger.info(f"TEST: question: {question}")
     return question
 
 

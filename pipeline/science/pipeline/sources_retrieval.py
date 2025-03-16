@@ -210,33 +210,33 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
             refined_source_pages[source] = page + 1
             refined_source_index[source] = source_file_index[source]
 
-    # TEST
-    logger.info(f"TEST: sources after refine: sources_with_scores - {sources_with_scores}")
-    logger.info(f"TEST: length of sources after refine: {len(sources_with_scores)}")
+    # # TEST
+    # logger.info(f"TEST: sources after refine: sources_with_scores - {sources_with_scores}")
+    # logger.info(f"TEST: length of sources after refine: {len(sources_with_scores)}")
 
 
-    # TEST
-    logger.info("TEST: refined source index:")
-    for source, index in refined_source_index.items():
-        logger.info(f"{source}: {index}")
-    logger.info(f"TEST: length of refined source index: {len(refined_source_index)}")
+    # # TEST
+    # logger.info("TEST: refined source index:")
+    # for source, index in refined_source_index.items():
+    #     logger.info(f"{source}: {index}")
+    # logger.info(f"TEST: length of refined source index: {len(refined_source_index)}")
 
-    # TEST
-    logger.info(f"TEST: sources after refine: sources_with_scores - {sources_with_scores}")
-    logger.info(f"TEST: length of sources after refine: {len(sources_with_scores)}")
+    # # TEST
+    # logger.info(f"TEST: sources after refine: sources_with_scores - {sources_with_scores}")
+    # logger.info(f"TEST: length of sources after refine: {len(sources_with_scores)}")
 
 
-    # TEST
-    logger.info("TEST: refined source index:")
-    for source, index in refined_source_index.items():
-        logger.info(f"{source}: {index}")
-    logger.info(f"TEST: length of refined source index: {len(refined_source_index)}")
+    # # TEST
+    # logger.info("TEST: refined source index:")
+    # for source, index in refined_source_index.items():
+    #     logger.info(f"{source}: {index}")
+    # logger.info(f"TEST: length of refined source index: {len(refined_source_index)}")
 
-    # TEST
-    logger.info("TEST: refined source pages:")
-    for source, page in refined_source_pages.items():
-        logger.info(f"{source}: {page}")
-    logger.info(f"TEST: length of refined source pages: {len(refined_source_pages)}")
+    # # TEST
+    # logger.info("TEST: refined source pages:")
+    # for source, page in refined_source_pages.items():
+    #     logger.info(f"{source}: {page}")
+    # logger.info(f"TEST: length of refined source pages: {len(refined_source_pages)}")
 
     # Memory cleanup
     db = None

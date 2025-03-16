@@ -25,6 +25,7 @@ from pipeline.science.pipeline.inference import deep_inference_agent
 from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
 from pipeline.science.pipeline.get_graphrag_response import get_GraphRAG_global_response
 from pipeline.science.pipeline.get_rag_response import get_embedding_folder_rag_response, get_db_rag_response
+from pipeline.science.pipeline.images_understanding import aggregate_image_contexts_to_urls
 
 import logging
 logger = logging.getLogger("tutorpipeline.science.get_response")

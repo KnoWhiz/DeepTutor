@@ -534,7 +534,7 @@ if __name__ == "__main__":
     print("Imports successful. Running the main function...")
     
     # folder_dir = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/16005aaa19145334b5605c6bf61661a0/markdown/"
-    folder_dir = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/161915dfbad4d45c81db317ddeba746a/markdown"
+    folder_dir = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/c5e6dadde391f97ac2ba65acf827248e/markdown"
     file_path = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/16005aaa19145334b5605c6bf61661a0/16005aaa19145334b5605c6bf61661a0.pdf"
     extract_image_context(folder_dir, file_path)
     # upload_images_to_azure(folder_dir)
@@ -557,8 +557,8 @@ if __name__ == "__main__":
             # Truncate long contexts for display
             display_context = context[:100] + "..." if len(context) > 100 else context
             print(f"Sample {i+1}:")
-            print(f"  Context: {display_context}")
-            print(f"  URL: {url}")
+            print(f"Context: {display_context}")
+            print(f"URL: {url}")
             print("")
     except Exception as e:
         print(f"Error testing aggregate_image_contexts_to_urls: {str(e)}")

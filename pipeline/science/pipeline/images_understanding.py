@@ -4,30 +4,53 @@ import sys
 import openai
 import requests
 import base64
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Union
 from pathlib import Path
 from dotenv import load_dotenv
 from openai import AzureOpenAI
-from pipeline.science.pipeline.utils import generate_file_id
-from pipeline.science.pipeline.config import load_config
+
+# Add the project root to Python path for direct script execution
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))
+if project_root not in sys.path:
+    sys.path.append(project_root)
+
+# Use try/except pattern for imports to handle both direct execution and module import
+try:
+    # Try importing as a module first
+    from pipeline.science.pipeline.utils import generate_file_id
+    from pipeline.science.pipeline.config import load_config
+except ImportError:
+    # If that fails, try relative imports
+    try:
+        from .utils import generate_file_id
+        from .config import load_config
+    except ImportError:
+        # Last resort, try direct import from current directory or parent
+        sys.path.append(os.path.dirname(current_dir))
+        from utils import generate_file_id
+        from config import load_config
+
 load_dotenv()
 
 import logging
 logger = logging.getLogger("tutorpipeline.science.images_understanding")
-
-
-# Add the project root to Python path for direct script execution
-current_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.dirname(os.path.dirname(current_dir))
-if project_root not in sys.path:
-    sys.path.append(project_root)
 
 try:
     # Try importing as a module first
     from pipeline.science.pipeline.helper.azure_blob import AzureBlobHelper
 except ImportError:
     # If that fails, try importing directly
-    from pipeline.helper.azure_blob import AzureBlobHelper
+    try:
+        from pipeline.helper.azure_blob import AzureBlobHelper
+    except ImportError:
+        # Last resort, try relative import
+        try:
+            from .helper.azure_blob import AzureBlobHelper
+        except ImportError:
+            # Direct import from a nearby location
+            sys.path.append(os.path.join(current_dir, "helper"))
+            from azure_blob import AzureBlobHelper
 
 
 def count_tokens(text: str) -> int:
@@ -454,9 +477,88 @@ def get_image_base64(image_url):
         raise Exception(f"Failed to download image: {response.status_code}")
 
 
+def aggregate_image_contexts_to_urls(folder_list: List[Union[str, Path]]) -> Dict[str, str]:
+    """
+    Create a mapping from image context strings to their corresponding URLs in Azure Blob.
+    
+    Parameters:
+        folder_list (List[Union[str, Path]]): List of folder paths containing image_urls.json and image_context.json files
+    
+    Returns:
+        Dict[str, str]: Dictionary mapping from context string to image URL
+        
+    Note: 
+        If multiple context strings are identical across different images, 
+        the last processed image URL will be associated with that context.
+    """
+    context_to_url_mapping: Dict[str, str] = {}
+    
+    for folder in folder_list:
+        folder_path = str(folder) if isinstance(folder, Path) else folder
+        
+        # Get paths to the JSON files using os.path.join
+        image_context_path = os.path.join(folder_path, "image_context.json")
+        image_urls_path = os.path.join(folder_path, "image_urls.json")
+        
+        # Check if both files exist
+        if not os.path.exists(image_context_path) or not os.path.exists(image_urls_path):
+            logger.warning(f"Missing required JSON files in folder: {folder_path}")
+            continue
+        
+        # Load the JSON files
+        try:
+            with open(image_context_path, "r", encoding="utf-8") as f:
+                image_contexts = json.load(f)
+            
+            with open(image_urls_path, "r", encoding="utf-8") as f:
+                image_urls = json.load(f)
+            
+            # Create mapping from context to URL
+            for image_name, contexts in image_contexts.items():
+                if image_name in image_urls:
+                    image_url = image_urls[image_name]
+                    
+                    # Map each context to the image URL
+                    for context in contexts:
+                        context_to_url_mapping[context] = image_url
+        
+        except Exception as e:
+            logger.warning(f"Error processing files in folder {folder_path}: {str(e)}")
+            continue
+    
+    return context_to_url_mapping
+
+
 if __name__ == "__main__":
+    # Simple check to make sure all needed imports are working
+    print("Imports successful. Running the main function...")
+    
     # folder_dir = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/16005aaa19145334b5605c6bf61661a0/markdown/"
-    folder_dir = "/Users/bingranyou/Documents/GitHub_Mac_mini/DeepTutor/embedded_content/c8773c4a9a62ca3bafd2010d3d0093f5/markdown"
+    folder_dir = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/161915dfbad4d45c81db317ddeba746a/markdown"
     file_path = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/16005aaa19145334b5605c6bf61661a0/16005aaa19145334b5605c6bf61661a0.pdf"
     extract_image_context(folder_dir, file_path)
     # upload_images_to_azure(folder_dir)
+    
+    # Test the aggregate_image_contexts_to_urls function
+    test_folders = [
+        "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/c5e6dadde391f97ac2ba65acf827248e/markdown",
+        "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/7ebfb3495a81793a0daa2246d0ed24db/markdown"
+        # Add additional test folders if available
+        # "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/16005aaa19145334b5605c6bf61661a0/markdown/"
+    ]
+    
+    print("\nTesting aggregate_image_contexts_to_urls function:")
+    try:
+        context_url_mapping = aggregate_image_contexts_to_urls(test_folders)
+        print(f"Found {len(context_url_mapping)} context-to-URL mappings")
+        
+        # Print a sample of the mapping (up to 3 entries)
+        for i, (context, url) in enumerate(list(context_url_mapping.items())):
+            # Truncate long contexts for display
+            display_context = context[:100] + "..." if len(context) > 100 else context
+            print(f"Sample {i+1}:")
+            print(f"  Context: {display_context}")
+            print(f"  URL: {url}")
+            print("")
+    except Exception as e:
+        print(f"Error testing aggregate_image_contexts_to_urls: {str(e)}")

@@ -304,6 +304,8 @@ def analyze_image(image_url=None, system_prompt=None, user_prompt=None):
 
     Args:
         image_url (str, optional): URL of the image to analyze. Defaults to a test image if none provided.
+        system_prompt (str, optional): System prompt for the vision model. Defaults to a test image if none provided.
+        user_prompt (str, optional): User prompt for the vision model. Defaults to a test image if none provided.
 
     Returns:
         str: The analysis result from the vision model

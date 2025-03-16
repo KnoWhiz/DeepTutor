@@ -413,14 +413,31 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
         #     db = load_embeddings(embedding_folder_list, 'default')
         # FIXME: Later we can have a separate embedding folder for images context as a sub-database
         db = load_embeddings(embedding_folder_list, 'default')
-        image_chunks = db.similarity_search_with_score(user_input + "\n\n" + question.special_context, k=2)
+        image_chunks = db.similarity_search_with_score(user_input, k=10)
         markdown_folder_list = [os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]
         image_url_mapping = aggregate_image_contexts_to_urls(markdown_folder_list)
         if image_chunks:
             question.special_context = """
             Here is the context and visual understanding of the image:
             """ + image_chunks[0][0].page_content + "\n\n" + image_chunks[1][0].page_content
+            
             # Get the image url from the image chunks
+            highest_score_url = None
+            highest_score = float('-inf')
+            
+            for chunk, score in image_chunks:
+                chunk_content = chunk.page_content
+                # Check if any key from image_url_mapping exists in the chunk content
+                for context_key, url in image_url_mapping.items():
+                    if context_key in chunk_content and score > highest_score:
+                        highest_score = score
+                        highest_score_url = url
+                        logger.info(f"Found matching image URL: {url} with score: {score}")
+            
+            # Set the image URL with the highest score in the question object
+            if highest_score_url:
+                question.image_url = highest_score_url
+                logger.info(f"Setting image URL in question: {highest_score_url}")
             
         logger.info(f"TEST: question.special_context: {question.special_context}")
     elif question_type == "local":
@@ -429,6 +446,9 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
         logger.info(f"question_type for input: {user_input} is --global-- ...")
     else:
         logger.info(f"question_type for input: {user_input} is unknown ...")
+
+    # TEST: print the question object
+    logger.info(f"TEST: question: {question}")
     return question
 
 

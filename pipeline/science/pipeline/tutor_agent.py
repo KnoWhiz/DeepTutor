@@ -39,11 +39,11 @@ logger = logging.getLogger("tutorpipeline.science.tutor_agent")
 
 
 def extract_answer_content(message_content):
-    sources = {}
-    source_pages = {}
+    sources = {}    # {source_string: source_score}
+    source_pages = {}    # {source_page_string: source_page_score}
     source_annotations = {}
-    refined_source_pages = {}
-    refined_source_index = {}
+    refined_source_pages = {}    # {refined_source_page_string: refined_source_page_score}
+    refined_source_index = {}    # {refined_source_index_string: refined_source_index_score}
     follow_up_questions = []
     
     # Extract the main answer (content between <response> tags)
@@ -76,6 +76,74 @@ def extract_answer_content(message_content):
             question = clean_translation_prefix(question)
                 
             follow_up_questions.append(question)
+    
+    # Extract sources (content between <source> tags)
+    source_matches = re.finditer(r'<source>(.*?)</source>', message_content, re.DOTALL)
+    for match in source_matches:
+        source_content = match.group(1).strip()
+        # Extract the key and value using regex pattern {key}{value}
+        key_value_match = re.match(r'\{(.*?)\}\{(.*?)\}', source_content)
+        if key_value_match:
+            key = key_value_match.group(1)
+            value = key_value_match.group(2)
+            try:
+                # Convert value to float
+                sources[key] = float(value)
+            except ValueError:
+                # If conversion fails, store as string
+                sources[key] = value
+    
+    # Extract source pages (content between <source_page> tags)
+    source_page_matches = re.finditer(r'<source_page>(.*?)</source_page>', message_content, re.DOTALL)
+    for match in source_page_matches:
+        source_page_content = match.group(1).strip()
+        # Extract the key and value using regex pattern {key}{value}
+        key_value_match = re.match(r'\{(.*?)\}\{(.*?)\}', source_page_content)
+        if key_value_match:
+            key = key_value_match.group(1)
+            value = key_value_match.group(2)
+            try:
+                # Convert value to float
+                source_pages[key] = float(value)
+            except ValueError:
+                # If conversion fails, store as string
+                source_pages[key] = value
+    
+    # Extract refined source pages (content between <refined_source_page> tags)
+    refined_source_page_matches = re.finditer(r'<refined_source_page>(.*?)</refined_source_page>', message_content, re.DOTALL)
+    for match in refined_source_page_matches:
+        refined_source_page_content = match.group(1).strip()
+        # Extract the key and value using regex pattern {key}{value}
+        key_value_match = re.match(r'\{(.*?)\}\{(.*?)\}', refined_source_page_content)
+        if key_value_match:
+            key = key_value_match.group(1)
+            value = key_value_match.group(2)
+            try:
+                # Convert value to float
+                refined_source_pages[key] = float(value)
+            except ValueError:
+                # If conversion fails, store as string
+                refined_source_pages[key] = value
+    
+    # Extract refined source index (content between <refined_source_index> tags)
+    refined_source_index_matches = re.finditer(r'<refined_source_index>(.*?)</refined_source_index>', message_content, re.DOTALL)
+    for match in refined_source_index_matches:
+        refined_source_index_content = match.group(1).strip()
+        # Extract the key and value using regex pattern {key}{value}
+        key_value_match = re.match(r'\{(.*?)\}\{(.*?)\}', refined_source_index_content)
+        if key_value_match:
+            key = key_value_match.group(1)
+            value = key_value_match.group(2)
+            try:
+                # Convert value to float or int
+                refined_source_index[key] = float(value)
+            except ValueError:
+                try:
+                    # Try converting to int if float conversion fails
+                    refined_source_index[key] = int(value)
+                except ValueError:
+                    # If both conversions fail, store as string
+                    refined_source_index[key] = value
     
     return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
 
@@ -613,6 +681,28 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         chat_history=chat_history,
         embedding_folder_list=embedding_folder_list
     )
+
+    for source_key, source_value in sources.items():
+        yield "<source>"
+        yield "{" + str(source_key) + "}"
+        yield "{" + str(source_value) + "}"
+        yield "</source>"
+    for source_page_key, source_page_value in source_pages.items():
+        yield "<source_page>"
+        yield "{" + str(source_page_key) + "}"
+        yield "{" + str(source_page_value) + "}"
+        yield "</source_page>"
+    for refined_source_page_key, refined_source_page_value in refined_source_pages.items():
+        yield "<refined_source_page>"
+        yield "{" + str(refined_source_page_key) + "}"
+        yield "{" + str(refined_source_page_value) + "}"
+        yield "</refined_source_page>"
+    for refined_source_index_key, refined_source_index_value in refined_source_index.items():
+        yield "<refined_source_index>"
+        yield "{" + str(refined_source_index_key) + "}"
+        yield "{" + str(refined_source_index_value) + "}"
+        yield "</refined_source_index>"
+
     time_tracking["source_retrieval"] = time.time() - sources_start
     yield "\n\n**Retrieving sources done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
@@ -993,6 +1083,28 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
         chat_history=chat_history,
         embedding_folder_list=embedding_folder_list
     )
+
+    for source_key, source_value in sources.items():
+        yield "<source>"
+        yield "{" + str(source_key) + "}"
+        yield "{" + str(source_value) + "}"
+        yield "</source>"
+    for source_page_key, source_page_value in source_pages.items():
+        yield "<source_page>"
+        yield "{" + str(source_page_key) + "}"
+        yield "{" + str(source_page_value) + "}"
+        yield "</source_page>"
+    for refined_source_page_key, refined_source_page_value in refined_source_pages.items():
+        yield "<refined_source_page>"
+        yield "{" + str(refined_source_page_key) + "}"
+        yield "{" + str(refined_source_page_value) + "}"
+        yield "</refined_source_page>"
+    for refined_source_index_key, refined_source_index_value in refined_source_index.items():
+        yield "<refined_source_index>"
+        yield "{" + str(refined_source_index_key) + "}"
+        yield "{" + str(refined_source_index_value) + "}"
+        yield "</refined_source_index>"
+
     time_tracking["source_retrieval"] = time.time() - sources_start
     yield "\n\n**Retrieving sources done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")

@@ -311,10 +311,35 @@ def analyze_image(image_url=None, system_prompt=None, user_prompt=None):
         str: The analysis result from the vision model
     """
     if system_prompt is None:
-        system_prompt = "You are an professor helping students to understand images in a research paper. Please describe what you see in detail, and explain the research concept in an easy-to-understand manner."
+        system_prompt = """You are an expert data scientist analyzing scientific figures. Provide factual, accurate analysis of what is ACTUALLY VISIBLE in the image. Focus on statistical information, data visualization elements, and clearly presented facts.
+
+CRITICAL: Do NOT speculate beyond what is explicitly shown. If information is unclear or not provided, state this plainly rather than making assumptions.
+
+Analyze:
+1. Visual elements (chart type, axes, legend, data series)
+2. Visible statistical content (values, trends, error bars)
+3. Explicitly stated information (labels, captions, annotations)
+
+Your analysis should be thorough but strictly limited to observable content."""
 
     if user_prompt is None:
-        user_prompt = "Describe this picture and analyze all the statistics information in detail if needed:"
+        user_prompt = """Analyze this scientific figure with focus on statistical content:
+
+1. DESCRIPTION:
+   - Visualization type, axes, legend components
+   - Variables and data series presented
+
+2. STATISTICAL CONTENT:
+   - Numerical values, ranges, and distributions shown
+   - Statistical indicators visible (means, p-values, error bars)
+   - Apparent trends, patterns or correlations
+   - Notable data points or outliers
+
+3. FACTUAL INTERPRETATION:
+   - What conclusions are explicitly supported by the visible data
+   - Any stated limitations or qualifications
+
+Provide precise descriptions of visible statistical elements. If something is unclear or not shown, simply state "This information is not visible in the image" rather than inferring details."""
 
     # Initialize Azure OpenAI client
     api_base = os.getenv('AZURE_OPENAI_ENDPOINT')

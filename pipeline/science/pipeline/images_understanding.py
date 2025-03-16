@@ -8,6 +8,8 @@ from typing import Dict, List, Set, Union
 from pathlib import Path
 from dotenv import load_dotenv
 from openai import AzureOpenAI
+from langchain_community.vectorstores import FAISS
+from langchain_core.documents import Document
 
 # Add the project root to Python path for direct script execution
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -20,16 +22,19 @@ try:
     # Try importing as a module first
     from pipeline.science.pipeline.utils import generate_file_id
     from pipeline.science.pipeline.config import load_config
+    from pipeline.science.pipeline.embeddings import get_embedding_models
 except ImportError:
     # If that fails, try relative imports
     try:
         from .utils import generate_file_id
         from .config import load_config
+        from .embeddings import get_embedding_models
     except ImportError:
         # Last resort, try direct import from current directory or parent
         sys.path.append(os.path.dirname(current_dir))
         from utils import generate_file_id
         from config import load_config
+        from embeddings import get_embedding_models
 
 load_dotenv()
 
@@ -529,7 +534,7 @@ def aggregate_image_contexts_to_urls(folder_list: List[Union[str, Path]]) -> Dic
     return context_to_url_mapping
 
 
-def create_image_context_embeddings(folder_list: List[Union[str, Path]]) -> List[Dict[str, Union[str, Dict[str, str]]]]:
+def create_image_context_embeddings_text(folder_list: List[Union[str, Path]]) -> List[Dict[str, Union[str, Dict[str, str]]]]:
     """
     Process image contexts from multiple folders and format them as embedding chunks for database storage.
     
@@ -603,6 +608,115 @@ def create_image_context_embeddings(folder_list: List[Union[str, Path]]) -> List
     return embedding_chunks
 
 
+def create_image_context_embeddings_db(folder_list: List[Union[str, Path]], embedding_type: str = "default") -> FAISS:
+    """
+    Process image contexts from multiple folders and create a FAISS database with embeddings.
+    This function is compatible with load_embeddings() return type.
+    
+    Parameters:
+        folder_list (List[Union[str, Path]]): List of folder paths containing image_urls.json and image_context.json files
+        embedding_type (str): Type of embedding model to use ("default", "lite", or "small")
+    
+    Returns:
+        FAISS: A FAISS vector database containing the image context embeddings
+    """
+    # Initialize required components
+    config = load_config()
+    para = config["llm"]
+    embeddings = get_embedding_models(embedding_type, para)
+    
+    # Convert image context data to Document objects for FAISS
+    documents = []
+    
+    for folder in folder_list:
+        folder_path = str(folder) if isinstance(folder, Path) else folder
+        
+        # Extract file_id from the folder path
+        try:
+            file_id = os.path.basename(os.path.dirname(folder_path))
+        except Exception:
+            file_id = "unknown"
+            logger.warning(f"Could not extract file_id from path: {folder_path}, using 'unknown'")
+        
+        # Get paths to the JSON files
+        image_context_path = os.path.join(folder_path, "image_context.json")
+        image_urls_path = os.path.join(folder_path, "image_urls.json")
+        
+        # Check if both files exist
+        if not os.path.exists(image_context_path) or not os.path.exists(image_urls_path):
+            logger.warning(f"Missing required JSON files in folder: {folder_path}")
+            continue
+        
+        # Load the JSON files
+        try:
+            with open(image_context_path, "r", encoding="utf-8") as f:
+                image_contexts = json.load(f)
+            
+            with open(image_urls_path, "r", encoding="utf-8") as f:
+                image_urls = json.load(f)
+            
+            # Process each image and its contexts
+            for image_name, contexts in image_contexts.items():
+                if image_name in image_urls:
+                    image_url = image_urls[image_name]
+                    
+                    # Create a Document object for each context
+                    for i, context in enumerate(contexts):
+                        # Skip empty or None contexts
+                        if not context or not isinstance(context, str):
+                            logger.warning(f"Skipping invalid context for {image_name} at index {i}")
+                            continue
+                        
+                        # Create Document object with metadata
+                        document = Document(
+                            page_content=context,
+                            metadata={
+                                "source_type": "image",
+                                "file_id": file_id,
+                                "image_name": image_name,
+                                "image_url": image_url,
+                                "chunk_id": f"{file_id}_{image_name}_{i}",
+                                "context_index": i,
+                                "source": "image"  # For compatibility with other document sources
+                            }
+                        )
+                        documents.append(document)
+        
+        except Exception as e:
+            logger.warning(f"Error processing files in folder {folder_path}: {str(e)}")
+            continue
+    
+    # Create FAISS database from documents
+    if not documents:
+        logger.warning("No valid image contexts found. Returning empty FAISS database.")
+        # Create an empty FAISS database (may not work as expected)
+        db = FAISS.from_documents(
+            [Document(page_content="Empty placeholder", metadata={"source": "placeholder"})], 
+            embeddings
+        )
+        return db
+    
+    try:
+        # Create the FAISS database with the documents
+        db = FAISS.from_documents(documents, embeddings)
+        logger.info(f"Created FAISS database with {len(documents)} image context embeddings")
+        return db
+    except Exception as e:
+        logger.error(f"Error creating FAISS database: {str(e)}")
+        # Fallback to smaller models if available
+        try:
+            logger.info("Trying with 'small' embedding model...")
+            embeddings_small = get_embedding_models("small", para)
+            db = FAISS.from_documents(documents, embeddings_small)
+            return db
+        except Exception as e2:
+            logger.error(f"Error with small embedding model: {str(e2)}")
+            logger.info("Trying with 'lite' embedding model...")
+            embeddings_lite = get_embedding_models("lite", para)
+            db = FAISS.from_documents(documents, embeddings_lite)
+            return db
+
+
 if __name__ == "__main__":
     # Simple check to make sure all needed imports are working
     print("Imports successful. Running the main function...")
@@ -637,10 +751,10 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"Error testing aggregate_image_contexts_to_urls: {str(e)}")
         
-    # Test the create_image_context_embeddings function
-    print("\nTesting create_image_context_embeddings function:")
+    # Test the create_image_context_embeddings_text function
+    print("\nTesting create_image_context_embeddings_text function (raw data):")
     try:
-        embedding_chunks = create_image_context_embeddings(test_folders)
+        embedding_chunks = create_image_context_embeddings_text(test_folders)
         print(f"Created {len(embedding_chunks)} embedding chunks")
         
         # Print a sample of the embedding chunks (up to all entries)
@@ -652,4 +766,23 @@ if __name__ == "__main__":
             print(f"Metadata: {json.dumps(chunk['metadata'], indent=2)}")
             print("")
     except Exception as e:
-        print(f"Error testing create_image_context_embeddings: {str(e)}")
+        print(f"Error testing create_image_context_embeddings_text: {str(e)}")
+        
+    # Test the create_image_context_embeddings_db function
+    print("\nTesting create_image_context_embeddings_db function (FAISS database):")
+    try:
+        db = create_image_context_embeddings_db(test_folders)
+        print(f"Created FAISS database with image context embeddings")
+        
+        # Test a simple similarity search
+        if db:
+            test_query = "Image 3"
+            results = db.similarity_search(test_query, k=1)
+            print(f"\nSample similarity search results for query: '{test_query}'")
+            for i, doc in enumerate(results):
+                print(f"Result {i+1}:")
+                print(f"Content: {doc.page_content[:100]}..." if len(doc.page_content) > 100 else doc.page_content)
+                print(f"Metadata: {doc.metadata}")
+                print("")
+    except Exception as e:
+        print(f"Error testing create_image_context_embeddings_db: {str(e)}")

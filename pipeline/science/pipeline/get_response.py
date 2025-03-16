@@ -25,7 +25,7 @@ from pipeline.science.pipeline.inference import deep_inference_agent
 from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
 from pipeline.science.pipeline.get_graphrag_response import get_GraphRAG_global_response
 from pipeline.science.pipeline.get_rag_response import get_embedding_folder_rag_response, get_db_rag_response
-from pipeline.science.pipeline.images_understanding import aggregate_image_contexts_to_urls
+from pipeline.science.pipeline.images_understanding import aggregate_image_contexts_to_urls, create_image_context_embeddings_db
 
 import logging
 logger = logging.getLogger("tutorpipeline.science.get_response")
@@ -411,15 +411,15 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
         # except Exception as e:
         #     logger.exception(f"Failed to load markdown embeddings for image mode: {str(e)}")
         #     db = load_embeddings(embedding_folder_list, 'default')
-        # FIXME: Later we can have a separate embedding folder for images context as a sub-database
-        db = load_embeddings(embedding_folder_list, 'default')
-        image_chunks = db.similarity_search_with_score(user_input, k=10)
+        # db = load_embeddings(embedding_folder_list, 'default')
         markdown_folder_list = [os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]
+        db = create_image_context_embeddings_db(markdown_folder_list)
+        image_chunks = db.similarity_search_with_score(user_input, k=1)
         image_url_mapping = aggregate_image_contexts_to_urls(markdown_folder_list)
         if image_chunks:
             question.special_context = """
             Here is the context and visual understanding of the image:
-            """ + image_chunks[0][0].page_content + "\n\n" + image_chunks[1][0].page_content
+            """ + image_chunks[0][0].page_content # + "\n\n" + image_chunks[1][0].page_content
             
             # Get the image url from the image chunks
             highest_score_url = None

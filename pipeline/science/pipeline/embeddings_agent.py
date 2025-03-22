@@ -47,21 +47,26 @@ async def embeddings_agent(_mode, _document, _doc, file_path, embedding_folder, 
     Save the embeddings to the specified folder
     Generate and save document summary using the texts we created
     """
-    yield "Generating embeddings ...\n\n"
+    yield "\n\n**Generating embeddings ...**"
     file_id = generate_file_id(file_path)
     graphrag_start_time = time.time()
     logger.info(f"Current mode: {_mode}")
     if _mode == ChatMode.ADVANCED:
         logger.info("Mode: ChatMode.ADVANCED. Generating GraphRAG embeddings...")
-        yield "Generating GraphRAG embeddings..."
-        time_tracking = await generate_GraphRAG_embedding(embedding_folder, time_tracking)
+        yield "\n\n**Generating GraphRAG embeddings...**"
+        # GraphRAG_embedding_generator = await generate_GraphRAG_embedding(embedding_folder, time_tracking)
+        # if GraphRAG_embedding_generator:
+        #     for chunk in GraphRAG_embedding_generator:
+        #         yield chunk
+        async for chunk in generate_GraphRAG_embedding(embedding_folder, time_tracking):
+            yield chunk
     elif _mode == ChatMode.BASIC:
         # Basic mode is implemented in the following code
         logger.info("Mode: ChatMode.BASIC. Generating VectorRAG embeddings...")
-        yield "Generating VectorRAG embeddings..."
+        yield "\n\n**Generating VectorRAG embeddings...**"
     elif _mode == ChatMode.LITE:
         logger.info("Mode: ChatMode.LITE. Generating LiteRAG embeddings...")
-        yield "Generating LiteRAG embeddings..."
+        yield "\n\n**Generating LiteRAG embeddings...**"
         lite_embedding_start_time = time.time()
         await generate_LiteRAG_embedding(_doc, file_path, embedding_folder)
         time_tracking['lite_embedding_total'] = time.time() - lite_embedding_start_time

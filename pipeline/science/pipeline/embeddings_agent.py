@@ -141,7 +141,7 @@ async def embeddings_agent(
                             logger.info("Received final result tuple from streaming function")
                         else:
                             # This is a progress update if there is no "**" in the string
-                            if "**" not in progress_update:
+                            if "**" not in progress_update and "![" not in progress_update:
                                 yield f"\n\n**API Progress: {progress_update}**"
                             else:
                                 yield f"\n\n{progress_update}"

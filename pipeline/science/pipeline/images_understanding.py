@@ -437,6 +437,7 @@ def process_folder_images(folder_path):
                         # Get image analysis
                         yield f"\n\n**Getting image analysis for {image_name}...**"
                         image_url = urls[image_name]
+                        yield f"\n\n![{image_name}]({image_url})"
                         analysis = analyze_image(image_url)
                         yield f"\n\n**Image analysis for {image_name} completed.**"
                         # Update context with analysis

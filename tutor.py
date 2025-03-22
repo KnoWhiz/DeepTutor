@@ -38,8 +38,6 @@ from frontend.auth import show_auth
 
 from frontend.state import SKIP_AUTH
 
-from frontend.utils import ChatMode, run_async_in_thread
-
 
 if 'isAuth' not in st.session_state:
     st.session_state['isAuth'] = SKIP_AUTH
@@ -116,7 +114,7 @@ if st.session_state['isAuth']:
                         show_pdf_viewer(file)
 
             # Run the async function
-            run_async_in_thread(render_interface)
+            asyncio.run(render_interface())
 
             logger.info(f"st.session_state.current_page is {st.session_state.current_page}")
 

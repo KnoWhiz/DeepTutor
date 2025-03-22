@@ -1,14 +1,11 @@
 import streamlit as st
 import asyncio
-import json
-import logging
-import queue
-import threading
 from pipeline.science.pipeline.tutor_agent import tutor_agent, extract_lite_mode_content, extract_basic_mode_content, extract_advanced_mode_content
 from pipeline.science.pipeline.get_response import generate_follow_up_questions
 from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
-from typing import Generator, Any, AsyncGenerator
+from typing import Generator
 
+import logging
 logger = logging.getLogger("tutorfrontend.utils")
 
 
@@ -56,65 +53,6 @@ def format_response(response_content):
     )
 
 
-def sync_generator_from_async(async_gen):
-    """Convert an async generator to a synchronous generator using threading"""
-    queue = queue.Queue()
-    end_marker = object()  # Unique object to signal the end of the generator
-    
-    def fill_queue():
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        async def consume():
-            try:
-                async for item in async_gen:
-                    queue.put(item)
-            except Exception as e:
-                queue.put(e)
-            finally:
-                queue.put(end_marker)
-                
-        loop.run_until_complete(consume())
-        loop.close()
-    
-    thread = threading.Thread(target=fill_queue)
-    thread.daemon = True
-    thread.start()
-    
-    while True:
-        item = queue.get()
-        if item is end_marker:
-            break
-        if isinstance(item, Exception):
-            raise item
-        yield item
-
-
-def run_async_in_thread(async_func, *args, **kwargs):
-    """Run an async function in a separate thread with its own event loop"""
-    result_queue = queue.Queue()
-    
-    def worker():
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            result = loop.run_until_complete(async_func(*args, **kwargs))
-            result_queue.put(("result", result))
-        except Exception as e:
-            result_queue.put(("error", e))
-        finally:
-            loop.close()
-    
-    thread = threading.Thread(target=worker)
-    thread.daemon = True  # Allow the program to exit even if the thread is running
-    thread.start()
-    
-    result_type, result = result_queue.get()
-    if result_type == "error":
-        raise result
-    return result
-
-
 def process_response_phase(response_placeholder, stream_response: Generator, mode: ChatMode = None, stream: bool = False):
     """
     Process the response phase of the assistant's response.
@@ -124,10 +62,6 @@ def process_response_phase(response_placeholder, stream_response: Generator, mod
         The response content as a string.
     """
     if stream:
-        # If stream_response is an async generator, convert it to a sync generator
-        if hasattr(stream_response, "__aiter__"):
-            stream_response = sync_generator_from_async(stream_response)
-            
         response_content = response_placeholder.write_stream(stream_response)
         # response_content = ""
         # with st.status("Responding...", expanded=True) as status:

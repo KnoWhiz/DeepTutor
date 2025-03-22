@@ -72,7 +72,7 @@ async def embeddings_agent(_mode, _document, _doc, file_path, embedding_folder, 
         doc_processor = None
         texts = None
 
-        yield "Embeddings generated successfully.\n\n"
+        yield "\n\n**Embeddings generated successfully.**"
         return
     else:
         raise ValueError("Invalid mode")
@@ -171,11 +171,11 @@ async def embeddings_agent(_mode, _document, _doc, file_path, embedding_folder, 
             average_page_length = sum(len(doc.page_content) for doc in _document) / len(_document)
             chunk_size = int(average_page_length // 3)
             logger.info(f"Average page length: {average_page_length}")
-            yield f"\n\n**Average page length: {average_page_length}**"
+            yield f"\n\n**Average page length: {int(average_page_length)}**"
             logger.info(f"Chunk size: {chunk_size}")
-            yield f"\n\n**Chunk size: {chunk_size}**"
+            yield f"\n\n**Chunk size: {int(chunk_size)}**"
             texts = create_searchable_chunks(_doc, chunk_size)
-            yield f"\n\n**length of document chunks generated for get_response_source:{len(texts)}**"
+            yield f"\n\n**length of document chunks generated for get_response_source: {len(texts)}**"
             time_tracking['create_searchable_chunks'] = time.time() - create_searchable_chunks_start_time
             logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
@@ -283,5 +283,5 @@ async def embeddings_agent(_mode, _document, _doc, file_path, embedding_folder, 
     doc_processor = None
     texts = None
 
-    yield "Embeddings generated successfully.\n\n"
+    yield "\n\n**Embeddings generated successfully.**"
     return

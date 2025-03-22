@@ -476,7 +476,8 @@ async def extract_pdf_content_to_markdown_via_api_streaming(
         yield "Extracting image context..."
         config = load_config()
         chunk_size = config["embedding"]["chunk_size"]
-        extract_image_context(output_dir, file_path=file_path)
+        for chunk in extract_image_context(output_dir, file_path=file_path):
+            yield chunk
     except Exception as e:
         logger.exception(f"Error extracting image context: {e}")
         yield f"Error extracting image context: {str(e)}"

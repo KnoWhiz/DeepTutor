@@ -114,5 +114,7 @@ def main(num_papers: Optional[int] = None, output_dir: Optional[str] = None) -> 
 
 if __name__ == "__main__":
     print("Script executed directly")
-    main()
+    # dir_path = "/Users/bingran_you/Library/Mobile Documents/com~apple~CloudDocs/Downloads/papers/"
+    dir_path = "./papers/"
+    main(5, dir_path)
     print("Script completed")

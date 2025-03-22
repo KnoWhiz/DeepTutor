@@ -7,6 +7,7 @@ import requests
 import base64
 import time
 from datetime import datetime, UTC
+import asyncio
 
 from dotenv import load_dotenv
 from typing import Tuple, Dict
@@ -213,7 +214,7 @@ def extract_pdf_content_to_markdown_via_api(
         raise FileNotFoundError(f"PDF file not found: {file_path}")
 
     # Generate hash ID for the file
-    with open(file_path, 'rb') as f:
+    with open(file_path, "rb") as f:
         file_id = hashlib.md5(f.read()).hexdigest()
 
     # Create output directory
@@ -285,7 +286,7 @@ def extract_pdf_content_to_markdown_via_api(
                 img = Image.open(io.BytesIO(image_data))
 
                 # Create a valid filename
-                safe_filename = "".join(c for c in filename if c.isalnum() or c in ('-', '_', '.'))
+                safe_filename = "".join(c for c in filename if c.isalnum() or c in ("-", "_", "."))
                 output_path = output_dir / safe_filename
 
                 # Save the image
@@ -307,7 +308,7 @@ def extract_pdf_content_to_markdown_via_api(
     # Extract image context
     try:
         config = load_config()
-        chunk_size = config['embedding']['chunk_size']
+        chunk_size = config["embedding"]["chunk_size"]
         extract_image_context(output_dir, file_path=file_path)
     except Exception as e:
         logger.exception(f"Error extracting image context: {e}")
@@ -316,10 +317,180 @@ def extract_pdf_content_to_markdown_via_api(
     return str(md_path), saved_images, markdown
 
 
+async def extract_pdf_content_to_markdown_via_api_streaming(
+    file_path: str | Path,
+    output_dir: str | Path,
+):
+    """
+    Extract text and images from a PDF file using the Marker API and save them to the specified directory.
+    This is an async generator function that yields progress updates during processing.
+
+    Args:
+        file_path: Path to the input PDF file
+        output_dir: Directory where images and markdown will be saved
+
+    Yields:
+        Progress updates as strings or final result as tuple
+
+    Returns:
+        None - the final result is yielded as a tuple
+    """
+    import aiohttp
+    
+    # Load environment variables and validate input
+    load_dotenv()
+    API_KEY = os.getenv("MARKER_API_KEY")
+    if not API_KEY:
+        raise ValueError("MARKER_API_KEY not found in environment variables")
+
+    # Validate input PDF exists
+    file_path = Path(file_path)
+    if not file_path.exists():
+        raise FileNotFoundError(f"PDF file not found: {file_path}")
+
+    yield "Generating file ID..."
+    # Generate hash ID for the file
+    with open(file_path, "rb") as f:
+        file_id = hashlib.md5(f.read()).hexdigest()
+
+    # Create output directory
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    API_URL = "https://www.datalab.to/api/v1/marker"
+
+    yield "Submitting file to Marker API..."
+    # Submit the file to API - use requests for initial upload since it handles multipart/form-data better
+    with open(file_path, "rb") as f:
+        form_data = {
+            "file": (str(file_path), f, "application/pdf"),
+            "langs": (None, "English"),
+            "force_ocr": (None, False),
+            "paginate": (None, False),
+            "output_format": (None, "markdown"),
+            "use_llm": (None, False),
+            "strip_existing_ocr": (None, False),
+            "disable_image_extraction": (None, False),
+        }
+        headers = {"X-Api-Key": API_KEY}
+        response = requests.post(API_URL, files=form_data, headers=headers)
+
+    # Check initial response
+    data = response.json()
+    if not data.get("success"):
+        raise Exception(f"API request failed: {data.get('error')}")
+
+    request_check_url = data.get("request_check_url")
+    logger.info("Submitted request. Polling for results...")
+    yield "Request submitted. Polling for results..."
+
+    # Poll until processing is complete using aiohttp
+    max_polls = 300
+    poll_interval = 2
+    result = None
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            for i in range(max_polls):
+                try:
+                    await asyncio.sleep(poll_interval)
+                    async with session.get(request_check_url, headers=headers) as poll_response:
+                        if poll_response.status != 200:
+                            error_text = await poll_response.text()
+                            logger.error(f"API polling error: Status {poll_response.status}, {error_text}")
+                            yield f"Error during polling: Status {poll_response.status}"
+                            continue
+                            
+                        result = await poll_response.json()
+                        status = result.get("status")
+                        progress = result.get("progress", 0)
+                        logger.info(f"Poll {i+1}: status = {status}, progress = {progress}%")
+                        yield f"Processing: {status} - {progress}% complete"
+                        
+                        if status == "complete":
+                            break
+                except aiohttp.ClientError as e:
+                    logger.error(f"Network error during polling: {str(e)}")
+                    yield f"Network error during polling: {str(e)}"
+                    await asyncio.sleep(poll_interval * 2)  # Wait longer before retrying
+            else:
+                raise Exception("The request did not complete within the expected time.")
+    except Exception as e:
+        logger.exception(f"Unexpected error during API polling: {str(e)}")
+        yield f"Error: {str(e)}"
+        raise
+
+    # Process and save results
+    if not result.get("success"):
+        raise Exception(f"Processing failed: {result.get('error')}")
+
+    # Save markdown content with hash ID
+    yield "Processing completed. Saving markdown content..."
+    markdown = result.get("markdown", "")
+    md_path = output_dir / f"{file_id}.md"
+    with open(md_path, "w", encoding="utf-8") as md_file:
+        md_file.write(markdown)
+    logger.info(f"Saved markdown to: {md_path}")
+
+    # Process and save images
+    saved_images: Dict[str, Image.Image] = {}
+    images = result.get("images", {})
+
+    if images:
+        img_count = len(images)
+        yield f"Processing {img_count} images..."
+        logger.info(f"Processing {img_count} images...")
+        for idx, (filename, b64data) in enumerate(images.items(), 1):
+            try:
+                # Create PIL Image from base64 data
+                image_data = base64.b64decode(b64data)
+                img = Image.open(io.BytesIO(image_data))
+
+                # Create a valid filename
+                safe_filename = "".join(c for c in filename if c.isalnum() or c in ("-", "_", "."))
+                output_path = output_dir / safe_filename
+
+                # Save the image
+                img.save(output_path)
+                saved_images[filename] = img
+                logger.info(f"Saved image: {output_path}")
+                yield f"Saved image {idx}/{img_count}: {safe_filename}"
+            except Exception as e:
+                logger.exception(f"Error saving image {filename}: {e}")
+                yield f"Error saving image {filename}: {str(e)}"
+    else:
+        logger.info("No images were returned with the result")
+        yield "No images were returned with the result"
+
+    # Save markdown file and images to Azure Blob Storage
+    try:
+        yield "Uploading markdown and images to Azure Blob Storage..."
+        upload_markdown_to_azure(output_dir, file_path)
+        upload_images_to_azure(output_dir, file_path)
+    except Exception as e:
+        logger.exception(f"Error uploading markdown and images to Azure Blob Storage: {e}")
+        yield f"Error uploading to Azure: {str(e)}"
+
+    # Extract image context
+    try:
+        yield "Extracting image context..."
+        config = load_config()
+        chunk_size = config["embedding"]["chunk_size"]
+        extract_image_context(output_dir, file_path=file_path)
+    except Exception as e:
+        logger.exception(f"Error extracting image context: {e}")
+        yield f"Error extracting image context: {str(e)}"
+        raise Exception(f"Error extracting image context: {e}")
+
+    yield "PDF extraction complete!"
+    # Yield the final result tuple instead of returning it
+    yield (str(md_path), saved_images, markdown)
+
+
 def extract_pdf_content_to_markdown(
     file_path: str | Path,
     output_dir: str | Path,
-) -> Tuple[str, Dict[str, Image.Image]]:
+) -> Tuple[str, Dict[str, Image.Image], str]:
     """
     Extract text and images from a PDF file and save them to the specified directory.
 
@@ -331,6 +502,7 @@ def extract_pdf_content_to_markdown(
         Tuple containing:
         - Path to the saved markdown file
         - Dictionary of image names and their PIL Image objects
+        - Markdown content (str)
 
     Raises:
         FileNotFoundError: If PDF file doesn't exist
@@ -409,3 +581,10 @@ def extract_pdf_content_to_markdown(
     except Exception as e:
         logger.exception(f"Error processing PDF: {str(e)}")
         raise Exception(f"Error processing PDF: {str(e)}")
+
+__all__ = [
+    "mdDocumentProcessor",
+    "extract_pdf_content_to_markdown_via_api",
+    "extract_pdf_content_to_markdown",
+    "extract_pdf_content_to_markdown_via_api_streaming",
+]

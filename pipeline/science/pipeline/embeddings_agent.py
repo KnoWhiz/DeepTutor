@@ -19,7 +19,8 @@ from pipeline.science.pipeline.get_doc_summary import generate_document_summary
 from pipeline.science.pipeline.doc_processor import (
     mdDocumentProcessor,
     extract_pdf_content_to_markdown_via_api,
-    extract_pdf_content_to_markdown
+    extract_pdf_content_to_markdown,
+    extract_pdf_content_to_markdown_via_api_streaming,
 )
 from pipeline.science.pipeline.embeddings import (
     get_embedding_models,
@@ -37,7 +38,14 @@ SKIP_MARKER_API = True if os.getenv("ENVIRONMENT") == "local" else False
 logger.info(f"SKIP_MARKER_API: {SKIP_MARKER_API}")
 
 
-async def embeddings_agent(_mode, _document, _doc, file_path, embedding_folder, time_tracking: Dict[str, float] = {}):
+async def embeddings_agent(
+    _mode: ChatMode,
+    _document: list,
+    _doc: "fitz.Document",
+    file_path: str,
+    embedding_folder: str,
+    time_tracking: Dict[str, float] = {}
+):
     """
     Generate embeddings for the document
     If the embeddings already exist, load them
@@ -115,8 +123,43 @@ async def embeddings_agent(_mode, _document, _doc, file_path, embedding_folder, 
                 logger.info("Marker API is enabled. Using Marker API to extract content to markdown.")
                 yield "\n\n**Using Marker API to extract content to markdown...**"
                 markdown_dir = os.path.join(embedding_folder, "markdown")
-                md_path, saved_images, md_document = extract_pdf_content_to_markdown_via_api(file_path, markdown_dir)
-                doc_processor.set_md_document(md_document)
+                
+                # Use the streaming version of extract_pdf_content_to_markdown_via_api
+                yield "\n\n**Starting PDF extraction via API with streaming updates...**"
+                
+                # Call the streaming version and get status updates
+                md_path = None
+                saved_images = None
+                md_document = None
+                
+                try:
+                    # Use the async streaming version that both yields progress and returns the final result
+                    async for progress_update in extract_pdf_content_to_markdown_via_api_streaming(file_path, markdown_dir):
+                        if isinstance(progress_update, tuple) and len(progress_update) == 3:
+                            # This is the final return value - a tuple with (md_path, saved_images, md_document)
+                            md_path, saved_images, md_document = progress_update
+                            logger.info("Received final result tuple from streaming function")
+                        else:
+                            # This is a progress update
+                            yield f"\n\n**API Progress: {progress_update}**"
+                    
+                    # Verify we received the expected return values
+                    if md_path is None or saved_images is None or md_document is None:
+                        logger.error("Failed to extract PDF content - incomplete return values")
+                        raise Exception("Failed to extract PDF content - incomplete return values")
+                    
+                    logger.info(f"PDF extraction completed. MD document length: {len(md_document) if md_document else 0}")
+                    doc_processor.set_md_document(md_document)
+                    yield "\n\n**PDF extraction completed successfully**"
+                except Exception as e:
+                    logger.exception(f"Error during streaming PDF extraction: {str(e)}")
+                    yield f"\n\n**Error during PDF extraction: {str(e)}**"
+                    
+                    # Fall back to non-streaming version
+                    yield "\n\n**Falling back to standard extraction method...**"
+                    md_path, saved_images, md_document = extract_pdf_content_to_markdown_via_api(file_path, markdown_dir)
+                    doc_processor.set_md_document(md_document)
+                    yield "\n\n**PDF extraction completed with fallback method**"
             else:
                 logger.info("Marker API is disabled. Using local PDF extraction.")
                 yield "\n\n**Using local PDF extraction to extract content to markdown...**"

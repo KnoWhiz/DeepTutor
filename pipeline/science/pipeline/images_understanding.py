@@ -68,7 +68,7 @@ def count_tokens(text: str) -> int:
     Returns:
         int: Estimated number of tokens
     """
-    # This is a simple estimation - in practice you might want to use 
+    # This is a simple estimation - in practice you might want to use
     # a proper tokenizer from transformers or tiktoken
     return len(text.split())
 
@@ -391,7 +391,7 @@ Provide precise descriptions of visible statistical elements. If something is un
 
     except Exception as e:
         logger.exception(f"Error occurred in analyze_image with Azure OpenAI: {str(e)}")
-        
+
         # Try another model for image understanding
         result = process_image_with_llama(image_url, system_prompt)
         return result
@@ -445,12 +445,12 @@ def process_folder_images(folder_path):
 def process_image_with_llama(image_url, prompt_text, stream=False):
     """
     Process an image with Llama-3.2-90B-Vision-Instruct model.
-    
+
     Args:
         image_url (str): URL of the image to process
         prompt_text (str): Text prompt to send along with the image
         stream (bool): Whether to stream the response incrementally (default: False)
-        
+
     Returns:
         str or generator: The model's response as text, or a generator of response chunks if stream = True
     """
@@ -459,10 +459,10 @@ def process_image_with_llama(image_url, prompt_text, stream=False):
         api_key=os.environ.get("SAMBANOVA_API_KEY"),
         base_url="https://api.sambanova.ai/v1",
     )
-    
+
     # Convert image URL to base64
     base64_image = get_image_base64(image_url)
-    
+
     try:
         response = client.chat.completions.create(
             model="Llama-3.2-90B-Vision-Instruct",
@@ -479,11 +479,11 @@ def process_image_with_llama(image_url, prompt_text, stream=False):
             top_p=0.1,
             stream=stream
         )
-        
+
         # Handle streaming response
         if stream:
             return response  # Return the streaming response generator
-        
+
         # Return the model's response for non-streaming case
         if hasattr(response, 'choices') and response.choices:
             return response.choices[0].message.content
@@ -508,7 +508,7 @@ def get_image_base64(image_url):
                 content_type = 'image/webp'
             else:
                 content_type = 'image/jpeg'  # Default to JPEG
-        
+
         # Encode the image in base64
         base64_image = base64.b64encode(response.content).decode('utf-8')
         # Return in required format
@@ -520,70 +520,70 @@ def get_image_base64(image_url):
 def aggregate_image_contexts_to_urls(folder_list: List[Union[str, Path]]) -> Dict[str, str]:
     """
     Create a mapping from image context strings to their corresponding URLs in Azure Blob.
-    
+
     Parameters:
         folder_list (List[Union[str, Path]]): List of folder paths containing image_urls.json and image_context.json files
-    
+
     Returns:
         Dict[str, str]: Dictionary mapping from context string to image URL
-        
-    Note: 
-        If multiple context strings are identical across different images, 
+
+    Note:
+        If multiple context strings are identical across different images,
         the last processed image URL will be associated with that context.
     """
     context_to_url_mapping: Dict[str, str] = {}
-    
+
     for folder in folder_list:
         folder_path = str(folder) if isinstance(folder, Path) else folder
-        
+
         # Get paths to the JSON files using os.path.join
         image_context_path = os.path.join(folder_path, "image_context.json")
         image_urls_path = os.path.join(folder_path, "image_urls.json")
-        
+
         # Check if both files exist
         if not os.path.exists(image_context_path) or not os.path.exists(image_urls_path):
             logger.warning(f"Missing required JSON files in folder: {folder_path}")
             continue
-        
+
         # Load the JSON files
         try:
             with open(image_context_path, "r", encoding="utf-8") as f:
                 image_contexts = json.load(f)
-            
+
             with open(image_urls_path, "r", encoding="utf-8") as f:
                 image_urls = json.load(f)
-            
+
             # Create mapping from context to URL
             for image_name, contexts in image_contexts.items():
                 if image_name in image_urls:
                     image_url = image_urls[image_name]
-                    
+
                     # Map each context to the image URL
                     for context in contexts:
                         context_to_url_mapping[context] = image_url
-        
+
         except Exception as e:
             logger.warning(f"Error processing files in folder {folder_path}: {str(e)}")
             continue
-    
+
     return context_to_url_mapping
 
 
 def create_image_context_embeddings_text(folder_list: List[Union[str, Path]]) -> List[Dict[str, Union[str, Dict[str, str]]]]:
     """
     Process image contexts from multiple folders and format them as embedding chunks for database storage.
-    
+
     Parameters:
         folder_list (List[Union[str, Path]]): List of folder paths containing image_urls.json and image_context.json files
-    
+
     Returns:
         List[Dict[str, Union[str, Dict[str, str]]]]: List of embedding chunks with image contexts and metadata
     """
     embedding_chunks: List[Dict[str, Union[str, Dict[str, str]]]] = []
-    
+
     for folder in folder_list:
         folder_path = str(folder) if isinstance(folder, Path) else folder
-        
+
         # Extract file_id from the folder path
         # Assuming folder structure like: "/path/to/embedded_content/{file_id}/markdown"
         try:
@@ -591,36 +591,36 @@ def create_image_context_embeddings_text(folder_list: List[Union[str, Path]]) ->
         except Exception:
             file_id = "unknown"
             logger.warning(f"Could not extract file_id from path: {folder_path}, using 'unknown'")
-        
+
         # Get paths to the JSON files
         image_context_path = os.path.join(folder_path, "image_context.json")
         image_urls_path = os.path.join(folder_path, "image_urls.json")
-        
+
         # Check if both files exist
         if not os.path.exists(image_context_path) or not os.path.exists(image_urls_path):
             logger.warning(f"Missing required JSON files in folder: {folder_path}")
             continue
-        
+
         # Load the JSON files
         try:
             with open(image_context_path, "r", encoding="utf-8") as f:
                 image_contexts = json.load(f)
-            
+
             with open(image_urls_path, "r", encoding="utf-8") as f:
                 image_urls = json.load(f)
-            
+
             # Process each image and its contexts
             for image_name, contexts in image_contexts.items():
                 if image_name in image_urls:
                     image_url = image_urls[image_name]
-                    
+
                     # Create an embedding chunk for each context
                     for i, context in enumerate(contexts):
                         # Skip empty or None contexts
                         if not context or not isinstance(context, str):
                             logger.warning(f"Skipping invalid context for {image_name} at index {i}")
                             continue
-                            
+
                         # Create chunk with context and metadata
                         chunk = {
                             "text": context,
@@ -634,11 +634,11 @@ def create_image_context_embeddings_text(folder_list: List[Union[str, Path]]) ->
                             }
                         }
                         embedding_chunks.append(chunk)
-        
+
         except Exception as e:
             logger.warning(f"Error processing files in folder {folder_path}: {str(e)}")
             continue
-    
+
     logger.info(f"Created {len(embedding_chunks)} embedding chunks from image contexts")
     return embedding_chunks
 
@@ -647,11 +647,11 @@ def create_image_context_embeddings_db(folder_list: List[Union[str, Path]], embe
     """
     Process image contexts from multiple folders and create a FAISS database with embeddings.
     This function is compatible with load_embeddings() return type.
-    
+
     Parameters:
         folder_list (List[Union[str, Path]]): List of folder paths containing image_urls.json and image_context.json files
         embedding_type (str): Type of embedding model to use ("default", "lite", or "small")
-    
+
     Returns:
         FAISS: A FAISS vector database containing the image context embeddings
     """
@@ -659,49 +659,49 @@ def create_image_context_embeddings_db(folder_list: List[Union[str, Path]], embe
     config = load_config()
     para = config["llm"]
     embeddings = get_embedding_models(embedding_type, para)
-    
+
     # Convert image context data to Document objects for FAISS
     documents = []
-    
+
     for folder in folder_list:
         folder_path = str(folder) if isinstance(folder, Path) else folder
-        
+
         # Extract file_id from the folder path
         try:
             file_id = os.path.basename(os.path.dirname(folder_path))
         except Exception:
             file_id = "unknown"
             logger.warning(f"Could not extract file_id from path: {folder_path}, using 'unknown'")
-        
+
         # Get paths to the JSON files
         image_context_path = os.path.join(folder_path, "image_context.json")
         image_urls_path = os.path.join(folder_path, "image_urls.json")
-        
+
         # Check if both files exist
         if not os.path.exists(image_context_path) or not os.path.exists(image_urls_path):
             logger.warning(f"Missing required JSON files in folder: {folder_path}")
             continue
-        
+
         # Load the JSON files
         try:
             with open(image_context_path, "r", encoding="utf-8") as f:
                 image_contexts = json.load(f)
-            
+
             with open(image_urls_path, "r", encoding="utf-8") as f:
                 image_urls = json.load(f)
-            
+
             # Process each image and its contexts
             for image_name, contexts in image_contexts.items():
                 if image_name in image_urls:
                     image_url = image_urls[image_name]
-                    
+
                     # Create a Document object for each context
                     for i, context in enumerate(contexts):
                         # Skip empty or None contexts
                         if not context or not isinstance(context, str):
                             logger.warning(f"Skipping invalid context for {image_name} at index {i}")
                             continue
-                        
+
                         # Create Document object with metadata
                         document = Document(
                             page_content=context,
@@ -716,21 +716,21 @@ def create_image_context_embeddings_db(folder_list: List[Union[str, Path]], embe
                             }
                         )
                         documents.append(document)
-        
+
         except Exception as e:
             logger.warning(f"Error processing files in folder {folder_path}: {str(e)}")
             continue
-    
+
     # Create FAISS database from documents
     if not documents:
         logger.warning("No valid image contexts found. Returning empty FAISS database.")
         # Create an empty FAISS database (may not work as expected)
         db = FAISS.from_documents(
-            [Document(page_content="Empty placeholder", metadata={"source": "placeholder"})], 
+            [Document(page_content="Empty placeholder", metadata={"source": "placeholder"})],
             embeddings
         )
         return db
-    
+
     try:
         # Create the FAISS database with the documents
         db = FAISS.from_documents(documents, embeddings)
@@ -755,13 +755,13 @@ def create_image_context_embeddings_db(folder_list: List[Union[str, Path]], embe
 if __name__ == "__main__":
     # Simple check to make sure all needed imports are working
     print("Imports successful. Running the main function...")
-    
+
     # folder_dir = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/16005aaa19145334b5605c6bf61661a0/markdown/"
     folder_dir = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/c5e6dadde391f97ac2ba65acf827248e/markdown"
     # file_path = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/16005aaa19145334b5605c6bf61661a0/16005aaa19145334b5605c6bf61661a0.pdf"
     # extract_image_context(folder_dir, file_path)
     # # upload_images_to_azure(folder_dir)
-    
+
     # Test the aggregate_image_contexts_to_urls function
     test_folders = [
         "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/c5e6dadde391f97ac2ba65acf827248e/markdown",
@@ -769,12 +769,12 @@ if __name__ == "__main__":
         # Add additional test folders if available
         # "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/16005aaa19145334b5605c6bf61661a0/markdown/"
     ]
-    
+
     print("\nTesting aggregate_image_contexts_to_urls function:")
     try:
         context_url_mapping = aggregate_image_contexts_to_urls(test_folders)
         print(f"Found {len(context_url_mapping)} context-to-URL mappings")
-        
+
         # Print a sample of the mapping (up to 3 entries)
         for i, (context, url) in enumerate(list(context_url_mapping.items())):
             # Truncate long contexts for display
@@ -785,13 +785,13 @@ if __name__ == "__main__":
             print("")
     except Exception as e:
         print(f"Error testing aggregate_image_contexts_to_urls: {str(e)}")
-        
+
     # Test the create_image_context_embeddings_text function
     print("\nTesting create_image_context_embeddings_text function (raw data):")
     try:
         embedding_chunks = create_image_context_embeddings_text(test_folders)
         print(f"Created {len(embedding_chunks)} embedding chunks")
-        
+
         # Print a sample of the embedding chunks (up to all entries)
         for i, chunk in enumerate(embedding_chunks):
             # Truncate long texts for display
@@ -802,13 +802,13 @@ if __name__ == "__main__":
             print("")
     except Exception as e:
         print(f"Error testing create_image_context_embeddings_text: {str(e)}")
-        
+
     # Test the create_image_context_embeddings_db function
     print("\nTesting create_image_context_embeddings_db function (FAISS database):")
     try:
         db = create_image_context_embeddings_db(test_folders)
         print(f"Created FAISS database with image context embeddings")
-        
+
         # Test a simple similarity search
         if db:
             test_query = "Image 3"

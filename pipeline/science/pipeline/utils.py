@@ -64,7 +64,7 @@ def format_time_tracking(time_tracking: Dict[str, float]) -> str:
     """
     formatted_times = []
     for key, value in time_tracking.items():
-        if key == "0. session_id" or key == "0. session_type":
+        if key == "0. session_id" or key == "0. session_type" or key == "0. new_message_id":
             formatted_times.append(f"{key}: {value}")
             continue
         if key == "0. start_time":

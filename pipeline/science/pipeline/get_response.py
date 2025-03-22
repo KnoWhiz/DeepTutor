@@ -105,7 +105,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         4. Begin with a friendly greeting and end with an encouraging note
         5. Break down complex information into digestible chunks
         6. Use appropriate emojis (📚, 💡, ✅, etc.) to enhance readability
-        7. When explaining technical concepts, provide simple examples 
+        7. When explaining technical concepts, provide simple examples
         8. If you're unsure about an answer, be honest and transparent
         9. Include 2-3 follow-up questions at the end to encourage deeper learning
         10. Use bullet points or numbered lists for step-by-step explanations
@@ -113,7 +113,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         Remember: Your goal is to make learning enjoyable and accessible. Keep your tone positive, supportive, and engaging at all times.
         """
         actual_embedding_folder_list = [os.path.join(embedding_folder, 'lite_embedding') for embedding_folder in embedding_folder_list]
-        
+
         db = load_embeddings(actual_embedding_folder_list, 'lite')
         logger.info(f"Type of db: {type(db)}")
         answer = await get_db_rag_response(
@@ -154,7 +154,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
             \frac{{a}}{{b}} = \frac{{c}}{{d}}
             $$
             """ + "\n\nThis is a detailed plan for constructing the answer: " + str(question.answer_planning)
-        
+
         # Load embeddings for Non-deep thinking mode
         try:
             logger.info(f"Loading markdown embeddings from {[os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]}")
@@ -186,7 +186,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         except Exception as e:
             logger.exception(f"Failed to load markdown embeddings for deep thinking mode: {str(e)}")
             db = load_embeddings(embedding_folder_list, 'default')
-        
+
         # Load config for deep thinking mode
         config = load_config()
         token_limit = config["inference_token_limit"]
@@ -260,7 +260,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
 def get_query_helper(chat_session: ChatSession, user_input, context_chat_history, embedding_folder_list):
     # Replace LaTeX formulas in the format \( formula \) with $ formula $
     user_input = replace_latex_formulas(user_input)
-    
+
     logger.info(f"TEST: user_input: {user_input}")
     # If we have "documents_summary" in the embedding folder, we can use it to speed up the search
     document_summary_path_list = [os.path.join(embedding_folder, "documents_summary.txt") for embedding_folder in embedding_folder_list]
@@ -333,19 +333,19 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
     planning_system_prompt = (
         """
         You are an educational AI assistant tasked with deeply analyzing a student's question and planning a comprehensive answer.
-        
+
         Your goal is to:
         1. Understand what the student truly wants to know based on the conversation history and current question
         2. Create a detailed plan for constructing the answer
         3. Identify what information should be included in the answer
         4. Identify what information should NOT be included (e.g., repeated information, information the student already knows)
-        
+
         Document summary:
         ```{context}```
-        
+
         Previous conversation history:
         ```{chat_history}```
-        
+
         Organize your analysis in the following JSON format:
         ```json
         {{
@@ -361,28 +361,28 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
         ```
         """
     )
-    
+
     planning_human_prompt = (
         """
         The student's current question:
         ```{input}```
-        
+
         The rephrased question for RAG context:
         ```{rephrased_question}```
-        
+
         Question type: {question_type}
-        
+
         Based on the conversation history, document summary, and the current question, create a detailed plan for constructing the answer.
         """
     )
-    
+
     planning_prompt = ChatPromptTemplate.from_messages(
         [
             ("system", planning_system_prompt),
             ("human", planning_human_prompt),
         ]
     )
-    
+
     planning_chain = planning_prompt | llm | error_parser
     answer_planning = planning_chain.invoke({
         "input": user_input,
@@ -394,8 +394,8 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
     logger.info(f"TEST: answer_planning: {answer_planning}")
 
     question = Question(
-        text=question, 
-        language=language, 
+        text=question,
+        language=language,
         question_type=question_type,
         answer_planning=answer_planning,
         image_url=None,
@@ -414,11 +414,11 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
             question.special_context = """
             Here is the context and visual understanding of the corresponding image:
             """ + image_chunks[0][0].page_content # + "\n\n" + image_chunks[1][0].page_content
-            
+
             # Get the image url from the image chunks
             highest_score_url = None
             highest_score = float('-inf')
-            
+
             for chunk, score in image_chunks:
                 chunk_content = chunk.page_content
                 # Check if any key from image_url_mapping exists in the chunk content
@@ -427,18 +427,18 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
                         highest_score = score
                         highest_score_url = url
                         logger.info(f"Found matching image URL: {url} with score: {score}")
-            
+
             # Set the image URL with the highest score in the question object
             if highest_score_url:
                 question.image_url = highest_score_url
                 logger.info(f"Setting image URL in question: {highest_score_url}")
-        
+
         if question.image_url:
             # Get the images understanding from the image url about the question
             question.special_context = """
             Here is the context and visual understanding of the corresponding image:
             """ + analyze_image(question.image_url, f"The user's question is: {question.text}", f"The user's question is: {question.text}")
-            
+
         logger.info(f"TEST: question.special_context: {question.special_context}")
     elif question_type == "local":
         logger.info(f"question_type for input: {user_input} is --local-- ...")

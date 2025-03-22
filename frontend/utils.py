@@ -1,6 +1,6 @@
 import streamlit as st
 import asyncio
-from pipeline.science.pipeline.tutor_agent import tutor_agent
+from pipeline.science.pipeline.tutor_agent import tutor_agent, extract_lite_mode_content, extract_basic_mode_content, extract_advanced_mode_content
 from pipeline.science.pipeline.get_response import generate_follow_up_questions
 from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
 from typing import Generator
@@ -10,19 +10,27 @@ logger = logging.getLogger("tutorfrontend.utils")
 
 
 def streamlit_tutor_agent(chat_session, file_path, user_input):    
-    answer, \
-    sources, \
-    source_pages, \
-    source_annotations, \
-    refined_source_pages, \
-    refined_source_index, \
-    follow_up_questions = asyncio.run(tutor_agent(
+    answer_generator = asyncio.run(tutor_agent(
         chat_session=chat_session,
         file_path_list=[file_path],
         user_input=user_input,
         deep_thinking=True
     ))
-    return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
+    source_pages = {}
+    source_annotations = {}
+    refined_source_pages = {}
+    refined_source_index = {}
+    follow_up_questions = []
+    thinking = ""
+    # Check the session type and set the extract_content_func
+    if chat_session.mode == ChatMode.LITE:
+        extract_content_func = extract_lite_mode_content
+    elif chat_session.mode == ChatMode.BASIC:
+        extract_content_func = extract_basic_mode_content
+    elif chat_session.mode == ChatMode.ADVANCED:
+        extract_content_func = extract_advanced_mode_content
+    answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions, thinking = extract_content_func(chat_session.current_message)
+    return answer_generator, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
 
 
 def format_reasoning_response(thinking_content):

@@ -45,13 +45,14 @@ def extract_answer_content(message_content):
     refined_source_pages = {}    # {refined_source_page_string: refined_source_page_score}
     refined_source_index = {}    # {refined_source_index_string: refined_source_index_score}
     follow_up_questions = []
-    
+
     # Extract the main answer (content between <response> tags)
     # The logic is: if we have <response> tags, we extract the content between them
     # Otherwise, we extract the content between <original_response> and </original_response> tags
     # If we have neither, we extract the content between <thinking> and </thinking> tags
     # If we have none of the above, we return an empty string
     answer = ""
+    thinking = ""
     response_match = re.search(r'<response>(.*?)</response>', message_content, re.DOTALL)
     original_response_match = re.search(r'<original_response>(.*?)</original_response>', message_content, re.DOTALL)
     thinking_match = re.search(r'<thinking>(.*?)</thinking>', message_content, re.DOTALL)
@@ -63,7 +64,10 @@ def extract_answer_content(message_content):
         answer = thinking_match.group(1).strip()
     else:
         answer = ""
-    
+
+    if thinking_match:
+        thinking = thinking_match.group(1).strip()
+
     # Extract follow-up questions (content between <followup_question> tags)
     followup_matches = re.finditer(r'<followup_question>(.*?)</followup_question>', message_content, re.DOTALL)
     for match in followup_matches:
@@ -71,12 +75,12 @@ def extract_answer_content(message_content):
         if question:
             # Remove any residual XML tags
             question = re.sub(r'<followup_question>.*?</followup_question>', '', question)
-            
+
             # Apply the clean_translation_prefix function
             question = clean_translation_prefix(question)
-                
+
             follow_up_questions.append(question)
-    
+
     # Extract sources (content between <source> tags)
     source_matches = re.finditer(r'<source>(.*?)</source>', message_content, re.DOTALL)
     for match in source_matches:
@@ -92,7 +96,7 @@ def extract_answer_content(message_content):
             except ValueError:
                 # If conversion fails, store as string
                 sources[key] = value
-    
+
     # Extract source pages (content between <source_page> tags)
     source_page_matches = re.finditer(r'<source_page>(.*?)</source_page>', message_content, re.DOTALL)
     for match in source_page_matches:
@@ -108,7 +112,7 @@ def extract_answer_content(message_content):
             except ValueError:
                 # If conversion fails, store as string
                 source_pages[key] = value
-    
+
     # Extract refined source pages (content between <refined_source_page> tags)
     refined_source_page_matches = re.finditer(r'<refined_source_page>(.*?)</refined_source_page>', message_content, re.DOTALL)
     for match in refined_source_page_matches:
@@ -124,7 +128,7 @@ def extract_answer_content(message_content):
             except ValueError:
                 # If conversion fails, store as string
                 refined_source_pages[key] = value
-    
+
     # Extract refined source index (content between <refined_source_index> tags)
     refined_source_index_matches = re.finditer(r'<refined_source_index>(.*?)</refined_source_index>', message_content, re.DOTALL)
     for match in refined_source_index_matches:
@@ -144,8 +148,8 @@ def extract_answer_content(message_content):
                 except ValueError:
                     # If both conversions fail, store as string
                     refined_source_index[key] = value
-    
-    return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
+
+    return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions, thinking
 
 
 def extract_lite_mode_content(message_content):
@@ -164,18 +168,18 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
     """
     Taking the user input, document, and chat history, generate a response and sources.
     If user_input is None, generates the initial welcome message.
-    
-    This function acts as a router that calls the appropriate specialized function 
+
+    This function acts as a router that calls the appropriate specialized function
     based on the chat session mode.
     """
     # Initialize the current message
     chat_session.current_message = ""
     if time_tracking is None:
         time_tracking = {}
-    
+
     config = load_config()
     stream = config["stream"]
-    
+
     # Route to appropriate specialized agent based on mode
     if chat_session.mode == ChatMode.LITE:
         return await tutor_agent_lite(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream)
@@ -186,39 +190,41 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
     else:
         logger.error(f"Invalid chat mode: {chat_session.mode}")
         error_message = "Error: Invalid chat mode."
-        return error_message, {}, {}, {}, {}, {}, []
+        # return error_message, {}, {}, {}, {}, {}, []
+        return error_message
 
 
 async def tutor_agent_lite(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
     """
     Lightweight tutor agent that provides basic tutoring capabilities with minimal resource usage.
     Uses LiteRAG for document processing and doesn't perform advanced source retrieval.
-    
+
     Args:
         chat_session: Current chat session object
         file_path_list: List of paths to uploaded documents
         user_input: The user's query or input
         time_tracking: Dictionary to track execution time of various steps
         deep_thinking: Whether to use deep thinking for response generation
-        
+
     Returns:
-        Tuple containing (answer, sources, source_pages, source_annotations, 
+        Tuple containing (answer, sources, source_pages, source_annotations,
                          refined_source_pages, refined_source_index, follow_up_questions)
     """
     if time_tracking is None:
         time_tracking = {}
 
-    answer = tutor_agent_lite_streaming_tracking(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream)
+    return tutor_agent_lite_streaming_tracking(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream)
+    # answer = tutor_agent_lite_streaming_tracking(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream)
 
-    # For Lite mode, we have minimal sources and follow-up questions
-    sources = {}
-    source_pages = {}
-    source_annotations = {}
-    refined_source_pages = {}
-    refined_source_index = {}
-    follow_up_questions = []
-    
-    return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
+    # # For Lite mode, we have minimal sources and follow-up questions
+    # sources = {}
+    # source_pages = {}
+    # source_annotations = {}
+    # refined_source_pages = {}
+    # refined_source_index = {}
+    # follow_up_questions = []
+
+    # return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
 
 
 async def tutor_agent_lite_streaming_tracking(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
@@ -226,15 +232,15 @@ async def tutor_agent_lite_streaming_tracking(chat_session: ChatSession, file_pa
         yield chunk
         chat_session.current_message += chunk
 
-    answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions = extract_lite_mode_content(chat_session.current_message)
-    logger.info(f"Extracted answer: {answer}")
-    logger.info(f"Extracted sources: {sources}")
-    logger.info(f"Extracted source pages: {source_pages}")
-    logger.info(f"Extracted source annotations: {source_annotations}")
-    logger.info(f"Extracted refined source pages: {refined_source_pages}")
-    logger.info(f"Extracted refined source index: {refined_source_index}")
-    logger.info(f"Extracted follow-up questions: {follow_up_questions}")
-    logger.info(f"Current message: {chat_session.current_message}")
+    # answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions = extract_lite_mode_content(chat_session.current_message)
+    # logger.info(f"Extracted answer: {answer}")
+    # logger.info(f"Extracted sources: {sources}")
+    # logger.info(f"Extracted source pages: {source_pages}")
+    # logger.info(f"Extracted source annotations: {source_annotations}")
+    # logger.info(f"Extracted refined source pages: {refined_source_pages}")
+    # logger.info(f"Extracted refined source index: {refined_source_index}")
+    # logger.info(f"Extracted follow-up questions: {follow_up_questions}")
+    # logger.info(f"Current message: {chat_session.current_message}")
 
 
 async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
@@ -261,10 +267,14 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     yield "Processing documents ...\n\n"
     hashing_start_time = time.time()
     file_id_list = [generate_file_id(file_path) for file_path in file_path_list]
-    embedding_folder_list = [os.path.join("embedded_content", file_id) for file_id in file_id_list]
+    path_prefix = os.getenv("FILE_PATH_PREFIX")
+    if not path_prefix:
+        path_prefix = ""
+    embedded_content_path = os.path.join(path_prefix, 'embedded_content')
+    embedding_folder_list = [os.path.join(embedded_content_path, file_id) for file_id in file_id_list]
     logger.info(f"Embedding folder: {embedding_folder_list}")
-    if not os.path.exists("embedded_content"):
-        os.makedirs("embedded_content")
+    if not os.path.exists(embedded_content_path):
+        os.makedirs(embedded_content_path)
     for embedding_folder in embedding_folder_list:
         if not os.path.exists(embedding_folder):
             os.makedirs(embedding_folder)
@@ -341,7 +351,7 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
         )
         # Clean up translation prefixes - apply before including in XML
         follow_up_questions[i] = clean_translation_prefix(follow_up_questions[i])
-    
+
     for chunk in follow_up_questions:
         # Ensure the chunk is properly cleaned and formatted before wrapping in XML
         cleaned_chunk = chunk.strip()
@@ -380,32 +390,33 @@ async def tutor_agent_basic(chat_session: ChatSession, file_path_list, user_inpu
     """
     Standard tutor agent that provides comprehensive tutoring capabilities with vector-based RAG.
     Uses VectorRAG for document processing and performs source retrieval.
-    
+
     Args:
         chat_session: Current chat session object
         file_path_list: List of paths to uploaded documents
         user_input: The user's query or input
         time_tracking: Dictionary to track execution time of various steps
         deep_thinking: Whether to use deep thinking for response generation
-        
+
     Returns:
-        Tuple containing (answer, sources, source_pages, source_annotations, 
+        Tuple containing (answer, sources, source_pages, source_annotations,
                          refined_source_pages, refined_source_index, follow_up_questions)
     """
     if time_tracking is None:
         time_tracking = {}
 
-    answer = tutor_agent_basic_streaming_tracking(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream)
+    return tutor_agent_basic_streaming_tracking(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream)
+    # answer = tutor_agent_basic_streaming_tracking(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream)
 
-    # For Lite mode, we have minimal sources and follow-up questions
-    sources = {}
-    source_pages = {}
-    source_annotations = {}
-    refined_source_pages = {}
-    refined_source_index = {}
-    follow_up_questions = []
-    
-    return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
+    # # For Lite mode, we have minimal sources and follow-up questions
+    # sources = {}
+    # source_pages = {}
+    # source_annotations = {}
+    # refined_source_pages = {}
+    # refined_source_index = {}
+    # follow_up_questions = []
+
+    # return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
 
 
 async def tutor_agent_basic_streaming_tracking(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
@@ -413,15 +424,15 @@ async def tutor_agent_basic_streaming_tracking(chat_session: ChatSession, file_p
         yield chunk
         chat_session.current_message += chunk
 
-    answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions = extract_basic_mode_content(chat_session.current_message)
-    logger.info(f"Extracted answer: {answer}")
-    logger.info(f"Extracted sources: {sources}")
-    logger.info(f"Extracted source pages: {source_pages}")
-    logger.info(f"Extracted source annotations: {source_annotations}")
-    logger.info(f"Extracted refined source pages: {refined_source_pages}")
-    logger.info(f"Extracted refined source index: {refined_source_index}")
-    logger.info(f"Extracted follow-up questions: {follow_up_questions}")
-    logger.info(f"Current message: {chat_session.current_message}")
+    # answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions = extract_basic_mode_content(chat_session.current_message)
+    # logger.info(f"Extracted answer: {answer}")
+    # logger.info(f"Extracted sources: {sources}")
+    # logger.info(f"Extracted source pages: {source_pages}")
+    # logger.info(f"Extracted source annotations: {source_annotations}")
+    # logger.info(f"Extracted refined source pages: {refined_source_pages}")
+    # logger.info(f"Extracted refined source index: {refined_source_index}")
+    # logger.info(f"Extracted follow-up questions: {follow_up_questions}")
+    # logger.info(f"Current message: {chat_session.current_message}")
 
 
 async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
@@ -433,7 +444,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         user_input: The user's query or input
         time_tracking: Dictionary to track execution time of various steps
         deep_thinking: Whether to use deep thinking for response generation
-        
+
     Returns:
         Generator of response chunks
     """
@@ -503,7 +514,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
 
     chat_history = chat_session.chat_history
     context_chat_history = chat_history
-    
+
     if user_input == summary_wording or not chat_session.chat_history:
         # Handle initial welcome message when chat history is empty
         # initial_message_start_time = time.time()
@@ -779,10 +790,10 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     yield "</appendix>"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
-    # Memory clean up 
+    # Memory clean up
     _document = None
     _doc = None
-    
+
     return
 
 
@@ -794,17 +805,18 @@ async def tutor_agent_advanced(chat_session: ChatSession, file_path_list, user_i
     if time_tracking is None:
         time_tracking = {}
 
-    answer = tutor_agent_advanced_streaming_tracking(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream)
+    return tutor_agent_advanced_streaming_tracking(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream)
+    # answer = tutor_agent_advanced_streaming_tracking(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream)
 
-    # For Advanced mode, we have minimal sources and follow-up questions
-    sources = {}
-    source_pages = {}
-    source_annotations = {}
-    refined_source_pages = {}
-    refined_source_index = {}
-    follow_up_questions = []
-    
-    return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
+    # # For Advanced mode, we have minimal sources and follow-up questions
+    # sources = {}
+    # source_pages = {}
+    # source_annotations = {}
+    # refined_source_pages = {}
+    # refined_source_index = {}
+    # follow_up_questions = []
+
+    # return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
 
 
 async def tutor_agent_advanced_streaming_tracking(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
@@ -812,15 +824,15 @@ async def tutor_agent_advanced_streaming_tracking(chat_session: ChatSession, fil
         yield chunk
         chat_session.current_message += chunk
 
-    answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions = extract_advanced_mode_content(chat_session.current_message)
-    logger.info(f"Extracted answer: {answer}")
-    logger.info(f"Extracted sources: {sources}")
-    logger.info(f"Extracted source pages: {source_pages}")
-    logger.info(f"Extracted source annotations: {source_annotations}")
-    logger.info(f"Extracted refined source pages: {refined_source_pages}")
-    logger.info(f"Extracted refined source index: {refined_source_index}")
-    logger.info(f"Extracted follow-up questions: {follow_up_questions}")
-    logger.info(f"Current message: {chat_session.current_message}")
+    # answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions = extract_advanced_mode_content(chat_session.current_message)
+    # logger.info(f"Extracted answer: {answer}")
+    # logger.info(f"Extracted sources: {sources}")
+    # logger.info(f"Extracted source pages: {source_pages}")
+    # logger.info(f"Extracted source annotations: {source_annotations}")
+    # logger.info(f"Extracted refined source pages: {refined_source_pages}")
+    # logger.info(f"Extracted refined source index: {refined_source_index}")
+    # logger.info(f"Extracted follow-up questions: {follow_up_questions}")
+    # logger.info(f"Current message: {chat_session.current_message}")
 
 
 async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
@@ -966,7 +978,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
             )
             # Clean up translation prefixes
             follow_up_questions[i] = clean_translation_prefix(follow_up_questions[i])
-        
+
         for chunk in follow_up_questions:
             # Ensure the chunk is properly cleaned and formatted before wrapping in XML
             cleaned_chunk = chunk.strip()
@@ -975,7 +987,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
                 yield f"{cleaned_chunk}"
                 yield "</followup_question>"
                 yield "\n\n"
-        
+
         yield "\n\n**Generating follow-up questions done ...**\n\n"
 
         yield "</appendix>"
@@ -1152,7 +1164,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
         )
         # Clean up translation prefixes
         follow_up_questions[i] = clean_translation_prefix(follow_up_questions[i])
-    
+
     for chunk in follow_up_questions:
         # Ensure the chunk is properly cleaned and formatted before wrapping in XML
         cleaned_chunk = chunk.strip()
@@ -1166,8 +1178,14 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
     yield "</appendix>"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
-    # Memory clean up 
+    # Memory clean up
     _document = None
     _doc = None
-    
+
+    # logger.info(f"sources: {sources}")
+    # logger.info(f"source_pages: {source_pages}")
+    # logger.info(f"refined_source_pages: {refined_source_pages}")
+    # logger.info(f"refined_source_index: {refined_source_index}")
+    # logger.info(f"source_annotations: {source_annotations}")
+
     return

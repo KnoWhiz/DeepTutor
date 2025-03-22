@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set
 from enum import Enum
 from datetime import datetime
+from bson.objectid import ObjectId
 
 from .chat_history_manager import (
     create_session_id,
@@ -46,6 +47,7 @@ class ChatSession:
     current_language: Optional[str] = None
     is_initialized: bool = False
     current_message: Optional[str] = "" # Latest current response message from streaming tutor agent
+    new_message_id: str = str(ObjectId()) # new message from user
 
     def initialize(self) -> None:
         """Initialize the chat session if not already initialized."""
@@ -118,7 +120,8 @@ class ChatSession:
             "uploaded_files": list(self.uploaded_files),
             "current_language": self.current_language,
             "last_updated": datetime.now().isoformat(),
-            "current_message": self.current_message
+            "current_message": self.current_message,
+            "new_message_id": self.new_message_id
         }
 
     @classmethod
@@ -131,13 +134,16 @@ class ChatSession:
         Returns:
             ChatSession instance initialized with the provided data
         """
+        if not "current_message" in data:
+            data["current_message"] = ""
         session = cls(
             session_id=data["session_id"],
             mode=ChatMode(data["mode"]),
             chat_history=data["chat_history"],
             uploaded_files=set(data["uploaded_files"]),
             current_language=data["current_language"],
-            current_message=data["current_message"]
+            current_message=data["current_message"],
+            new_message_id=data["new_message_id"]
         )
         session.is_initialized = True
         return session

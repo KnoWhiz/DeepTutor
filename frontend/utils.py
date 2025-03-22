@@ -9,19 +9,19 @@ import logging
 logger = logging.getLogger("tutorfrontend.utils")
 
 
-def streamlit_tutor_agent(chat_session, file_path, user_input):    
+async def streamlit_tutor_agent(chat_session, file_path, user_input):    
     answer, \
     sources, \
     source_pages, \
     source_annotations, \
     refined_source_pages, \
     refined_source_index, \
-    follow_up_questions = asyncio.run(tutor_agent(
+    follow_up_questions = await tutor_agent(
         chat_session=chat_session,
         file_path_list=[file_path],
         user_input=user_input,
         deep_thinking=True
-    ))
+    )
     return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
 
 

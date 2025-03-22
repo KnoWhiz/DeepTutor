@@ -53,11 +53,14 @@ async def embeddings_agent(_mode, _document, _doc, file_path, embedding_folder, 
     logger.info(f"Current mode: {_mode}")
     if _mode == ChatMode.ADVANCED:
         logger.info("Mode: ChatMode.ADVANCED. Generating GraphRAG embeddings...")
+        yield "Generating GraphRAG embeddings..."
         time_tracking = await generate_GraphRAG_embedding(embedding_folder, time_tracking)
     elif _mode == ChatMode.BASIC:
         logger.info("Mode: ChatMode.BASIC. Generating VectorRAG embeddings...")
+        yield "Generating VectorRAG embeddings..."
     elif _mode == ChatMode.LITE:
         logger.info("Mode: ChatMode.LITE. Generating LiteRAG embeddings...")
+        yield "Generating LiteRAG embeddings..."
         lite_embedding_start_time = time.time()
         await generate_LiteRAG_embedding(_doc, file_path, embedding_folder)
         time_tracking['lite_embedding_total'] = time.time() - lite_embedding_start_time

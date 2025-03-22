@@ -2,7 +2,6 @@ import json
 import base64
 import PyPDF2
 import streamlit as st
-import asyncio
 from typing import Set
 from streamlit_pdf_viewer import pdf_viewer
 from streamlit_float import float_init, float_parent, float_css_helper
@@ -176,7 +175,7 @@ def get_relevance_color(score):
 
 
 # Function to display the chat interface
-async def show_chat_interface(doc, document, file_path, embedding_folder):
+def show_chat_interface(doc, document, file_path, embedding_folder):
     # Init float function for chat_input textbox
     learner_avatar = "frontend/images/learner.svg"
     tutor_avatar = "frontend/images/tutor.svg"
@@ -325,7 +324,7 @@ async def show_chat_interface(doc, document, file_path, embedding_folder):
                     source_annotations,\
                     refined_source_pages,\
                     refined_source_index,\
-                    follow_up_questions = await streamlit_tutor_agent(
+                    follow_up_questions = streamlit_tutor_agent(
                         chat_session=st.session_state.chat_session,
                         file_path=file_path,
                         user_input=user_input

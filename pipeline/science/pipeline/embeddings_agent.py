@@ -14,13 +14,14 @@ from pipeline.science.pipeline.utils import (
 )
 from pipeline.science.pipeline.images_understanding import initialize_image_files
 from pipeline.science.pipeline.embeddings_graphrag import generate_GraphRAG_embedding
-from pipeline.science.pipeline.session_manager import ChatMode
+from pipeline.science.pipeline.session_manager import ChatMode, ChatSession
 from pipeline.science.pipeline.get_doc_summary import generate_document_summary
 from pipeline.science.pipeline.doc_processor import (
     mdDocumentProcessor,
     extract_pdf_content_to_markdown_via_api,
     extract_pdf_content_to_markdown,
     extract_pdf_content_to_markdown_via_api_streaming,
+    save_file_txt_locally,
 )
 from pipeline.science.pipeline.embeddings import (
     get_embedding_models,
@@ -44,7 +45,8 @@ async def embeddings_agent(
     _doc: "fitz.Document",
     file_path: str,
     embedding_folder: str,
-    time_tracking: Dict[str, float] = {}
+    time_tracking: Dict[str, float] = {},
+    chat_session: ChatSession = None
 ):
     """
     Generate embeddings for the document
@@ -328,6 +330,7 @@ async def embeddings_agent(
         #     for chunk in GraphRAG_embedding_generator:
         #         yield chunk
         yield "\n\n**Building knowledge graph based on markdown...**"
+        save_file_txt_locally(file_path, filename=file_id[:8], embedding_folder=embedding_folder, chat_session=chat_session)
         async for chunk in generate_GraphRAG_embedding(embedding_folder, time_tracking):
             yield chunk
     time_tracking['graphrag_generate_embedding'] = time.time() - graphrag_start_time

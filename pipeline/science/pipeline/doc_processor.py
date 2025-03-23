@@ -23,7 +23,7 @@ from pipeline.science.pipeline.images_understanding import (
     upload_images_to_azure,
 )
 from pipeline.science.pipeline.utils import robust_search_for
-
+from pipeline.science.pipeline.session_manager import ChatSession
 import logging
 logger = logging.getLogger("tutorpipeline.science.doc_processor")
 
@@ -52,45 +52,70 @@ def process_pdf_file(file_path):
 
 
 # Function to save the file locally as a text file
-def save_file_txt_locally(file_path, filename, embedding_folder):
+def save_file_txt_locally(file_path, filename, embedding_folder, chat_session: ChatSession = None):
     """
     Save the file (e.g., PDF) loaded as text into the GraphRAG_embedding_input_folder.
+    If a corresponding markdown file exists, use its content instead of extracting from PDF.
+    Always overwrite existing text file with markdown content when markdown file is available.
     """
+    markdown_dir = os.path.join(embedding_folder, "markdown")
+    # Generate file_id using hashlib instead of the undefined generate_file_id function
     with open(file_path, 'rb') as file:
         file_bytes = file.read()
-
+        file_id = hashlib.md5(file_bytes).hexdigest()
+    
+    md_path = os.path.join(markdown_dir, f"{file_id}.md")
+    
     # Define folder structure
     GraphRAG_embedding_folder = os.path.join(embedding_folder, "GraphRAG")
     GraphRAG_embedding_input_folder = os.path.join(GraphRAG_embedding_folder, "input")
 
     # Create folders if they do not exist
     os.makedirs(GraphRAG_embedding_input_folder, exist_ok=True)
+    os.makedirs(markdown_dir, exist_ok=True)
 
     # Generate a shorter filename using hash, and it should be unique and consistent for the same file
     base_name = os.path.splitext(filename)[0]
     hashed_name = hashlib.md5(file_bytes).hexdigest()[:8]  # Use first 8 chars of hash
     output_file_path = os.path.join(GraphRAG_embedding_input_folder, f"{hashed_name}.txt")
 
-    # Extract text from the PDF using the provided utility function
-    document = extract_document_from_file(file_path)
-
-    # Write the extracted text into a .txt file
-    # If the file does not exist, it will be created
-    if os.path.exists(output_file_path):
-        logger.info(f"File already exists: {output_file_path}")
-        return
-
     try:
-        with open(output_file_path, "w", encoding="utf-8") as f:
-            for doc in document:
-                # Each doc is expected to have a `page_content` attribute if it's a Document object
-                if hasattr(doc, 'page_content') and doc.page_content:
-                    # Write the text, followed by a newline for clarity
-                    f.write(doc.page_content.strip() + "\n")
-        logger.info(f"Text successfully saved to: {output_file_path}")
-    except OSError as e:
-        logger.info(f"Error saving file: {e}")
-        # Create a mapping file to track original filenames if needed
+        # Check if markdown file exists - always use it if available
+        if os.path.exists(md_path):
+            logger.info(f"Found markdown file: {md_path}")
+            # Check if we're overwriting an existing file before we write to it
+            is_overwriting = os.path.exists(output_file_path)
+            
+            # Use markdown content instead of extracting from PDF
+            with open(md_path, "r", encoding="utf-8") as md_file:
+                markdown_content = md_file.read()
+            
+            # Always write the markdown content to the output text file, overwriting if it exists
+            with open(output_file_path, "w", encoding="utf-8") as f:
+                f.write(markdown_content)
+                
+            if is_overwriting:
+                logger.info(f"Markdown content saved to: {output_file_path} (overwritten)")
+            else:
+                logger.info(f"Markdown content saved to: {output_file_path}")
+                
+        # Only extract from PDF if markdown file doesn't exist and txt file doesn't exist
+        elif not os.path.exists(output_file_path):
+            # Extract text from the PDF using the provided utility function
+            document = extract_document_from_file(file_path)
+
+            # Write the extracted text into a .txt file
+            with open(output_file_path, "w", encoding="utf-8") as f:
+                for doc in document:
+                    # Each doc is expected to have a `page_content` attribute if it's a Document object
+                    if hasattr(doc, 'page_content') and doc.page_content:
+                        # Write the text, followed by a newline for clarity
+                        f.write(doc.page_content.strip() + "\n")
+            logger.info(f"PDF text content saved to: {output_file_path}")
+        else:
+            logger.info(f"File already exists: {output_file_path} (no markdown file available to overwrite it)")
+
+        # Create a mapping file to track original filenames
         mapping_file = os.path.join(GraphRAG_embedding_folder, "filename_mapping.json")
         try:
             if os.path.exists(mapping_file):
@@ -103,7 +128,10 @@ def save_file_txt_locally(file_path, filename, embedding_folder):
                 json.dump(mapping, f, indent=2)
         except Exception as e:
             logger.exception(f"Error saving filename mapping: {e}")
+    except OSError as e:
+        logger.exception(f"Error saving file: {e}")
         raise
+    
     return
 
 

@@ -60,14 +60,9 @@ async def embeddings_agent(
     graphrag_start_time = time.time()
     logger.info(f"Current mode: {_mode}")
     if _mode == ChatMode.ADVANCED:
+        # GraphRAG is implemented in the following code
         logger.info("Mode: ChatMode.ADVANCED. Generating GraphRAG embeddings...")
         yield "\n\n**Generating GraphRAG embeddings...**"
-        # GraphRAG_embedding_generator = await generate_GraphRAG_embedding(embedding_folder, time_tracking)
-        # if GraphRAG_embedding_generator:
-        #     for chunk in GraphRAG_embedding_generator:
-        #         yield chunk
-        async for chunk in generate_GraphRAG_embedding(embedding_folder, time_tracking):
-            yield chunk
     elif _mode == ChatMode.BASIC:
         # Basic mode is implemented in the following code
         logger.info("Mode: ChatMode.BASIC. Generating VectorRAG embeddings...")
@@ -328,6 +323,15 @@ async def embeddings_agent(
             yield "\n\n**Error generating document summary: {e}**"
             logger.info("Continuing without document summary...")
             yield "\n\n**Continuing without document summary...**"
+
+    if _mode == ChatMode.ADVANCED:
+        # GraphRAG_embedding_generator = await generate_GraphRAG_embedding(embedding_folder, time_tracking)
+        # if GraphRAG_embedding_generator:
+        #     for chunk in GraphRAG_embedding_generator:
+        #         yield chunk
+        yield "\n\n**Building knowledge graph based on markdown...**"
+        async for chunk in generate_GraphRAG_embedding(embedding_folder, time_tracking):
+            yield chunk
 
     # Memory cleanup
     db = None

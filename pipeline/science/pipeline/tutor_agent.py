@@ -327,15 +327,13 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Regular chat flow - for Lite mode, we don't need to refine the user input
-    # Note: Even though we're not using this Question object directly with get_response anymore,
-    # we still initialize it for backwards compatibility with other code paths
     question = Question(text=user_input, language=chat_session.current_language, question_type="local")
 
     # Get response
     response_start = time.time()
-    response = await get_response(chat_session, file_path_list, user_input, context_chat_history, embedding_folder_list, deep_thinking=deep_thinking, stream=stream)
+    response = await get_response(chat_session, file_path_list, question, context_chat_history, embedding_folder_list, deep_thinking=deep_thinking, stream=stream)
     answer = response[0] if isinstance(response, tuple) else response
-    for chunk in answer:  # Changed back to regular for loop
+    for chunk in answer:
         yield chunk
     time_tracking["response_generation"] = time.time() - response_start
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
@@ -344,21 +342,15 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
 
     # For Lite mode, we have minimal sources and follow-up questions
     yield "\n\n**Generating follow-up questions ...**\n\n"
-    try:
-        # Safely handle current_message access
-        if isinstance(chat_session.current_message, list) and len(chat_session.current_message) > 0:
-            message_content = chat_session.current_message[0]
-        elif isinstance(chat_session.current_message, str):
-            message_content = chat_session.current_message
-        else:
-            message_content = "No content available"
-        
-        follow_up_questions = generate_follow_up_questions(message_content, [])
-    except Exception as e:
-        logger.error(f"Error generating follow-up questions: {e}")
-        follow_up_questions = ["What else would you like to know?", 
-                             "Any other aspects you're curious about?", 
-                             "Would you like more details on this topic?"]
+    follow_up_questions = generate_follow_up_questions(chat_session.current_message, [])
+    for i in range(len(follow_up_questions)):
+        follow_up_questions[i] = translate_content(
+            content=follow_up_questions[i],
+            target_lang=chat_session.current_language,
+            stream=False
+        )
+        # Clean up translation prefixes - apply before including in XML
+        follow_up_questions[i] = clean_translation_prefix(follow_up_questions[i])
 
     for chunk in follow_up_questions:
         # Ensure the chunk is properly cleaned and formatted before wrapping in XML
@@ -560,7 +552,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
             if (type(answer) is str):
                 yield answer
             else:
-                for chunk in answer:  # Changed back to regular for loop
+                for chunk in answer:
                     yield chunk
             yield "</response>"
         else:
@@ -574,22 +566,15 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
 
         yield "<appendix>"
         yield "\n\n**Generating follow-up questions ...**\n\n"
-        try:
-            # Safely handle current_message access
-            if isinstance(chat_session.current_message, list) and len(chat_session.current_message) > 0:
-                message_content = chat_session.current_message[0]
-            elif isinstance(chat_session.current_message, str):
-                message_content = chat_session.current_message
-            else:
-                message_content = "No content available"
-            
-            follow_up_questions = generate_follow_up_questions(message_content, [])
-        except Exception as e:
-            logger.error(f"Error generating follow-up questions: {e}")
-            follow_up_questions = ["What else would you like to know?", 
-                                 "Any other aspects you're curious about?", 
-                                 "Would you like more details on this topic?"]
-
+        follow_up_questions = generate_follow_up_questions(chat_session.current_message[0], [])
+        for i in range(len(follow_up_questions)):
+            follow_up_questions[i] = translate_content(
+                content=follow_up_questions[i],
+                target_lang=chat_session.current_language,
+                stream=False
+            )
+            # Clean up translation prefixes
+            follow_up_questions[i] = clean_translation_prefix(follow_up_questions[i])
         for chunk in follow_up_questions:
             # Ensure the chunk is properly cleaned and formatted before wrapping in XML
             cleaned_chunk = chunk.strip()
@@ -610,20 +595,8 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     # Refine user input
     yield "\n\n**Understanding the user input ...**\n\n"
     query_start = time.time()
-    
-    # Process the async generator to get progress updates and final Question object
-    question_obj = None
-    async for chunk in get_query_helper(chat_session, user_input, context_chat_history, embedding_folder_list):
-        if isinstance(chunk, Question):
-            question_obj = chunk
-        else:
-            # Pass through progress updates
-            yield f"\n\n**{chunk}**\n\n"
-    
-    if not question_obj:
-        raise ValueError("Failed to generate Question object from get_query_helper")
-        
-    refined_user_input = question_obj.text
+    question = get_query_helper(chat_session, user_input, context_chat_history, embedding_folder_list)
+    refined_user_input = question.text
     logger.info(f"Refined user input: {refined_user_input}")
     time_tracking["query_refinement"] = time.time() - query_start
     yield "\n\n**Understanding the user input done ...**\n\n"
@@ -634,13 +607,13 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     current_status = "thinking"
     # yield "\n\n**Generating the response ...**\n\n"
     response_start = time.time()
-    response = await get_response(chat_session, file_path_list, user_input, context_chat_history, embedding_folder_list, deep_thinking=deep_thinking, stream=stream)
+    response = await get_response(chat_session, file_path_list, question, context_chat_history, embedding_folder_list, deep_thinking=deep_thinking, stream=stream)
     answer = response[0] if isinstance(response, tuple) else response
     if deep_thinking is False:
         yield "</thinking>"
         yield "\n\n**Generating the response ...**\n\n"
     else:
-        for chunk in answer:  # Changed back to regular for loop
+        for chunk in answer:
             if "</think>" not in chunk:
                 if "<response>" in chunk:
                     if translation_response is False:
@@ -696,7 +669,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         if (type(answer) is str):
             yield answer
         else:
-            for chunk in answer:  # Changed back to regular for loop
+            for chunk in answer:
                 yield chunk
         yield "</response>"
         yield "\n\n**Generating the response done ...**\n\n"
@@ -757,6 +730,22 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     time_tracking["image_processing"] = time.time() - images_processing_start
     yield "\n\n**Processing image sources done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+
+    # # Refine and translate the answer to the selected language
+    # # FIXME:Only if currently language in not the same as the selected language
+    # yield "Translating the answer to the selected language ...\n\n"
+    # translation_start = time.time()
+    # translated_answer = translate_content(
+    #     content=chat_session.current_message,
+    #     target_lang=chat_session.current_language
+    #     stream=stream
+    # )
+    # yield "<translated_answer>"
+    # yield f"\n{translated_answer}\n"
+    # yield "</translated_answer>"
+    # time_tracking["translation"] = time.time() - translation_start
+    # yield "Translating the answer to the selected language done ...\n\n"
+    # logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Append images URL in markdown format to the end of the answer
     annotations_start = time.time()
@@ -965,7 +954,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
             if (type(answer) is str):
                 yield answer
             else:
-                for chunk in answer:  # Changed back to regular for loop
+                for chunk in answer:
                     yield chunk
             yield "</response>"
         else:
@@ -979,21 +968,16 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
 
         yield "<appendix>"
         yield "\n\n**Generating follow-up questions ...**\n\n"
-        try:
-            # Safely handle current_message access
-            if isinstance(chat_session.current_message, list) and len(chat_session.current_message) > 0:
-                message_content = chat_session.current_message[0]
-            elif isinstance(chat_session.current_message, str):
-                message_content = chat_session.current_message
-            else:
-                message_content = "No content available"
-            
-            follow_up_questions = generate_follow_up_questions(message_content, [])
-        except Exception as e:
-            logger.error(f"Error generating follow-up questions: {e}")
-            follow_up_questions = ["What else would you like to know?", 
-                                 "Any other aspects you're curious about?", 
-                                 "Would you like more details on this topic?"]
+        follow_up_questions = generate_follow_up_questions(extract_advanced_mode_content(chat_session.current_message)[0], [])
+
+        for i in range(len(follow_up_questions)):
+            follow_up_questions[i] = translate_content(
+                content=follow_up_questions[i],
+                target_lang=chat_session.current_language,
+                stream=False
+            )
+            # Clean up translation prefixes
+            follow_up_questions[i] = clean_translation_prefix(follow_up_questions[i])
 
         for chunk in follow_up_questions:
             # Ensure the chunk is properly cleaned and formatted before wrapping in XML
@@ -1016,29 +1000,19 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
     # Refine user input
     yield "\n\n**Understanding the user input ...**\n\n"
     query_start = time.time()
-    
-    # Process the async generator to get progress updates and final Question object
-    question_obj = None
-    async for chunk in get_query_helper(chat_session, user_input, context_chat_history, embedding_folder_list):
-        if isinstance(chunk, Question):
-            question_obj = chunk
-        else:
-            # Pass through progress updates
-            yield f"\n\n**{chunk}**\n\n"
-    
-    if not question_obj:
-        raise ValueError("Failed to generate Question object from get_query_helper")
-        
-    refined_user_input = question_obj.text
+    question = get_query_helper(chat_session, user_input, context_chat_history, embedding_folder_list)
+    refined_user_input = question.text
     logger.info(f"Refined user input: {refined_user_input}")
     time_tracking["query_refinement"] = time.time() - query_start
     yield "\n\n**Understanding the user input done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    # yield "</thinking>"
+    # yield "\n\n**Generating the response ...**\n\n"
 
     # Get response
     # yield "\n\n**Generating the response ...**\n\n"
     response_start = time.time()
-    response = await get_response(chat_session, file_path_list, user_input, context_chat_history, embedding_folder_list, deep_thinking=deep_thinking, stream=stream)
+    response = await get_response(chat_session, file_path_list, question, context_chat_history, embedding_folder_list, deep_thinking=deep_thinking, stream=stream)
     answer = response[0] if isinstance(response, tuple) else response
 
     translation_response = False
@@ -1047,7 +1021,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
         yield "</thinking>"
         yield "\n\n**Generating the response ...**\n\n"
     else:
-        for chunk in answer:  # Changed back to regular for loop
+        for chunk in answer:
             if "</think>" not in chunk:
                 if "<response>" in chunk:
                     if translation_response is False:
@@ -1098,7 +1072,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
         if (type(answer) is str):
             yield answer
         else:
-            for chunk in answer:  # Changed back to regular for loop
+            for chunk in answer:
                 yield chunk
         yield "</response>"
         yield "\n\n**Generating the response done ...**\n\n"

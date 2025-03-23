@@ -231,6 +231,7 @@ def extract_image_context(folder_dir: str | Path, file_path: str = "", context_t
     """
     folder_dir = Path(folder_dir)
     logger.info(f"Current markdown folder: {folder_dir}")
+    # yield f"Current markdown folder: {folder_dir}"
 
     # Initialize both JSON files
     image_context_path, _ = initialize_image_files(folder_dir)
@@ -243,6 +244,7 @@ def extract_image_context(folder_dir: str | Path, file_path: str = "", context_t
     image_files = [f for f in os.listdir(folder_dir) if os.path.splitext(f.lower())[1] in image_extensions]
     if not image_files:
         logger.info("No image files found in the folder.")
+        yield "\n\n**No image files found in the folder.**"
         return
 
     # Find the markdown file (with file_id.md file name)
@@ -250,6 +252,7 @@ def extract_image_context(folder_dir: str | Path, file_path: str = "", context_t
     md_files = [os.path.join(folder_dir, f"{file_id}.md")]
     if not md_files:
         logger.info("No markdown file found in the folder.")
+        yield "\n\n**No markdown file found in the folder.**"
         return
 
     md_file = md_files[0]
@@ -260,12 +263,14 @@ def extract_image_context(folder_dir: str | Path, file_path: str = "", context_t
         md_lines = f.read().splitlines()
 
     # If there are images_files and md_files, re-order the list image_files to match the order that images show up in md_files
+    yield "\n\n**Re-ordering image files to match the order that images show up in md_files...**"
     image_order = []
     for line in md_lines:
         for image in image_files:
             if image in line and image not in image_order:
                 image_order.append(image)
     # Add any images that weren't found in the markdown file to the end of the order list
+    yield "\n\n**Adding any images that weren't found in the markdown file to the end of the order list...**"
     for image in image_files:
         if image not in image_order:
             image_order.append(image)
@@ -273,9 +278,11 @@ def extract_image_context(folder_dir: str | Path, file_path: str = "", context_t
     image_files = image_order
 
     # Create a dictionary to store image filename vs. list of context windows
+    yield "\n\n**Creating a dictionary to store image filename vs. list of context windows...**"
     image_context: Dict[str, List[str]] = {}
 
     for i, image in enumerate(image_files):
+        yield f"\n\n**Processing image {i+1} of {len(image_files)}: {image}**"
         # Find all lines in the markdown file that mention the image filename
         contexts = []
         for idx, line in enumerate(md_lines):
@@ -289,11 +296,14 @@ def extract_image_context(folder_dir: str | Path, file_path: str = "", context_t
             image_context[image] = contexts
 
     # Write the dictionary to a JSON file in the same folder
+    yield "\n\n**Writing the dictionary to a JSON file in the same folder...**"
     with open(image_context_path, 'w', encoding='utf-8') as outfile:
         json.dump(image_context, outfile, indent=2, ensure_ascii=False)
 
     # Process folder images
-    process_folder_images(folder_dir)
+    yield "\n\n**Processing folder images...**"
+    for chunk in process_folder_images(folder_dir):
+        yield chunk
 
     logger.info(f"Image context data saved to: {image_context_path}")
 
@@ -425,9 +435,11 @@ def process_folder_images(folder_path):
                 for i, context in enumerate(context_list):
                     if context.strip().endswith('<markdown>'):
                         # Get image analysis
+                        yield f"\n\n**Getting image analysis for {image_name}...**"
                         image_url = urls[image_name]
+                        yield f"\n\n![{image_name}]({image_url})"
                         analysis = analyze_image(image_url)
-
+                        yield f"\n\n**Image analysis for {image_name} completed.**"
                         # Update context with analysis
                         contexts[image_name][i] = f"{context}\nImage Analysis: {analysis}"
 
@@ -435,7 +447,8 @@ def process_folder_images(folder_path):
         with open(context_file, 'w') as f:
             json.dump(contexts, f, indent=2)
 
-        return contexts
+        # return contexts
+        return
 
     except Exception as e:
         logger.info(f"Error processing folder images: {str(e)}")

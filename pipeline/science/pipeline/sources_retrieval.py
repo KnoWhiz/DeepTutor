@@ -143,8 +143,8 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
 
     sources_chunks_text = [chunk.page_content for chunk in sources_chunks]
 
-    # logger.info(f"TEST: sources_chunks: {sources_chunks}")
-    logger.info(f"TEST: sources_chunks_text: {sources_chunks_text}")
+    # # logger.info(f"TEST: sources_chunks: {sources_chunks}")
+    # logger.info(f"TEST: sources_chunks_text: {sources_chunks_text}")
 
     # Get source pages dictionary, which maps each source to the page number it is found in. the page number is in the metadata of the document chunks
     source_pages = {}

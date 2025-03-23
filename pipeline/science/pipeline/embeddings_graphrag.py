@@ -73,10 +73,11 @@ async def generate_GraphRAG_embedding(embedding_folder, time_tracking: Dict[str,
     if all([os.path.exists(path) for path in path_list]):
         # Load existing embeddings
         logger.info("All necessary index files exist. Loading existing knowledge graph embeddings...")
+        yield "\n\n**All necessary index files exist. Loading existing knowledge graph embeddings...**"
     else:
         # Create the GraphRAG embedding
         logger.info("Creating new knowledge graph embeddings...")
-
+        yield "\n\n**Creating new knowledge graph embeddings...**"
         # Initialize the project
         create_env_file_start_time = time.time()
         create_env_file(GraphRAG_embedding_folder)
@@ -116,28 +117,35 @@ async def generate_GraphRAG_embedding(embedding_folder, time_tracking: Dict[str,
                         file.write(content.encode(encoding="utf-8", errors="strict"))
             time_tracking['graphrag_initialize_project'] = time.time() - initialize_project_start_time
             logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+            yield "\n\n**Initialized GraphRAG project successfully...**"
         except Exception as e:
             logger.exception(f"Initialization error: {e}")
-
+            yield "\n\n**Initialization error: {e}**"
+            
         create_graphrag_config_start_time = time.time()
         settings = yaml.safe_load(open("./pipeline/science/pipeline/graphrag_settings.yaml"))
         # logger.info(f"root_dir: {GraphRAG_embedding_folder}")
+        yield "\n\n**Creating GraphRAG config...**"
         graphrag_config = create_graphrag_config(
             values=settings, root_dir=GraphRAG_embedding_folder
         )
         time_tracking['graphrag_create_config'] = time.time() - create_graphrag_config_start_time
         logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+        yield "\n\n**Created GraphRAG config successfully...**"
         # graphrag_config.storage.base_dir = os.path.join(GraphRAG_embedding_folder, "output")
         # graphrag_config.reporting.base_dir = os.path.join(GraphRAG_embedding_folder, "logs")
         # # logger.info(f"graphrag_config before build: {graphrag_config}")
 
         try:
+            yield "\n\n**Building GraphRAG index...**"
             build_index_start_time = time.time()
             await api.build_index(config=graphrag_config)
             time_tracking['graphrag_build_index'] = time.time() - build_index_start_time
             logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+            yield "\n\n**GraphRAG index built successfully...**"
             # logger.info(f"graphrag_config after build: {graphrag_config}")
         except Exception as e:
             logger.exception(f"Index building error: {e}")
 
-    return time_tracking
+    # return time_tracking
+    return

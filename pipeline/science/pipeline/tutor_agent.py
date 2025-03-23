@@ -285,7 +285,7 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     save_file_start_time = time.time()
     filename_list = [os.path.basename(file_path) for file_path in file_path_list]
     for file_path, filename in zip(file_path_list, filename_list):
-        save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
+        save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
     time_tracking["file_loading_save_text"] = time.time() - save_file_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
     yield "\n\n**Processing documents done ...**\n\n"
@@ -301,7 +301,7 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
         else:
             # Files are missing and have been cleaned up
             _document, _doc = process_pdf_file(file_path)
-            save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
+            save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
             logger.info(f"Generating LiteRAG embedding for {file_id} ...")
             yield f"Generating LiteRAG embedding for {file_id} ...\n\n"
             async for chunk in embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder):
@@ -342,7 +342,11 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
 
     # For Lite mode, we have minimal sources and follow-up questions
     yield "\n\n**Generating follow-up questions ...**\n\n"
-    follow_up_questions = generate_follow_up_questions(chat_session.current_message, [])
+    message_content = chat_session.current_message
+    if isinstance(message_content, list) and len(message_content) > 0:
+        message_content = message_content[0]
+    
+    follow_up_questions = generate_follow_up_questions(message_content, [])
     for i in range(len(follow_up_questions)):
         follow_up_questions[i] = translate_content(
             content=follow_up_questions[i],
@@ -476,7 +480,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     save_file_start_time = time.time()
     filename_list = [os.path.basename(file_path) for file_path in file_path_list]
     for file_path, filename in zip(file_path_list, filename_list):
-        save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
+        save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
     time_tracking["file_loading_save_text"] = time.time() - save_file_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
@@ -490,7 +494,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         else:
             # Files are missing and have been cleaned up
             _document, _doc = process_pdf_file(file_path)
-            save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
+            save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
             logger.info(f"VectorRAG embedding for {file_id} ...")
             # await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
             async for chunk in embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder):
@@ -500,7 +504,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
                 logger.info(f"VectorRAG index files for {file_id} are ready and uploaded to Azure Blob Storage.")
             else:
                 # Retry once if first attempt fails
-                save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
+                save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
                 # await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
                 async for chunk in embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder):
                     yield chunk
@@ -566,7 +570,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
 
         yield "<appendix>"
         yield "\n\n**Generating follow-up questions ...**\n\n"
-        follow_up_questions = generate_follow_up_questions(chat_session.current_message[0], [])
+        follow_up_questions = generate_follow_up_questions(chat_session.current_message, [])
         for i in range(len(follow_up_questions)):
             follow_up_questions[i] = translate_content(
                 content=follow_up_questions[i],
@@ -595,7 +599,15 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     # Refine user input
     yield "\n\n**Understanding the user input ...**\n\n"
     query_start = time.time()
-    question = get_query_helper(chat_session, user_input, context_chat_history, embedding_folder_list)
+    async for question_progress_update in get_query_helper(chat_session, user_input, context_chat_history, embedding_folder_list):
+        if isinstance(question_progress_update, Question):
+            # This is the final return value - a Question object
+            question = question_progress_update
+            logger.info(f"Received Question object from streaming function: {question}")
+        elif isinstance(question_progress_update, str):
+            yield f"\n\n{question_progress_update}"
+        else:
+            continue
     refined_user_input = question.text
     logger.info(f"Refined user input: {refined_user_input}")
     time_tracking["query_refinement"] = time.time() - query_start
@@ -873,7 +885,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
     save_file_start_time = time.time()
     filename_list = [os.path.basename(file_path) for file_path in file_path_list]
     for file_path, filename in zip(file_path_list, filename_list):
-        save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
+        save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
     time_tracking["file_loading_save_text"] = time.time() - save_file_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
     yield "\n\n**Processing documents done ...**\n\n"
@@ -889,7 +901,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
         else:
             # Files are missing and have been cleaned up
             _document, _doc = process_pdf_file(file_path)
-            save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
+            save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
             logger.info(f"GraphRAG embedding for {file_id} ...")
             yield f"\n\n**Generating GraphRAG embedding for {file_id} ...**\n\n"
             # await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
@@ -901,7 +913,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
             else:
                 # Retry once if first attempt fails
                 yield f"\n\n**Retrying GraphRAG embedding for {file_id} ...**\n\n"
-                save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
+                save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
                 # await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
                 async for chunk in embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder):
                     yield chunk
@@ -968,8 +980,11 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
 
         yield "<appendix>"
         yield "\n\n**Generating follow-up questions ...**\n\n"
-        follow_up_questions = generate_follow_up_questions(extract_advanced_mode_content(chat_session.current_message)[0], [])
-
+        message_content = chat_session.current_message
+        if isinstance(message_content, list) and len(message_content) > 0:
+            message_content = message_content[0]
+        
+        follow_up_questions = generate_follow_up_questions(message_content, [])
         for i in range(len(follow_up_questions)):
             follow_up_questions[i] = translate_content(
                 content=follow_up_questions[i],
@@ -1000,7 +1015,15 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
     # Refine user input
     yield "\n\n**Understanding the user input ...**\n\n"
     query_start = time.time()
-    question = get_query_helper(chat_session, user_input, context_chat_history, embedding_folder_list)
+    async for question_progress_update in get_query_helper(chat_session, user_input, context_chat_history, embedding_folder_list):
+        if isinstance(question_progress_update, Question):
+            # This is the final return value - a Question object
+            question = question_progress_update
+            logger.info(f"Received Question object from streaming function: {question}")
+        elif isinstance(question_progress_update, str):
+            yield f"\n\n{question_progress_update}"
+        else:
+            continue
     refined_user_input = question.text
     logger.info(f"Refined user input: {refined_user_input}")
     time_tracking["query_refinement"] = time.time() - query_start

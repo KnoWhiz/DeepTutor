@@ -174,8 +174,8 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
             # If stream is True, the answer is a generator; otherwise, it's a string
             # FIXME: Later we can add response_refine to the generator
             return answer
-        else:
-            answer = responses_refine(answer)
+        else:   # If stream is False, we need to refine the answer
+            answer = responses_refine(answer, stream=stream)
             return answer
     else:
         logger.info("deep thinking ...")
@@ -230,10 +230,10 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
             if "<think>" in answer:
                 answer_thinking = answer.split("<think>")[1].split("</think>")[0]
                 answer_summary = answer.split("<think>")[1].split("</think>")[1]
-                answer_summary_refined = responses_refine(answer_summary, "")
+                answer_summary_refined = responses_refine(answer_summary, "", stream=stream)
                 answer = answer_summary_refined
             else:
-                answer = responses_refine(answer)
+                answer = responses_refine(answer, stream=stream)
 
             # Replace LaTeX formulas in the final answer
             answer = replace_latex_formulas(answer)

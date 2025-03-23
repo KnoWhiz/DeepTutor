@@ -219,7 +219,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                             think_content = format_reasoning_response(think_content)
                             with st.expander("Thinking complete!"):
                                 st.markdown(think_content)
-                        
+
                         # Extract appendix content to display later
                         appendix_content = None
                         pattern = r"<appendix>(.*?)</appendix>"
@@ -228,7 +228,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                             appendix_content = appendix_match.group(0)
                             content = content.replace(appendix_content, "")
                             appendix_content = appendix_content.replace("<appendix>", "").replace("</appendix>", "")
-                        
+
                         # Display the main content
                         st.markdown(content)
                         

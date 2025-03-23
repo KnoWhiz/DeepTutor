@@ -595,7 +595,16 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     # Refine user input
     yield "\n\n**Understanding the user input ...**\n\n"
     query_start = time.time()
-    question = get_query_helper(chat_session, user_input, context_chat_history, embedding_folder_list)
+    # question = get_query_helper(chat_session, user_input, context_chat_history, embedding_folder_list)
+    async for question_progress_update in get_query_helper(chat_session, user_input, context_chat_history, embedding_folder_list):
+        if isinstance(question_progress_update, tuple) and len(question_progress_update) == 1:
+            # This is the final return value - a tuple with (md_path, saved_images, md_document)
+            question = question_progress_update
+            logger.info("Received final result tuple from streaming function")
+        elif type(question_progress_update) is str:
+            yield f"\n\n{question_progress_update}"
+        else:
+            continue
     refined_user_input = question.text
     logger.info(f"Refined user input: {refined_user_input}")
     time_tracking["query_refinement"] = time.time() - query_start
@@ -1000,7 +1009,14 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
     # Refine user input
     yield "\n\n**Understanding the user input ...**\n\n"
     query_start = time.time()
-    question = get_query_helper(chat_session, user_input, context_chat_history, embedding_folder_list)
+    async for question_progress_update in get_query_helper(chat_session, user_input, context_chat_history, embedding_folder_list):
+        if isinstance(question_progress_update, tuple) and len(question_progress_update) == 1:
+            question = question_progress_update
+            logger.info("Received final result tuple from streaming function")
+        elif type(question_progress_update) is str:
+            yield f"\n\n{question_progress_update}"
+        else:
+            continue
     refined_user_input = question.text
     logger.info(f"Refined user input: {refined_user_input}")
     time_tracking["query_refinement"] = time.time() - query_start

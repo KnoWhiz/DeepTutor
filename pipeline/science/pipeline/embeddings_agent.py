@@ -57,7 +57,6 @@ async def embeddings_agent(
     """
     yield "\n\n**Generating embeddings ...**"
     file_id = generate_file_id(file_path)
-    graphrag_start_time = time.time()
     logger.info(f"Current mode: {_mode}")
     if _mode == ChatMode.ADVANCED:
         # GraphRAG is implemented in the following code
@@ -84,8 +83,6 @@ async def embeddings_agent(
         return
     else:
         raise ValueError("Invalid mode")
-    time_tracking['graphrag_generate_embedding'] = time.time() - graphrag_start_time
-    logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     config = load_config()
     para = config['llm']
@@ -324,6 +321,7 @@ async def embeddings_agent(
             logger.info("Continuing without document summary...")
             yield "\n\n**Continuing without document summary...**"
 
+    graphrag_start_time = time.time()
     if _mode == ChatMode.ADVANCED:
         # GraphRAG_embedding_generator = await generate_GraphRAG_embedding(embedding_folder, time_tracking)
         # if GraphRAG_embedding_generator:
@@ -332,6 +330,8 @@ async def embeddings_agent(
         yield "\n\n**Building knowledge graph based on markdown...**"
         async for chunk in generate_GraphRAG_embedding(embedding_folder, time_tracking):
             yield chunk
+    time_tracking['graphrag_generate_embedding'] = time.time() - graphrag_start_time
+    logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Memory cleanup
     db = None

@@ -82,143 +82,342 @@ class Question:
         }
 
 
-async def get_response(chat_session: ChatSession, file_path_list, question: Question, chat_history, embedding_folder_list, deep_thinking = True, stream=False):
+async def get_response(chat_session: ChatSession, file_path_list, user_input, chat_history, embedding_folder_list, deep_thinking = True, stream=False):
+    """
+    Process a user query and generate a response, streaming updates if requested.
+    
+    This function now accepts raw user input text instead of a Question object,
+    and will generate the Question object internally using get_query_helper.
+    
+    Args:
+        chat_session: The current chat session
+        file_path_list: List of file paths
+        user_input: Raw text input from the user (replacing the Question parameter)
+        chat_history: Previous conversation history
+        embedding_folder_list: List of folders containing embeddings
+        deep_thinking: Whether to use deep thinking mode
+        stream: Whether to stream the response
+        
+    Returns:
+        If stream=True: A generator yielding response chunks
+        If stream=False: The complete response as a string
+    """
     generators_list = []
     config = load_config()
-    user_input = question.text
-    # Handle Lite mode first
-    if chat_session.mode == ChatMode.LITE:
-        lite_prompt = """
-        You are an expert, approachable tutor specializing in explaining complex document content in simple terms.
+    
+    # First, process the user input to get the Question object
+    question = None
+    
+    # If streaming is enabled, create a generator that processes the query and then response
+    if stream:
+        async def query_and_generate_response():
+            # Generate the Question object
+            async for chunk in get_query_helper(chat_session, user_input, chat_history, embedding_folder_list):
+                if isinstance(chunk, Question):
+                    nonlocal question
+                    question = chunk
+                    logger.info(f"Question object created: {question}")
+                else:
+                    # Pass through the progress updates
+                    yield chunk
+            
+            # Now that we have the Question object, generate the response
+            user_input_text = question.text
+            
+            # Handle different modes
+            if chat_session.mode == ChatMode.LITE:
+                lite_prompt = """
+                You are an expert, approachable tutor specializing in explaining complex document content in simple terms.
 
-        CONTEXT INFORMATION:
-        - Previous conversation: {chat_history}
-        - Reference content from document: {context}
+                CONTEXT INFORMATION:
+                - Previous conversation: {chat_history}
+                - Reference content from document: {context}
 
-        USER QUESTION:
-        {input}
+                USER QUESTION:
+                {input}
 
-        RESPONSE GUIDELINES:
-        1. Provide concise, accurate answers directly addressing the question
-        2. Use easy-to-understand language suitable for beginners
-        3. Format key concepts and important points in **bold**
-        4. Begin with a friendly greeting and end with an encouraging note
-        5. Break down complex information into digestible chunks
-        6. Use appropriate emojis (📚, 💡, ✅, etc.) to enhance readability
-        7. When explaining technical concepts, provide simple examples
-        8. If you're unsure about an answer, be honest and transparent
-        9. Include 2-3 follow-up questions at the end to encourage deeper learning
-        10. Use bullet points or numbered lists for step-by-step explanations
+                RESPONSE GUIDELINES:
+                1. Provide concise, accurate answers directly addressing the question
+                2. Use easy-to-understand language suitable for beginners
+                3. Format key concepts and important points in **bold**
+                4. Begin with a friendly greeting and end with an encouraging note
+                5. Break down complex information into digestible chunks
+                6. Use appropriate emojis (📚, 💡, ✅, etc.) to enhance readability
+                7. When explaining technical concepts, provide simple examples
+                8. If you're unsure about an answer, be honest and transparent
+                9. Include 2-3 follow-up questions at the end to encourage deeper learning
+                10. Use bullet points or numbered lists for step-by-step explanations
 
-        Remember: Your goal is to make learning enjoyable and accessible. Keep your tone positive, supportive, and engaging at all times.
-        """
-        actual_embedding_folder_list = [os.path.join(embedding_folder, 'lite_embedding') for embedding_folder in embedding_folder_list]
+                Remember: Your goal is to make learning enjoyable and accessible. Keep your tone positive, supportive, and engaging at all times.
+                """
+                actual_embedding_folder_list = [os.path.join(embedding_folder, 'lite_embedding') for embedding_folder in embedding_folder_list]
 
-        db = load_embeddings(actual_embedding_folder_list, 'lite')
-        logger.info(f"Type of db: {type(db)}")
-        answer = await get_db_rag_response(
-            prompt_string=lite_prompt,
-            user_input=user_input + "\n\n" + question.special_context,
-            chat_history=chat_history,
-            chat_session=chat_session,
-            db=db,
-            stream=stream
-        )   # If stream is True, the answer is a generator; otherwise, it's a string
-        if stream is True:
+                db = load_embeddings(actual_embedding_folder_list, 'lite')
+                logger.info(f"Type of db: {type(db)}")
+                
+                yield "Generating response..."
+                async for chunk in get_db_rag_response(
+                    prompt_string=lite_prompt,
+                    user_input=user_input_text + "\n\n" + question.special_context,
+                    chat_history=chat_history,
+                    chat_session=chat_session,
+                    db=db,
+                    stream=True
+                ):
+                    yield chunk
+            
+            # Handle Advanced mode
+            elif chat_session.mode == ChatMode.ADVANCED:
+                try:
+                    yield "Using GraphRAG for advanced response..."
+                    async for chunk in get_GraphRAG_global_response(
+                        user_input_text, 
+                        chat_history, 
+                        embedding_folder_list, 
+                        deep_thinking, 
+                        chat_session=chat_session, 
+                        stream=True
+                    ):
+                        yield chunk
+                except Exception as e:
+                    logger.exception(f"Error getting response from GraphRAG: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    yield f"Error in GraphRAG processing: {str(e)}"
+            
+            # Handle Basic mode
+            else:
+                if not deep_thinking:
+                    logger.info("not deep thinking ...")
+                    basic_prompt = """
+                        You are a patient and honest professor helping a student reading a paper.
+                        Use the given context to answer the question.
+                        If you don't know the answer, say you don't know.
+                        Reference context from the paper: ```{context}```
+                        If the concept can be better explained by formulas, use LaTeX syntax in markdown
+                        For inline formulas, use single dollar sign: $a/b = c/d$
+                        FOr block formulas, use double dollar sign:
+                        $$
+                        \\frac{{a}}{{b}} = \\frac{{c}}{{d}}
+                        $$
+                        """ + "\n\nThis is a detailed plan for constructing the answer: " + str(question.answer_planning)
+
+                    # Load embeddings for Non-deep thinking mode
+                    try:
+                        logger.info(f"Loading markdown embeddings from {[os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]}")
+                        db = load_embeddings(embedding_folder_list, 'default')
+                    except Exception as e:
+                        logger.exception(f"Failed to load markdown embeddings for Non-deep thinking mode: {str(e)}")
+                        db = load_embeddings(embedding_folder_list, 'default')
+
+                    yield "Generating response using basic mode..."
+                    async for chunk in get_db_rag_response(
+                        prompt_string=basic_prompt,
+                        user_input=user_input_text + "\n\n" + question.special_context,
+                        chat_history=chat_history,
+                        chat_session=chat_session,
+                        db=db,
+                        stream=True
+                    ):
+                        yield chunk
+                else:
+                    logger.info("deep thinking ...")
+                    try:
+                        logger.info(f"Loading markdown embeddings from {[os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]}")
+                        db = load_embeddings(embedding_folder_list, 'default')
+                    except Exception as e:
+                        logger.exception(f"Failed to load markdown embeddings for deep thinking mode: {str(e)}")
+                        db = load_embeddings(embedding_folder_list, 'default')
+
+                    # Load config for deep thinking mode
+                    config = load_config()
+                    token_limit = config["inference_token_limit"]
+
+                    chat_history_string = truncate_chat_history(chat_history, token_limit=token_limit)
+                    user_input_string = str(user_input_text + "\n\n" + question.special_context)
+                    
+                    yield "Searching for relevant context..."
+                    # Get relevant chunks for both question and answer with scores
+                    question_chunks_with_scores = db.similarity_search_with_score(user_input_string, k=config['retriever']['k'])
+                    # The total list of sources chunks
+                    sources_chunks = []
+                    # From the highest score to the lowest score, until the total tokens exceed 3000
+                    total_tokens = 0
+                    for chunk in question_chunks_with_scores:
+                        if total_tokens + count_tokens(chunk[0].page_content) > token_limit:
+                            break
+                        sources_chunks.append(chunk[0])
+                        total_tokens += count_tokens(chunk[0].page_content)
+                    context = "\n\n".join([chunk.page_content for chunk in sources_chunks])
+
+                    prompt = f"""
+                    You are a deep thinking tutor helping a student reading a paper.
+                    Reference context from the paper: {context}
+                    This is a detailed plan for constructing the answer: {str(question.answer_planning)}
+                    The student's query is: {user_input_string}
+                    """
+                    logger.info(f"user_input_string tokens: {count_tokens(user_input_string)}")
+                    logger.info(f"chat_history_string tokens: {count_tokens(chat_history_string)}")
+                    logger.info(f"context tokens: {count_tokens(context)}")
+                    logger.info("before deep_inference_agent ...")
+                    yield "Generating deep thinking response..."
+                    
+                    try:
+                        async for chunk in deep_inference_agent(user_prompt=prompt, stream=True, chat_session=chat_session):
+                            yield chunk
+                    except Exception as e:
+                        logger.exception(f"Error in deep_inference_agent with chat history, retry with no chat history: {e}")
+                        prompt = f"""
+                        You are a deep thinking tutor helping a student reading a paper.
+                        Reference context from the paper: {context}
+                        The student's query is: {user_input_string}
+                        """
+                        yield "Retrying with simplified prompt..."
+                        async for chunk in deep_inference_agent(user_prompt=prompt, stream=True, chat_session=chat_session):
+                            yield chunk
+        
+        # Return the combined generator
+        return query_and_generate_response()
+    
+    # Non-streaming mode - process sequentially
+    else:
+        # First get the question object
+        question = None
+        async for chunk in get_query_helper(chat_session, user_input, chat_history, embedding_folder_list):
+            if isinstance(chunk, Question):
+                question = chunk
+                break
+        
+        if not question:
+            raise ValueError("Failed to generate Question object")
+            
+        user_input_text = question.text
+        
+        # Handle Lite mode first
+        if chat_session.mode == ChatMode.LITE:
+            lite_prompt = """
+            You are an expert, approachable tutor specializing in explaining complex document content in simple terms.
+
+            CONTEXT INFORMATION:
+            - Previous conversation: {chat_history}
+            - Reference content from document: {context}
+
+            USER QUESTION:
+            {input}
+
+            RESPONSE GUIDELINES:
+            1. Provide concise, accurate answers directly addressing the question
+            2. Use easy-to-understand language suitable for beginners
+            3. Format key concepts and important points in **bold**
+            4. Begin with a friendly greeting and end with an encouraging note
+            5. Break down complex information into digestible chunks
+            6. Use appropriate emojis (📚, 💡, ✅, etc.) to enhance readability
+            7. When explaining technical concepts, provide simple examples
+            8. If you're unsure about an answer, be honest and transparent
+            9. Include 2-3 follow-up questions at the end to encourage deeper learning
+            10. Use bullet points or numbered lists for step-by-step explanations
+
+            Remember: Your goal is to make learning enjoyable and accessible. Keep your tone positive, supportive, and engaging at all times.
+            """
+            actual_embedding_folder_list = [os.path.join(embedding_folder, 'lite_embedding') for embedding_folder in embedding_folder_list]
+
+            db = load_embeddings(actual_embedding_folder_list, 'lite')
+            logger.info(f"Type of db: {type(db)}")
+            answer = await get_db_rag_response(
+                prompt_string=lite_prompt,
+                user_input=user_input_text + "\n\n" + question.special_context,
+                chat_history=chat_history,
+                chat_session=chat_session,
+                db=db,
+                stream=False
+            )
             return answer
-        else:
-            return answer
 
-    # Handle Advanced mode
-    if chat_session.mode == ChatMode.ADVANCED:
-        try:
-            answer = await get_GraphRAG_global_response(user_input, chat_history, embedding_folder_list, deep_thinking, chat_session=chat_session, stream=stream)
-            return answer
-        except Exception as e:
-            logger.exception("Error getting response from GraphRAG:", e)
-            import traceback
-            traceback.print_exc()
+        # Handle Advanced mode
+        if chat_session.mode == ChatMode.ADVANCED:
+            try:
+                answer = await get_GraphRAG_global_response(user_input_text, chat_history, embedding_folder_list, deep_thinking, chat_session=chat_session, stream=False)
+                return answer
+            except Exception as e:
+                logger.exception("Error getting response from GraphRAG:", e)
+                import traceback
+                traceback.print_exc()
 
-    # Handle Basic mode
-    if not deep_thinking:
-        logger.info("not deep thinking ...")
-        basic_prompt = """
-            You are a patient and honest professor helping a student reading a paper.
-            Use the given context to answer the question.
-            If you don't know the answer, say you don't know.
-            Reference context from the paper: ```{context}```
-            If the concept can be better explained by formulas, use LaTeX syntax in markdown
-            For inline formulas, use single dollar sign: $a/b = c/d$
-            FOr block formulas, use double dollar sign:
-            $$
-            \frac{{a}}{{b}} = \frac{{c}}{{d}}
-            $$
-            """ + "\n\nThis is a detailed plan for constructing the answer: " + str(question.answer_planning)
+        # Handle Basic mode
+        if not deep_thinking:
+            logger.info("not deep thinking ...")
+            basic_prompt = """
+                You are a patient and honest professor helping a student reading a paper.
+                Use the given context to answer the question.
+                If you don't know the answer, say you don't know.
+                Reference context from the paper: ```{context}```
+                If the concept can be better explained by formulas, use LaTeX syntax in markdown
+                For inline formulas, use single dollar sign: $a/b = c/d$
+                FOr block formulas, use double dollar sign:
+                $$
+                \\frac{{a}}{{b}} = \\frac{{c}}{{d}}
+                $$
+                """ + "\n\nThis is a detailed plan for constructing the answer: " + str(question.answer_planning)
 
-        # Load embeddings for Non-deep thinking mode
-        try:
-            logger.info(f"Loading markdown embeddings from {[os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]}")
-            db = load_embeddings(embedding_folder_list, 'default')
-        except Exception as e:
-            logger.exception(f"Failed to load markdown embeddings for Non-deep thinking mode: {str(e)}")
-            db = load_embeddings(embedding_folder_list, 'default')
+            # Load embeddings for Non-deep thinking mode
+            try:
+                logger.info(f"Loading markdown embeddings from {[os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]}")
+                db = load_embeddings(embedding_folder_list, 'default')
+            except Exception as e:
+                logger.exception(f"Failed to load markdown embeddings for Non-deep thinking mode: {str(e)}")
+                db = load_embeddings(embedding_folder_list, 'default')
 
-        answer = await get_db_rag_response(
-            prompt_string=basic_prompt,
-            user_input=user_input + "\n\n" + question.special_context,
-            chat_history=chat_history,
-            chat_session=chat_session,
-            db=db,
-            stream=stream
-        )
-        if stream is True:
-            # If stream is True, the answer is a generator; otherwise, it's a string
-            # FIXME: Later we can add response_refine to the generator
-            return answer
-        else:
+            answer = await get_db_rag_response(
+                prompt_string=basic_prompt,
+                user_input=user_input_text + "\n\n" + question.special_context,
+                chat_history=chat_history,
+                chat_session=chat_session,
+                db=db,
+                stream=False
+            )
             answer = responses_refine(answer)
             return answer
-    else:
-        logger.info("deep thinking ...")
-        try:
-            logger.info(f"Loading markdown embeddings from {[os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]}")
-            db = load_embeddings(embedding_folder_list, 'default')
-        except Exception as e:
-            logger.exception(f"Failed to load markdown embeddings for deep thinking mode: {str(e)}")
-            db = load_embeddings(embedding_folder_list, 'default')
-
-        # Load config for deep thinking mode
-        config = load_config()
-        token_limit = config["inference_token_limit"]
-
-        chat_history_string = truncate_chat_history(chat_history, token_limit=token_limit)
-        user_input_string = str(user_input + "\n\n" + question.special_context)
-        # Get relevant chunks for both question and answer with scores
-        question_chunks_with_scores = db.similarity_search_with_score(user_input_string, k=config['retriever']['k'])
-        # The total list of sources chunks
-        sources_chunks = []
-        # From the highest score to the lowest score, until the total tokens exceed 3000
-        total_tokens = 0
-        for chunk in question_chunks_with_scores:
-            if total_tokens + count_tokens(chunk[0].page_content) > token_limit:
-                break
-            sources_chunks.append(chunk[0])
-            total_tokens += count_tokens(chunk[0].page_content)
-        context = "\n\n".join([chunk.page_content for chunk in sources_chunks])
-
-        prompt = f"""
-        You are a deep thinking tutor helping a student reading a paper.
-        Reference context from the paper: {context}
-        This is a detailed plan for constructing the answer: {str(question.answer_planning)}
-        The student's query is: {user_input_string}
-        """
-        logger.info(f"user_input_string tokens: {count_tokens(user_input_string)}")
-        logger.info(f"chat_history_string tokens: {count_tokens(chat_history_string)}")
-        logger.info(f"context tokens: {count_tokens(context)}")
-        logger.info("before deep_inference_agent ...")
-        if stream is False:
+        else:
+            logger.info("deep thinking ...")
             try:
-                answer = str(deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session))
+                logger.info(f"Loading markdown embeddings from {[os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]}")
+                db = load_embeddings(embedding_folder_list, 'default')
+            except Exception as e:
+                logger.exception(f"Failed to load markdown embeddings for deep thinking mode: {str(e)}")
+                db = load_embeddings(embedding_folder_list, 'default')
+
+            # Load config for deep thinking mode
+            config = load_config()
+            token_limit = config["inference_token_limit"]
+
+            chat_history_string = truncate_chat_history(chat_history, token_limit=token_limit)
+            user_input_string = str(user_input_text + "\n\n" + question.special_context)
+            # Get relevant chunks for both question and answer with scores
+            question_chunks_with_scores = db.similarity_search_with_score(user_input_string, k=config['retriever']['k'])
+            # The total list of sources chunks
+            sources_chunks = []
+            # From the highest score to the lowest score, until the total tokens exceed 3000
+            total_tokens = 0
+            for chunk in question_chunks_with_scores:
+                if total_tokens + count_tokens(chunk[0].page_content) > token_limit:
+                    break
+                sources_chunks.append(chunk[0])
+                total_tokens += count_tokens(chunk[0].page_content)
+            context = "\n\n".join([chunk.page_content for chunk in sources_chunks])
+
+            prompt = f"""
+            You are a deep thinking tutor helping a student reading a paper.
+            Reference context from the paper: {context}
+            This is a detailed plan for constructing the answer: {str(question.answer_planning)}
+            The student's query is: {user_input_string}
+            """
+            logger.info(f"user_input_string tokens: {count_tokens(user_input_string)}")
+            logger.info(f"chat_history_string tokens: {count_tokens(chat_history_string)}")
+            logger.info(f"context tokens: {count_tokens(context)}")
+            logger.info("before deep_inference_agent ...")
+            
+            try:
+                answer = str(deep_inference_agent(user_prompt=prompt, stream=False, chat_session=chat_session))
             except Exception as e:
                 logger.exception(f"Error in deep_inference_agent with chat history, retry with no chat history: {e}")
                 prompt = f"""
@@ -226,7 +425,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 Reference context from the paper: {context}
                 The student's query is: {user_input_string}
                 """
-                answer = str(deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session))
+                answer = str(deep_inference_agent(user_prompt=prompt, stream=False, chat_session=chat_session))
 
             if "<think>" in answer:
                 answer_thinking = answer.split("<think>")[1].split("</think>")[0]
@@ -241,25 +440,26 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
 
             logger.info("get_response done ...")
             return answer
-        else:
-            # If stream is True, the answer is a generator; otherwise, it's a string
-            # FIXME: Later we can add response_refine and replace_latex_formulas to the generator
-            try:
-                answer = deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session)
-            except Exception as e:
-                logger.exception(f"Error in deep_inference_agent with chat history, retry with no chat history: {e}")
-                prompt = f"""
-                You are a deep thinking tutor helping a student reading a paper.
-                Reference context from the paper: {context}
-                The student's query is: {user_input_string}
-                """
-                answer = deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session)
-            return answer
 
 
-def get_query_helper(chat_session: ChatSession, user_input, context_chat_history, embedding_folder_list):
+async def get_query_helper(chat_session: ChatSession, user_input, context_chat_history, embedding_folder_list):
+    """
+    Process a user query to optimize it for RAG and determine its type, streaming the progress.
+    Returns a Question object as the final yield.
+    
+    Args:
+        chat_session: The current chat session
+        user_input: The raw user input text
+        context_chat_history: Previous conversation history
+        embedding_folder_list: List of folders containing embeddings
+        
+    Yields:
+        Progress updates as strings during processing
+        Final Question object as the last yield
+    """
     # Replace LaTeX formulas in the format \( formula \) with $ formula $
     user_input = replace_latex_formulas(user_input)
+    yield "Processing user input..."
 
     logger.info(f"TEST: user_input: {user_input}")
     # If we have "documents_summary" in the embedding folder, we can use it to speed up the search
@@ -275,6 +475,7 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
     # Join all the documents summaries into one string
     # FIXME: Add a function to combine the initial messages into a single summary message
     documents_summary = "\n".join(documents_summary_list)
+    yield "Loaded document summaries..."
 
     # Load languages from config
     config = load_config()
@@ -282,6 +483,7 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
     parser = JsonOutputParser()
     error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
 
+    yield "Analyzing question type and intent..."
     system_prompt = (
         """
         You are a educational professor helping a student reading a document {context}.
@@ -320,6 +522,8 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
                                   "chat_history": truncate_chat_history(context_chat_history)})
     question = parsed_result['question']
     question_type = parsed_result['question_type']
+    yield f"Question type identified: {question_type}"
+    
     try:
         language = detect_language(user_input)
         logger.info(f"language detected: {language}")
@@ -328,8 +532,10 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
         language = "English"
 
     chat_session.set_language(language)
+    yield f"Language detected: {language}"
 
     # Create the answer planning using an additional LLM call
+    yield "Creating detailed answer plan..."
     planning_system_prompt = (
         """
         You are an educational AI assistant tasked with deeply analyzing a student's question and planning a comprehensive answer.
@@ -392,26 +598,31 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
         "chat_history": truncate_chat_history(context_chat_history)
     })
     logger.info(f"TEST: answer_planning: {answer_planning}")
+    yield "Answer planning complete"
 
-    question = Question(
+    question_obj = Question(
         text=question,
         language=language,
         question_type=question_type,
         answer_planning=answer_planning,
         image_url=None,
     )
-    logger.info(f"TEST: question.question_type: {question.question_type}")
+    logger.info(f"TEST: question.question_type: {question_obj.question_type}")
 
     if question_type == "image":
+        yield "Processing image-related question..."
         logger.info(f"question_type for input: {user_input} is --image-- ...")
         markdown_folder_list = [os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]
         db = create_image_context_embeddings_db(markdown_folder_list)
+        yield "Searching for relevant image contexts..."
         # Replace variations of "fig" or "figure" with "Image" for better matching
         processed_input = re.sub(r"\b(?:[Ff][Ii][Gg](?:ure)?\.?|[Ff]igure)\b", "Image", user_input)
         image_chunks = db.similarity_search_with_score(processed_input, k=1)
         image_url_mapping = aggregate_image_contexts_to_urls(markdown_folder_list)
+        
         if image_chunks:
-            question.special_context = """
+            yield "Found relevant image descriptions"
+            question_obj.special_context = """
             Here is the context and visual understanding of the corresponding image:
             """ + image_chunks[0][0].page_content # + "\n\n" + image_chunks[1][0].page_content
 
@@ -430,26 +641,33 @@ def get_query_helper(chat_session: ChatSession, user_input, context_chat_history
 
             # Set the image URL with the highest score in the question object
             if highest_score_url:
-                question.image_url = highest_score_url
+                question_obj.image_url = highest_score_url
                 logger.info(f"Setting image URL in question: {highest_score_url}")
+                yield "Found matching image"
 
-        if question.image_url:
+        if question_obj.image_url:
             # Get the images understanding from the image url about the question
-            question.special_context = """
+            yield "Analyzing image content..."
+            question_obj.special_context = """
             Here is the context and visual understanding of the corresponding image:
-            """ + analyze_image(question.image_url, f"The user's question is: {question.text}", f"The user's question is: {question.text}")
+            """ + analyze_image(question_obj.image_url, f"The user's question is: {question_obj.text}", f"The user's question is: {question_obj.text}")
+            yield "Image analysis complete"
 
-        logger.info(f"TEST: question.special_context: {question.special_context}")
+        logger.info(f"TEST: question.special_context: {question_obj.special_context}")
     elif question_type == "local":
         logger.info(f"question_type for input: {user_input} is --local-- ...")
+        yield "Processing local-context question..."
     elif question_type == "global":
         logger.info(f"question_type for input: {user_input} is --global-- ...")
+        yield "Processing global-context question..."
     else:
         logger.info(f"question_type for input: {user_input} is unknown ...")
+        yield "Processing question of unknown type..."
 
     # TEST: print the question object
-    logger.info(f"TEST: question: {question}")
-    return question
+    logger.info(f"TEST: question: {question_obj}")
+    yield "Question processing complete"
+    yield question_obj
 
 
 def generate_follow_up_questions(answer, chat_history):

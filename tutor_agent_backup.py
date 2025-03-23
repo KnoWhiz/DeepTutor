@@ -335,7 +335,7 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     response_start = time.time()
     response = await get_response(chat_session, file_path_list, user_input, context_chat_history, embedding_folder_list, deep_thinking=deep_thinking, stream=stream)
     answer = response[0] if isinstance(response, tuple) else response
-    for chunk in answer:  # Changed back to regular for loop
+    for chunk in answer:
         yield chunk
     time_tracking["response_generation"] = time.time() - response_start
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
@@ -560,7 +560,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
             if (type(answer) is str):
                 yield answer
             else:
-                for chunk in answer:  # Changed back to regular for loop
+                for chunk in answer:
                     yield chunk
             yield "</response>"
         else:
@@ -640,7 +640,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         yield "</thinking>"
         yield "\n\n**Generating the response ...**\n\n"
     else:
-        for chunk in answer:  # Changed back to regular for loop
+        for chunk in answer:
             if "</think>" not in chunk:
                 if "<response>" in chunk:
                     if translation_response is False:
@@ -696,7 +696,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         if (type(answer) is str):
             yield answer
         else:
-            for chunk in answer:  # Changed back to regular for loop
+            for chunk in answer:
                 yield chunk
         yield "</response>"
         yield "\n\n**Generating the response done ...**\n\n"
@@ -965,7 +965,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
             if (type(answer) is str):
                 yield answer
             else:
-                for chunk in answer:  # Changed back to regular for loop
+                for chunk in answer:
                     yield chunk
             yield "</response>"
         else:
@@ -1047,7 +1047,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
         yield "</thinking>"
         yield "\n\n**Generating the response ...**\n\n"
     else:
-        for chunk in answer:  # Changed back to regular for loop
+        for chunk in answer:
             if "</think>" not in chunk:
                 if "<response>" in chunk:
                     if translation_response is False:
@@ -1098,7 +1098,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
         if (type(answer) is str):
             yield answer
         else:
-            for chunk in answer:  # Changed back to regular for loop
+            for chunk in answer:
                 yield chunk
         yield "</response>"
         yield "\n\n**Generating the response done ...**\n\n"

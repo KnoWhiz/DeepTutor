@@ -652,7 +652,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
                 # Handle response closing tag
                 elif "</response>" in chunk:
                     translation_needed = needs_translation()
-                    
+
                     if not translation_needed:
                         yield chunk
                     else:
@@ -661,15 +661,15 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
                         yield "</thinking>"
                         yield "\n\n**Generating the response ...**\n\n"
                         translation_response = True
-                
+
                 # Handle regular content
                 else:
                     yield chunk
-            
+
             # Handle </think> tag (end of thinking section)
             else:
                 translation_response = needs_translation()
-                
+
                 if not translation_response:
                     yield chunk
                     yield "</thinking>"

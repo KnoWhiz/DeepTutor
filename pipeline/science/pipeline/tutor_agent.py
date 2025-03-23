@@ -342,7 +342,11 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
 
     # For Lite mode, we have minimal sources and follow-up questions
     yield "\n\n**Generating follow-up questions ...**\n\n"
-    follow_up_questions = generate_follow_up_questions(chat_session.current_message, [])
+    message_content = chat_session.current_message
+    if isinstance(message_content, list) and len(message_content) > 0:
+        message_content = message_content[0]
+    
+    follow_up_questions = generate_follow_up_questions(message_content, [])
     for i in range(len(follow_up_questions)):
         follow_up_questions[i] = translate_content(
             content=follow_up_questions[i],
@@ -566,7 +570,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
 
         yield "<appendix>"
         yield "\n\n**Generating follow-up questions ...**\n\n"
-        follow_up_questions = generate_follow_up_questions(chat_session.current_message[0], [])
+        follow_up_questions = generate_follow_up_questions(chat_session.current_message, [])
         for i in range(len(follow_up_questions)):
             follow_up_questions[i] = translate_content(
                 content=follow_up_questions[i],
@@ -595,13 +599,12 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     # Refine user input
     yield "\n\n**Understanding the user input ...**\n\n"
     query_start = time.time()
-    # question = get_query_helper(chat_session, user_input, context_chat_history, embedding_folder_list)
     async for question_progress_update in get_query_helper(chat_session, user_input, context_chat_history, embedding_folder_list):
-        if isinstance(question_progress_update, tuple) and len(question_progress_update) == 1:
-            # This is the final return value - a tuple with (md_path, saved_images, md_document)
+        if isinstance(question_progress_update, Question):
+            # This is the final return value - a Question object
             question = question_progress_update
-            logger.info("Received final result tuple from streaming function")
-        elif type(question_progress_update) is str:
+            logger.info(f"Received Question object from streaming function: {question}")
+        elif isinstance(question_progress_update, str):
             yield f"\n\n{question_progress_update}"
         else:
             continue
@@ -977,8 +980,11 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
 
         yield "<appendix>"
         yield "\n\n**Generating follow-up questions ...**\n\n"
-        follow_up_questions = generate_follow_up_questions(extract_advanced_mode_content(chat_session.current_message)[0], [])
-
+        message_content = chat_session.current_message
+        if isinstance(message_content, list) and len(message_content) > 0:
+            message_content = message_content[0]
+        
+        follow_up_questions = generate_follow_up_questions(message_content, [])
         for i in range(len(follow_up_questions)):
             follow_up_questions[i] = translate_content(
                 content=follow_up_questions[i],
@@ -1010,10 +1016,11 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
     yield "\n\n**Understanding the user input ...**\n\n"
     query_start = time.time()
     async for question_progress_update in get_query_helper(chat_session, user_input, context_chat_history, embedding_folder_list):
-        if isinstance(question_progress_update, tuple) and len(question_progress_update) == 1:
+        if isinstance(question_progress_update, Question):
+            # This is the final return value - a Question object
             question = question_progress_update
-            logger.info("Received final result tuple from streaming function")
-        elif type(question_progress_update) is str:
+            logger.info(f"Received Question object from streaming function: {question}")
+        elif isinstance(question_progress_update, str):
             yield f"\n\n{question_progress_update}"
         else:
             continue

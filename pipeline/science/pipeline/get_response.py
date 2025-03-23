@@ -402,10 +402,11 @@ async def get_query_helper(chat_session: ChatSession, user_input, context_chat_h
         image_url=None,
     )
     logger.info(f"TEST: question.question_type: {question.question_type}")
-    yield f"\n\n**Question: {question}**"
-    yield f"\n\n**Question type: {question_type}**"
-    yield f"\n\n**Answer planning: {answer_planning}**"
-    yield f"\n\n**Language: {language}**"
+    # yield f"\n\n**Question: {question}**"
+    # yield f"\n\n**Question type: {question_type}**"
+    # yield f"\n\n**Answer planning: {answer_planning}**"
+    # yield f"\n\n**Language: {language}**"
+    yield "\n\n**Answer planning...**"
 
     if question_type == "image":
         logger.info(f"question_type for input: {user_input} is --image-- ...")

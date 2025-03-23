@@ -616,53 +616,66 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
 
     # Get response
     translation_response = False
-    current_status = "thinking"
-    # yield "\n\n**Generating the response ...**\n\n"
     response_start = time.time()
     response = await get_response(chat_session, file_path_list, question, context_chat_history, embedding_folder_list, deep_thinking=deep_thinking, stream=stream)
     answer = response[0] if isinstance(response, tuple) else response
+    
+    def needs_translation():
+        """Helper function to determine if translation is needed."""
+        content = extract_basic_mode_content(chat_session.current_message)[0]
+        language = detect_language(content)
+        return language != chat_session.current_language
+        
+    def is_in_thinking_mode():
+        """Helper function to check if we're in thinking mode."""
+        return chat_session.current_message.endswith("</thinking>") or not chat_session.current_message
+    
     if deep_thinking is False:
         yield "</thinking>"
         yield "\n\n**Generating the response ...**\n\n"
     else:
         for chunk in answer:
+            # Process chunks without </think> tag
             if "</think>" not in chunk:
+                # Handle response opening tag
                 if "<response>" in chunk:
-                    if translation_response is False:
-                        if current_status == "thinking":
-                            current_status = "response"
-                            # yield "\n\n**Here is the final response**\n\n"
-                            yield chunk
+                    translation_needed = needs_translation()
+                    
+                    if not translation_needed:
+                        if is_in_thinking_mode():
+                            yield chunk  # First response chunk
                         else:
-                            yield chunk.replace("<response>", "")
+                            yield chunk.replace("<response>", "")  # Continuation chunk
                     else:
-                        # yield "\n\n**Here is the original response**\n\n"
-                        # Replace the "<response>" tag with "<original_response>" tag
                         yield chunk.replace("<response>", "<original_response>")
+                
+                # Handle response closing tag
                 elif "</response>" in chunk:
-                    if translation_response is False:
+                    translation_needed = needs_translation()
+                    
+                    if not translation_needed:
                         yield chunk
                     else:
-                        # Replace the "</response>" tag with "<original_response>" tag
+                        # End original response and prepare for translation
                         yield chunk.replace("</response>", "</original_response>")
                         yield "</thinking>"
                         yield "\n\n**Generating the response ...**\n\n"
+                        translation_response = True
+                
+                # Handle regular content
                 else:
                     yield chunk
-                # yield chunk
-            else:   # If the chunk contains "</think>", it means the response is done
-                content=extract_basic_mode_content(chat_session.current_message)[0]
-                language = detect_language(content)
-                if language != chat_session.current_language:
-                    translation_response = True
-
-                if translation_response is False:
-                    logger.info("Translation response is False")
+            
+            # Handle </think> tag (end of thinking section)
+            else:
+                translation_response = needs_translation()
+                
+                if not translation_response:
                     yield chunk
                     yield "</thinking>"
                     yield "\n\n**Generating the response ...**\n\n"
+    
     time_tracking["response_generation"] = time.time() - response_start
-    # yield "\n\n**Generating the response done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Refine and translate the answer to the selected language
@@ -743,22 +756,6 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     yield "\n\n**Processing image sources done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
-    # # Refine and translate the answer to the selected language
-    # # FIXME:Only if currently language in not the same as the selected language
-    # yield "Translating the answer to the selected language ...\n\n"
-    # translation_start = time.time()
-    # translated_answer = translate_content(
-    #     content=chat_session.current_message,
-    #     target_lang=chat_session.current_language
-    #     stream=stream
-    # )
-    # yield "<translated_answer>"
-    # yield f"\n{translated_answer}\n"
-    # yield "</translated_answer>"
-    # time_tracking["translation"] = time.time() - translation_start
-    # yield "Translating the answer to the selected language done ...\n\n"
-    # logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-
     # Append images URL in markdown format to the end of the answer
     annotations_start = time.time()
     if image_url_list:
@@ -767,7 +764,6 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
                 yield "\n"
                 yield f"![]({image_url})"
 
-    yield "\n\n**Retrieving source annotations ...**\n\n"
     source_annotations = {}
     for source, index in refined_source_index.items():
         _doc = process_pdf_file(file_path_list[index-1])[1]
@@ -789,6 +785,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         )
         # Clean up translation prefixes
         follow_up_questions[i] = clean_translation_prefix(follow_up_questions[i])
+
     for chunk in follow_up_questions:
         # Ensure the chunk is properly cleaned and formatted before wrapping in XML
         cleaned_chunk = chunk.strip()

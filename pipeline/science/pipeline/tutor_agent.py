@@ -285,7 +285,7 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     save_file_start_time = time.time()
     filename_list = [os.path.basename(file_path) for file_path in file_path_list]
     for file_path, filename in zip(file_path_list, filename_list):
-        save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
+        save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
     time_tracking["file_loading_save_text"] = time.time() - save_file_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
     yield "\n\n**Processing documents done ...**\n\n"
@@ -301,7 +301,7 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
         else:
             # Files are missing and have been cleaned up
             _document, _doc = process_pdf_file(file_path)
-            save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
+            save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
             logger.info(f"Generating LiteRAG embedding for {file_id} ...")
             yield f"Generating LiteRAG embedding for {file_id} ...\n\n"
             async for chunk in embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder):
@@ -480,7 +480,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     save_file_start_time = time.time()
     filename_list = [os.path.basename(file_path) for file_path in file_path_list]
     for file_path, filename in zip(file_path_list, filename_list):
-        save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
+        save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
     time_tracking["file_loading_save_text"] = time.time() - save_file_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
@@ -494,7 +494,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         else:
             # Files are missing and have been cleaned up
             _document, _doc = process_pdf_file(file_path)
-            save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
+            save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
             logger.info(f"VectorRAG embedding for {file_id} ...")
             # await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
             async for chunk in embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder):
@@ -504,7 +504,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
                 logger.info(f"VectorRAG index files for {file_id} are ready and uploaded to Azure Blob Storage.")
             else:
                 # Retry once if first attempt fails
-                save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
+                save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
                 # await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
                 async for chunk in embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder):
                     yield chunk
@@ -885,7 +885,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
     save_file_start_time = time.time()
     filename_list = [os.path.basename(file_path) for file_path in file_path_list]
     for file_path, filename in zip(file_path_list, filename_list):
-        save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
+        save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
     time_tracking["file_loading_save_text"] = time.time() - save_file_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
     yield "\n\n**Processing documents done ...**\n\n"
@@ -901,7 +901,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
         else:
             # Files are missing and have been cleaned up
             _document, _doc = process_pdf_file(file_path)
-            save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
+            save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
             logger.info(f"GraphRAG embedding for {file_id} ...")
             yield f"\n\n**Generating GraphRAG embedding for {file_id} ...**\n\n"
             # await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
@@ -913,7 +913,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
             else:
                 # Retry once if first attempt fails
                 yield f"\n\n**Retrying GraphRAG embedding for {file_id} ...**\n\n"
-                save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder)
+                save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
                 # await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
                 async for chunk in embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder):
                     yield chunk

@@ -23,7 +23,7 @@ from pipeline.science.pipeline.images_understanding import (
     upload_images_to_azure,
 )
 from pipeline.science.pipeline.utils import robust_search_for
-
+from pipeline.science.pipeline.session_manager import ChatSession
 import logging
 logger = logging.getLogger("tutorpipeline.science.doc_processor")
 
@@ -52,7 +52,7 @@ def process_pdf_file(file_path):
 
 
 # Function to save the file locally as a text file
-def save_file_txt_locally(file_path, filename, embedding_folder):
+def save_file_txt_locally(file_path, filename, embedding_folder, chat_session: ChatSession = None):
     """
     Save the file (e.g., PDF) loaded as text into the GraphRAG_embedding_input_folder.
     """

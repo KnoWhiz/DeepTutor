@@ -359,7 +359,7 @@ async def extract_pdf_content_to_markdown_via_api_streaming(
 
     API_URL = "https://www.datalab.to/api/v1/marker"
 
-    yield "Submitting file to Marker API..."
+    yield "Start parsing PDF to markdown..."
     # Submit the file to API - use requests for initial upload since it handles multipart/form-data better
     with open(file_path, "rb") as f:
         form_data = {
@@ -382,7 +382,7 @@ async def extract_pdf_content_to_markdown_via_api_streaming(
 
     request_check_url = data.get("request_check_url")
     logger.info("Submitted request. Polling for results...")
-    yield "Request submitted. Polling for results..."
+    yield "Polling for PDF parsing results..."
 
     # Poll until processing is complete using aiohttp
     max_polls = 300
@@ -416,7 +416,7 @@ async def extract_pdf_content_to_markdown_via_api_streaming(
             else:
                 raise Exception("The request did not complete within the expected time.")
     except Exception as e:
-        logger.exception(f"Unexpected error during API polling: {str(e)}")
+        logger.exception(f"Unexpected error during polling: {str(e)}")
         yield f"Error: {str(e)}"
         raise
 

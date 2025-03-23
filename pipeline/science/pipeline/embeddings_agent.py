@@ -121,11 +121,11 @@ async def embeddings_agent(
             # Extract content to markdown via API
             if not SKIP_MARKER_API:
                 logger.info("Marker API is enabled. Using Marker API to extract content to markdown.")
-                yield "\n\n**Using Marker API to extract content to markdown...**"
+                yield "\n\n**Parsing PDF to markdown...**"
                 markdown_dir = os.path.join(embedding_folder, "markdown")
                 
                 # Use the streaming version of extract_pdf_content_to_markdown_via_api
-                yield "\n\n**Starting PDF extraction via API with streaming updates...**"
+                yield "\n\n**Starting PDF extraction...**"
                 
                 # Call the streaming version and get status updates
                 md_path = None
@@ -142,7 +142,7 @@ async def embeddings_agent(
                         else:
                             # This is a progress update if there is no "**" in the string
                             if "**" not in progress_update and "![" not in progress_update:
-                                yield f"\n\n**API Progress: {progress_update}**"
+                                yield f"\n\n**PDF parsing progress: {progress_update}**"
                             else:
                                 yield f"\n\n{progress_update}"
                     

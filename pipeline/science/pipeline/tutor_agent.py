@@ -319,9 +319,10 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     # Handle initial welcome message when chat history is empty
     # initial_message_start_time = time.time()
     if user_input == config["summary_wording"] or not chat_history:
-        yield "<response>"
-        yield "Hello! How can I assist you today?"
-        yield "</response>"
+        pass
+        # yield "<response>"
+        # yield "Hello! How can I assist you today?"
+        # yield "</response>"
 
     # time_tracking["summary_message"] = time.time() - initial_message_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")

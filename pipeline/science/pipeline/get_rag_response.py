@@ -140,9 +140,10 @@ async def get_db_rag_response(
             parsed_result = parsed_result_invoke_response(chain, user_input, processed_chat_history)
     except Exception as e:
         logger.exception(f"Error generating response: {str(e)}")
+        raise e
         # return "I encountered an error while generating your response. Please try again with a different question."
 
-    return parsed_result
+    return ""
 
 
 async def get_embedding_folder_rag_response(
@@ -210,7 +211,8 @@ async def get_embedding_folder_rag_response(
         user_input=user_input,
         chat_history=chat_history,
         chat_session=chat_session,
-        db=db
+        db=db,
+        stream=False
     )
 
     # Memory cleanup

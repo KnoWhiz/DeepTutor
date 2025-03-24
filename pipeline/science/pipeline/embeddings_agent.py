@@ -319,7 +319,7 @@ async def embeddings_agent(
             yield "\n\n**Document summary generated and saved successfully.**"
         except Exception as e:
             logger.exception(f"Error generating document summary: {e}")
-            yield "\n\n**Error generating document summary: {e}**"
+            yield f"\n\n**Error generating document summary: {e}**"
             logger.info("Continuing without document summary...")
             yield "\n\n**Continuing without document summary...**"
 

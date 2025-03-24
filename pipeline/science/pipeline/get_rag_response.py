@@ -1,7 +1,7 @@
 import os
 import sys
 import logging
-from typing import Any
+from typing import Any, Generator
 
 # Add the project root to the Python path to make imports work
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
@@ -140,10 +140,75 @@ async def get_db_rag_response(
             parsed_result = parsed_result_invoke_response(chain, user_input, processed_chat_history)
     except Exception as e:
         logger.exception(f"Error generating response: {str(e)}")
-        raise e
-        # return "I encountered an error while generating your response. Please try again with a different question."
+        # Instead of raising the exception, get the first 3 chunks
+        logger.info("Falling back to returning first 3 chunks of content")
+        # try:
+        # Get first 3 documents directly from retriever
+        docs = retriever.get_relevant_documents(user_input)[:3]
+        logger.info(f"Retrieved {len(docs)} fallback documents")
+        
+        # Format the documents
+        formatted_context = format_docs(docs)
+        
+        # Send formatted context to LLM with original prompt
+        logger.info("Sending fallback context to LLM")
+        
+        # Create a simplified chain for fallback that doesn't depend on the failing components
+        if stream:
+            def fallback_stream_response():
+                yield "<response>"
+                
+                # Create prompt inputs
+                prompt_inputs = {
+                    "context": formatted_context,
+                    "input": user_input,
+                    "chat_history": processed_chat_history
+                }
+                
+                # Call prompt template to format the prompt
+                formatted_prompt = prompt.invoke(prompt_inputs)
+                
+                # Stream response from LLM
+                for chunk in llm.stream(formatted_prompt):
+                    chunk_text = parser.invoke(chunk)
+                    print(chunk_text, end="", flush=True)
+                    yield chunk_text
+                    
+                yield "</response>"
+            return fallback_stream_response()
+        else:
+            def fallback_invoke_response():
+                # Create prompt inputs
+                prompt_inputs = {
+                    "context": formatted_context,
+                    "input": user_input,
+                    "chat_history": processed_chat_history
+                }
+                
+                # Call prompt template to format the prompt
+                formatted_prompt = prompt.invoke(prompt_inputs)
+                
+                # Get response from LLM
+                response = llm.invoke(formatted_prompt)
+                result = parser.invoke(response)
+                
+                yield result
+            return fallback_invoke_response()
+        
+        # except Exception as inner_e:
+        #     logger.exception(f"Error in fallback response generation: {str(inner_e)}")
+        #     if stream:
+        #         def error_stream_response():
+        #             yield "<response>"
+        #             yield "I encountered an error processing your request and couldn't retrieve relevant information. Please try again with a different question."
+        #             yield "</response>"
+        #         return error_stream_response()
+        #     else:
+        #         def error_invoke_response():
+        #             yield "I encountered an error processing your request and couldn't retrieve relevant information. Please try again with a different question."
+        #         return error_invoke_response()
 
-    return ""
+    # return ""
 
 
 async def get_embedding_folder_rag_response(
@@ -220,8 +285,13 @@ async def get_embedding_folder_rag_response(
 
     if type(answer) == str:
         return answer
+    elif type(answer) == Generator:
+        answer_str = ""
+        for chunk in answer:
+            answer_str += chunk
+        return answer_str
     else:
-        raise ValueError("Answer is not a string")
+        return ""
 
 # Testing function - only used when file is run directly
 def _run_tests():

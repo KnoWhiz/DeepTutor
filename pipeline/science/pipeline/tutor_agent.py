@@ -10,6 +10,7 @@ from pipeline.science.pipeline.utils import (
     format_time_tracking,
     detect_language,
     clean_translation_prefix,
+    responses_refine,
 )
 from pipeline.science.pipeline.doc_processor import (
     save_file_txt_locally,

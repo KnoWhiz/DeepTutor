@@ -108,6 +108,7 @@ async def get_db_rag_response(
 
     try:
         if stream:
+            logger.info("Stream mode for get_db_rag_response")
             def parsed_result_stream_response(chain, user_input, processed_chat_history):
                 yield "<response>"
                 # chat_session.current_message += "<response>"
@@ -126,6 +127,7 @@ async def get_db_rag_response(
                 # chat_session.current_message += "</response>"
             parsed_result = parsed_result_stream_response(chain, user_input, processed_chat_history)
         else:
+            logger.info("Invoke mode for get_db_rag_response")
             def parsed_result_invoke_response(chain, user_input, processed_chat_history):
                 parsed_result = chain.invoke({
                     "input": user_input,
@@ -214,7 +216,10 @@ async def get_embedding_folder_rag_response(
     # Memory cleanup
     db = None
 
-    return answer
+    if type(answer) == str:
+        return answer
+    else:
+        raise ValueError("Answer is not a string")
 
 # Testing function - only used when file is run directly
 def _run_tests():

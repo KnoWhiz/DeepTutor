@@ -367,6 +367,10 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
                 embedding_folder=os.path.join(embedding_folder, 'markdown'),
                 embedding_type='default'
             )
+            logger.info(f"Overview: {overview}")
+            logger.info(f"Overview type: {type(overview)}")
+            # print(f"Overview: {overview}")
+            # print(f"Overview type: {type(overview)}")
         except Exception as e:
             logger.exception(f"Failed to generate overview: {str(e)}")
             overview = await get_embedding_folder_rag_response(
@@ -376,6 +380,10 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
                 embedding_folder=embedding_folder,
                 embedding_type='default'
             )
+            logger.info(f"Except Overview: {overview}")
+            logger.info(f"Except Overview type: {type(overview)}")
+            # print(f"Except Overview: {overview}")
+            # print(f"Except Overview type: {type(overview)}")
 
         # Generate summaries for each topic
         try:

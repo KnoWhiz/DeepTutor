@@ -198,6 +198,7 @@ async def generate_document_summary(file_path, embedding_folder, md_document=Non
     {{"topics": ["topic1", "topic2", ...]}}
 
     Guidelines:
+    - STRICT LIMIT: no more than 8 topics and no less than 2 topics
     - Focus only on critical sections
     - Use short, descriptive names (1-2 words per topic)
     - Avoid overlapping topics
@@ -211,7 +212,7 @@ async def generate_document_summary(file_path, embedding_folder, md_document=Non
     Provide a clear and engaging overview using bullet points that summarizes all key aspects of the document.
 
     Guidelines:
-    - Use 4-5 concise bullet points
+    - Use concise bullet points
     - **Bold** for key terms
     - STRICT LIMIT: Each bullet point MUST be 15 words or fewer
     - Focus on technical accuracy over narrative flow
@@ -250,6 +251,24 @@ async def generate_document_summary(file_path, embedding_folder, md_document=Non
     # If the document length is within the token limit, we can directly use the document content
     token_length = count_tokens(combined_content)
     logger.info(f"Document token length: {token_length}")
+
+    # Topics extraction
+    topics_prompt = ChatPromptTemplate.from_template(topics_prompt)
+    parser = JsonOutputParser()
+    error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
+    topics_chain = topics_prompt | llm | error_parser
+    topics_result = topics_chain.invoke({"context": truncate_document(combined_content)})
+
+    try:
+        topics = topics_result.get("topics", [])
+    except AttributeError:
+        logger.exception("Warning: Failed to get topics. Using default topics.")
+        topics = default_topics
+    if len(topics) >= 10:
+        logger.info("Number of topics is greater than 10, using default topics...")
+        topics = default_topics
+    logger.info(f"Topics: {topics}")
+
     if token_length < max_tokens:
         logger.info("Document length is within the token limit, using the document content directly...")
 
@@ -258,23 +277,6 @@ async def generate_document_summary(file_path, embedding_folder, md_document=Non
         str_parser = StrOutputParser()
         takehome_chain = takehome_prompt | llm | str_parser
         takehome = takehome_chain.invoke({"context": truncate_document(combined_content)})
-
-        # Topics extraction
-        topics_prompt = ChatPromptTemplate.from_template(topics_prompt)
-        parser = JsonOutputParser()
-        error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
-        topics_chain = topics_prompt | llm | error_parser
-        topics_result = topics_chain.invoke({"context": truncate_document(combined_content)})
-
-        try:
-            topics = topics_result.get("topics", [])
-        except AttributeError:
-            logger.exception("Warning: Failed to get topics. Using default topics.")
-            topics = ["Overview", "Methods", "Results", "Discussion"]
-
-        if len(topics) >= 10:
-            logger.info("Number of topics is greater than 10, using default topics...")
-            topics = default_topics
 
         # Generate overview
         overview_prompt = ChatPromptTemplate.from_template(overview_prompt)
@@ -292,6 +294,7 @@ async def generate_document_summary(file_path, embedding_folder, md_document=Non
                 "context": truncate_document(combined_content)
             })
             summaries.append((topic, topic_summary))
+        logger.info(f"Summaries: {summaries}")
 
         # Combine everything into markdown format with welcome message and take-home message
         markdown_summary = f"""### 👋 Welcome to DeepTutor!
@@ -386,9 +389,11 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
             # print(f"Except Overview type: {type(overview)}")
 
         # Generate summaries for each topic
+        logger.info(f"Topics double check: {topics}")
         try:
             summaries = []
             for topic in topics:
+                logger.info(f"Generating summary for topic: {topic}")
                 topic_prompt_copy = copy.deepcopy(topic_prompt)
                 # Fill in the topic in the prompt
                 topic_prompt_copy = topic_prompt_copy.format(topic=topic)

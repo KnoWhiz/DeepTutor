@@ -89,7 +89,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
     # Handle Lite mode first
     if chat_session.mode == ChatMode.LITE:
         lite_prompt = """
-        You are an expert, approachable tutor specializing in explaining complex document content in simple terms.
+        You are an expert tutor specializing in precise, professional explanations of complex document content.
 
         CONTEXT INFORMATION:
         - Previous conversation: {chat_history}
@@ -100,17 +100,16 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
 
         RESPONSE GUIDELINES:
         1. Provide concise, accurate answers directly addressing the question
-        2. Use easy-to-understand language suitable for beginners
+        2. Use clear, precise language with appropriate technical terminology
         3. Format key concepts and important points in **bold**
-        4. Begin with a friendly greeting and end with an encouraging note
-        5. Break down complex information into digestible chunks
-        6. Use appropriate emojis (📚, 💡, ✅, etc.) to enhance readability
-        7. When explaining technical concepts, provide simple examples
-        8. If you're unsure about an answer, be honest and transparent
-        9. Include 2-3 follow-up questions at the end to encourage deeper learning
-        10. Use bullet points or numbered lists for step-by-step explanations
+        4. Maintain a professional, academic tone throughout the response
+        5. Break down complex information into structured, logical segments
+        6. When explaining technical concepts, include relevant examples or applications
+        7. Clearly state limitations of explanations when uncertainty exists
+        8. Use bullet points or numbered lists for sequential explanations
+        9. Cite specific parts of the document when directly referencing content
 
-        Remember: Your goal is to make learning enjoyable and accessible. Keep your tone positive, supportive, and engaging at all times.
+        Your goal is to deliver accurate, clear, and professionally structured responses that enhance comprehension of complex topics.
         """
         actual_embedding_folder_list = [os.path.join(embedding_folder, 'lite_embedding') for embedding_folder in embedding_folder_list]
 
@@ -175,8 +174,8 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
             # If stream is True, the answer is a generator; otherwise, it's a string
             # FIXME: Later we can add response_refine to the generator
             return answer
-        else:
-            answer = responses_refine(answer)
+        else:   # If stream is False, we need to refine the answer
+            answer = responses_refine(answer, stream=stream)
             return answer
     else:
         logger.info("deep thinking ...")
@@ -231,10 +230,10 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
             if "<think>" in answer:
                 answer_thinking = answer.split("<think>")[1].split("</think>")[0]
                 answer_summary = answer.split("<think>")[1].split("</think>")[1]
-                answer_summary_refined = responses_refine(answer_summary, "")
+                answer_summary_refined = responses_refine(answer_summary, "", stream=stream)
                 answer = answer_summary_refined
             else:
-                answer = responses_refine(answer)
+                answer = responses_refine(answer, stream=stream)
 
             # Replace LaTeX formulas in the final answer
             answer = replace_latex_formulas(answer)

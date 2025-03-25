@@ -661,9 +661,79 @@ def replace_latex_formulas(text):
     return result
 
 
-def responses_refine(answer, reference=''):
+# def responses_refine(answer, reference=''):
+#     # return answer
+#     return answer
+
+
+def responses_refine(answer, reference='', stream=True):
     # return answer
-    return answer
+    config = load_config()
+    para = config['llm']
+    llm = get_llm(para["level"], para)
+    parser = StrOutputParser()
+    error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
+    system_prompt = (
+        """
+        You are an expert at refining educational content while maintaining its original meaning and language.
+        Your task is to improve the display of content by:
+        
+        1. Properly formatting all mathematical formulas with LaTeX syntax:
+           - Surround inline formulas with single dollar signs ($formula$)
+           - Surround block/display formulas with double dollar signs ($$formula$$)
+           - Ensure all mathematical symbols, equations, and expressions use proper LaTeX notation
+        
+        2. Improving readability by:
+           - Adding **bold text** to important terms, concepts, and key points
+           - Using proper markdown formatting for headings, lists, and other structural elements
+           - Maintaining paragraph structure and flow
+        
+        3. Making the content more engaging by:
+           - Adding relevant emojis at appropriate places (section headings, important points, examples)
+           - Using emojis that match the educational context and subject matter
+        
+        4. Cleaning up irrelevant content:
+           - Remove any code blocks containing only data reports like ```[Data: Reports (19, 22, 21)]``` or ```[39]```
+           - Remove any debugging information, log outputs, or system messages not relevant to the educational content
+           - Remove any metadata markers or tags that aren't meant for the end user
+        
+        IMPORTANT RULES:
+        - DO NOT add any new information or change the actual content
+        - DO NOT alter the meaning of any statements
+        - DO NOT change the language of the content
+        - DO NOT remove any information from the original answer that is relevant to the educational content
+        - DO remove irrelevant technical artifacts like data reports, debug logs, or system messages
+        - DO NOT start the answer with wording like "Here is the answer to your question:" or "Here is ..." or "Enhanced Answer" or "Refined Answer"
+        """
+    )
+    human_prompt = (
+        """
+        # Original answer
+        {answer}
+        
+        # Reference material (if available)
+        {reference}
+        
+        Please refine the original answer by:
+        1. Properly formatting all mathematical formulas with LaTeX syntax (add $ or $$ for all possible formulas as appropriate)
+        2. Adding **bold text** to important terms and concepts for better readability
+        3. Including relevant emojis to make the content more engaging
+        4. Removing any irrelevant content like data reports (e.g., ```[Data: Reports (19, 22, 21)]```), debug logs, or system messages
+        5. Avoid starting the answer with wording like "Here is ..." or "Enhanced Answer" or "Refined Answer"
+        
+        Do not change the actual educational information or add new content.
+        """
+    )
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", system_prompt),
+        ("human", human_prompt),
+    ])
+    chain = prompt | llm | error_parser
+    if stream:
+        response = chain.stream({"answer": answer, "reference": reference})
+    else:
+        response = chain.invoke({"answer": answer, "reference": reference})
+    return response
 
 
 def clean_translation_prefix(text):

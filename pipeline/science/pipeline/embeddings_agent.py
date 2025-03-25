@@ -1,6 +1,7 @@
 import os
 import json
 import time
+import fitz
 from typing import Dict
 from dotenv import load_dotenv
 from langchain_community.vectorstores import FAISS
@@ -319,7 +320,7 @@ async def embeddings_agent(
             yield "\n\n**Document summary generated and saved successfully.**"
         except Exception as e:
             logger.exception(f"Error generating document summary: {e}")
-            yield "\n\n**Error generating document summary: {e}**"
+            yield f"\n\n**Error generating document summary: {e}**"
             logger.info("Continuing without document summary...")
             yield "\n\n**Continuing without document summary...**"
 

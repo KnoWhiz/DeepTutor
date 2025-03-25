@@ -11,7 +11,7 @@ from pipeline.science.pipeline.utils import (
     count_tokens,
 )
 from pipeline.science.pipeline.doc_processor import process_pdf_file
-from pipeline.science.pipeline.get_rag_response import get_embedding_folder_rag_response
+from pipeline.science.pipeline.get_rag_response import get_embedding_folder_rag_response_string
 from pipeline.science.pipeline.api_handler import ApiHandler
 
 import logging
@@ -39,7 +39,7 @@ def refine_document_summary(markdown_summary, llm):
 
     1. Identify specific facts that appear in multiple sections
     2. Note sections with overlapping content that should be merged or removed
-    3. List repeated metrics or measurements (like "$g^{(2)}(0) = 0.060(13)$")
+    3. List repeated metrics or measurements (like "$g^{{(2)}}(0) = 0.060(13)$")
     4. Flag concepts explained multiple times across different sections
     5. Identify all bullet points exceeding 15 words
     6. Catalog phrases that could be expressed more concisely
@@ -51,7 +51,7 @@ def refine_document_summary(markdown_summary, llm):
     - "redundant_facts": [list of specific facts/phrases that appear multiple times]
     - "overlapping_sections": [pairs of section names that have significant overlap]
     - "sections_to_remove": [sections that can be removed entirely as their content is covered elsewhere]
-    - "sections_to_merge": [{"new_section_name": "name", "sections_to_combine": ["section1", "section2"]}]
+    - "sections_to_merge": [{{"new_section_name": "name", "sections_to_combine": ["section1", "section2"]}}]
     - "repeated_metrics": [specific measurements/numbers that are mentioned multiple times]
     - "verbose_bullets": [bullet points exceeding 15 words, with word count noted]
     - "wordy_phrases": [common phrases that could be expressed more concisely]
@@ -116,7 +116,16 @@ def refine_document_summary(markdown_summary, llm):
        - Remove adjectives and adverbs unless absolutely necessary for meaning
        - Use technical abbreviations when appropriate
 
-    5. CRITICAL REQUIREMENTS:
+    5. MATHEMATICAL FORMULA FORMATTING:
+       - For inline formulas, use single $ marks. For example, $E = mc^2$
+       - For block formulas, use double $$ marks. For example:
+         $$
+         F = ma
+         $$
+       - Preserve all mathematical formulas in their exact form
+       - Do not change any mathematical notation or symbols
+
+    6. CRITICAL REQUIREMENTS:
        - Preserve all unique information while eliminating redundancy
        - Maintain the markdown formatting style
        - Do not add new information not present in the original
@@ -173,19 +182,13 @@ async def generate_document_summary(file_path, embedding_folder, md_document=Non
 
     # First generate the take-home message
     takehome_prompt = """
-    Provide a single, impactful sentence that captures the most important takeaway from this document.
+    Provide a single, impactful sentence that captures the most important takeaway from this document, or what is this document mainly about if suitable.
 
     Guidelines:
     - Be extremely concise and specific (maximum 15 words)
     - Focus on the main contribution or finding
     - Use bold for key terms
     - Keep it to one sentence
-    - Add a relevant emoji at the start of bullet points or the first sentence
-    - For inline formulas use single $ marks. For example, $E = mc^2$
-    - For block formulas use double $$ marks. For example,
-    $$
-    F = ma (just an example, may not be a real formula in the doc)
-    $$
 
     Document: {context}
     """
@@ -198,6 +201,7 @@ async def generate_document_summary(file_path, embedding_folder, md_document=Non
     {{"topics": ["topic1", "topic2", ...]}}
 
     Guidelines:
+    - STRICT LIMIT: no more than 8 topics and no less than 2 topics
     - Focus only on critical sections
     - Use short, descriptive names (1-2 words per topic)
     - Avoid overlapping topics
@@ -211,7 +215,7 @@ async def generate_document_summary(file_path, embedding_folder, md_document=Non
     Provide a clear and engaging overview using bullet points that summarizes all key aspects of the document.
 
     Guidelines:
-    - Use 4-5 concise bullet points
+    - Use concise bullet points
     - **Bold** for key terms
     - STRICT LIMIT: Each bullet point MUST be 15 words or fewer
     - Focus on technical accuracy over narrative flow
@@ -250,6 +254,24 @@ async def generate_document_summary(file_path, embedding_folder, md_document=Non
     # If the document length is within the token limit, we can directly use the document content
     token_length = count_tokens(combined_content)
     logger.info(f"Document token length: {token_length}")
+
+    # Topics extraction
+    topics_prompt = ChatPromptTemplate.from_template(topics_prompt)
+    parser = JsonOutputParser()
+    error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
+    topics_chain = topics_prompt | llm | error_parser
+    topics_result = topics_chain.invoke({"context": truncate_document(combined_content)})
+
+    try:
+        topics = topics_result.get("topics", [])
+    except AttributeError:
+        logger.exception("Warning: Failed to get topics. Using default topics.")
+        topics = default_topics
+    if len(topics) >= 10:
+        logger.info("Number of topics is greater than 10, using default topics...")
+        topics = default_topics
+    logger.info(f"Topics: {topics}")
+
     if token_length < max_tokens:
         logger.info("Document length is within the token limit, using the document content directly...")
 
@@ -258,23 +280,6 @@ async def generate_document_summary(file_path, embedding_folder, md_document=Non
         str_parser = StrOutputParser()
         takehome_chain = takehome_prompt | llm | str_parser
         takehome = takehome_chain.invoke({"context": truncate_document(combined_content)})
-
-        # Topics extraction
-        topics_prompt = ChatPromptTemplate.from_template(topics_prompt)
-        parser = JsonOutputParser()
-        error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
-        topics_chain = topics_prompt | llm | error_parser
-        topics_result = topics_chain.invoke({"context": truncate_document(combined_content)})
-
-        try:
-            topics = topics_result.get("topics", [])
-        except AttributeError:
-            logger.exception("Warning: Failed to get topics. Using default topics.")
-            topics = ["Overview", "Methods", "Results", "Discussion"]
-
-        if len(topics) >= 10:
-            logger.info("Number of topics is greater than 10, using default topics...")
-            topics = default_topics
 
         # Generate overview
         overview_prompt = ChatPromptTemplate.from_template(overview_prompt)
@@ -292,6 +297,7 @@ async def generate_document_summary(file_path, embedding_folder, md_document=Non
                 "context": truncate_document(combined_content)
             })
             summaries.append((topic, topic_summary))
+        logger.info(f"Summaries: {summaries}")
 
         # Combine everything into markdown format with welcome message and take-home message
         markdown_summary = f"""### 👋 Welcome to DeepTutor!
@@ -341,16 +347,22 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
 
         # First generate the take-home message, user input is the prompt's first line
         try:
-            takehome = await get_embedding_folder_rag_response(
-                prompt_string=takehome_prompt,
-                user_input=takehome_prompt.split("\n")[0],
-                chat_history="",
-                embedding_folder=os.path.join(embedding_folder, 'markdown'),
-                embedding_type='default',
-            )
+            # takehome = await get_embedding_folder_rag_response_string(
+            #     prompt_string=takehome_prompt,
+            #     user_input=takehome_prompt.split("\n")[0],
+            #     chat_history="",
+            #     embedding_folder=os.path.join(embedding_folder, 'markdown'),
+            #     embedding_type='default',
+            # )
+            # First generate the take-home message
+            takehome_prompt = ChatPromptTemplate.from_template(takehome_prompt)
+            str_parser = StrOutputParser()
+            takehome_chain = takehome_prompt | llm | str_parser
+            takehome = takehome_chain.invoke({"context": truncate_document(combined_content)})
+
         except Exception as e:
             logger.exception(f"Failed to generate take-home message: {str(e)}")
-            takehome = await get_embedding_folder_rag_response(
+            takehome = await get_embedding_folder_rag_response_string(
                 prompt_string=takehome_prompt,
                 user_input=takehome_prompt.split("\n")[0],
                 chat_history="",
@@ -360,7 +372,7 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
 
         # Generate overview
         try:
-            overview = await get_embedding_folder_rag_response(
+            overview = await get_embedding_folder_rag_response_string(
                 prompt_string=overview_prompt,
                 user_input=overview_prompt.split("\n")[0],
                 chat_history="",
@@ -373,7 +385,7 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
             # print(f"Overview type: {type(overview)}")
         except Exception as e:
             logger.exception(f"Failed to generate overview: {str(e)}")
-            overview = await get_embedding_folder_rag_response(
+            overview = await get_embedding_folder_rag_response_string(
                 prompt_string=overview_prompt,
                 user_input=overview_prompt.split("\n")[0],
                 chat_history="",
@@ -386,17 +398,19 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
             # print(f"Except Overview type: {type(overview)}")
 
         # Generate summaries for each topic
+        logger.info(f"Topics double check: {topics}")
         try:
             summaries = []
             for topic in topics:
+                logger.info(f"Generating summary for topic: {topic}")
                 topic_prompt_copy = copy.deepcopy(topic_prompt)
                 # Fill in the topic in the prompt
-                topic_prompt_copy = topic_prompt_copy.format(topic=topic)
+                topic_prompt_copy = topic_prompt_copy.replace("{topic}", topic)
 
                 logger.info(f"Generating summary for topic: {topic}")
                 logger.info(f"Prompt: {topic_prompt_copy}")
                 try:
-                    summary = await get_embedding_folder_rag_response(
+                    summary = await get_embedding_folder_rag_response_string(
                         prompt_string=topic_prompt_copy,
                         user_input=topic_prompt_copy.split("\n")[0],
                         chat_history="",
@@ -405,7 +419,7 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
                     )
                 except Exception as e:
                     logger.exception(f"Failed to generate summary for topic: {topic}, error: {str(e)}")
-                    summary = await get_embedding_folder_rag_response(
+                    summary = await get_embedding_folder_rag_response_string(
                         prompt_string=topic_prompt_copy,
                         user_input=topic_prompt_copy.split("\n")[0],
                         chat_history="",
@@ -425,7 +439,7 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
                 logger.info(f"Generating summary for topic: {topic}")
                 logger.info(f"Prompt: {topic_prompt_copy}")
                 try:
-                    summary = await get_embedding_folder_rag_response(
+                    summary = await get_embedding_folder_rag_response_string(
                         prompt_string=topic_prompt_copy,
                         user_input=topic_prompt_copy.split("\n")[0],
                         chat_history="",
@@ -434,7 +448,7 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
                     )
                 except Exception as e:
                     logger.exception(f"Failed to generate summary for topic: {topic}, error: {str(e)}")
-                    summary = await get_embedding_folder_rag_response(
+                    summary = await get_embedding_folder_rag_response_string(
                         prompt_string=topic_prompt_copy,
                         user_input=topic_prompt_copy.split("\n")[0],
                         chat_history="",

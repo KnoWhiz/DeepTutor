@@ -219,6 +219,114 @@ async def get_embedding_folder_rag_response(
     return answer
 
 
+async def get_db_rag_response_string(
+    prompt_string: str,
+    user_input: str,
+    chat_history: str,
+    chat_session: Any = None,
+    db: Any = None,
+    stream: bool = False
+) -> str:
+    """
+    Get RAG-based response as a complete string rather than a generator.
+
+    Args:
+        prompt_string: The system prompt to use
+        user_input: The user's query
+        chat_history: The conversation history (can be empty string)
+        chat_session: The chat session to use
+        db: The database to use
+        stream: Whether to use streaming (will be collected into a string)
+    Returns:
+        str: The complete generated response as a string
+    """
+    generator = await get_db_rag_response(
+        prompt_string=prompt_string,
+        user_input=user_input,
+        chat_history=chat_history,
+        chat_session=chat_session,
+        db=db,
+        stream=False  # Always use invoke mode for string response
+    )
+    
+    # Collect all generated chunks into a single string
+    response_text = ""
+    for chunk in generator:
+        response_text += chunk
+        
+    return response_text
+
+
+async def get_embedding_folder_rag_response_string(
+    prompt_string: str,
+    user_input: str,
+    chat_history: str,
+    embedding_folder: str,
+    embedding_type: str = "default",
+    chat_session: Any = None,
+    file_path: str = None
+) -> str:
+    """
+    Get RAG-based response from embeddings folder as a complete string.
+
+    Args:
+        prompt_string: The system prompt to use
+        user_input: The user's query
+        chat_history: The conversation history (can be empty string)
+        embedding_folder: Path to the folder containing embeddings
+        embedding_type: Type of embedding model to use (default, lite, small)
+        chat_session: Optional ChatSession object for generating embeddings if needed
+        file_path: Optional file path for generating embeddings if needed
+    Returns:
+        str: The complete generated response as a string
+    """
+    config = load_config()
+    
+    if chat_session is None:
+        chat_session = ChatSession()
+
+    try:
+        # Check if the path is a direct reference to a markdown folder
+        if "markdown" in embedding_folder and os.path.exists(embedding_folder):
+            logger.info(f"Using direct markdown folder: {embedding_folder}")
+            actual_embedding_folder = embedding_folder
+        # Handle different embedding folders based on mode
+        elif chat_session.mode == ChatMode.LITE:
+            actual_embedding_folder = os.path.join(embedding_folder, "lite_embedding")
+        elif chat_session.mode == ChatMode.BASIC or chat_session.mode == ChatMode.ADVANCED:
+            actual_embedding_folder = os.path.join(embedding_folder, "markdown")
+        else:
+            actual_embedding_folder = embedding_folder
+    except Exception as e:
+        logger.exception(f"Failed to load session mode: {str(e)}")
+        actual_embedding_folder = os.path.join(embedding_folder, "markdown")
+
+    logger.info(f"Loading embeddings from: {actual_embedding_folder}")
+    try:
+        db = load_embeddings([actual_embedding_folder], embedding_type)
+    except Exception as e:
+        logger.exception(f"Failed to load embeddings: {str(e)}")
+        return "I'm sorry, I couldn't access the document information. Please try again later."
+
+    # Increase k for better context retrieval if in LITE mode
+    k_value = config["retriever"]["k"]
+    if chat_session.mode == ChatMode.LITE:
+        k_value = min(k_value + 2, 8)  # Add more context chunks for LITE mode, but cap at reasonable limit
+        
+    response_text = await get_db_rag_response_string(
+        prompt_string=prompt_string,
+        user_input=user_input,
+        chat_history=chat_history,
+        chat_session=chat_session,
+        db=db
+    )
+
+    # Memory cleanup
+    db = None
+
+    return response_text
+
+
 # Testing function - only used when file is run directly
 def _run_tests():
     """Run tests for the RAG pipeline when the file is executed directly."""

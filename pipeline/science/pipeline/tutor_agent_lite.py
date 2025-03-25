@@ -43,18 +43,40 @@ async def tutor_agent_lite(chat_session: ChatSession, file_path_list, user_input
         deep_thinking: Whether to use deep thinking for response generation
 
     Returns:
-        Generator of response chunks
+        Tuple containing (answer, sources, source_pages, source_annotations,
+                         refined_source_pages, refined_source_index, follow_up_questions)
     """
     if time_tracking is None:
         time_tracking = {}
 
     return tutor_agent_lite_streaming_tracking(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream)
+    # answer = tutor_agent_lite_streaming_tracking(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream)
+
+    # # For Lite mode, we have minimal sources and follow-up questions
+    # sources = {}
+    # source_pages = {}
+    # source_annotations = {}
+    # refined_source_pages = {}
+    # refined_source_index = {}
+    # follow_up_questions = []
+
+    # return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
 
 
 async def tutor_agent_lite_streaming_tracking(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
     async for chunk in tutor_agent_lite_streaming(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream):
         yield chunk
         chat_session.current_message += chunk
+
+    # answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions = extract_lite_mode_content(chat_session.current_message)
+    # logger.info(f"Extracted answer: {answer}")
+    # logger.info(f"Extracted sources: {sources}")
+    # logger.info(f"Extracted source pages: {source_pages}")
+    # logger.info(f"Extracted source annotations: {source_annotations}")
+    # logger.info(f"Extracted refined source pages: {refined_source_pages}")
+    # logger.info(f"Extracted refined source index: {refined_source_index}")
+    # logger.info(f"Extracted follow-up questions: {follow_up_questions}")
+    # logger.info(f"Current message: {chat_session.current_message}")
 
 
 async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
@@ -98,7 +120,7 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     # Save the file txt content locally
     save_file_start_time = time.time()
     filename_list = [os.path.basename(file_path) for file_path in file_path_list]
-    for file_path, filename, embedding_folder in zip(file_path_list, filename_list, embedding_folder_list):
+    for file_path, filename in zip(file_path_list, filename_list):
         save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
     time_tracking["file_loading_save_text"] = time.time() - save_file_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
@@ -115,7 +137,7 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
         else:
             # Files are missing and have been cleaned up
             _document, _doc = process_pdf_file(file_path)
-            save_file_txt_locally(file_path, filename=os.path.basename(file_path), embedding_folder=embedding_folder, chat_session=chat_session)
+            save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
             logger.info(f"Generating LiteRAG embedding for {file_id} ...")
             yield f"Generating LiteRAG embedding for {file_id} ...\n\n"
             async for chunk in embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder):
@@ -202,4 +224,4 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     _document = None
     _doc = None
 
-    return 
+    return

@@ -1,4 +1,5 @@
 import os
+import json
 import time
 from typing import Dict, Generator
 import re
@@ -9,16 +10,24 @@ from pipeline.science.pipeline.utils import (
     format_time_tracking,
     detect_language,
     clean_translation_prefix,
+    responses_refine,
+    extract_answer_content,
+    extract_lite_mode_content,
+    extract_basic_mode_content,
+    extract_advanced_mode_content,
 )
 from pipeline.science.pipeline.doc_processor import (
     save_file_txt_locally,
     process_pdf_file,
     get_highlight_info,
 )
-from pipeline.science.pipeline.session_manager import ChatSession
+from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
 from pipeline.science.pipeline.helper.index_files_saving import (
     vectorrag_index_files_decompress,
     vectorrag_index_files_compress,
+    graphrag_index_files_decompress,
+    graphrag_index_files_compress,
+    literag_index_files_decompress,
 )
 from pipeline.science.pipeline.embeddings_agent import embeddings_agent
 from pipeline.science.pipeline.get_response import (
@@ -47,18 +56,40 @@ async def tutor_agent_basic(chat_session: ChatSession, file_path_list, user_inpu
         deep_thinking: Whether to use deep thinking for response generation
 
     Returns:
-        Generator of response chunks
+        Tuple containing (answer, sources, source_pages, source_annotations,
+                         refined_source_pages, refined_source_index, follow_up_questions)
     """
     if time_tracking is None:
         time_tracking = {}
 
     return tutor_agent_basic_streaming_tracking(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream)
+    # answer = tutor_agent_basic_streaming_tracking(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream)
+
+    # # For Lite mode, we have minimal sources and follow-up questions
+    # sources = {}
+    # source_pages = {}
+    # source_annotations = {}
+    # refined_source_pages = {}
+    # refined_source_index = {}
+    # follow_up_questions = []
+
+    # return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
 
 
 async def tutor_agent_basic_streaming_tracking(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
     async for chunk in tutor_agent_basic_streaming(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream):
         yield chunk
         chat_session.current_message += chunk
+
+    # answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions = extract_basic_mode_content(chat_session.current_message)
+    # logger.info(f"Extracted answer: {answer}")
+    # logger.info(f"Extracted sources: {sources}")
+    # logger.info(f"Extracted source pages: {source_pages}")
+    # logger.info(f"Extracted source annotations: {source_annotations}")
+    # logger.info(f"Extracted refined source pages: {refined_source_pages}")
+    # logger.info(f"Extracted refined source index: {refined_source_index}")
+    # logger.info(f"Extracted follow-up questions: {follow_up_questions}")
+    # logger.info(f"Current message: {chat_session.current_message}")
 
 
 async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
@@ -101,7 +132,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     # Save the file txt content locally
     save_file_start_time = time.time()
     filename_list = [os.path.basename(file_path) for file_path in file_path_list]
-    for file_path, filename, embedding_folder in zip(file_path_list, filename_list, embedding_folder_list):
+    for file_path, filename in zip(file_path_list, filename_list):
         save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
     time_tracking["file_loading_save_text"] = time.time() - save_file_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
@@ -116,7 +147,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         else:
             # Files are missing and have been cleaned up
             _document, _doc = process_pdf_file(file_path)
-            save_file_txt_locally(file_path, filename=os.path.basename(file_path), embedding_folder=embedding_folder, chat_session=chat_session)
+            save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
             logger.info(f"VectorRAG embedding for {file_id} ...")
             # await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
             async for chunk in embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder):
@@ -126,7 +157,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
                 logger.info(f"VectorRAG index files for {file_id} are ready and uploaded to Azure Blob Storage.")
             else:
                 # Retry once if first attempt fails
-                save_file_txt_locally(file_path, filename=os.path.basename(file_path), embedding_folder=embedding_folder, chat_session=chat_session)
+                save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
                 # await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
                 async for chunk in embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder):
                     yield chunk
@@ -244,8 +275,6 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     
     def needs_translation():
         """Helper function to determine if translation is needed."""
-        # Use the main module's extract_basic_mode_content function
-        from pipeline.science.pipeline.tutor_agent import extract_basic_mode_content
         content = extract_basic_mode_content(chat_session.current_message)[0]
         language = detect_language(content)
         return language != chat_session.current_language
@@ -303,9 +332,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Refine and translate the answer to the selected language
-    # Use the main module's extract_basic_mode_content function
-    from pipeline.science.pipeline.tutor_agent import extract_basic_mode_content
-    content = extract_basic_mode_content(chat_session.current_message)[0]
+    content=extract_basic_mode_content(chat_session.current_message)[0]
     language = detect_language(content)
     if language != chat_session.current_language:
         translation_start = time.time()
@@ -429,4 +456,4 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     _document = None
     _doc = None
 
-    return 
+    return

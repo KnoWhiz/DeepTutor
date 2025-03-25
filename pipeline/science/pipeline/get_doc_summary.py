@@ -173,19 +173,13 @@ async def generate_document_summary(file_path, embedding_folder, md_document=Non
 
     # First generate the take-home message
     takehome_prompt = """
-    Provide a single, impactful sentence that captures the most important takeaway from this document.
+    Provide a single, impactful sentence that captures the most important takeaway from this document, or what is this document mainly about if suitable.
 
     Guidelines:
     - Be extremely concise and specific (maximum 15 words)
     - Focus on the main contribution or finding
     - Use bold for key terms
     - Keep it to one sentence
-    - Add a relevant emoji at the start of bullet points or the first sentence
-    - For inline formulas use single $ marks. For example, $E = mc^2$
-    - For block formulas use double $$ marks. For example,
-    $$
-    F = ma (just an example, may not be a real formula in the doc)
-    $$
 
     Document: {context}
     """
@@ -344,13 +338,19 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
 
         # First generate the take-home message, user input is the prompt's first line
         try:
-            takehome = await get_embedding_folder_rag_response_string(
-                prompt_string=takehome_prompt,
-                user_input=takehome_prompt.split("\n")[0],
-                chat_history="",
-                embedding_folder=os.path.join(embedding_folder, 'markdown'),
-                embedding_type='default',
-            )
+            # takehome = await get_embedding_folder_rag_response_string(
+            #     prompt_string=takehome_prompt,
+            #     user_input=takehome_prompt.split("\n")[0],
+            #     chat_history="",
+            #     embedding_folder=os.path.join(embedding_folder, 'markdown'),
+            #     embedding_type='default',
+            # )
+            # First generate the take-home message
+            takehome_prompt = ChatPromptTemplate.from_template(takehome_prompt)
+            str_parser = StrOutputParser()
+            takehome_chain = takehome_prompt | llm | str_parser
+            takehome = takehome_chain.invoke({"context": truncate_document(combined_content)})
+
         except Exception as e:
             logger.exception(f"Failed to generate take-home message: {str(e)}")
             takehome = await get_embedding_folder_rag_response_string(
@@ -396,7 +396,7 @@ Feel free to ask me any questions about the document! I'm here to help! ✨
                 logger.info(f"Generating summary for topic: {topic}")
                 topic_prompt_copy = copy.deepcopy(topic_prompt)
                 # Fill in the topic in the prompt
-                topic_prompt_copy = topic_prompt_copy.format(topic=topic)
+                topic_prompt_copy = topic_prompt_copy.replace("{topic}", topic)
 
                 logger.info(f"Generating summary for topic: {topic}")
                 logger.info(f"Prompt: {topic_prompt_copy}")

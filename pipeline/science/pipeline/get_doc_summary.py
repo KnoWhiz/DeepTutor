@@ -116,7 +116,16 @@ def refine_document_summary(markdown_summary, llm):
        - Remove adjectives and adverbs unless absolutely necessary for meaning
        - Use technical abbreviations when appropriate
 
-    5. CRITICAL REQUIREMENTS:
+    5. MATHEMATICAL FORMULA FORMATTING:
+       - For inline formulas, use single $ marks. For example, $E = mc^2$
+       - For block formulas, use double $$ marks. For example:
+         $$
+         F = ma
+         $$
+       - Preserve all mathematical formulas in their exact form
+       - Do not change any mathematical notation or symbols
+
+    6. CRITICAL REQUIREMENTS:
        - Preserve all unique information while eliminating redundancy
        - Maintain the markdown formatting style
        - Do not add new information not present in the original

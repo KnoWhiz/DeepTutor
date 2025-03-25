@@ -1,6 +1,7 @@
 import os
 import json
 import time
+import fitz
 from typing import Dict
 from dotenv import load_dotenv
 from langchain_community.vectorstores import FAISS

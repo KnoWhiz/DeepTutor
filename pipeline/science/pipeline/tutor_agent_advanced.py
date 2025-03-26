@@ -131,7 +131,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
     for file_id, embedding_folder, file_path in zip(file_id_list, embedding_folder_list, file_path_list):
         if graphrag_index_files_decompress(embedding_folder):
             logger.info(f"GraphRAG index files for {file_id} are ready.")
-            yield "\n\n**GraphRAG index files for are ready.**\n\n"
+            yield "\n\n**GraphRAG index files are ready.**\n\n"
         else:
             # Files are missing and have been cleaned up
             _document, _doc = process_pdf_file(file_path)

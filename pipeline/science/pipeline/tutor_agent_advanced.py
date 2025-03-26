@@ -287,7 +287,8 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
                             # yield "\n\n**Here is the final response**\n\n"
                             yield chunk
                         else:
-                            yield chunk.replace("<response>", "")
+                            # yield chunk.replace("<response>", "")
+                            yield chunk
                     else:
                         # yield "\n\n**Here is the original response**\n\n"
                         # Replace the "<response>" tag with "<original_response>" tag

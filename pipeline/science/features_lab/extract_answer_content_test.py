@@ -358,7 +358,7 @@ I should also address why this matters. Even though LLMs are good at professiona
 In summary, GAIA differs by focusing on real-world, human-easy tasks that test fundamental AI abilities, whereas traditional benchmarks push for increasingly difficult tasks, often in specialized areas where LLMs already surpass humans. GAIA's approach aims to measure progress toward more robust, general AI systems.
 </think></thinking>
 
-**Generating the response ...**
+**Loading the response ...**
 
 
 
@@ -419,7 +419,7 @@ While traditional benchmarks reward mastering narrow domains, GAIA emphasizes **
 
 
 
-**Generating follow-up questions ...**
+**Loading follow-up questions ...**
 
 <followup_question>How can GAIA influence AI training strategies?</followup_question>
 
@@ -429,7 +429,7 @@ While traditional benchmarks reward mastering narrow domains, GAIA emphasizes **
 
 
 
-**Generating follow-up questions done ...**
+**Loading follow-up questions done ...**
 
 </appendix>
 """

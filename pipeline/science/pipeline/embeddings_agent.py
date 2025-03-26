@@ -58,20 +58,20 @@ async def embeddings_agent(
     Save the embeddings to the specified folder
     Generate and save document summary using the texts we created
     """
-    yield "\n\n**Generating embeddings ...**"
+    yield "\n\n**Loading embeddings ...**"
     file_id = generate_file_id(file_path)
     logger.info(f"Current mode: {_mode}")
     if _mode == ChatMode.ADVANCED:
         # GraphRAG is implemented in the following code
         logger.info("Mode: ChatMode.ADVANCED. Generating GraphRAG embeddings...")
-        yield "\n\n**Generating GraphRAG embeddings...**"
+        yield "\n\n**Loading GraphRAG embeddings...**"
     elif _mode == ChatMode.BASIC:
         # Basic mode is implemented in the following code
         logger.info("Mode: ChatMode.BASIC. Generating VectorRAG embeddings...")
-        yield "\n\n**Generating VectorRAG embeddings...**"
+        yield "\n\n**Loading VectorRAG embeddings...**"
     elif _mode == ChatMode.LITE:
         logger.info("Mode: ChatMode.LITE. Generating LiteRAG embeddings...")
-        yield "\n\n**Generating LiteRAG embeddings...**"
+        yield "\n\n**Loading LiteRAG embeddings...**"
         lite_embedding_start_time = time.time()
         await generate_LiteRAG_embedding(_doc, file_path, embedding_folder)
         time_tracking['lite_embedding_total'] = time.time() - lite_embedding_start_time
@@ -310,7 +310,7 @@ async def embeddings_agent(
         try:
             # Generate and save document summary using the texts we created
             logger.info("Generating document summary...")
-            yield "\n\n**Generating document summary...**"
+            yield "\n\n**Loading document summary...**"
             generate_document_summary_start_time = time.time()
             # By default, use the markdown document to generate the summary
             await generate_document_summary(texts, embedding_folder, doc_processor.get_md_document())

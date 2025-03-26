@@ -188,7 +188,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         except FileNotFoundError:
             initial_message = "Hello! How can I assist you today?"
         # yield "</thinking>"
-        # yield "\n\n**Generating response ...**\n\n"
+        # yield "\n\n**Loading response ...**\n\n"
 
         language = detect_language(initial_message)
         if language != chat_session.current_language:
@@ -198,7 +198,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
             yield initial_message
             yield "</original_response>"
             yield "</thinking>"
-            yield "\n\n**Generating response ...**\n\n"
+            yield "\n\n**Loading response ...**\n\n"
             yield "<response>"        # Translate the initial message to the selected language
             answer = translate_content(
                 content=initial_message,
@@ -215,14 +215,14 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         else:
             translation_response = False
             yield "</thinking>"
-            yield "\n\n**Generating response ...**\n\n"
+            yield "\n\n**Loading response ...**\n\n"
             yield "<response>"        # Translate the initial message to the selected language
             yield "\n\n"
             yield initial_message
             yield "</response>"
 
         yield "<appendix>"
-        yield "\n\n**Generating follow-up questions ...**\n\n"
+        yield "\n\n**Loading follow-up questions ...**\n\n"
         follow_up_questions = generate_follow_up_questions(chat_session.current_message, [])
         for i in range(len(follow_up_questions)):
             follow_up_questions[i] = translate_content(
@@ -240,7 +240,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
                 yield f"{cleaned_chunk}"
                 yield "</followup_question>"
                 yield "\n\n"
-        yield "\n\n**Generating follow-up questions done ...**\n\n"
+        yield "\n\n**Loading follow-up questions done ...**\n\n"
         yield "</appendix>"
 
         # time_tracking["summary_message"] = time.time() - initial_message_start_time
@@ -285,7 +285,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     
     if deep_thinking is False:
         yield "</thinking>"
-        yield "\n\n**Generating the response ...**\n\n"
+        yield "\n\n**Loading the response ...**\n\n"
     else:
         for chunk in answer:
             # Process chunks without </think> tag
@@ -313,7 +313,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
                         # End original response and prepare for translation
                         yield chunk.replace("</response>", "</original_response>")
                         yield "</thinking>"
-                        yield "\n\n**Generating the response ...**\n\n"
+                        yield "\n\n**Loading the response ...**\n\n"
                         translation_response = True
 
                 # Handle regular content
@@ -327,7 +327,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
                 if not translation_response:
                     yield chunk
                     yield "</thinking>"
-                    yield "\n\n**Generating the response ...**\n\n"
+                    yield "\n\n**Loading the response ...**\n\n"
     
     time_tracking["response_generation"] = time.time() - response_start
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
@@ -351,7 +351,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
             for chunk in answer:
                 yield chunk
         yield "</response>"
-        yield "\n\n**Generating the response done ...**\n\n"
+        yield "\n\n**Loading the response done ...**\n\n"
         time_tracking["translation"] = time.time() - translation_start
         logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
@@ -428,7 +428,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Generate follow-up questions
-    yield "\n\n**Generating follow-up questions ...**\n\n"
+    yield "\n\n**Loading follow-up questions ...**\n\n"
     followup_start = time.time()
     follow_up_questions = generate_follow_up_questions(answer, chat_history)
     for i in range(len(follow_up_questions)):
@@ -449,7 +449,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
             yield "</followup_question>"
             yield "\n\n"
     time_tracking["followup_questions"] = time.time() - followup_start
-    yield "\n\n**Generating follow-up questions done ...**\n\n"
+    yield "\n\n**Loading follow-up questions done ...**\n\n"
     yield "</appendix>"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 

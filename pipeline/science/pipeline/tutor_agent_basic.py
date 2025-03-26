@@ -298,7 +298,8 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
                         if is_in_thinking_mode():
                             yield chunk  # First response chunk
                         else:
-                            yield chunk.replace("<response>", "")  # Continuation chunk
+                            # yield chunk.replace("<response>", "")  # Continuation chunk
+                            yield chunk
                     else:
                         yield chunk.replace("<response>", "<original_response>")
                 

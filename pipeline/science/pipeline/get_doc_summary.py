@@ -39,7 +39,7 @@ def refine_document_summary(markdown_summary, llm):
 
     1. Identify specific facts that appear in multiple sections
     2. Note sections with overlapping content that should be merged or removed
-    3. List repeated metrics or measurements (like "$g^{{(2)}}(0) = 0.060(13)$")
+    3. List repeated metrics or measurements or formulas
     4. Flag concepts explained multiple times across different sections
     5. Identify all bullet points exceeding 15 words
     6. Catalog phrases that could be expressed more concisely
@@ -47,22 +47,26 @@ def refine_document_summary(markdown_summary, llm):
     Document to analyze:
     {summary}
 
-    Return your analysis in JSON format with these keys:
+    Return your analysis with these bullet points:
     - "redundant_facts": [list of specific facts/phrases that appear multiple times]
     - "overlapping_sections": [pairs of section names that have significant overlap]
     - "sections_to_remove": [sections that can be removed entirely as their content is covered elsewhere]
-    - "sections_to_merge": [{{"new_section_name": "name", "sections_to_combine": ["section1", "section2"]}}]
+    - "sections_to_merge": ["new_section_name": "name", "sections_to_combine": ["section1", "section2"]]
     - "repeated_metrics": [specific measurements/numbers that are mentioned multiple times]
     - "verbose_bullets": [bullet points exceeding 15 words, with word count noted]
     - "wordy_phrases": [common phrases that could be expressed more concisely]
     - "consolidated_structure": [brief outline of how the summary should be restructured with minimal sections]
+
+    Replace all single curly braces with "{{" and "}}" respectively.
     """
 
     analysis_prompt_template = ChatPromptTemplate.from_template(analysis_prompt)
-    json_parser = JsonOutputParser()
-    # Add error handling with a fixing parser
-    fixing_parser = OutputFixingParser.from_llm(parser=json_parser, llm=llm)
-    analysis_chain = analysis_prompt_template | llm | fixing_parser
+    # json_parser = JsonOutputParser()
+    # # Add error handling with a fixing parser
+    # fixing_parser = OutputFixingParser.from_llm(parser=json_parser, llm=llm)
+    parser = StrOutputParser()
+    error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
+    analysis_chain = analysis_prompt_template | llm | error_parser
 
     try:
         analysis_result = analysis_chain.invoke({"summary": markdown_summary})

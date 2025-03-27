@@ -339,6 +339,8 @@ async def get_query_helper(chat_session: ChatSession, user_input, context_chat_h
         2. Create a detailed plan for constructing the answer
         3. Identify what information should be included in the answer
         4. Identify what information should NOT be included (e.g., repeated information, information the student already knows)
+        5. Do not make up or assume anything or guess without any evidence, only use the information provided in the previous conversation history and current question to analyze the user's intent and what to include and exclude in the answer.
+        6. If the query is about a specific figure, please include the figure number in the answer.
 
         Document summary:
         ```{context}```
@@ -346,7 +348,7 @@ async def get_query_helper(chat_session: ChatSession, user_input, context_chat_h
         Previous conversation history:
         ```{chat_history}```
 
-        Organize your analysis in the following JSON format:
+        Organize your analysis in the following format:
         ```json
         {{
             "user_intent": "<detailed analysis of what the user truly wants to know. based on the previous conversation history and the current question analyse what user already knows and what user doesn't know>",
@@ -382,8 +384,9 @@ async def get_query_helper(chat_session: ChatSession, user_input, context_chat_h
             ("human", planning_human_prompt),
         ]
     )
-
-    planning_chain = planning_prompt | llm | error_parser
+    parser_string = StrOutputParser()
+    error_parser_string = OutputFixingParser.from_llm(parser=parser_string, llm=llm)
+    planning_chain = planning_prompt | llm | error_parser_string
     answer_planning = planning_chain.invoke({
         "input": user_input,
         "rephrased_question": question,

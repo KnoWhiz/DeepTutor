@@ -131,7 +131,12 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
     # Handle Advanced mode
     if chat_session.mode == ChatMode.ADVANCED:
         try:
-            answer = await get_GraphRAG_global_response(user_input, chat_history, embedding_folder_list, deep_thinking, chat_session=chat_session, stream=stream)
+            answer = await get_GraphRAG_global_response(user_input=user_input + "\n\n" + question.special_context, 
+                                                        chat_history=chat_history, 
+                                                        embedding_folder_list=embedding_folder_list, 
+                                                        deep_thinking=deep_thinking, 
+                                                        chat_session=chat_session, 
+                                                        stream=stream)
             return answer
         except Exception as e:
             logger.exception("Error getting response from GraphRAG:", e)

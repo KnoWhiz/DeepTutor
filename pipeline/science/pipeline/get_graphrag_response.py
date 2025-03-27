@@ -130,17 +130,20 @@ async def get_GraphRAG_global_response(user_input, chat_history, embedding_folde
     )
     
     context = search_engine_result.context_data["reports"]
-    context = str(context)
+    answer_string = search_engine_result.response
+    context_string = str(answer_string)
     prompt = f"""
     You are a deep thinking tutor helping a student reading a paper.
     The previous conversation is: {chat_history_text}
-    Reference context from the paper: {context}
+    Reference context from the paper: {context_string}
     The student's query is: {user_input_text}
     """
 
     if deep_thinking:
         from pipeline.science.pipeline.inference import deep_inference_agent
         try:
+            logger.info(f"Deep thinking and stream is {stream}, calling deep_inference_agent")
+            logger.info(f"Prompt for advanced deep thinking: {prompt}")
             answer = deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session)
         except Exception as e:
             logger.exception(f"Error in deep_inference_agent: {e}")

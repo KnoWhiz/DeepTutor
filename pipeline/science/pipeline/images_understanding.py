@@ -442,7 +442,7 @@ def process_folder_images(folder_path):
                 for i, context in enumerate(context_list):
                     if context.strip().endswith('<markdown>'):
                         # Get image analysis
-                        yield "\n\n**Getting image analysis for saved image ...**"
+                        yield "\n\n**📊 Getting image analysis for saved image ...**"
                         image_url = urls[image_name]
                         yield f"\n\n![{image_name}]({image_url})"
                         analysis = analyze_image(image_url)

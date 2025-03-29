@@ -266,7 +266,7 @@ async def get_query_helper(chat_session: ChatSession, user_input, context_chat_h
     user_input = replace_latex_formulas(user_input)
 
     logger.info(f"TEST: user_input: {user_input}")
-    yield f"\n\n**User input: {user_input}**"
+    # yield f"\n\n**User input: {user_input}**"
     # If we have "documents_summary" in the embedding folder, we can use it to speed up the search
     document_summary_path_list = [os.path.join(embedding_folder, "documents_summary.txt") for embedding_folder in embedding_folder_list]
     documents_summary_list = []
@@ -413,7 +413,7 @@ async def get_query_helper(chat_session: ChatSession, user_input, context_chat_h
     # yield f"\n\n**Question type: {question_type}**"
     # yield f"\n\n**Answer planning: {answer_planning}**"
     # yield f"\n\n**Language: {language}**"
-    yield "\n\n**Answer planning...**"
+    yield "\n\n**🧠 Answer planning...**"
 
     if question_type == "image":
         logger.info(f"question_type for input: {user_input} is --image-- ...")

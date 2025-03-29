@@ -147,7 +147,7 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     logger.info("LiteRAG embedding ready ...")
     yield "\n\n**LiteRAG embedding ready ...**"
     yield "</thinking>"
-    yield "\n\n**Loading response ...**"
+    yield "\n\n**🧠 Loading response ...**"
 
     chat_history = chat_session.chat_history
     context_chat_history = chat_history
@@ -178,7 +178,7 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     yield "<appendix>"
 
     # For Lite mode, we have minimal sources and follow-up questions
-    yield "\n\n**Loading follow-up questions ...**\n\n"
+    yield "\n\n**💬 Loading follow-up questions ...**\n\n"
     message_content = chat_session.current_message
     if isinstance(message_content, list) and len(message_content) > 0:
         message_content = message_content[0]
@@ -201,22 +201,22 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
             yield f"{cleaned_chunk}"
             yield "</followup_question>"
             yield "\n\n"
-    yield "\n\n**Loading follow-up questions done ...**\n\n"
+    yield "\n\n**💬 Loading follow-up questions done ...**\n\n"
 
-    yield "\n\n**Retrieving sources ...**\n\n"
-    yield "\n\n**Retrieving sources done ...**\n\n"
+    yield "\n\n**🔍 Retrieving sources ...**\n\n"
+    yield "\n\n**🔍 Retrieving sources done ...**\n\n"
 
-    yield "\n\n**Retrieving source pages ...**\n\n"
-    yield "\n\n**Retrieving source pages done ...**\n\n"
+    yield "\n\n**🔍 Retrieving source pages ...**\n\n"
+    yield "\n\n**🔍 Retrieving source pages done ...**\n\n"
 
-    yield "\n\n**Retrieving source annotations ...**\n\n"
-    yield "\n\n**Retrieving source annotations done ...**\n\n"
+    yield "\n\n**🔍 Retrieving source annotations ...**\n\n"
+    yield "\n\n**🔍 Retrieving source annotations done ...**\n\n"
 
-    yield "\n\n**Refining source pages ...**\n\n"
-    yield "\n\n**Refining source pages done ...**\n\n"
+    yield "\n\n**🔍 Refining source pages ...**\n\n"
+    yield "\n\n**🔍 Refining source pages done ...**\n\n"
 
-    yield "\n\n**Refining source index ...**\n\n"
-    yield "\n\n**Refining source index done ...**\n\n"
+    yield "\n\n**🔍 Refining source index ...**\n\n"
+    yield "\n\n**🔍 Refining source index done ...**\n\n"
 
     yield "</appendix>"
 

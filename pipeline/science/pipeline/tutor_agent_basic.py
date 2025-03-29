@@ -198,7 +198,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
             yield initial_message
             yield "</original_response>"
             yield "</thinking>"
-            yield "\n\n**Loading response ...**\n\n"
+            yield "\n\n**🧠 Loading response ...**\n\n"
             yield "<response>"        # Translate the initial message to the selected language
             answer = translate_content(
                 content=initial_message,
@@ -215,14 +215,14 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         else:
             translation_response = False
             yield "</thinking>"
-            yield "\n\n**Loading response ...**\n\n"
+            yield "\n\n**🧠 Loading response ...**\n\n"
             yield "<response>"        # Translate the initial message to the selected language
             yield "\n\n"
             yield initial_message
             yield "</response>"
 
         yield "<appendix>"
-        yield "\n\n**Loading follow-up questions ...**\n\n"
+        yield "\n\n**💬 Loading follow-up questions ...**\n\n"
         follow_up_questions = generate_follow_up_questions(chat_session.current_message, [])
         for i in range(len(follow_up_questions)):
             follow_up_questions[i] = translate_content(
@@ -240,7 +240,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
                 yield f"{cleaned_chunk}"
                 yield "</followup_question>"
                 yield "\n\n"
-        yield "\n\n**Loading follow-up questions done ...**\n\n"
+        yield "\n\n**💬 Loading follow-up questions done ...**\n\n"
         yield "</appendix>"
 
         # time_tracking["summary_message"] = time.time() - initial_message_start_time
@@ -250,7 +250,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
 
     # Regular chat flow
     # Refine user input
-    yield "\n\n**Understanding the user input ...**\n\n"
+    yield "\n\n**🧠 Understanding the user input ...**\n\n"
     query_start = time.time()
     async for question_progress_update in get_query_helper(chat_session, user_input, context_chat_history, embedding_folder_list):
         if isinstance(question_progress_update, Question):
@@ -264,7 +264,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     refined_user_input = question.text
     logger.info(f"Refined user input: {refined_user_input}")
     time_tracking["query_refinement"] = time.time() - query_start
-    yield "\n\n**Understanding the user input done ...**\n\n"
+    yield "\n\n**🧠 Understanding the user input done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Get response
@@ -285,7 +285,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     
     if deep_thinking is False:
         yield "</thinking>"
-        yield "\n\n**Loading the response ...**\n\n"
+        yield "\n\n**💡 Loading the response ...**\n\n"
     else:
         for chunk in answer:
             # Process chunks without </think> tag
@@ -313,7 +313,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
                         # End original response and prepare for translation
                         yield chunk.replace("</response>", "</original_response>")
                         yield "</thinking>"
-                        yield "\n\n**Loading the response ...**\n\n"
+                        yield "\n\n**💡 Loading the response ...**\n\n"
                         translation_response = True
 
                 # Handle regular content
@@ -327,7 +327,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
                 if not translation_response:
                     yield chunk
                     yield "</thinking>"
-                    yield "\n\n**Loading the response ...**\n\n"
+                    yield "\n\n**💡 Loading the response ...**\n\n"
     
     time_tracking["response_generation"] = time.time() - response_start
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
@@ -351,7 +351,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
             for chunk in answer:
                 yield chunk
         yield "</response>"
-        yield "\n\n**Loading the response done ...**\n\n"
+        yield "\n\n**🧠 Loading the response done ...**\n\n"
         time_tracking["translation"] = time.time() - translation_start
         logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
@@ -362,7 +362,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     refined_source_pages = {}
     refined_source_index = {}
     sources_start = time.time()
-    yield "\n\n**Retrieving sources ...**\n\n"
+    yield "\n\n**🔍 Retrieving sources ...**\n\n"
     sources, source_pages, refined_source_pages, refined_source_index = get_response_source(
         mode=chat_session.mode,
         file_path_list=file_path_list,
@@ -394,11 +394,11 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         yield "</refined_source_index>"
 
     time_tracking["source_retrieval"] = time.time() - sources_start
-    yield "\n\n**Retrieving sources done ...**\n\n"
+    yield "\n\n**🔍 Retrieving sources done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Process image sources
-    yield "\n\n**Processing image sources ...**\n\n"
+    yield "\n\n**📊 Processing image sources ...**\n\n"
     images_processing_start = time.time()
     image_url_list = []
     for source, index, page in zip(refined_source_index.keys(), refined_source_index.values(), refined_source_pages.values()):
@@ -407,7 +407,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
             image_url = source
             image_url_list.append(image_url)
     time_tracking["image_processing"] = time.time() - images_processing_start
-    yield "\n\n**Processing image sources done ...**\n\n"
+    yield "\n\n**📊 Processing image sources done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Append images URL in markdown format to the end of the answer
@@ -424,11 +424,11 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         annotations, _ = get_highlight_info(_doc, [source])
         source_annotations[source] = annotations
     time_tracking["annotations"] = time.time() - annotations_start
-    yield "\n\n**Retrieving source annotations done ...**\n\n"
+    yield "\n\n**🔍 Retrieving source annotations done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Generate follow-up questions
-    yield "\n\n**Loading follow-up questions ...**\n\n"
+    yield "\n\n**💬 Loading follow-up questions ...**\n\n"
     followup_start = time.time()
     follow_up_questions = generate_follow_up_questions(answer, chat_history)
     for i in range(len(follow_up_questions)):
@@ -449,7 +449,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
             yield "</followup_question>"
             yield "\n\n"
     time_tracking["followup_questions"] = time.time() - followup_start
-    yield "\n\n**Loading follow-up questions done ...**\n\n"
+    yield "\n\n**💬 Loading follow-up questions done ...**\n\n"
     yield "</appendix>"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 

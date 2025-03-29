@@ -5,16 +5,18 @@ from typing import Dict, Generator
 import re
 
 from pipeline.science.pipeline.utils import (
-    translate_content,
     generate_file_id,
     format_time_tracking,
-    detect_language,
     clean_translation_prefix,
     responses_refine,
     extract_answer_content,
     extract_lite_mode_content,
     extract_basic_mode_content,
     extract_advanced_mode_content,
+)
+from pipeline.science.pipeline.content_translator import (
+    detect_language,
+    translate_content
 )
 from pipeline.science.pipeline.doc_processor import (
     save_file_txt_locally,
@@ -214,7 +216,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
         message_content = chat_session.current_message
         if isinstance(message_content, list) and len(message_content) > 0:
             message_content = message_content[0]
-        
+
         follow_up_questions = generate_follow_up_questions(message_content, [])
         for i in range(len(follow_up_questions)):
             follow_up_questions[i] = translate_content(
@@ -329,7 +331,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
             for chunk in answer:
                 yield chunk
         yield "</response>"
-        yield "\n\n**🧠 Loading the response done ...**\n\n"
+        # yield "\n\n**💡 Loading the response done ...**\n\n"
         time_tracking["translation"] = time.time() - translation_start
         logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 

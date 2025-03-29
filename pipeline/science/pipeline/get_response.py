@@ -12,7 +12,6 @@ from pipeline.science.pipeline.utils import (
     truncate_chat_history,
     get_llm,
     responses_refine,
-    detect_language,
     count_tokens,
     replace_latex_formulas,
     generators_list_stream_response
@@ -20,6 +19,10 @@ from pipeline.science.pipeline.utils import (
 from pipeline.science.pipeline.embeddings import (
     get_embedding_models,
     load_embeddings,
+)
+from pipeline.science.pipeline.content_translator import (
+    detect_language,
+    translate_content
 )
 from pipeline.science.pipeline.inference import deep_inference_agent
 from pipeline.science.pipeline.session_manager import ChatSession, ChatMode

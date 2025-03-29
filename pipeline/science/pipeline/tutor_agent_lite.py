@@ -4,11 +4,13 @@ from typing import Dict, Generator
 import re
 
 from pipeline.science.pipeline.utils import (
-    translate_content,
     generate_file_id,
     format_time_tracking,
-    detect_language,
     clean_translation_prefix,
+)
+from pipeline.science.pipeline.content_translator import (
+    detect_language,
+    translate_content
 )
 from pipeline.science.pipeline.doc_processor import (
     save_file_txt_locally,

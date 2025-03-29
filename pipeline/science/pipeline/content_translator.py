@@ -240,3 +240,63 @@ def translate_content(content: str, target_lang: str, stream=False) -> str:
         })
 
     return translated_content
+
+
+def azure_translate_content(
+    content: str,
+    target_lang: str,
+    stream: bool = False
+) -> str:
+    """
+    Translates text using the Azure Translator API.
+    
+    Args:
+        content: The text to translate
+        target_lang: The target language code (e.g. "zh" for Chinese)
+        stream: Whether to stream the response (not used in Azure implementation)
+        
+    Returns:
+        str: Translated text in the target language
+    
+    Raises:
+        ValueError: If Azure Translator credentials are not properly configured
+        requests.RequestException: If the API request fails
+    """
+
+    load_dotenv()
+
+    key = os.getenv("AZURE_TRANSLATOR_KEY")
+    endpoint = os.getenv("AZURE_TRANSLATOR_ENDPOINT")
+    location = os.getenv("AZURE_TRANSLATOR_LOCATION")
+    
+    if not key or not endpoint or not location:
+        raise ValueError("Azure Translator credentials not properly configured. Check your environment variables.")
+    
+    path = "/translate"
+    constructed_url = endpoint + path
+
+    params = {
+        "api-version": "3.0",
+        "from": "en",  # Default source language is English
+        "to": [target_lang]  # Convert single string to list as required by API
+    }
+
+    headers = {
+        "Ocp-Apim-Subscription-Key": key,
+        "Ocp-Apim-Subscription-Region": location,
+        "Content-type": "application/json",
+        "X-ClientTraceId": str(uuid.uuid4())
+    }
+
+    body = [{
+        "text": content
+    }]
+
+    try:
+        request = requests.post(constructed_url, params=params, headers=headers, json=body)
+        request.raise_for_status()  # Raise exception for HTTP errors
+        response = request.json()
+        # Extract just the translated text from the response
+        return response[0]["translations"][0]["text"]
+    except requests.RequestException as e:
+        raise requests.RequestException(f"Translation request failed: {e}")

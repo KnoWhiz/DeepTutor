@@ -4,20 +4,20 @@ from typing import List, Dict, Any, Union
 from dotenv import load_dotenv
 
 def azure_translate_content(
-    text: str,
-    source_language: str = "en",
-    target_languages: List[str] = ["zh"]
-) -> Dict[str, Any]:
+    content: str,
+    target_lang: str,
+    stream: bool = False
+) -> str:
     """
     Translates text using the Azure Translator API.
     
     Args:
-        text: The text to translate
-        source_language: The source language code (default: "en" for English)
-        target_languages: List of target language codes (default: ["zh"] for Chinese)
+        content: The text to translate
+        target_lang: The target language code (e.g. "zh" for Chinese)
+        stream: Whether to stream the response (not used in Azure implementation)
         
     Returns:
-        Dict[str, Any]: Translation response from Azure
+        str: Translated text in the target language
     
     Raises:
         ValueError: If Azure Translator credentials are not properly configured
@@ -33,30 +33,32 @@ def azure_translate_content(
     if not key or not endpoint or not location:
         raise ValueError("Azure Translator credentials not properly configured. Check your environment variables.")
     
-    path = '/translate'
+    path = "/translate"
     constructed_url = endpoint + path
 
     params = {
-        'api-version': '3.0',
-        'from': source_language,
-        'to': target_languages
+        "api-version": "3.0",
+        "from": "en",  # Default source language is English
+        "to": [target_lang]  # Convert single string to list as required by API
     }
 
     headers = {
-        'Ocp-Apim-Subscription-Key': key,
-        'Ocp-Apim-Subscription-Region': location,
-        'Content-type': 'application/json',
-        'X-ClientTraceId': str(uuid.uuid4())
+        "Ocp-Apim-Subscription-Key": key,
+        "Ocp-Apim-Subscription-Region": location,
+        "Content-type": "application/json",
+        "X-ClientTraceId": str(uuid.uuid4())
     }
 
     body = [{
-        'text': text
+        "text": content
     }]
 
     try:
         request = requests.post(constructed_url, params=params, headers=headers, json=body)
         request.raise_for_status()  # Raise exception for HTTP errors
-        return request.json()
+        response = request.json()
+        # Extract just the translated text from the response
+        return response[0]["translations"][0]["text"]
     except requests.RequestException as e:
         raise requests.RequestException(f"Translation request failed: {e}")
 
@@ -92,5 +94,5 @@ Benchmark Saturation: As models surpass human performance on static benchmarks (
 Conclusion
 This literature is pivotal for enabling scalable, sustainable AI systems without sacrificing critical capabilities. By rigorously analyzing biased approximations, researchers aim to unlock efficient computation while preserving model integrity—a necessity as LLMs evolve into general-purpose systems with ever-expanding requirements.</response><appendix>"""
     
-    response = azure_translate_content(sample_text)
-    print(response[0]["translations"][0]["text"])
+    translated_text = azure_translate_content(sample_text, "zh")
+    print(translated_text)

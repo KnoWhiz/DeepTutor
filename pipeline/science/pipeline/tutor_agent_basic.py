@@ -5,10 +5,8 @@ from typing import Dict, Generator
 import re
 
 from pipeline.science.pipeline.utils import (
-    translate_content,
     generate_file_id,
     format_time_tracking,
-    detect_language,
     clean_translation_prefix,
     responses_refine,
     extract_answer_content,
@@ -20,6 +18,10 @@ from pipeline.science.pipeline.doc_processor import (
     save_file_txt_locally,
     process_pdf_file,
     get_highlight_info,
+)
+from pipeline.science.pipeline.content_translator import (
+    detect_language,
+    translate_content
 )
 from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
 from pipeline.science.pipeline.helper.index_files_saving import (

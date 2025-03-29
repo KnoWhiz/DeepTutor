@@ -1,40 +1,71 @@
 import requests, uuid, json
 import os
+from typing import List, Dict, Any, Union
 from dotenv import load_dotenv
 
-load_dotenv()
+def azure_translate_content(
+    text: str,
+    source_language: str = "en",
+    target_languages: List[str] = ["zh"]
+) -> Dict[str, Any]:
+    """
+    Translates text using the Azure Translator API.
+    
+    Args:
+        text: The text to translate
+        source_language: The source language code (default: "en" for English)
+        target_languages: List of target language codes (default: ["zh"] for Chinese)
+        
+    Returns:
+        Dict[str, Any]: Translation response from Azure
+    
+    Raises:
+        ValueError: If Azure Translator credentials are not properly configured
+        requests.RequestException: If the API request fails
+    """
 
-# Add your key and endpoint
-key = os.getenv("AZURE_TRANSLATOR_KEY")
-endpoint = os.getenv("AZURE_TRANSLATOR_ENDPOINT")
+    load_dotenv()
 
-# location, also known as region.
-# required if you're using a multi-service or regional (not global) resource. It can be found in the Azure portal on the Keys and Endpoint page.
-location = os.getenv("AZURE_TRANSLATOR_LOCATION")
+    key = os.getenv("AZURE_TRANSLATOR_KEY")
+    endpoint = os.getenv("AZURE_TRANSLATOR_ENDPOINT")
+    location = os.getenv("AZURE_TRANSLATOR_LOCATION")
+    
+    if not key or not endpoint or not location:
+        raise ValueError("Azure Translator credentials not properly configured. Check your environment variables.")
+    
+    path = '/translate'
+    constructed_url = endpoint + path
 
-path = '/translate'
-constructed_url = endpoint + path
+    params = {
+        'api-version': '3.0',
+        'from': source_language,
+        'to': target_languages
+    }
 
-params = {
-    'api-version': '3.0',
-    'from': 'en',
-    'to': ['zh']
-}
+    headers = {
+        'Ocp-Apim-Subscription-Key': key,
+        'Ocp-Apim-Subscription-Region': location,
+        'Content-type': 'application/json',
+        'X-ClientTraceId': str(uuid.uuid4())
+    }
 
-headers = {
-    'Ocp-Apim-Subscription-Key': key,
-    # location required if you're using a multi-service or regional (not global) resource.
-    'Ocp-Apim-Subscription-Region': location,
-    'Content-type': 'application/json',
-    'X-ClientTraceId': str(uuid.uuid4())
-}
+    body = [{
+        'text': text
+    }]
 
-# You can pass more than one object in body.
-body = [{
-    'text': """<response>
-The significance of the growing literature on efficiently computable but biased estimates of the softmax function lies in its critical role for advancing large-scale machine learning systems, particularly in the context of modern Large Language Models (LLMs) and their computational demands. Here’s a structured breakdown:
+    try:
+        request = requests.post(constructed_url, params=params, headers=headers, json=body)
+        request.raise_for_status()  # Raise exception for HTTP errors
+        return request.json()
+    except requests.RequestException as e:
+        raise requests.RequestException(f"Translation request failed: {e}")
 
-1. Softmax Function and Its Role
+# Example usage
+if __name__ == "__main__":
+    sample_text = """<response>
+The significance of the growing literature on efficiently computable but biased estimates of the softmax function lies in its critical role for advancing large-scale machine learning systems, particularly in the context of modern Large Language Models (LLMs) and their computational demands. Here's a structured breakdown:
+
+### 1. Softmax Function and Its Role
 The softmax function is a cornerstone of classification tasks in machine learning, converting raw model outputs (logits) into probability distributions. For example, in LLMs, it enables token prediction by assigning probabilities to the next word in a sequence. However, its computational cost scales with the number of classes (e.g., vocabulary size), becoming prohibitive for models with billions of parameters or massive vocabularies.
 
 2. Need for Efficiency
@@ -52,7 +83,7 @@ Recent work addresses this trade-off by:
 
 Theoretical Analysis: Quantifying bias-variance trade-offs to guide approximation choices.
 Adaptive Methods: Dynamically adjusting approximation fidelity based on context (e.g., prioritizing critical tokens).
-Benchmarking: Evaluating how approximations affect downstream tasks, aligning with the paper’s emphasis on rethinking benchmarks for evolving AI systems.
+Benchmarking: Evaluating how approximations affect downstream tasks, aligning with the paper's emphasis on rethinking benchmarks for evolving AI systems.
 5. Broader Context in AI
 The literature reflects a broader trend in AI: balancing scalability with reliability. For instance:
 
@@ -60,10 +91,6 @@ Tool-Augmented LLMs: Systems like Auto-GPT (Yang et al., 2023) rely on efficient
 Benchmark Saturation: As models surpass human performance on static benchmarks (e.g., GLUE, MMLU), efficient approximations enable exploration of harder tasks (e.g., professional-level reasoning) while managing computational costs.
 Conclusion
 This literature is pivotal for enabling scalable, sustainable AI systems without sacrificing critical capabilities. By rigorously analyzing biased approximations, researchers aim to unlock efficient computation while preserving model integrity—a necessity as LLMs evolve into general-purpose systems with ever-expanding requirements.</response><appendix>"""
-}]
-
-request = requests.post(constructed_url, params=params, headers=headers, json=body)
-response = request.json()
-
-# print(json.dumps(response, sort_keys=True, ensure_ascii=False, indent=4, separators=(',', ': ')))
-print(response[0]['translations'][0]['text'])
+    
+    response = azure_translate_content(sample_text)
+    print(response[0]["translations"][0]["text"])

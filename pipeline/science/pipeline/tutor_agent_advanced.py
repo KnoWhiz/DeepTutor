@@ -329,7 +329,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
             for chunk in answer:
                 yield chunk
         yield "</response>"
-        yield "\n\n**🧠 Loading the response done ...**\n\n"
+        # yield "\n\n**💡 Loading the response done ...**\n\n"
         time_tracking["translation"] = time.time() - translation_start
         logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 

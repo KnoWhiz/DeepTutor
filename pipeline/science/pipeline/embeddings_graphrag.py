@@ -73,11 +73,11 @@ async def generate_GraphRAG_embedding(embedding_folder, time_tracking: Dict[str,
     if all([os.path.exists(path) for path in path_list]):
         # Load existing embeddings
         logger.info("All necessary index files exist. Loading existing knowledge graph embeddings...")
-        yield "\n\n**All necessary index files exist. Loading existing knowledge graph embeddings...**"
+        yield "\n\n**🗺️ All necessary index files exist. Loading existing knowledge graph embeddings...**"
     else:
         # Create the GraphRAG embeddings
-        logger.info("Loading knowledge graph embeddings...")
-        yield "\n\n**Loading knowledge graph embeddings...**"
+        logger.info("Loading knowledge graph embeddings ...")
+        yield "\n\n**🗺️ Loading knowledge graph embeddings ...**"
         # Initialize the project
         create_env_file_start_time = time.time()
         create_env_file(GraphRAG_embedding_folder)
@@ -140,12 +140,12 @@ async def generate_GraphRAG_embedding(embedding_folder, time_tracking: Dict[str,
         # # logger.info(f"graphrag_config before build: {graphrag_config}")
 
         try:
-            yield "\n\n**Loading GraphRAG index...**"
+            yield "\n\n**🗺️ Loading GraphRAG index ...**"
             build_index_start_time = time.time()
             await api.build_index(config=graphrag_config)
             time_tracking['graphrag_build_index'] = time.time() - build_index_start_time
             logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-            yield "\n\n**GraphRAG index loaded successfully...**"
+            yield "\n\n**🗺️ GraphRAG index loaded successfully ...**"
             # logger.info(f"graphrag_config after build: {graphrag_config}")
         except Exception as e:
             logger.exception(f"Index loading error: {e}")

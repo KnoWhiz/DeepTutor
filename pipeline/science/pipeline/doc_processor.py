@@ -388,7 +388,7 @@ async def extract_pdf_content_to_markdown_via_api_streaming(
 
     API_URL = "https://www.datalab.to/api/v1/marker"
 
-    yield "Start parsing PDF to markdown..."
+    yield "Start parsing PDF to markdown ..."
     # Submit the file to API - use requests for initial upload since it handles multipart/form-data better
     with open(file_path, "rb") as f:
         form_data = {
@@ -411,7 +411,7 @@ async def extract_pdf_content_to_markdown_via_api_streaming(
 
     request_check_url = data.get("request_check_url")
     logger.info("Submitted request. Polling for results...")
-    yield "Polling for PDF parsing results..."
+    yield "Polling for PDF parsing results ..."
 
     # Poll until processing is complete using aiohttp
     max_polls = 300
@@ -454,7 +454,7 @@ async def extract_pdf_content_to_markdown_via_api_streaming(
         raise Exception(f"Processing failed: {result.get('error')}")
 
     # Save markdown content with hash ID
-    yield "Saving markdown content..."
+    yield "Saving markdown content ..."
     markdown = result.get("markdown", "")
     md_path = output_dir / f"{file_id}.md"
     with open(md_path, "w", encoding="utf-8") as md_file:

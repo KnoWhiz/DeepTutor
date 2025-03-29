@@ -244,7 +244,7 @@ def extract_image_context(folder_dir: str | Path, file_path: str = "", context_t
     image_files = [f for f in os.listdir(folder_dir) if os.path.splitext(f.lower())[1] in image_extensions]
     if not image_files:
         logger.info("No image files found in the folder.")
-        yield "\n\n**No image files found in the folder.**"
+        yield "\n\n**❌ No image files found in the folder.**"
         return
 
     # Find the markdown file (with file_id.md file name)
@@ -252,7 +252,7 @@ def extract_image_context(folder_dir: str | Path, file_path: str = "", context_t
     md_files = [os.path.join(folder_dir, f"{file_id}.md")]
     if not md_files:
         logger.info("No markdown file found in the folder.")
-        yield "\n\n**No markdown file found in the folder.**"
+        yield "\n\n**❌ No markdown file found in the folder.**"
         return
 
     md_file = md_files[0]

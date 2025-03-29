@@ -124,30 +124,30 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
         save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
     time_tracking["file_loading_save_text"] = time.time() - save_file_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-    yield "\n\n**Loading documents done ...**\n\n"
+    yield "\n\n**📙 Loading documents done ...**\n\n"
 
     # Process LiteRAG embeddings
     lite_embedding_start_time = time.time()
-    yield "\n\n**Loading LiteRAG embeddings ...**"
+    yield "\n\n**🔍 Loading LiteRAG embeddings ...**"
     for file_id, embedding_folder, file_path in zip(file_id_list, embedding_folder_list, file_path_list):
         if literag_index_files_decompress(embedding_folder):
             # Check if the LiteRAG index files are ready locally
             logger.info(f"LiteRAG embedding index files for {file_id} are ready.")
-            yield "\n\n**LiteRAG embedding index files are ready.**"
+            yield "\n\n**🔍 LiteRAG embedding index files are ready.**"
         else:
             # Files are missing and have been cleaned up
             _document, _doc = process_pdf_file(file_path)
             save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
             logger.info(f"Loading LiteRAG embedding for {file_id} ...")
-            yield "\n\n**Loading LiteRAG embedding ...**"
+            yield "\n\n**🔍 Loading LiteRAG embedding ...**"
             async for chunk in embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder):
                 yield chunk
     time_tracking["lite_embedding_total"] = time.time() - lite_embedding_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
     logger.info("LiteRAG embedding ready ...")
-    yield "\n\n**LiteRAG embedding ready ...**"
+    yield "\n\n**🔍 LiteRAG embedding ready ...**"
     yield "</thinking>"
-    yield "\n\n**🧠 Loading response ...**"
+    yield "\n\n**🧠 Loading response ...**\n\n"
 
     chat_history = chat_session.chat_history
     context_chat_history = chat_history
@@ -199,8 +199,7 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
         if cleaned_chunk:
             yield "<followup_question>"
             yield f"{cleaned_chunk}"
-            yield "</followup_question>"
-            yield "\n\n"
+            yield "</followup_question>\n\n"
     yield "\n\n**💬 Loading follow-up questions done ...**\n\n"
 
     yield "\n\n**🔍 Retrieving sources ...**\n\n"

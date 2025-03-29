@@ -64,14 +64,14 @@ async def embeddings_agent(
     if _mode == ChatMode.ADVANCED:
         # GraphRAG is implemented in the following code
         logger.info("Mode: ChatMode.ADVANCED. Generating GraphRAG embeddings...")
-        yield "\n\n**🗺️ Loading GraphRAG embeddings...**"
+        yield "\n\n**🗺️ Loading GraphRAG embeddings ...**"
     elif _mode == ChatMode.BASIC:
         # Basic mode is implemented in the following code
         logger.info("Mode: ChatMode.BASIC. Generating VectorRAG embeddings...")
-        yield "\n\n**🗂️ Loading VectorRAG embeddings...**"
+        yield "\n\n**🗂️ Loading VectorRAG embeddings ...**"
     elif _mode == ChatMode.LITE:
         logger.info("Mode: ChatMode.LITE. Generating LiteRAG embeddings...")
-        yield "\n\n**🔍 Loading LiteRAG embeddings...**"
+        yield "\n\n**🔍 Loading LiteRAG embeddings ...**"
         lite_embedding_start_time = time.time()
         await generate_LiteRAG_embedding(_doc, file_path, embedding_folder)
         time_tracking['lite_embedding_total'] = time.time() - lite_embedding_start_time
@@ -143,6 +143,7 @@ async def embeddings_agent(
                                 yield f"\n\n**📑 PDF parsing progress: {progress_update}**"
                             else:
                                 yield f"\n\n{progress_update}"
+                                # pass
                     
                     # Verify we received the expected return values
                     if md_path is None or saved_images is None or md_document is None:
@@ -151,7 +152,7 @@ async def embeddings_agent(
                     
                     logger.info(f"PDF extraction completed. MD document length: {len(md_document) if md_document else 0}")
                     doc_processor.set_md_document(md_document)
-                    yield "\n\n**📝 PDF extraction completed successfully**"
+                    yield "\n\n**📝 PDF extraction completed successfully ...**"
                 except Exception as e:
                     logger.exception(f"Error during streaming PDF extraction: {str(e)}")
                     yield f"\n\n**❌ Error during PDF extraction: {str(e)}**"
@@ -171,15 +172,15 @@ async def embeddings_agent(
             logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
         except Exception as e:
             logger.exception(f"Error extracting content to markdown, using _doc to extract searchable content as save as markdown file: {e}")
-            yield "\n\n**Error extracting content to markdown, using _doc to extract searchable content as save as markdown file...**"
+            yield "\n\n**❌ Error extracting content to markdown, using _doc to extract searchable content as save as markdown file...**"
             # Use _doc to extract searchable content as save as markdown file
             fake_markdown_extraction_start_time = time.time()
-            yield "\n\n**Using PDF loader to extract searchable content as save as markdown file...**"
+            yield "\n\n**🔍 Using PDF loader to extract searchable content as save as markdown file...**"
             doc_processor.set_md_document("")
             texts = []
             # Process each page in the PDF document
             for page_num in range(len(_doc)):
-                yield f"\n\n**Processing page {page_num + 1} of {len(_doc)}...**"
+                yield f"\n\n**📑 Processing page {page_num + 1} of {len(_doc)}...**"
                 page = _doc[page_num]
                 # Get all text blocks that can be found via search
                 text_blocks = []
@@ -199,23 +200,25 @@ async def embeddings_agent(
                 ))
 
             # Save to markdown_dir
-            yield "\n\n**Saving markdown to file...**"
+            # yield "\n\n**Saving markdown to file...**"
+            logger.info("Saving markdown to file...")
             markdown_dir = os.path.join(embedding_folder, "markdown")
             os.makedirs(markdown_dir, exist_ok=True)
             file_id = generate_file_id(file_path)
             md_path = os.path.join(markdown_dir, f"{file_id}.md")
-            yield f"\n\n**Saving markdown to file: {md_path}...**"
+            # yield f"\n\n**Saving markdown to file: {md_path}...**"
+            logger.info(f"Saving markdown to file: {md_path}...")
             with open(md_path, "w", encoding="utf-8") as f:
                 f.write(doc_processor.get_md_document())
 
             # Use the texts directly instead of splitting again
             logger.info(f"Number of pages processed: {len(texts)}")
-            yield f"\n\n**Number of pages processed: {len(texts)}**"
+            # yield f"\n\n**Number of pages processed: {len(texts)}**"
             time_tracking['fake_markdown_extraction'] = time.time() - fake_markdown_extraction_start_time
             logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
         else:
             # Split the document into chunks when markdown extraction succeeded
-            yield "\n\n**📑 Splitting document into chunks...**"
+            yield "\n\n**📑 Splitting document into chunks ...**"
             create_searchable_chunks_start_time = time.time()
             average_page_length = sum(len(doc.page_content) for doc in _document) / len(_document)
             chunk_size = int(average_page_length // 3)
@@ -248,15 +251,15 @@ async def embeddings_agent(
                 except Exception as e:
                     try:
                         logger.exception(f"Error creating temporary FAISS index: {e}")
-                        yield "\n\n**Error creating temporary FAISS index: {e}**"
+                        yield "\n\n**❌ Error creating temporary FAISS index: {e}**"
                         logger.info("Continuing with small embeddings...")
-                        yield "\n\n**Continuing with small embeddings...**"
+                        yield "\n\n**🔍 Continuing with small embeddings...**"
                         temp_db = FAISS.from_documents(texts, embeddings_small)
                     except Exception as e:
                         logger.exception(f"Error creating temporary FAISS index with small embeddings: {e}")
-                        yield "\n\n**Error creating temporary FAISS index with small embeddings: {e}**"
+                        yield "\n\n**❌ Error creating temporary FAISS index with small embeddings: {e}**"
                         logger.info("Continuing with lite embeddings...")
-                        yield "\n\n**Continuing with lite embeddings...**"
+                        yield "\n\n**🔍 Continuing with lite embeddings...**"
                         temp_db = FAISS.from_documents(texts, embeddings_lite)
 
                 for image, context in image_context.items():
@@ -285,18 +288,18 @@ async def embeddings_agent(
 
             else:
                 logger.info("No image context found to process")
-                yield "\n\n**No image context found to process**"
+                yield "\n\n**❌ No image context found to process**"
         except Exception as e:
             logger.exception(f"Error processing image context: {e}")
-            yield "\n\n**Error processing image context: {e}**"
+            yield "\n\n**❌ Error processing image context: {e}**"
             logger.info("Continuing without image context...")
-            yield "\n\n**Continuing without image context...**"
+            yield "\n\n**❌ Continuing without image context...**"
         time_tracking['process_image_files'] = time.time() - process_image_files_start_time
         logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
         # Create the vector store to use as the index
         create_vector_store_start_time = time.time()
-        yield "\n\n**🗂️ Creating vector store...**"
+        yield "\n\n**🗂️ Creating vector store ...**"
         db = FAISS.from_documents(texts, embeddings)
         # Save the embeddings to the specified folder
         # yield "\n\n**Saving vector store to file...**"
@@ -307,27 +310,27 @@ async def embeddings_agent(
 
         # Save the markdown embeddings to the specified folder
         create_markdown_embeddings_start_time = time.time()
-        yield "\n\n**📝 Creating markdown embeddings...**"
+        yield "\n\n**📝 Creating markdown embeddings ...**"
         create_markdown_embeddings(doc_processor.get_md_document(), markdown_embedding_folder)
         time_tracking['vectorrag_create_markdown_embeddings'] = time.time() - create_markdown_embeddings_start_time
         logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
         try:
             # Generate and save document summary using the texts we created
-            logger.info("Generating document summary...")
-            yield "\n\n**📚 Loading document summary...**"
+            logger.info("Generating document summary ...")
+            yield "\n\n**📚 Loading document summary ...**"
             generate_document_summary_start_time = time.time()
             # By default, use the markdown document to generate the summary
             await generate_document_summary(texts, embedding_folder, doc_processor.get_md_document())
             time_tracking['generate_document_summary'] = time.time() - generate_document_summary_start_time
             logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-            logger.info("Document summary generated and saved successfully.")
-            yield "\n\n**📚 Document summary generated and saved successfully.**"
+            logger.info("Document summary generated and saved successfully ...")
+            yield "\n\n**📚 Document summary generated and saved successfully ...**"
         except Exception as e:
             logger.exception(f"Error generating document summary: {e}")
-            yield f"\n\n**Error generating document summary: {e}**"
+            yield f"\n\n**❌ Error generating document summary: {e}**"
             logger.info("Continuing without document summary...")
-            yield "\n\n**Continuing without document summary...**"
+            yield "\n\n**❌ Continuing without document summary...**"
 
     graphrag_start_time = time.time()
     if _mode == ChatMode.ADVANCED:
@@ -335,7 +338,7 @@ async def embeddings_agent(
         # if GraphRAG_embedding_generator:
         #     for chunk in GraphRAG_embedding_generator:
         #         yield chunk
-        yield "\n\n**🗺️ Building knowledge graph based on markdown...**"
+        yield "\n\n**🗺️ Building knowledge graph based on markdown ...**"
         save_file_txt_locally(file_path, filename=file_id[:8], embedding_folder=embedding_folder, chat_session=chat_session)
         async for chunk in generate_GraphRAG_embedding(embedding_folder, time_tracking):
             yield chunk

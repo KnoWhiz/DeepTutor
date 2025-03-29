@@ -193,19 +193,17 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         language = detect_language(initial_message)
         if language != chat_session.current_language:
             translation_response = True
-            yield "<original_response>"
-            yield "\n\n"
+            yield "<original_response>\n\n"
             yield initial_message
             yield "</original_response>"
             yield "</thinking>"
             yield "\n\n**🧠 Loading response ...**\n\n"
-            yield "<response>"        # Translate the initial message to the selected language
+            yield "<response>\n\n"        # Translate the initial message to the selected language
             answer = translate_content(
                 content=initial_message,
                 target_lang=chat_session.current_language,
                 stream=stream
             )
-            yield "\n\n"
             if (type(answer) is str):
                 yield answer
             else:
@@ -216,8 +214,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
             translation_response = False
             yield "</thinking>"
             yield "\n\n**🧠 Loading response ...**\n\n"
-            yield "<response>"        # Translate the initial message to the selected language
-            yield "\n\n"
+            yield "<response>\n\n"        # Translate the initial message to the selected language
             yield initial_message
             yield "</response>"
 
@@ -238,8 +235,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
             if cleaned_chunk:
                 yield "<followup_question>"
                 yield f"{cleaned_chunk}"
-                yield "</followup_question>"
-                yield "\n\n"
+                yield "</followup_question>\n\n"
         yield "\n\n**💬 Loading follow-up questions done ...**\n\n"
         yield "</appendix>"
 
@@ -258,7 +254,8 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
             question = question_progress_update
             logger.info(f"Received Question object from streaming function: {question}")
         elif isinstance(question_progress_update, str):
-            yield f"\n\n{question_progress_update}"
+            # yield f"\n\n💬 {question_progress_update}"
+            pass
         else:
             continue
     refined_user_input = question.text
@@ -343,8 +340,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
             stream=stream
         )
         # if answer != content:
-        yield "<response>"
-        yield "\n\n"
+        yield "<response>\n\n"
         if (type(answer) is str):
             yield answer
         else:
@@ -446,8 +442,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         if cleaned_chunk:
             yield "<followup_question>"
             yield f"{cleaned_chunk}"
-            yield "</followup_question>"
-            yield "\n\n"
+            yield "</followup_question>\n\n"
     time_tracking["followup_questions"] = time.time() - followup_start
     yield "\n\n**💬 Loading follow-up questions done ...**\n\n"
     yield "</appendix>"

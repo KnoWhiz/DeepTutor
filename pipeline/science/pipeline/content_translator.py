@@ -83,19 +83,12 @@ def translate_content(
         requests.RequestException: If the API request fails
     """
 
-    # Map language names to ISO codes
-    language_code_map = {
-        "English": "en",
-        "Chinese": "zh",
-        "Spanish": "es",
-        "French": "fr",
-        "German": "de",
-        "Japanese": "ja",
-        "Korean": "ko",
-        "Hindi": "hi",
-        "Portuguese": "pt",
-        "Italian": "it"
-    }
+    # Load languages from config
+    config = load_config()
+    languages_short = config["languages_short"]
+    
+    # Create reverted map: language names to ISO codes
+    language_code_map = {v: k for k, v in languages_short.items()}
     
     # If target_lang is a language name, convert to code
     if target_lang in language_code_map:

@@ -262,6 +262,9 @@ def translate_content(
         ValueError: If Azure Translator credentials are not properly configured
         requests.RequestException: If the API request fails
     """
+    language = detect_language(content)
+    if language == target_lang:
+        return content
 
     # Load languages from config
     config = load_config()

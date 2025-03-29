@@ -33,7 +33,7 @@ async def get_GraphRAG_global_response(user_input, chat_history, embedding_folde
     chat_history_text = truncate_chat_history(chat_history)
     user_input_text = str(user_input)
 
-    # Search for the document in the GraphRAG embedding
+    # Search for the document in the GraphRAG embeddings
     try:
         load_dotenv(".env")
     except Exception as e:

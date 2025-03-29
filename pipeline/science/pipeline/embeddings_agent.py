@@ -58,7 +58,7 @@ async def embeddings_agent(
     Save the embeddings to the specified folder
     Generate and save document summary using the texts we created
     """
-    yield "\n\n**Loading embeddings ...**"
+    # yield "\n\n**Loading embeddings ...**"
     file_id = generate_file_id(file_path)
     logger.info(f"Current mode: {_mode}")
     if _mode == ChatMode.ADVANCED:
@@ -82,7 +82,8 @@ async def embeddings_agent(
         doc_processor = None
         texts = None
 
-        yield "\n\n**Embeddings generated successfully.**"
+        # yield "\n\n**Embeddings generated successfully.**"
+        logger.info("Embeddings generated successfully.")
         return
     else:
         raise ValueError("Invalid mode")
@@ -95,7 +96,8 @@ async def embeddings_agent(
     doc_processor = mdDocumentProcessor()
 
     # Define the default filenames used by FAISS when saving
-    yield "\n\n**Initializing file paths ...**"
+    # yield "\n\n**Initializing file paths ...**"
+    logger.info("Initializing file paths ...")
     faiss_path = os.path.join(embedding_folder, "index.faiss")
     pkl_path = os.path.join(embedding_folder, "index.pkl")
     document_summary_path = os.path.join(embedding_folder, "documents_summary.txt")
@@ -116,11 +118,12 @@ async def embeddings_agent(
             # Extract content to markdown via API
             if not SKIP_MARKER_API:
                 logger.info("Marker API is enabled. Using Marker API to extract content to markdown.")
-                yield "\n\n**Parsing PDF to markdown...**"
+                # yield "\n\n**Parsing PDF to markdown...**"
+                logger.info("Parsing PDF to markdown...")
                 markdown_dir = os.path.join(embedding_folder, "markdown")
                 
                 # Use the streaming version of extract_pdf_content_to_markdown_via_api
-                yield "\n\n**Starting PDF extraction...**"
+                # yield "\n\n**Starting PDF extraction...**"
                 
                 # Call the streaming version and get status updates
                 md_path = None
@@ -217,11 +220,12 @@ async def embeddings_agent(
             average_page_length = sum(len(doc.page_content) for doc in _document) / len(_document)
             chunk_size = int(average_page_length // 3)
             logger.info(f"Average page length: {average_page_length}")
-            yield f"\n\n**Average page length: {int(average_page_length)}**"
+            # yield f"\n\n**Average page length: {int(average_page_length)}**"
             logger.info(f"Chunk size: {chunk_size}")
-            yield f"\n\n**Chunk size: {int(chunk_size)}**"
+            # yield f"\n\n**Chunk size: {int(chunk_size)}**"
             texts = create_searchable_chunks(_doc, chunk_size)
-            yield f"\n\n**length of document chunks generated for get_response_source: {len(texts)}**"
+            # yield f"\n\n**length of document chunks generated for get_response_source: {len(texts)}**"
+            logger.info(f"length of document chunks generated for get_response_source: {len(texts)}")
             time_tracking['create_searchable_chunks'] = time.time() - create_searchable_chunks_start_time
             logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
@@ -236,7 +240,7 @@ async def embeddings_agent(
             # Only process image context if there are actual images
             if image_context:
                 logger.info(f"Found {len(image_context)} images with context")
-                yield f"\n\n**Found {len(image_context)} images with context**"
+                # yield f"\n\n**Found {len(image_context)} images with context**"
 
                 # Create a temporary FAISS index for similarity search
                 try:
@@ -295,7 +299,8 @@ async def embeddings_agent(
         yield "\n\n**Creating vector store...**"
         db = FAISS.from_documents(texts, embeddings)
         # Save the embeddings to the specified folder
-        yield "\n\n**Saving vector store to file...**"
+        # yield "\n\n**Saving vector store to file...**"
+        logger.info("Saving vector store to file...")
         db.save_local(embedding_folder)
         time_tracking['vectorrag_create_vector_store'] = time.time() - create_vector_store_start_time
         logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
@@ -342,5 +347,6 @@ async def embeddings_agent(
     doc_processor = None
     texts = None
 
-    yield "\n\n**Embeddings generated successfully.**"
+    # yield "\n\n**Embeddings generated successfully.**"
+    logger.info("Embeddings generated successfully.")
     return

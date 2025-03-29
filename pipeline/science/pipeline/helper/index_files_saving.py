@@ -31,7 +31,7 @@ def graphrag_index_files_check(embedding_folder):
     :param embedding_folder: The path to the embedding folder
     :return: True if all necessary files exist, False otherwise
     """
-    # Define the index files path for GraphRAG embedding
+    # Define the index files path for GraphRAG embeddings
     GraphRAG_embedding_folder, path_list = file_check_list(embedding_folder)
 
     # Define the index files path for VectorRAG embedding

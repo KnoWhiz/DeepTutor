@@ -263,14 +263,16 @@ def extract_image_context(folder_dir: str | Path, file_path: str = "", context_t
         md_lines = f.read().splitlines()
 
     # If there are images_files and md_files, re-order the list image_files to match the order that images show up in md_files
-    yield "\n\n**Re-ordering image files to match the order that images show up in md_files...**"
+    # yield "\n\n**Re-ordering image files to match the order that images show up in md_files...**"
+    logger.info("Re-ordering image files to match the order that images show up in md_files...")
     image_order = []
     for line in md_lines:
         for image in image_files:
             if image in line and image not in image_order:
                 image_order.append(image)
     # Add any images that weren't found in the markdown file to the end of the order list
-    yield "\n\n**Adding any images that weren't found in the markdown file to the end of the order list...**"
+    # yield "\n\n**Adding any images that weren't found in the markdown file to the end of the order list...**"
+    logger.info("Adding any images that weren't found in the markdown file to the end of the order list...")
     for image in image_files:
         if image not in image_order:
             image_order.append(image)
@@ -278,11 +280,13 @@ def extract_image_context(folder_dir: str | Path, file_path: str = "", context_t
     image_files = image_order
 
     # Create a dictionary to store image filename vs. list of context windows
-    yield "\n\n**Creating a dictionary to store image filename vs. list of context windows...**"
+    # yield "\n\n**Creating a dictionary to store image filename vs. list of context windows...**"
+    logger.info("Creating a dictionary to store image filename vs. list of context windows...")
     image_context: Dict[str, List[str]] = {}
 
     for i, image in enumerate(image_files):
-        yield f"\n\n**Processing image {i+1} of {len(image_files)}: {image}**"
+        # yield f"\n\n**Processing image {i+1} of {len(image_files)}: {image}**"
+        # yield f"\n\n**Processing image {i+1}/{len(image_files)}**"
         # Find all lines in the markdown file that mention the image filename
         contexts = []
         for idx, line in enumerate(md_lines):
@@ -296,12 +300,14 @@ def extract_image_context(folder_dir: str | Path, file_path: str = "", context_t
             image_context[image] = contexts
 
     # Write the dictionary to a JSON file in the same folder
-    yield "\n\n**Writing the dictionary to a JSON file in the same folder...**"
+    # yield "\n\n**Writing the dictionary to a JSON file in the same folder...**"
+    logger.info(f"Writing the dictionary to a JSON file in the same folder: {image_context_path}")
     with open(image_context_path, 'w', encoding='utf-8') as outfile:
         json.dump(image_context, outfile, indent=2, ensure_ascii=False)
 
     # Process folder images
-    yield "\n\n**Processing folder images...**"
+    # yield "\n\n**Processing folder images...**"
+    logger.info("Processing folder images...")
     for chunk in process_folder_images(folder_dir):
         yield chunk
 
@@ -430,16 +436,17 @@ def process_folder_images(folder_path):
             urls = json.load(f)
 
         # Process each image that has context ending with <markdown>
+        img_count = len(contexts.items())
         for image_name, context_list in contexts.items():
             if image_name in urls:
                 for i, context in enumerate(context_list):
                     if context.strip().endswith('<markdown>'):
                         # Get image analysis
-                        yield f"\n\n**Getting image analysis for {image_name}...**"
+                        yield "\n\n**Getting image analysis for saved image ...**"
                         image_url = urls[image_name]
                         yield f"\n\n![{image_name}]({image_url})"
                         analysis = analyze_image(image_url)
-                        yield f"\n\n**Image analysis for {image_name} completed.**"
+                        # yield f"\n\n**Image analysis for {image_name} completed.**"
                         # Update context with analysis
                         contexts[image_name][i] = f"{context}\nImage Analysis: {analysis}"
 

@@ -126,7 +126,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
 
     # Process GraphRAG embeddings
     graphrag_start_time = time.time()
-    yield "\n\n**Loading GraphRAG embeddings ...**\n\n"
+    # yield "\n\n**Loading GraphRAG embeddings ...**\n\n"
     logger.info(f"Advanced (GraphRAG) mode for list of file ids: {file_id_list}")
     for file_id, embedding_folder, file_path in zip(file_id_list, embedding_folder_list, file_path_list):
         if graphrag_index_files_decompress(embedding_folder):
@@ -136,8 +136,8 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
             # Files are missing and have been cleaned up
             _document, _doc = process_pdf_file(file_path)
             save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
-            logger.info(f"GraphRAG embedding for {file_id} ...")
-            yield f"\n\n**Loading GraphRAG embedding for {file_id} ...**\n\n"
+            logger.info(f"GraphRAG embeddings for {file_id} ...")
+            # yield "\n\n**Loading GraphRAG embeddings ...**\n\n"
             # await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
             async for chunk in embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder):
                 yield chunk
@@ -146,7 +146,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
                 logger.info(f"GraphRAG index files for {file_id} are ready and uploaded to Azure Blob Storage.")
             else:
                 # Retry once if first attempt fails
-                yield f"\n\n**Retrying GraphRAG embedding for {file_id} ...**\n\n"
+                yield "\n\n**Retrying GraphRAG embeddings ...**\n\n"
                 save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
                 # await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
                 async for chunk in embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder):
@@ -160,7 +160,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
                     # yield f"\n\n**Error compressing and uploading GraphRAG index files for {file_id} to Azure Blob Storage.**\n\n"
     time_tracking["graphrag_generate_embedding_total"] = time.time() - graphrag_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-    yield "\n\n**GraphRAG embedding ready ...**\n\n"
+    yield "\n\n**GraphRAG embeddings ready ...**\n\n"
 
     chat_history = chat_session.chat_history
     context_chat_history = chat_history

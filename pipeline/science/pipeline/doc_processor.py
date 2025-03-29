@@ -376,7 +376,8 @@ async def extract_pdf_content_to_markdown_via_api_streaming(
     if not file_path.exists():
         raise FileNotFoundError(f"PDF file not found: {file_path}")
 
-    yield "Generating file ID..."
+    # yield "Generating file ID..."
+    logger.info("Generating file ID...")
     # Generate hash ID for the file
     with open(file_path, "rb") as f:
         file_id = hashlib.md5(f.read()).hexdigest()
@@ -433,7 +434,7 @@ async def extract_pdf_content_to_markdown_via_api_streaming(
                         status = result.get("status")
                         progress = result.get("progress", 0)
                         logger.info(f"Poll {i+1}: status = {status}, progress = {progress}%")
-                        yield f"Processing: {status} - {progress}% complete"
+                        # yield f"Processing: {status} - {progress}% complete"
                         
                         if status == "complete":
                             break
@@ -453,7 +454,7 @@ async def extract_pdf_content_to_markdown_via_api_streaming(
         raise Exception(f"Processing failed: {result.get('error')}")
 
     # Save markdown content with hash ID
-    yield "Processing completed. Saving markdown content..."
+    yield "Saving markdown content..."
     markdown = result.get("markdown", "")
     md_path = output_dir / f"{file_id}.md"
     with open(md_path, "w", encoding="utf-8") as md_file:
@@ -466,7 +467,7 @@ async def extract_pdf_content_to_markdown_via_api_streaming(
 
     if images:
         img_count = len(images)
-        yield f"Processing {img_count} images..."
+        # yield f"Processing {img_count} images..."
         logger.info(f"Processing {img_count} images...")
         for idx, (filename, b64data) in enumerate(images.items(), 1):
             try:
@@ -482,7 +483,8 @@ async def extract_pdf_content_to_markdown_via_api_streaming(
                 img.save(output_path)
                 saved_images[filename] = img
                 logger.info(f"Saved image: {output_path}")
-                yield f"Saved image {idx}/{img_count}: {safe_filename}"
+                logger.info(f"Saved image {idx}/{img_count}: {safe_filename}")
+                # yield f"Saved image {idx}/{img_count}"
             except Exception as e:
                 logger.exception(f"Error saving image {filename}: {e}")
                 yield f"Error saving image {filename}: {str(e)}"
@@ -492,7 +494,8 @@ async def extract_pdf_content_to_markdown_via_api_streaming(
 
     # Save markdown file and images to Azure Blob Storage
     try:
-        yield "Uploading markdown and images to Azure Blob Storage..."
+        # yield "Uploading markdown and images to Azure Blob Storage..."
+        logger.info("Uploading markdown and images to Azure Blob Storage...")
         upload_markdown_to_azure(output_dir, file_path)
         upload_images_to_azure(output_dir, file_path)
     except Exception as e:
@@ -501,7 +504,8 @@ async def extract_pdf_content_to_markdown_via_api_streaming(
 
     # Extract image context
     try:
-        yield "Extracting image context..."
+        # yield "Extracting image context..."
+        logger.info("Extracting image context...")
         config = load_config()
         chunk_size = config["embedding"]["chunk_size"]
         for chunk in extract_image_context(output_dir, file_path=file_path):
@@ -511,7 +515,8 @@ async def extract_pdf_content_to_markdown_via_api_streaming(
         yield f"Error extracting image context: {str(e)}"
         raise Exception(f"Error extracting image context: {e}")
 
-    yield "PDF extraction complete!"
+    # yield "PDF extraction complete!"
+    logger.info("PDF extraction complete!")
     # Yield the final result tuple instead of returning it
     yield (str(md_path), saved_images, markdown)
 

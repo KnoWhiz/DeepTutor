@@ -216,7 +216,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
         message_content = chat_session.current_message
         if isinstance(message_content, list) and len(message_content) > 0:
             message_content = message_content[0]
-        
+
         follow_up_questions = generate_follow_up_questions(message_content, [])
         for i in range(len(follow_up_questions)):
             follow_up_questions[i] = translate_content(

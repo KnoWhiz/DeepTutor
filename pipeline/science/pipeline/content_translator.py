@@ -12,8 +12,10 @@ import time
 from datetime import datetime, UTC
 import re
 
+import requests, uuid, json
+import os
+from typing import List, Dict, Any, Union, Tuple, Dict
 from dotenv import load_dotenv
-from typing import List, Tuple, Dict
 from pathlib import Path
 from PIL import Image
 

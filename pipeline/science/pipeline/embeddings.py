@@ -54,7 +54,7 @@ def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_s
     para = config['llm']
     embeddings = get_embedding_models('default', para)
 
-    logger.info("Creating markdown embeddings...")
+    logger.info("Creating markdown embeddings ...")
     if md_document:
         # Create markdown directory if it doesn't exist
         os.makedirs(output_dir, exist_ok=True)

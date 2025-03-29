@@ -297,6 +297,11 @@ def azure_translate_content(
         request.raise_for_status()  # Raise exception for HTTP errors
         response = request.json()
         # Extract just the translated text from the response
-        return response[0]["translations"][0]["text"]
+        if stream:
+            def stream_response():
+                yield response[0]["translations"][0]["text"]
+            return stream_response()
+        else:
+            return response[0]["translations"][0]["text"]
     except requests.RequestException as e:
         raise requests.RequestException(f"Translation request failed: {e}")

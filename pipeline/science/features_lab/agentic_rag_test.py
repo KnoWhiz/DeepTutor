@@ -84,14 +84,18 @@ def agentic_rag(user_input: str):
         model = model.bind_tools(tools)
 
         # Function to decide whether to continue or stop the workflow
-        def should_continue(state: MessagesState) -> Literal["tools", END]:
+        def should_continue(state: MessagesState) -> Literal["web_url_tools", END]:
             messages = state['messages']
             last_message = messages[-1]
-            # If the LLM makes a tool call, go to the "tools" node
+            # If the LLM makes a tool call, go to the "web_url_tools" node
             if last_message.tool_calls:
-                return "tools"
+                tool_calls_name = str(last_message.tool_calls)
+                print(f"Tool call detected, tool: {tool_calls_name}")
+                return "web_url_tools"
             # Otherwise, finish the workflow
-            return END
+            else:
+                print("No tool call detected, finishing workflow")
+                return END
 
         # Function that invokes the model
         def call_model(state: MessagesState):
@@ -104,12 +108,12 @@ def agentic_rag(user_input: str):
 
         # Add nodes to the graph
         workflow.add_node("agent", call_model)
-        workflow.add_node("tools", tool_node)
+        workflow.add_node("web_url_tools", tool_node)
 
         # Connect nodes
         workflow.add_edge(START, "agent")  # Initial entry
         workflow.add_conditional_edges("agent", should_continue)  # Decision after the "agent" node
-        workflow.add_edge("tools", "agent")  # Cycle between tools and agent
+        workflow.add_edge("web_url_tools", "agent")  # Cycle between tools and agent
 
         # Configure memory to persist the state
         checkpointer = MemorySaver()

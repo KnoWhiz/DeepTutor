@@ -67,7 +67,7 @@ def retrieve_web_context(query: str):
         logger.error(f"Error retrieving context: {e}")
         return f"Error retrieving context: {e}"
 
-def agentic_rag():
+def agentic_rag(user_input: str):
     try:
         # Configure tools
         tools = [retrieve_web_context]
@@ -123,7 +123,7 @@ def agentic_rag():
         # Execute the workflow
         logger.info("Starting workflow execution...")
         final_state = app.invoke(
-            {"messages": [HumanMessage(content="Explain what a list is in Python")]},
+            {"messages": [HumanMessage(content=user_input)]},
             config={"configurable": {"thread_id": 42}}
         )
 
@@ -138,14 +138,7 @@ def agentic_rag():
 
 if __name__ == "__main__":
     try:
-        # Check if API keys are set
-        from dotenv import load_dotenv
-        load_dotenv()
-        
-        azure_api_key = os.getenv("AZURE_OPENAI_API_KEY")
-        azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
-        
         # Run the test
-        result = agentic_rag()
+        result = agentic_rag("Explain what a list is in C++")
     except Exception as e:
         logger.error(f"Test failed: {e}")

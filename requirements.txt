@@ -14,7 +14,7 @@ langchain-openai==0.3.3
 langchain-text-splitters==0.3.6
 langchain_sambanova==0.1.2
 langid==1.1.6
-langgraph==0.2.50
+langgraph==0.3.21
 # marker-pdf==1.3.3
 neo4j==5.27.0
 neo4j-graphrag==1.2.1

@@ -82,9 +82,17 @@ def build_simple_graph():
     return builder.compile()
 
 # Custom visualization functions
-def visualize_graph_structure(graph):
+def visualize_graph(graph, output_path="graph_diagram.mmd"):
     """
-    Visualize the graph structure in a simple text format
+    Unified helper function to visualize a graph with multiple formats.
+    
+    Args:
+        graph: The LangGraph graph to visualize
+        output_path: Optional path to save the Mermaid diagram. 
+                    If None, saves to a temporary file.
+    
+    Returns:
+        Path to the saved Mermaid diagram file
     """
     # Get the graph object
     g = graph.get_graph()
@@ -93,7 +101,8 @@ def visualize_graph_structure(graph):
     nodes = g.nodes
     edges = g.edges
     
-    print("\nGraph Structure:\n-----------------")
+    # 1. Display text structure
+    print("\nGraph Structure:\n----------------------------------")
     print(f"Number of nodes: {len(nodes)}")
     print(f"Number of edges: {len(edges)}")
     
@@ -108,22 +117,18 @@ def visualize_graph_structure(graph):
                 source, target = edge
                 print(f"  - {source} -> {target}")
             else:
-                print(f"  - {edge} (format: {type(edge)})")
+                if hasattr(edge, 'source') and hasattr(edge, 'target'):
+                    print(f"  - {edge.source} -> {edge.target}")
+                else:
+                    print(f"  - {edge} (format: {type(edge)})")
     except Exception as e:
         print(f"Error processing edges: {e}")
         print(f"Edge format: {type(edges)}")
         if hasattr(edges, '__iter__'):
             for i, edge in enumerate(edges):
                 print(f"  Edge {i}: {edge} (type: {type(edge)})")
-
-def generate_mermaid_diagram(graph):
-    """
-    Generate a Mermaid diagram code for the graph
-    """
-    g = graph.get_graph()
-    nodes = g.nodes
-    edges = g.edges
     
+    # 2. Generate Mermaid diagram code
     mermaid_code = ["graph TD;"]
     
     # Add nodes
@@ -174,14 +179,36 @@ def generate_mermaid_diagram(graph):
     mermaid_code.append('    classDef endClass fill:#baffc9;')
     mermaid_code.append('    classDef nodeClass fill:#fad7de;')
     
-    return "\n".join(mermaid_code)
-
-def save_mermaid_to_file(mermaid_code, output_path):
-    """
-    Save Mermaid code to a file
-    """
+    # 3. Save Mermaid code to a file
+    if output_path is None:
+        output_path = os.path.join(tempfile.gettempdir(), "graph_diagram.mmd")
+    
     with open(output_path, 'w') as f:
-        f.write(mermaid_code)
+        f.write("\n".join(mermaid_code))
+    
+    # 4. Display the content of the saved Mermaid file
+    print("\nMermaid Diagram Code:")
+    print("----------------------------------")
+    print("\n".join(mermaid_code))
+    
+    # 5. Print instructions for visualization
+    instructions = f"""
+To visualize this graph:
+
+1. Use the Mermaid diagram saved at: {output_path}
+2. Copy the contents of this file and paste into one of:
+   - Mermaid Live Editor: https://mermaid.live/
+   - VS Code with Mermaid extension
+   - Any Markdown renderer that supports Mermaid (like GitHub)
+   - Or use the Mermaid CLI tool if installed
+
+3. For programmatic visualization in Python projects:
+   - Install additional packages: pip install graphviz pyppeteer
+   - Check LangGraph documentation for updated visualization methods
+    """
+    
+    print(instructions)
+    
     return output_path
 
 # Main test function to demonstrate visualization capabilities
@@ -203,43 +230,10 @@ def test_graph_visualization():
         print(f"Final state (count=3): {final_state_2}")
         print(f"Path taken: start -> process_a -> process_c (Skipped process_b)")
         
-        # 1. Visualize the graph structure
-        logger.info("Visualizing graph structure...")
-        visualize_graph_structure(graph)
-        
-        # 2. Generate and save Mermaid diagram code
-        logger.info("Generating Mermaid diagram...")
-        mermaid_code = generate_mermaid_diagram(graph)
-        print("\nMermaid Diagram Code:")
-        print(mermaid_code)
-        
-        # 3. Save the Mermaid code to a file
-        mermaid_file_path = os.path.join(tempfile.gettempdir(), "graph_diagram.mmd")
-        save_mermaid_to_file(mermaid_code, mermaid_file_path)
-        logger.info(f"Mermaid diagram code saved to: {mermaid_file_path}")
-        
-        # 4. Display the content of the saved Mermaid file
-        print("\nContents of the Mermaid file:")
-        with open(mermaid_file_path, 'r') as f:
-            print(f.read())
-        
-        # Save instructions for visualization
-        instructions = f"""
-To visualize this graph:
-
-1. Use the Mermaid diagram saved at: {mermaid_file_path}
-2. Copy the contents of this file and paste into one of:
-   - Mermaid Live Editor: https://mermaid.live/
-   - VS Code with Mermaid extension
-   - Any Markdown renderer that supports Mermaid (like GitHub)
-   - Or use the Mermaid CLI tool if installed
-
-3. For programmatic visualization in Python projects:
-   - Install additional packages: pip install graphviz pyppeteer
-   - Check LangGraph documentation for updated visualization methods
-        """
-        
-        print(instructions)
+        # Visualize the graph with the unified helper function
+        logger.info("Visualizing graph...")
+        mermaid_file_path = visualize_graph(graph)
+        logger.info(f"Graph visualization completed. Mermaid diagram saved to: {mermaid_file_path}")
         
         return "Graph visualization test completed successfully"
         

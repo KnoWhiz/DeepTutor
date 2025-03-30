@@ -46,9 +46,14 @@ def should_continue(state: MessagesState):
     # Otherwise if there is, we continue
     return "action"
 
+def filter_messages(messages: list):
+    # This is very simple helper function which only ever uses the last 3 messages
+    return messages[-3:]
+
 # Define the function that calls the model
 def call_model(state: MessagesState):
-    response = bound_model.invoke(state["messages"])
+    messages = filter_messages(state["messages"])
+    response = bound_model.invoke(messages)
     # We return a list, because this will get added to the existing list
     return {"messages": response}
 
@@ -70,7 +75,7 @@ workflow.add_conditional_edges(
     "agent",
     # Next, we pass in the function that will determine which node is called next.
     should_continue,
-    # Next, we pass in the path map - all the possible nodes this edge could go to
+    # Next, we pass in the pathmap - all the possible nodes this edge could go to
     ["action", END],
 )
 

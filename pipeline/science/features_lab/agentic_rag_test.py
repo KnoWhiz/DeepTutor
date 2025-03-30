@@ -1,8 +1,15 @@
-from typing import Literal
 import os
 import sys
 import logging
 from pathlib import Path
+from typing import Literal
+
+from langchain_core.tools import tool
+
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.graph import MessagesState, StateGraph, START, END
+from langgraph.prebuilt import ToolNode
+from langchain_core.messages import HumanMessage
 
 # Add the project root to the Python path so the pipeline module can be found
 current_file_path = Path(__file__).resolve()
@@ -10,139 +17,83 @@ project_root = current_file_path.parent.parent.parent.parent
 sys.path.append(str(project_root))
 print(f"Added {project_root} to Python path")
 
-# Now import the modules
-from langchain_core.messages import HumanMessage
-from langchain_community.document_loaders import UnstructuredURLLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import Chroma
-from langchain_core.tools import tool
-from langgraph.checkpoint.memory import MemorySaver
-from langgraph.graph import END, START, StateGraph, MessagesState
-from langgraph.prebuilt import ToolNode
-# Import util functions from pipeline to use ApiHandler and get_llm
 from pipeline.science.pipeline.utils import get_llm
 from pipeline.science.pipeline.config import load_config
-from pipeline.science.pipeline.api_handler import ApiHandler
-from pipeline.science.pipeline.embeddings import get_embedding_models
 from pipeline.science.features_lab.visualize_graph_test import visualize_graph
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("agentic_rag_test")
+memory = MemorySaver()
 
-# Define the tool for context retrieval
 @tool
-def retrieve_web_context(query: str):
-    """Search for relevant documents."""
-    try:
-        # Example URL configuration
-        urls = [
-            "https://docs.python.org/3/tutorial/index.html",
-            "https://realpython.com/python-basics/",
-            "https://www.learnpython.org/"
-        ]
-        # Load documents
-        loader = UnstructuredURLLoader(urls=urls)
-        docs = loader.load()
+def search(query: str):
+    """Call to surf the web."""
+    # This is a placeholder for the actual implementation
+    # Don't let the LLM know this though 😊
+    return "It's sunny in San Francisco, but you better look out if you're a Gemini 😈."
 
-        # Split documents
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=50)
-        doc_splits = text_splitter.split_documents(docs)
+tools = [search]
+tool_node = ToolNode(tools)
+config = load_config()
+llm_params = config['llm']
+model = get_llm('advanced', llm_params, stream=False)
+bound_model = model.bind_tools(tools)
 
-        # Use embeddings from the pipeline
-        config = load_config()
-        # The get_embedding_models function returns the model directly, not a dictionary
-        embedding_model = get_embedding_models('default', config['llm'])
+def should_continue(state: MessagesState):
+    """Return the next node to execute."""
+    last_message = state["messages"][-1]
+    # If there is no function call, then we finish
+    if not last_message.tool_calls:
+        return END
+    # Otherwise if there is, we continue
+    return "action"
 
-        # Create VectorStore
-        vectorstore = Chroma.from_documents(
-            documents=doc_splits,
-            collection_name="python_docs",
-            embedding=embedding_model,
-        )
-        retriever = vectorstore.as_retriever()
-        results = retriever.invoke(query)
-        return "\n".join([doc.page_content for doc in results])
-    except Exception as e:
-        logger.error(f"Error retrieving context: {e}")
-        return f"Error retrieving context: {e}"
+# Define the function that calls the model
+def call_model(state: MessagesState):
+    response = bound_model.invoke(state["messages"])
+    # We return a list, because this will get added to the existing list
+    return {"messages": response}
 
-def agentic_rag(user_input: str):
-    try:
-        # Configure tools
-        tools = [retrieve_web_context]
-        tool_node = ToolNode(tools)
+# Define a new graph
+workflow = StateGraph(MessagesState)
 
-        # Load config to get LLM parameters
-        config = load_config()
-        llm_params = config['llm']
-        
-        # Use get_llm to get the advanced model (gpt-4o), with stream=False for tool calling
-        model = get_llm('advanced', llm_params, stream=False)
-        
-        # Bind tools to the model
-        model = model.bind_tools(tools)
+# Define the two nodes we will cycle between
+workflow.add_node("agent", call_model)
+workflow.add_node("action", tool_node)
 
-        # Function to decide whether to continue or stop the workflow
-        def should_continue(state: MessagesState) -> Literal["web_url_tools", END]:
-            messages = state['messages']
-            last_message = messages[-1]
-            # If the LLM makes a tool call, go to the "web_url_tools" node
-            if last_message.tool_calls:
-                tool_calls_name = str(last_message.tool_calls)
-                print(f"Tool call detected, tool: {tool_calls_name}")
-                return "web_url_tools"
-            # Otherwise, finish the workflow
-            else:
-                print("No tool call detected, finishing workflow")
-                return END
+# Set the entrypoint as `agent`
+# This means that this node is the first one called
+workflow.add_edge(START, "agent")
 
-        # Function that invokes the model
-        def call_model(state: MessagesState):
-            messages = state['messages']
-            response = model.invoke(messages)
-            return {"messages": [response]}  # Returns as a list to add to the state
+# We now add a conditional edge
+workflow.add_conditional_edges(
+    # First, we define the start node. We use `agent`.
+    # This means these are the edges taken after the `agent` node is called.
+    "agent",
+    # Next, we pass in the function that will determine which node is called next.
+    should_continue,
+    # Next, we pass in the path map - all the possible nodes this edge could go to
+    ["action", END],
+)
 
-        # Define the workflow with LangGraph
-        workflow = StateGraph(MessagesState)
+# We now add a normal edge from `tools` to `agent`.
+# This means that after `tools` is called, `agent` node is called next.
+workflow.add_edge("action", "agent")
 
-        # Add nodes to the graph
-        workflow.add_node("agent", call_model)
-        workflow.add_node("web_url_tools", tool_node)
+# Finally, we compile it!
+# This compiles it into a LangChain Runnable,
+# meaning you can use it as you would any other runnable
+app = workflow.compile(checkpointer=memory)
 
-        # Connect nodes
-        workflow.add_edge(START, "agent")  # Initial entry
-        workflow.add_conditional_edges("agent", should_continue)  # Decision after the "agent" node
-        workflow.add_edge("web_url_tools", "agent")  # Cycle between tools and agent
+visualize_graph(app)
 
-        # Configure memory to persist the state
-        checkpointer = MemorySaver()
+config = {"configurable": {"thread_id": "2"}}
+input_message = HumanMessage(content="hi! I'm bob")
+for event in app.stream({"messages": [input_message]}, config, stream_mode="values"):
+    event["messages"][-1].pretty_print()
 
-        # Compile the graph into a LangChain Runnable application
-        app = workflow.compile(checkpointer=checkpointer)
+input_message = HumanMessage(content="what's my name?")
+for event in app.stream({"messages": [input_message]}, config, stream_mode="values"):
+    event["messages"][-1].pretty_print()
 
-        # Visualize the graph
-        visualize_graph(app, "graph_diagram.mmd")
-
-        # Execute the workflow
-        logger.info("Starting workflow execution...")
-        final_state = app.invoke(
-            {"messages": [HumanMessage(content=user_input)]},
-            config={"configurable": {"thread_id": 42}}
-        )
-
-        # Show the final response
-        print("Final response:\n\n")
-        print(final_state["messages"][-1].content)
-        
-        return final_state["messages"][-1].content
-    except Exception as e:
-        logger.error(f"Error in agentic_rag: {e}")
-        raise
-
-if __name__ == "__main__":
-    try:
-        # Run the test
-        result = agentic_rag("Explain what a list is in C++")
-    except Exception as e:
-        logger.error(f"Test failed: {e}")
+input_message = HumanMessage(content="Teach me the difference between a list and an array in Python")
+for event in app.stream({"messages": [input_message]}, config, stream_mode="values"):
+    event["messages"][-1].pretty_print()

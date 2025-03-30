@@ -32,7 +32,7 @@ logger = logging.getLogger("agentic_rag_test")
 
 # Define the tool for context retrieval
 @tool
-def retrieve_context(query: str):
+def retrieve_web_context(query: str):
     """Search for relevant documents."""
     try:
         # Example URL configuration
@@ -70,7 +70,7 @@ def retrieve_context(query: str):
 def agentic_rag():
     try:
         # Configure tools
-        tools = [retrieve_context]
+        tools = [retrieve_web_context]
         tool_node = ToolNode(tools)
 
         # Load config to get LLM parameters

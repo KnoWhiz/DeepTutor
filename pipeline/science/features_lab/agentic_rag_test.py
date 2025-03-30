@@ -85,18 +85,34 @@ class SafeToolInvoker:
 def retrieve_web_context(query: str):
     """Search for relevant documents from web sources."""
     try:
-        # Example URL configuration
-        urls = [
+        # Example URL configuration for general and scientific sources
+        general_urls = [
             "https://docs.python.org/3/tutorial/index.html",
             "https://realpython.com/python-basics/",
             "https://www.learnpython.org/"
         ]
+        
+        scientific_urls = [
+            "https://en.wikipedia.org/wiki/Quantum_optics",
+            "https://en.wikipedia.org/wiki/Single-photon_source",
+            "https://en.wikipedia.org/wiki/Multiplexing",
+            "https://en.wikipedia.org/wiki/Quantum_information",
+            "https://physics.nist.gov/Divisions/Div844/publications.html"  # NIST Quantum Physics publications
+        ]
+        
+        # Determine if this is a scientific query
+        scientific_keywords = ["quantum", "photon", "optics", "physics", "multiplexing", "temporal", "ion"]
+        is_scientific_query = any(keyword in query.lower() for keyword in scientific_keywords)
+        
+        # Choose appropriate URLs based on query type
+        urls = scientific_urls if is_scientific_query else general_urls
+        
         # Load documents
         loader = UnstructuredURLLoader(urls=urls)
         docs = loader.load()
 
         # Split documents
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=50)
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         doc_splits = text_splitter.split_documents(docs)
 
         # Use embeddings from the pipeline
@@ -174,7 +190,7 @@ def grade_document_relevance(document_content: str, query: str):
         
         # Create the prompt for grading
         grading_prompt = f"""
-        You are an expert document grader. Your task is to evaluate how relevant a document is to a query.
+        You are an expert scientific document evaluator specializing in quantum physics. Your task is to evaluate how relevant a document is to a technical scientific query.
         
         Query: {query}
         
@@ -182,14 +198,24 @@ def grade_document_relevance(document_content: str, query: str):
         {document_content}
         
         Please evaluate the relevance of this document to the query on a scale of 0-10, where:
-        - 0: Completely irrelevant
-        - 5: Somewhat relevant, contains some information related to the query
-        - 10: Highly relevant, directly addresses the query
+        - 0: Completely irrelevant to the scientific topic
+        - 3: Mentions related topics but not directly relevant to the specific query
+        - 5: Contains some relevant technical information about the query
+        - 7: Directly discusses the scientific topic but may lack depth
+        - 10: Highly relevant, contains detailed technical information directly addressing the scientific query
+        
+        For technical/scientific content, consider:
+        1. Presence of relevant technical terminology
+        2. Discussion of related experimental setups
+        3. Mentions of relevant physical processes
+        4. Quantitative data or equations related to the topic
+        5. Technical descriptions of methods or approaches
         
         Respond with a JSON object with the following structure:
         {{
             "relevance_score": <score>,
-            "reasoning": "<your reasoning for the score>"
+            "reasoning": "<your detailed reasoning for the score>",
+            "key_technical_terms": ["<list of technical terms found>"]
         }}
         """
         
@@ -220,13 +246,15 @@ def grade_document_relevance(document_content: str, query: str):
             # Fallback with a default structure
             return {
                 "relevance_score": 0,
-                "reasoning": "Failed to parse grading result, assuming irrelevant"
+                "reasoning": "Failed to parse grading result, assuming irrelevant",
+                "key_technical_terms": []
             }
     except Exception as e:
         logger.error(f"Error grading document relevance: {e}")
         return {
             "relevance_score": 0,
-            "reasoning": f"Error in grading: {str(e)}"
+            "reasoning": f"Error in grading: {str(e)}",
+            "key_technical_terms": []
         }
 
 @tool
@@ -263,7 +291,7 @@ def retrieve_pdf_context(query: str, pdf_files: List[str] = None):
             return {"error": "Failed to extract content from PDF files.", "results": [], "source_type": "pdf"}
         
         # Split documents
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=50)
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         doc_splits = text_splitter.split_documents(all_docs)
         
         # Use embeddings from the pipeline
@@ -298,9 +326,11 @@ def retrieve_pdf_context(query: str, pdf_files: List[str] = None):
             if isinstance(grade_result, dict):
                 relevance_score = grade_result.get("relevance_score", 0)
                 reasoning = grade_result.get("reasoning", "No reasoning provided")
+                key_technical_terms = grade_result.get("key_technical_terms", [])
             else:
                 relevance_score = 0
                 reasoning = "Error in relevance grading"
+                key_technical_terms = []
             
             # Include relevance information in results
             formatted_results.append({
@@ -309,7 +339,8 @@ def retrieve_pdf_context(query: str, pdf_files: List[str] = None):
                 "page": page,
                 "type": "pdf",
                 "relevance_score": relevance_score,
-                "relevance_reasoning": reasoning
+                "relevance_reasoning": reasoning,
+                "key_technical_terms": key_technical_terms
             })
         
         # Sort results by relevance score (highest first)
@@ -342,17 +373,19 @@ def reformulate_query(original_query: str, search_context: str = ""):
         
         # Create the prompt for query reformulation
         reformulation_prompt = f"""
-        You are an expert in information retrieval. Your task is to reformulate a search query to make it more effective.
+        You are an expert in scientific information retrieval and quantum physics. Your task is to reformulate a search query to make it more effective at finding technical information.
         
         Original Query: {original_query}
         
         {f"Search Context So Far: {search_context}" if search_context else ""}
         
         Please reformulate the query to:
-        1. Be more specific and targeted
-        2. Include key terms that would appear in relevant documents
-        3. Break down complex questions into simpler, more searchable components
-        4. Focus on essential concepts rather than peripheral details
+        1. Be more specific and targeted for technical/scientific content
+        2. Include key technical terms that would appear in scientific papers on this topic
+        3. Break down complex technical questions into searchable components
+        4. Focus on essential scientific concepts and terminology
+        5. Include alternative technical terms for the same concepts (e.g., "temporal multiplexing", "time multiplexing")
+        6. Add specific related physical processes or components that might be discussed in papers on this topic
         
         Provide only the reformulated query without any explanation or additional text.
         """
@@ -430,6 +463,198 @@ def search_all_sources(query: str, pdf_files: List[str] = None):
         logger.error(f"Error searching all sources: {e}")
         return {"error": f"Error searching all sources: {e}", "web_sources": {}, "pdf_sources": {}}
 
+@tool
+def scientific_search(query: str, specific_domain: str = "quantum_physics"):
+    """
+    Perform a specialized search for scientific/technical information in a specific domain.
+    This tool is optimized for finding detailed technical information in specific fields.
+    
+    Args:
+        query: The technical/scientific search query
+        specific_domain: The scientific domain to focus on (default: quantum_physics)
+    
+    Returns:
+        Formatted search results with technical information
+    """
+    try:
+        # This would ideally connect to scientific databases or specialized search services
+        # For now, we'll use our existing tools but with enhanced parameters
+        
+        # First, reformulate the query for scientific search
+        domain_enhanced_query = f"Technical scientific details of {query} in {specific_domain} research papers"
+        
+        # Load config to get LLM parameters
+        config = load_config()
+        llm_params = config['llm']
+        
+        # Use get_llm to get the model for specialized search
+        model = get_llm('advanced', llm_params, stream=False)
+        
+        # Expand the query with technical terms
+        expansion_prompt = f"""
+        You are an expert in {specific_domain}. Please expand the following technical query with relevant scientific terminology,
+        equations, and key concepts that would help in retrieving specialized information from research papers.
+        
+        Query: {query}
+        
+        Provide only the expanded search terms without explanation. Include multiple variations of technical terminology.
+        """
+        
+        expanded_query = model.invoke(expansion_prompt).content.strip()
+        
+        # Use the expanded query for web search
+        web_results = SafeToolInvoker.invoke_tool(retrieve_web_context, query=expanded_query)
+        
+        # Add domain-specific interpretation of results
+        if isinstance(web_results, dict) and web_results.get("results"):
+            interpretation_prompt = f"""
+            You are a scientific research assistant specializing in {specific_domain}. 
+            Analyze these search results about "{query}" and extract the most technically relevant information.
+            Focus on extracting exact scientific details, measurements, techniques, and theoretical frameworks.
+            
+            Search results:
+            {web_results.get("results")}
+            
+            Provide a concise, technically precise extraction of the most relevant scientific information.
+            """
+            
+            scientific_interpretation = model.invoke(interpretation_prompt).content.strip()
+            
+            # Add the scientific interpretation to the results
+            if isinstance(web_results, dict):
+                web_results["scientific_interpretation"] = scientific_interpretation
+        
+        return web_results
+    except Exception as e:
+        logger.error(f"Error in scientific search: {e}")
+        return {"error": f"Error in scientific search: {e}", "results": [], "source_type": "scientific"}
+
+@tool
+def iterative_search(query: str, pdf_files: List[str] = None, rounds: int = 3):
+    """
+    Perform iterative, multi-round search with query refinement for difficult technical topics.
+    This tool automatically conducts multiple rounds of search with feedback-based refinement.
+    
+    Args:
+        query: The initial search query
+        pdf_files: Optional list of PDF file paths
+        rounds: Number of search iterations to perform (default: 3)
+    """
+    try:
+        # Load config to get LLM parameters
+        config = load_config()
+        llm_params = config['llm']
+        
+        # Use get_llm to get the model for specialized search
+        model = get_llm('advanced', llm_params, stream=False)
+        
+        # Initialize storage for all retrieved information
+        all_results = []
+        all_queries = [query]
+        current_query = query
+        
+        # Conduct multiple rounds of searching
+        for i in range(rounds):
+            logger.info(f"Iterative search round {i+1}/{rounds} with query: {current_query}")
+            
+            # First try scientific search
+            science_results = SafeToolInvoker.invoke_tool(
+                scientific_search, 
+                query=current_query
+            )
+            
+            # Then try general search
+            general_results = SafeToolInvoker.invoke_tool(
+                search_all_sources, 
+                query=current_query, 
+                pdf_files=pdf_files
+            )
+            
+            # Combine results
+            round_results = {
+                "round": i+1,
+                "query": current_query,
+                "scientific_results": science_results,
+                "general_results": general_results
+            }
+            
+            # Add to all results
+            all_results.append(round_results)
+            
+            # Skip feedback step on final round
+            if i == rounds - 1:
+                break
+                
+            # Generate feedback on search quality and create a new query
+            result_summary = f"""
+            Scientific search results: {science_results.get('results', [])}
+            Web sources: {general_results.get('web_sources', {}).get('results', [])}
+            PDF sources: {general_results.get('pdf_sources', {}).get('results', [])}
+            """
+            
+            feedback_prompt = f"""
+            You are an expert scientific research assistant helping with an iterative search process.
+            
+            Original query: {query}
+            
+            Current round ({i+1}/{rounds}) query: {current_query}
+            
+            Search results summary:
+            {result_summary}
+            
+            Please analyze these search results and:
+            1. Identify what important technical information is still missing
+            2. Identify what aspects of the query could be improved to find more specific information
+            3. Suggest a completely new reformulation of the query that would help find the missing information
+            
+            Provide your response in JSON format:
+            {{
+                "information_gaps": ["list specific technical details that are still missing"],
+                "query_limitations": ["issues with the current query"],
+                "new_query": "a completely reformulated query to find missing information"
+            }}
+            """
+            
+            feedback_response = model.invoke(feedback_prompt)
+            
+            # Extract the new query from feedback
+            import json
+            import re
+            
+            # Try to extract JSON from the response
+            json_match = re.search(r'({.*})', feedback_response.content, re.DOTALL)
+            if json_match:
+                try:
+                    feedback_json = json.loads(json_match.group(1))
+                    new_query = feedback_json.get('new_query')
+                    if new_query:
+                        current_query = new_query
+                        all_queries.append(new_query)
+                    else:
+                        # If no new query found, just reuse with small variation
+                        current_query = f"Technical details of {query} with focus on implementation and mechanisms"
+                        all_queries.append(current_query)
+                except json.JSONDecodeError:
+                    # Fallback if JSON parsing fails
+                    current_query = f"Alternative perspective on {query} with focus on technical implementation"
+                    all_queries.append(current_query)
+            else:
+                # Fallback if no JSON found
+                current_query = f"Different formulation of {query} focusing on scientific principles"
+                all_queries.append(current_query)
+        
+        # Compile final results 
+        final_results = {
+            "all_queries": all_queries,
+            "all_results": all_results,
+            "rounds_completed": rounds
+        }
+        
+        return final_results
+    except Exception as e:
+        logger.error(f"Error in iterative search: {e}")
+        return {"error": f"Error in iterative search: {e}", "results": []}
+
 def agentic_rag(pdf_directory: Optional[str] = None, query: str = None):
     """
     Run an agentic RAG workflow that combines web and PDF content.
@@ -455,7 +680,9 @@ def agentic_rag(pdf_directory: Optional[str] = None, query: str = None):
             retrieve_pdf_context, 
             search_all_sources, 
             grade_document_relevance,
-            reformulate_query
+            reformulate_query,
+            scientific_search,
+            iterative_search
         ]
         
         # Create the tool node with proper configuration
@@ -516,29 +743,50 @@ def agentic_rag(pdf_directory: Optional[str] = None, query: str = None):
         initial_message = f"""
 {query}
 
-As an agentic RAG system implementing Corrective-RAG (CRAG), you have access to multiple information sources:
+As an advanced agentic RAG system implementing Corrective-RAG (CRAG) for scientific content, you have access to multiple information sources:
 1. Web sources through the retrieve_web_context tool
 2. PDF documents through the retrieve_pdf_context tool
 3. A combined search across all sources through the search_all_sources tool
 4. Document relevance grading through the grade_document_relevance tool
 5. Query reformulation through the reformulate_query tool
+6. Specialized scientific search through the scientific_search tool
+7. Multi-round iterative search through the iterative_search tool
 
-To provide the most comprehensive answer:
-- Consider which sources would be most relevant to the query
+For highly technical scientific topics like quantum physics and single photon sources:
+- Use iterative_search as your primary approach - it will automatically conduct multiple rounds of search with different queries
+- For single, focused searches on technical content, use scientific_search
+- Use multiple reformulations for technical topics
+- Examine the key_technical_terms identified in scientific documents
+
+To provide the most comprehensive answer for technical scientific queries:
+- For technical scientific content, prioritize using iterative_search first
+- Use query reformulation aggressively for technical topics, trying multiple reformulations
+- Consider which sources would be most relevant to the technical query
 - Use both web and PDF sources together
+- Pay attention to the key_technical_terms identified in the documents
 - Focus on documents with high relevance scores (when using PDF sources)
-- If the documents don't seem relevant enough, use the reformulate_query tool to rephrase your search query
+- If documents initially returned aren't technical enough, try alternative search strategies including specialized scientific_search
 - Specify which source information came from in your response
 - Use the search_all_sources tool for an efficient unified search
 
-Following the Corrective-RAG approach:
-- Grade document relevance to ensure quality information
-- If documents aren't relevant, try alternative search strategies including query reformulation
-- Synthesize information from multiple sources
+For quantum physics topics specifically:
+- Focus on identifying technical terminology in the documents
+- Look for discussions of experimental setups and methodologies
+- Pay attention to quantitative data and mathematical formulations
+- Extract information about physical processes and mechanisms
+
+Following the enhanced scientific Corrective-RAG approach:
+- Grade document relevance to ensure quality scientific information
+- Use technical term extraction to identify key concepts
+- If initial documents aren't technically detailed enough, try more specialized search approaches
+- Synthesize information from multiple technical sources
+- When explaining technical concepts, maintain scientific accuracy and depth
 
 IMPORTANT:
 - When using retrieve_pdf_context or search_all_sources tools, you MUST provide the pdf_files parameter
 - The pdf_files parameter must be a list of file paths, even if there's only one file
+- For scientific queries about quantum physics, use the scientific_search tool with specific_domain="quantum_physics"
+- For complex technical queries where a single search isn't sufficient, use iterative_search with rounds=3
 """
 
         # If PDF files are available, add them to the message

@@ -24,6 +24,7 @@ from pipeline.science.pipeline.utils import get_llm
 from pipeline.science.pipeline.config import load_config
 from pipeline.science.pipeline.api_handler import ApiHandler
 from pipeline.science.pipeline.embeddings import get_embedding_models
+from pipeline.science.features_lab.visualize_graph_test import visualize_graph
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -115,6 +116,9 @@ def agentic_rag():
 
         # Compile the graph into a LangChain Runnable application
         app = workflow.compile(checkpointer=checkpointer)
+
+        # Visualize the graph
+        visualize_graph(app, "graph_diagram.mmd")
 
         # Execute the workflow
         logger.info("Starting workflow execution...")

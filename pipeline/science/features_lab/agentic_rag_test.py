@@ -8,7 +8,8 @@ from langchain_core.tools import tool
 
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import MessagesState, StateGraph, START, END
-from langchain_core.messages import HumanMessage, ToolMessage
+from langgraph.prebuilt import ToolNode
+from langchain_core.messages import HumanMessage
 
 # Add the project root to the Python path so the pipeline module can be found
 current_file_path = Path(__file__).resolve()
@@ -30,6 +31,7 @@ def search(query: str):
     return "It's sunny in San Francisco, but you better look out if you're a Gemini 😈."
 
 tools = [search]
+tool_node = ToolNode(tools)
 config = load_config()
 llm_params = config['llm']
 model = get_llm('advanced', llm_params, stream=False)
@@ -55,32 +57,12 @@ def call_model(state: MessagesState):
     # We return a list, because this will get added to the existing list
     return {"messages": response}
 
-# Define a function to handle tool calls
-def call_tool(state: MessagesState):
-    """Use the tool to respond."""
-    last_message = state["messages"][-1]
-    # This gets the correct tool
-    action = last_message.tool_calls[0]
-    tool_name = action.name
-    tool_input = action.args
-    
-    # Find the matching tool
-    for tool in tools:
-        if tool.name == tool_name:
-            # Call the tool with the provided input
-            result = tool(tool_input)
-            # Create a ToolMessage with the result
-            return {"messages": [ToolMessage(content=str(result), tool_call_id=action.id)]}
-    
-    # If no matching tool is found, return an error message
-    return {"messages": [ToolMessage(content="Tool not found", tool_call_id=action.id)]}
-
 # Define a new graph
 workflow = StateGraph(MessagesState)
 
 # Define the two nodes we will cycle between
 workflow.add_node("agent", call_model)
-workflow.add_node("action", call_tool)
+workflow.add_node("action", tool_node)
 
 # Set the entrypoint as `agent`
 # This means that this node is the first one called

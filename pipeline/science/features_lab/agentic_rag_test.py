@@ -228,7 +228,7 @@ def grade_documents(state) -> Literal["generate", "rewrite"]:
     model = get_llm('advanced', config['llm'], stream=True)
 
     # LLM with tool and validation
-    llm_with_tool = model.with_structured_output(grade)
+    llm_with_tool = model.with_structured_output(grade, method="function_calling")
 
     # Prompt
     prompt = PromptTemplate(

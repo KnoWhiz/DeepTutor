@@ -272,7 +272,8 @@ except Exception:
 
 inputs = {
     "messages": [
-        ("user", "What does Lilian Weng say about the types of agent memory?"),
+        # ("user", "What does Lilian Weng say about the types of agent memory?"),
+        ("user", "What is the main idea of the article?"),
     ]
 }
 for output in graph.stream(inputs):

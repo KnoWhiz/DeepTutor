@@ -48,7 +48,7 @@ def agentic_rag_test(input: str, urls: list[str] = None, file_path_list: list[st
         raise ValueError("Either urls or file_path_list must be provided")
 
     text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
-        chunk_size=100, chunk_overlap=50
+        chunk_size=1000, chunk_overlap=50
     )
     doc_splits = text_splitter.split_documents(docs_list)
 
@@ -209,6 +209,8 @@ def agentic_rag_test(input: str, urls: list[str] = None, file_path_list: list[st
 
         # Prompt
         prompt = hub.pull("rlm/rag-prompt")
+        logging.info("*" * 20 + "Prompt[rlm/rag-prompt]" + "*" * 20)
+        logging.info(prompt)
 
         # LLM
         llm = get_llm('advanced', config['llm'], stream=True)
@@ -224,8 +226,8 @@ def agentic_rag_test(input: str, urls: list[str] = None, file_path_list: list[st
         response = rag_chain.invoke({"context": docs, "question": question})
         return {"messages": [response]}
 
-    print("*" * 20 + "Prompt[rlm/rag-prompt]" + "*" * 20)
-    prompt = hub.pull("rlm/rag-prompt").pretty_print()  # Show what the prompt looks like
+    # logging.info("*" * 20 + "Prompt[rlm/rag-prompt]" + "*" * 20)
+    # prompt = hub.pull("rlm/rag-prompt").pretty_print()  # Show what the prompt looks like
 
     ### Define a new graph
 
@@ -287,18 +289,22 @@ def agentic_rag_test(input: str, urls: list[str] = None, file_path_list: list[st
             pprint.pprint(value, indent=2, width=80, depth=None)
         pprint.pprint("\n---\n")
 
+    return output
+
 
 if __name__ == "__main__":
-    # input = "How is multiplexing implemented in the paper?"
-    # file_path_list = [
-    #     "/Users/bingranyou/Library/Mobile Documents/com~apple~CloudDocs/Downloads/temp/Multiplexed_single_photon_source_arXiv__resubmit_.pdf",
-    # ]
-    # agentic_rag_test(input=input, file_path_list=file_path_list)
-
-    input = "What does Lilian Weng say about the types of agent memory?"
-    urls = [
-        "https://lilianweng.github.io/posts/2023-06-23-agent/",
-        "https://lilianweng.github.io/posts/2023-03-15-prompt-engineering/",
-        "https://lilianweng.github.io/posts/2023-10-25-adv-attack-llm/",
+    input = "How is multiplexing implemented in the paper?"
+    file_path_list = [
+        "/Users/bingranyou/Library/Mobile Documents/com~apple~CloudDocs/Downloads/temp/Multiplexed_single_photon_source_arXiv__resubmit_.pdf",
     ]
-    agentic_rag_test(input=input, urls=urls)
+    output = agentic_rag_test(input=input, file_path_list=file_path_list)
+    pprint.pprint(output)
+
+    # input = "What does Lilian Weng say about the types of agent memory?"
+    # urls = [
+    #     "https://lilianweng.github.io/posts/2023-06-23-agent/",
+    #     "https://lilianweng.github.io/posts/2023-03-15-prompt-engineering/",
+    #     "https://lilianweng.github.io/posts/2023-10-25-adv-attack-llm/",
+    # ]
+    # output = agentic_rag_test(input=input, urls=urls)
+    # pprint.pprint(output)

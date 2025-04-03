@@ -47,7 +47,8 @@ def agentic_rag_test(input, urls):
 
     config = load_config()
 
-    # Add to vectorDB
+    ### Add to vectorDB
+
     vectorstore = Chroma.from_documents(
         documents=doc_splits,
         collection_name="rag-chroma",
@@ -216,14 +217,12 @@ def agentic_rag_test(input, urls):
         response = rag_chain.invoke({"context": docs, "question": question})
         return {"messages": [response]}
 
-
     print("*" * 20 + "Prompt[rlm/rag-prompt]" + "*" * 20)
     prompt = hub.pull("rlm/rag-prompt").pretty_print()  # Show what the prompt looks like
 
+    ### Define a new graph
 
-    # Define a new graph
     workflow = StateGraph(AgentState)
-
     # Define the nodes we will cycle between
     workflow.add_node("agent", agent)  # agent
     retrieve = ToolNode([retriever_tool])
@@ -235,7 +234,8 @@ def agentic_rag_test(input, urls):
     # Call agent node to decide to retrieve or not
     workflow.add_edge(START, "agent")
 
-    # Decide whether to retrieve
+    ### Decide whether to retrieve
+
     workflow.add_conditional_edges(
         "agent",
         # Assess agent decision
@@ -247,7 +247,8 @@ def agentic_rag_test(input, urls):
         },
     )
 
-    # Edges taken after the `action` node is called.
+    ### Edges taken after the `action` node is called.
+
     workflow.add_conditional_edges(
         "retrieve",
         # Assess agent decision
@@ -256,7 +257,8 @@ def agentic_rag_test(input, urls):
     workflow.add_edge("generate", END)
     workflow.add_edge("rewrite", "agent")
 
-    # Compile
+    ### Compile
+    
     graph = workflow.compile()
 
     try:

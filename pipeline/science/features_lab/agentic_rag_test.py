@@ -36,7 +36,13 @@ from pipeline.science.pipeline.config import load_config
 from pipeline.science.features_lab.visualize_graph_test import visualize_graph
 from langchain_community.document_loaders import PyPDFLoader
 
-def agentic_rag_test(input: str, urls: list[str] = None, file_path_list: list[str] = None):
+def agentic_rag_test(input: str, urls: list[str] = None, file_path_list: list[str] = None, verbose: bool = False):
+    # Set logging level based on verbose parameter
+    if not verbose:
+        logging.getLogger().setLevel(logging.ERROR)
+    else:
+        logging.getLogger().setLevel(logging.INFO)
+        
     if urls:
         docs = [WebBaseLoader(url).load() for url in urls]
         docs_list = [item for sublist in docs for item in sublist]
@@ -47,7 +53,7 @@ def agentic_rag_test(input: str, urls: list[str] = None, file_path_list: list[st
         raise ValueError("Either urls or file_path_list must be provided")
 
     text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
-        chunk_size=1000, chunk_overlap=50
+        chunk_size=1024, chunk_overlap=50
     )
     doc_splits = text_splitter.split_documents(docs_list)
 
@@ -299,11 +305,15 @@ def agentic_rag_test(input: str, urls: list[str] = None, file_path_list: list[st
             # pprint.pprint(f"Output from node '{key}':")
             logging.info(f"Output from node '{key}':\n")
             logging.info("\n====================\n")
-            yield f"<{key}>\n"
-            # pprint.pprint("\n---\n")
-            # pprint.pprint(value, indent=2, width=80, depth=None)
-            yield value
-            yield f"</{key}>\n"
+            if key == "generate":
+                yield "</think>"
+                yield "<response>"
+                yield str(value["messages"][0])
+                yield "</response>"
+            else:
+                yield f"\n\n<{key}>"
+                yield str(value["messages"][0])
+                yield f"</{key}>\n\n"
             logging.info("\n====================\n")
         # pprint.pprint("\n---\n")
 
@@ -311,7 +321,7 @@ def agentic_rag_test(input: str, urls: list[str] = None, file_path_list: list[st
 
 
 if __name__ == "__main__":
-    input = "How is multiplexing implemented in the paper?"
+    input = "How is the main idea of shuttling vs multiplexing implemented in the paper?"
     file_path_list = [
         "/Users/bingranyou/Library/Mobile Documents/com~apple~CloudDocs/Downloads/temp/Multiplexed_single_photon_source_arXiv__resubmit_.pdf",
     ]

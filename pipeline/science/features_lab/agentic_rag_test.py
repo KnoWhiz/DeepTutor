@@ -296,12 +296,16 @@ def agentic_rag_test(input: str, urls: list[str] = None, file_path_list: list[st
     }
     for output in graph.stream(inputs):
         for key, value in output.items():
-            pprint.pprint(f"Output from node '{key}':")
-            pprint.pprint("---")
-            pprint.pprint(value, indent=2, width=80, depth=None)
-        pprint.pprint("\n---\n")
+            # pprint.pprint(f"Output from node '{key}':")
+            yield f"Output from node '{key}':\n"
+            # pprint.pprint("\n---\n")
+            yield "\n---\n"
+            # pprint.pprint(value, indent=2, width=80, depth=None)
+            yield pprint.pprint(value, indent=2, width=80, depth=None)
+        # pprint.pprint("\n---\n")
+        yield "\n---\n"
 
-    return output
+    return
 
 
 if __name__ == "__main__":

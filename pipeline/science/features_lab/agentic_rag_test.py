@@ -310,7 +310,9 @@ if __name__ == "__main__":
         "/Users/bingranyou/Library/Mobile Documents/com~apple~CloudDocs/Downloads/temp/Multiplexed_single_photon_source_arXiv__resubmit_.pdf",
     ]
     output = agentic_rag_test(input=input, file_path_list=file_path_list)
-    pprint.pprint(output)
+    # pprint.pprint(output)
+    for chunk in output:
+        print(chunk)
 
     # input = "What does Lilian Weng say about the types of agent memory?"
     # urls = [
@@ -319,4 +321,6 @@ if __name__ == "__main__":
     #     "https://lilianweng.github.io/posts/2023-10-25-adv-attack-llm/",
     # ]
     # output = agentic_rag_test(input=input, urls=urls)
-    # pprint.pprint(output)
+    # # pprint.pprint(output)
+    # for chunk in output:
+    #     print(chunk)

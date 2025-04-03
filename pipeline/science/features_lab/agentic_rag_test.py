@@ -294,16 +294,19 @@ def agentic_rag_test(input: str, urls: list[str] = None, file_path_list: list[st
             ("user", input),
         ]
     }
+    yield "<think>"
     for output in graph.stream(inputs):
         for key, value in output.items():
             # pprint.pprint(f"Output from node '{key}':")
-            yield f"Output from node '{key}':\n"
+            logging.info(f"Output from node '{key}':\n")
+            logging.info("\n====================\n")
+            yield f"<{key}>\n"
             # pprint.pprint("\n---\n")
-            yield "\n---\n"
             # pprint.pprint(value, indent=2, width=80, depth=None)
             yield value
+            yield f"</{key}>\n"
+            logging.info("\n====================\n")
         # pprint.pprint("\n---\n")
-        yield "\n---\n"
 
     return
 

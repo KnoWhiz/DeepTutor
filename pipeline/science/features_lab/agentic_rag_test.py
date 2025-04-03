@@ -301,7 +301,7 @@ def agentic_rag_test(input: str, urls: list[str] = None, file_path_list: list[st
             # pprint.pprint("\n---\n")
             yield "\n---\n"
             # pprint.pprint(value, indent=2, width=80, depth=None)
-            yield pprint.pprint(value, indent=2, width=80, depth=None)
+            yield value
         # pprint.pprint("\n---\n")
         yield "\n---\n"
 

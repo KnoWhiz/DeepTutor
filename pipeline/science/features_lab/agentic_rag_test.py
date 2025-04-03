@@ -277,7 +277,6 @@ def agentic_rag_test(input: str, urls: list[str] = None, file_path_list: list[st
 
     inputs = {
         "messages": [
-            # ("user", "What does Lilian Weng say about the types of agent memory?"),
             ("user", input),
         ]
     }
@@ -295,8 +294,8 @@ if __name__ == "__main__":
     #     "/Users/bingranyou/Library/Mobile Documents/com~apple~CloudDocs/Downloads/temp/Multiplexed_single_photon_source_arXiv__resubmit_.pdf",
     # ]
     # agentic_rag_test(input=input, file_path_list=file_path_list)
-    
-    input = "What is the main idea of the article?"
+
+    input = "What does Lilian Weng say about the types of agent memory?"
     urls = [
         "https://lilianweng.github.io/posts/2023-06-23-agent/",
         "https://lilianweng.github.io/posts/2023-03-15-prompt-engineering/",

@@ -89,7 +89,7 @@ def agentic_rag_test(input: str, urls: list[str] = None, file_path_list: list[st
             str: A decision for whether the documents are relevant or not
         """
 
-        print("---CHECK RELEVANCE---")
+        logging.info("---CHECK RELEVANCE---")
 
         # Data model
         class grade(BaseModel):
@@ -127,12 +127,12 @@ def agentic_rag_test(input: str, urls: list[str] = None, file_path_list: list[st
         score = scored_result.binary_score
 
         if score == "yes":
-            print("---DECISION: DOCS RELEVANT---")
+            logging.info("---DECISION: DOCS RELEVANT---")
             return "generate"
 
         else:
-            print("---DECISION: DOCS NOT RELEVANT---")
-            print(score)
+            logging.info("---DECISION: DOCS NOT RELEVANT---")
+            logging.info(score)
             return "rewrite"
 
     ### Nodes
@@ -148,7 +148,7 @@ def agentic_rag_test(input: str, urls: list[str] = None, file_path_list: list[st
         Returns:
             dict: The updated state with the agent response appended to messages
         """
-        print("---CALL AGENT---")
+        logging.info("---CALL AGENT---")
         messages = state["messages"]
         model = get_llm('advanced', config['llm'], stream=True)
         model = model.bind_tools(tools)
@@ -168,7 +168,7 @@ def agentic_rag_test(input: str, urls: list[str] = None, file_path_list: list[st
             dict: The updated state with re-phrased question
         """
 
-        print("---TRANSFORM QUERY---")
+        logging.info("---TRANSFORM QUERY---")
         messages = state["messages"]
         question = messages[0].content
 
@@ -200,7 +200,7 @@ def agentic_rag_test(input: str, urls: list[str] = None, file_path_list: list[st
         Returns:
             dict: The updated state with re-phrased question
         """
-        print("---GENERATE---")
+        logging.info("---GENERATE---")
         messages = state["messages"]
         question = messages[0].content
         last_message = messages[-1]
@@ -209,6 +209,18 @@ def agentic_rag_test(input: str, urls: list[str] = None, file_path_list: list[st
 
         # Prompt
         prompt = hub.pull("rlm/rag-prompt")
+        # Customized prompt
+        prompt = """
+        You are a helpful assistant that can answer questions about the provided context.
+        Here is the context:
+        {context}
+        Here is the question:
+        {question}
+        """
+        prompt = PromptTemplate(
+            template=prompt,
+            input_variables=["context", "question"],
+        )
         logging.info("*" * 20 + "Prompt[rlm/rag-prompt]" + "*" * 20)
         logging.info(prompt)
 

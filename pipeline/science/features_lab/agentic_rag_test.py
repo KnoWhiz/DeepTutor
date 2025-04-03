@@ -35,10 +35,17 @@ from pipeline.science.pipeline.utils import get_llm
 from pipeline.science.pipeline.embeddings import get_embedding_models
 from pipeline.science.pipeline.config import load_config
 from pipeline.science.features_lab.visualize_graph_test import visualize_graph
+from langchain_community.document_loaders import PyPDFLoader
 
-def agentic_rag_test(input, urls):
-    docs = [WebBaseLoader(url).load() for url in urls]
-    docs_list = [item for sublist in docs for item in sublist]
+def agentic_rag_test(input: str, urls: list[str] = None, file_path_list: list[str] = None):
+    if urls:
+        docs = [WebBaseLoader(url).load() for url in urls]
+        docs_list = [item for sublist in docs for item in sublist]
+    elif file_path_list:
+        docs = [PyPDFLoader(file_path).load() for file_path in file_path_list]
+        docs_list = [item for sublist in docs for item in sublist]
+    else:
+        raise ValueError("Either urls or file_path_list must be provided")
 
     text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
         chunk_size=100, chunk_overlap=50
@@ -260,6 +267,7 @@ def agentic_rag_test(input, urls):
     ### Compile
     
     graph = workflow.compile()
+    visualize_graph(graph)
 
     try:
         display(Image(graph.get_graph(xray=True).draw_mermaid_png()))
@@ -282,10 +290,16 @@ def agentic_rag_test(input, urls):
 
 
 if __name__ == "__main__":
+    # input = "How is multiplexing implemented in the paper?"
+    # file_path_list = [
+    #     "/Users/bingranyou/Library/Mobile Documents/com~apple~CloudDocs/Downloads/temp/Multiplexed_single_photon_source_arXiv__resubmit_.pdf",
+    # ]
+    # agentic_rag_test(input=input, file_path_list=file_path_list)
+    
     input = "What is the main idea of the article?"
     urls = [
         "https://lilianweng.github.io/posts/2023-06-23-agent/",
         "https://lilianweng.github.io/posts/2023-03-15-prompt-engineering/",
         "https://lilianweng.github.io/posts/2023-10-25-adv-attack-llm/",
     ]
-    agentic_rag_test(input, urls)
+    agentic_rag_test(input=input, urls=urls)

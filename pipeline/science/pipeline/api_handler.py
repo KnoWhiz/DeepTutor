@@ -102,7 +102,7 @@ class ApiHandler:
                                       temperature=self.para['temperature'],
                                       deployment_name='gpt-4o',
                                       endpoint=self.azure_endpoint,
-                                      api_version='2024-06-01',
+                                      api_version='2024-08-01-preview',
                                       host='azure',
                                       stream=self.para['stream'])
         llm_creative = self.get_models(api_key=self.api_key,

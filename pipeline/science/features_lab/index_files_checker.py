@@ -8,6 +8,11 @@ from langchain_community.docstore.in_memory import InMemoryDocstore
 
 import logging
 logger = logging.getLogger("index_files_checker.py")
+# Add logging configuration
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(message)s'
+)
 
 def check_index_file(index_file_path: str, pkl_file_path: str) -> None:
     """
@@ -78,6 +83,6 @@ def check_index_file(index_file_path: str, pkl_file_path: str) -> None:
 
 if __name__ == "__main__":
     # Use raw strings for Windows paths to avoid escape character issues
-    index_file_path = r"/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/c8773c4a9a62ca3bafd2010d3d0093f5/index.faiss"
-    pkl_file_path = r"/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/embedded_content/c8773c4a9a62ca3bafd2010d3d0093f5/index.pkl"
+    index_file_path = "/Users/bingranyou/Documents/GitHub_Mac_mini/DeepTutor/embedded_content/1eecd3da808d385834c966650074b676/index.faiss"
+    pkl_file_path = "/Users/bingranyou/Documents/GitHub_Mac_mini/DeepTutor/embedded_content/1eecd3da808d385834c966650074b676/index.pkl"
     check_index_file(index_file_path, pkl_file_path)

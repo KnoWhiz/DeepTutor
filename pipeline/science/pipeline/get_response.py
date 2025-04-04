@@ -7,6 +7,8 @@ from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
 from langchain.output_parsers import OutputFixingParser
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
+from pipeline.science.features_lab.index_files_checker import display_db_file
+
 from pipeline.science.pipeline.config import load_config
 from pipeline.science.pipeline.utils import (
     truncate_chat_history,
@@ -387,6 +389,8 @@ async def get_query_helper(chat_session: ChatSession, user_input, context_chat_h
         logger.info(f"question_type for input: {user_input} is --image-- ...")
         markdown_folder_list = [os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]
         db = create_image_context_embeddings_db(markdown_folder_list)
+        # FIXME: For multiple folders, we should save the FAISS database to a file for each folder
+        display_db_file(os.path.join(markdown_folder_list[0], "images/index.faiss"))
         # Replace variations of "fig" or "figure" with "Image" for better matching
         processed_input = re.sub(r"\b(?:[Ff][Ii][Gg](?:ure)?\.?|[Ff]igure)\b", "Image", user_input)
         image_chunks = db.similarity_search_with_score(processed_input, k=1)

@@ -13,6 +13,7 @@ from pipeline.science.pipeline.utils import (
     extract_lite_mode_content,
     extract_basic_mode_content,
     extract_advanced_mode_content,
+    Question
 )
 from pipeline.science.pipeline.content_translator import (
     detect_language,
@@ -36,7 +37,6 @@ from pipeline.science.pipeline.get_response import (
     get_query_helper,
     get_response,
     generate_follow_up_questions,
-    Question,
 )
 from pipeline.science.pipeline.sources_retrieval import get_response_source
 from pipeline.science.pipeline.config import load_config
@@ -292,6 +292,9 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
                         # yield "\n\n**Here is the original response**\n\n"
                         # Replace the "<response>" tag with "<original_response>" tag
                         yield chunk.replace("<response>", "<original_response>")
+
+                    if chat_session.question.question_type == "image":
+                        yield f"\n\n![]({chat_session.question.image_url})\n"
                 elif "</response>" in chunk:
                     if translation_response is False:
                         yield chunk
@@ -325,6 +328,8 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
         )
         # if answer != content:
         yield "<response>\n\n"
+        if chat_session.question.question_type == "image":
+            yield f"\n\n![]({chat_session.question.image_url})\n"
         if (type(answer) is str):
             yield answer
         else:

@@ -13,6 +13,7 @@ from pipeline.science.pipeline.utils import (
     extract_lite_mode_content,
     extract_basic_mode_content,
     extract_advanced_mode_content,
+    Question
 )
 from pipeline.science.pipeline.content_translator import (
     detect_language,
@@ -36,7 +37,6 @@ from pipeline.science.pipeline.get_response import (
     get_query_helper,
     get_response,
     generate_follow_up_questions,
-    Question,
 )
 from pipeline.science.pipeline.sources_retrieval import get_response_source
 from pipeline.science.pipeline.config import load_config

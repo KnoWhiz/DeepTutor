@@ -43,6 +43,57 @@ if SKIP_MARKER_API:
     from marker.settings import settings
 
 
+class Question:
+    """
+    Represents a question with its text, language, and type information.
+
+    Attributes:
+        text (str): The text content of the question
+        language (str): The detected language of the question (e.g., "English")
+        question_type (str): The type of question (e.g., "local" or "global" or "image")
+        special_context (str): Special context for the question
+        answer_planning (dict): Planning information for constructing the answer
+    """
+
+    def __init__(self, text="", language="English", question_type="global", special_context="", answer_planning=None, image_url=None):
+        """
+        Initialize a Question object.
+
+        Args:
+            text (str): The text content of the question
+            language (str): The language of the question
+            question_type (str): The type of the question (local or global or image)
+            special_context (str): Special context for the question
+            answer_planning (dict): Planning information for constructing the answer
+            image_url (str): The image url for the image question
+        """
+        self.text = text
+        self.language = language
+        if question_type not in ["local", "global", "image"]:
+            self.question_type = "global"
+        else:
+            self.question_type = question_type
+
+        self.special_context = special_context
+        self.answer_planning = answer_planning or {}
+        self.image_url = image_url   # This is the image url for the image question
+
+    def __str__(self):
+        """Return string representation of the Question."""
+        return f"Question(text='{self.text}', language='{self.language}', type='{self.question_type}', image_url='{self.image_url}')"
+
+    def to_dict(self):
+        """Convert Question object to dictionary."""
+        return {
+            "text": self.text,
+            "language": self.language,
+            "question_type": self.question_type,
+            "special_context": self.special_context,
+            "answer_planning": self.answer_planning,
+            "image_url": str(self.image_url)
+        }
+
+
 def generators_list_stream_response(generators_list):
     """
     Stream response from a list of generators.

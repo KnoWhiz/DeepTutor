@@ -12,6 +12,7 @@ from .chat_history_manager import (
     load_chat_history,
     delete_chat_history
 )
+from pipeline.science.pipeline.utils import Question
 
 import logging
 logger = logging.getLogger("tutorpipeline.science.session_manager")
@@ -48,6 +49,7 @@ class ChatSession:
     is_initialized: bool = False
     current_message: Optional[str] = "" # Latest current response message from streaming tutor agent
     new_message_id: str = str(ObjectId()) # new message from user
+    question: Optional[Question] = None # Question object
 
     def initialize(self) -> None:
         """Initialize the chat session if not already initialized."""

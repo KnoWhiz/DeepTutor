@@ -68,10 +68,13 @@ def check_index_file(index_file_path: str, pkl_file_path: str) -> None:
         logger.info(f"Vector dimension: {index.d}")
         logger.info(f"Is index trained: {index.is_trained}")
 
-        # Display the first and last items of the docstore
+        # Display all items of the docstore
         logger.info(f"\nDocstore Information:")
-        logger.info(f"First item: {list(docstore._dict.items())[0]}")
-        logger.info(f"Last item: {list(docstore._dict.items())[-1]}")
+        if len(docstore._dict) > 100:
+            logger.info(f"Warning: Docstore contains {len(docstore._dict)} items. Displaying all items may produce a lot of output.")
+        
+        for i, (key, value) in enumerate(docstore._dict.items()):
+            logger.info(f"Item {i}: {key} -> {value}")
 
         # # Display the first and last items of FAISS index
         # logger.info(f"\nFAISS Index Information:")
@@ -83,6 +86,6 @@ def check_index_file(index_file_path: str, pkl_file_path: str) -> None:
 
 if __name__ == "__main__":
     # Use raw strings for Windows paths to avoid escape character issues
-    index_file_path = "/Users/bingranyou/Documents/GitHub_Mac_mini/DeepTutor/embedded_content/1eecd3da808d385834c966650074b676/index.faiss"
-    pkl_file_path = "/Users/bingranyou/Documents/GitHub_Mac_mini/DeepTutor/embedded_content/1eecd3da808d385834c966650074b676/index.pkl"
+    index_file_path = "/Users/bingranyou/Documents/GitHub_Mac_mini/DeepTutor/embedded_content/1eecd3da808d385834c966650074b676/markdown/index.faiss"
+    pkl_file_path = "/Users/bingranyou/Documents/GitHub_Mac_mini/DeepTutor/embedded_content/1eecd3da808d385834c966650074b676/markdown/index.pkl"
     check_index_file(index_file_path, pkl_file_path)

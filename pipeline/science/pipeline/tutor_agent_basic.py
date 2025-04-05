@@ -284,7 +284,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     
     if deep_thinking is False:
         yield "</thinking>"
-        yield "\n\n**💡 Loading the response ...**\n\n"
+        # yield "\n\n**💡 Loading the response ...**\n\n"
     else:
         for chunk in answer:
             # Process chunks without </think> tag
@@ -315,7 +315,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
                         # End original response and prepare for translation
                         yield chunk.replace("</response>", "</original_response>")
                         yield "</thinking>"
-                        yield "\n\n**💡 Loading the response ...**\n\n"
+                        # yield "\n\n**💡 Loading the response ...**\n\n"
                         translation_response = True
 
                 # Handle regular content
@@ -332,10 +332,10 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
                     yield chunk
                     yield "</think>"
                     yield "</thinking>"
-                else:
-                    yield "<response>"
-                    yield chunk
-                    yield "</response>"
+                # else:
+                #     yield "<response>"
+                #     yield translation_response
+                #     yield "</response>"
     
     time_tracking["response_generation"] = time.time() - response_start
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")

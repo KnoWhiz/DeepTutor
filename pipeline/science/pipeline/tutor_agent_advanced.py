@@ -275,7 +275,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
     current_status = "thinking"
     if deep_thinking is False:
         yield "</thinking>"
-        yield "\n\n**💡 Loading the response ...**\n\n" 
+        # yield "\n\n**💡 Loading the response ...**\n\n" 
     else:
         for chunk in answer:
             if "</think>" not in chunk:
@@ -307,7 +307,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
             else:   # If the chunk contains "</think>", it means the response is done
                 yield chunk
                 yield "</thinking>"
-                yield "\n\n**💡 Loading the response ...**\n\n"
+                # yield "\n\n**💡 Loading the response ...**\n\n"
                 content=extract_basic_mode_content(chat_session.current_message)[0]
                 language = detect_language(content)
                 if language != chat_session.current_language:

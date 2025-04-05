@@ -13,6 +13,7 @@ from pipeline.science.pipeline.utils import (
     extract_lite_mode_content,
     extract_basic_mode_content,
     extract_advanced_mode_content,
+    Question
 )
 from pipeline.science.pipeline.doc_processor import (
     save_file_txt_locally,
@@ -36,7 +37,6 @@ from pipeline.science.pipeline.get_response import (
     get_query_helper,
     get_response,
     generate_follow_up_questions,
-    Question,
 )
 from pipeline.science.pipeline.sources_retrieval import get_response_source
 from pipeline.science.pipeline.config import load_config
@@ -301,6 +301,9 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
                             yield chunk
                     else:
                         yield chunk.replace("<response>", "<original_response>")
+
+                    if chat_session.question.question_type == "image":
+                        yield f"\n\n![]({chat_session.question.image_url})\n"
                 
                 # Handle response closing tag
                 elif "</response>" in chunk:
@@ -343,6 +346,8 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         )
         # if answer != content:
         yield "<response>\n\n"
+        if chat_session.question.question_type == "image":
+            yield f"\n\n![]({chat_session.question.image_url})\n"
         if (type(answer) is str):
             yield answer
         else:

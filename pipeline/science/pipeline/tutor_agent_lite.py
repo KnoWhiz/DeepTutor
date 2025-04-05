@@ -7,6 +7,7 @@ from pipeline.science.pipeline.utils import (
     generate_file_id,
     format_time_tracking,
     clean_translation_prefix,
+    Question
 )
 from pipeline.science.pipeline.content_translator import (
     detect_language,
@@ -24,7 +25,6 @@ from pipeline.science.pipeline.embeddings_agent import embeddings_agent
 from pipeline.science.pipeline.get_response import (
     get_response,
     generate_follow_up_questions,
-    Question,
 )
 from pipeline.science.pipeline.config import load_config
 

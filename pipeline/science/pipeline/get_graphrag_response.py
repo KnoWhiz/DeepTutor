@@ -137,6 +137,7 @@ async def get_GraphRAG_global_response(user_input, chat_history, embedding_folde
     The previous conversation is: {chat_history_text}
     Reference context from the paper: {context_string}
     The student's query is: {user_input_text}
+    For formulas, use LaTeX format with $...$ or $$...$$ if there are any.
     """
 
     if deep_thinking:
@@ -151,6 +152,7 @@ async def get_GraphRAG_global_response(user_input, chat_history, embedding_folde
             You are a deep thinking tutor helping a student reading a paper.
             Reference context from the paper: {context}
             The student's query is: {user_input_text}
+            For formulas, use LaTeX format with $...$ or $$...$$ if there are any.
             """
             answer = deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session)
 

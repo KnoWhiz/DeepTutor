@@ -29,7 +29,7 @@ logger = logging.getLogger("tutorpipeline.science.inference")
 
 def deep_inference_agent(
     user_prompt: str,
-    system_prompt: str = "You are a professional deep thinking researcher reading a paper. Analyze the paper context content and answer the question. If the information is not provided in the paper, say you cannot find the answer in the paper but will try to answer based on your knowledge.",
+    system_prompt: str = "You are a professional deep thinking researcher reading a paper. Analyze the paper context content and answer the question. If the information is not provided in the paper, say you cannot find the answer in the paper but will try to answer based on your knowledge. For formulas, use LaTeX format with $...$ or $$...$$.",
     stream: bool = False,
     chat_session: ChatSession = None
 ):
@@ -130,7 +130,7 @@ def deep_inference_agent(
 
 def deepseek_inference(
     prompt: str,
-    system_message: str = "You are a deep thinking researcher reading a paper. If you don't know the answer, say you don't know.",
+    system_message: str = "You are a professional deep thinking researcher reading a paper. Analyze the paper context content and answer the question. If the information is not provided in the paper, say you cannot find the answer in the paper but will try to answer based on your knowledge. For formulas, use LaTeX format with $...$ or $$...$$.",
     stream: bool = False,
     temperature: float = 0.6,
     top_p: float = 0.1,
@@ -261,8 +261,7 @@ def deepseek_inference(
 
 
 def o3mini_inference(user_prompt: str,
-                     system_prompt: str = "You are a deep thinking researcher reading a paper. \
-                        If you don't know the answer, say you don't know.",
+                     system_prompt: str = "You are a professional deep thinking researcher reading a paper. Analyze the paper context content and answer the question. If the information is not provided in the paper, say you cannot find the answer in the paper but will try to answer based on your knowledge. For formulas, use LaTeX format with $...$ or $$...$$.",
                      stream: bool = False,
                      chat_session: ChatSession = None) -> Union[str, Iterator]:
     """

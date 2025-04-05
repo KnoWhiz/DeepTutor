@@ -14,7 +14,8 @@ from pipeline.science.pipeline.utils import (
     responses_refine,
     count_tokens,
     replace_latex_formulas,
-    generators_list_stream_response
+    generators_list_stream_response,
+    Question
 )
 from pipeline.science.pipeline.embeddings import (
     get_embedding_models,
@@ -27,62 +28,18 @@ from pipeline.science.pipeline.content_translator import (
 from pipeline.science.pipeline.inference import deep_inference_agent
 from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
 from pipeline.science.pipeline.get_graphrag_response import get_GraphRAG_global_response
-from pipeline.science.pipeline.get_rag_response import get_embedding_folder_rag_response, get_db_rag_response
-from pipeline.science.pipeline.images_understanding import aggregate_image_contexts_to_urls, create_image_context_embeddings_db, analyze_image
+from pipeline.science.pipeline.get_rag_response import (
+    get_embedding_folder_rag_response, 
+    get_db_rag_response
+)
+from pipeline.science.pipeline.images_understanding import (
+    aggregate_image_contexts_to_urls, 
+    create_image_context_embeddings_db, 
+    analyze_image
+)
 
 import logging
 logger = logging.getLogger("tutorpipeline.science.get_response")
-
-
-class Question:
-    """
-    Represents a question with its text, language, and type information.
-
-    Attributes:
-        text (str): The text content of the question
-        language (str): The detected language of the question (e.g., "English")
-        question_type (str): The type of question (e.g., "local" or "global" or "image")
-        special_context (str): Special context for the question
-        answer_planning (dict): Planning information for constructing the answer
-    """
-
-    def __init__(self, text="", language="English", question_type="global", special_context="", answer_planning=None, image_url=None):
-        """
-        Initialize a Question object.
-
-        Args:
-            text (str): The text content of the question
-            language (str): The language of the question
-            question_type (str): The type of the question (local or global or image)
-            special_context (str): Special context for the question
-            answer_planning (dict): Planning information for constructing the answer
-            image_url (str): The image url for the image question
-        """
-        self.text = text
-        self.language = language
-        if question_type not in ["local", "global", "image"]:
-            self.question_type = "global"
-        else:
-            self.question_type = question_type
-
-        self.special_context = special_context
-        self.answer_planning = answer_planning or {}
-        self.image_url = image_url   # This is the image url for the image question
-
-    def __str__(self):
-        """Return string representation of the Question."""
-        return f"Question(text='{self.text}', language='{self.language}', type='{self.question_type}', image_url='{self.image_url}')"
-
-    def to_dict(self):
-        """Convert Question object to dictionary."""
-        return {
-            "text": self.text,
-            "language": self.language,
-            "question_type": self.question_type,
-            "special_context": self.special_context,
-            "answer_planning": self.answer_planning,
-            "image_url": str(self.image_url)
-        }
 
 
 async def get_response(chat_session: ChatSession, file_path_list, question: Question, chat_history, embedding_folder_list, deep_thinking = True, stream=False):
@@ -218,6 +175,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         Reference context from the paper: {context}
         This is a detailed plan for constructing the answer: {str(question.answer_planning)}
         The student's query is: {user_input_string}
+        For formulas, use LaTeX format with $...$ or $$...$$.
         """
         logger.info(f"user_input_string tokens: {count_tokens(user_input_string)}")
         logger.info(f"chat_history_string tokens: {count_tokens(chat_history_string)}")
@@ -232,6 +190,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 You are a deep thinking tutor helping a student reading a paper.
                 Reference context from the paper: {context}
                 The student's query is: {user_input_string}
+                For formulas, use LaTeX format with $...$ or $$...$$.
                 """
                 answer = str(deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session))
 
@@ -259,6 +218,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 You are a deep thinking tutor helping a student reading a paper.
                 Reference context from the paper: {context}
                 The student's query is: {user_input_string}
+                For formulas, use LaTeX format with $...$ or $$...$$.
                 """
                 answer = deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session)
             return answer
@@ -421,10 +381,18 @@ async def get_query_helper(chat_session: ChatSession, user_input, context_chat_h
     if question_type == "image":
         logger.info(f"question_type for input: {user_input} is --image-- ...")
         markdown_folder_list = [os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]
-        db = create_image_context_embeddings_db(markdown_folder_list)
+        db, truncated_db = create_image_context_embeddings_db(markdown_folder_list)
         # Replace variations of "fig" or "figure" with "Image" for better matching
         processed_input = re.sub(r"\b(?:[Ff][Ii][Gg](?:ure)?\.?|[Ff]igure)\b", "Image", user_input)
-        image_chunks = db.similarity_search_with_score(processed_input, k=1)
+
+        # Get the image chunks from the truncated database
+        truncated_image_chunks = truncated_db.similarity_search_with_score(processed_input, k=1)
+        logger.info(f"TEST: truncated_image_chunks for image loading: {truncated_image_chunks}")
+
+        # Map the image chunks to the original database based on the index number of the chunk
+        # Find the index of the truncated image chunk in the original database
+        image_chunks = db.similarity_search_with_score(truncated_image_chunks[0][0].page_content, k=1)
+
         image_url_mapping = aggregate_image_contexts_to_urls(markdown_folder_list)
         if image_chunks:
             question.special_context = """
@@ -465,6 +433,7 @@ async def get_query_helper(chat_session: ChatSession, user_input, context_chat_h
 
     # TEST: print the question object
     logger.info(f"TEST: question: {question}")
+    chat_session.question = question
     yield (question)
 
 

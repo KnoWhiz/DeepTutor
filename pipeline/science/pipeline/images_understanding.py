@@ -20,19 +20,19 @@ if project_root not in sys.path:
 # Use try/except pattern for imports to handle both direct execution and module import
 try:
     # Try importing as a module first
-    from pipeline.science.pipeline.utils import generate_file_id
+    from pipeline.science.pipeline.utils import generate_file_id, create_truncated_db
     from pipeline.science.pipeline.config import load_config
     from pipeline.science.pipeline.embeddings import get_embedding_models
 except ImportError:
     # If that fails, try relative imports
     try:
-        from .utils import generate_file_id
+        from .utils import generate_file_id, create_truncated_db
         from .config import load_config
         from .embeddings import get_embedding_models
     except ImportError:
         # Last resort, try direct import from current directory or parent
         sys.path.append(os.path.dirname(current_dir))
-        from utils import generate_file_id
+        from utils import generate_file_id, create_truncated_db
         from config import load_config
         from embeddings import get_embedding_models
 
@@ -749,13 +749,15 @@ def create_image_context_embeddings_db(folder_list: List[Union[str, Path]], embe
             [Document(page_content="Empty placeholder", metadata={"source": "placeholder"})],
             embeddings
         )
-        return db
+        truncated_db = create_truncated_db(db)
+        return db, truncated_db
 
     try:
         # Create the FAISS database with the documents
         db = FAISS.from_documents(documents, embeddings)
         logger.info(f"Created FAISS database with {len(documents)} image context embeddings")
-        return db
+        truncated_db = create_truncated_db(db)
+        return db, truncated_db
     except Exception as e:
         logger.error(f"Error creating FAISS database: {str(e)}")
         # Fallback to smaller models if available
@@ -763,13 +765,15 @@ def create_image_context_embeddings_db(folder_list: List[Union[str, Path]], embe
             logger.info("Trying with 'small' embedding model...")
             embeddings_small = get_embedding_models("small", para)
             db = FAISS.from_documents(documents, embeddings_small)
-            return db
+            truncated_db = create_truncated_db(db)
+            return db, truncated_db
         except Exception as e2:
             logger.error(f"Error with small embedding model: {str(e2)}")
             logger.info("Trying with 'lite' embedding model...")
             embeddings_lite = get_embedding_models("lite", para)
             db = FAISS.from_documents(documents, embeddings_lite)
-            return db
+            truncated_db = create_truncated_db(db)
+            return db, truncated_db
 
 
 if __name__ == "__main__":
@@ -826,7 +830,7 @@ if __name__ == "__main__":
     # Test the create_image_context_embeddings_db function
     print("\nTesting create_image_context_embeddings_db function (FAISS database):")
     try:
-        db = create_image_context_embeddings_db(test_folders)
+        db, truncated_db = create_image_context_embeddings_db(test_folders)
         print(f"Created FAISS database with image context embeddings")
 
         # Test a simple similarity search
@@ -841,3 +845,25 @@ if __name__ == "__main__":
                 print("")
     except Exception as e:
         print(f"Error testing create_image_context_embeddings_db: {str(e)}")
+
+    # Test the create_truncated_db function
+    print("\nTesting create_truncated_db function:")
+    try:
+        # First create a regular database
+        db, truncated_db = create_image_context_embeddings_db(test_folders)
+        if db:
+            # Create a truncated version
+            truncated_db = create_truncated_db(db)
+            print(f"Created truncated FAISS database with first 3 sentences of each chunk")
+            
+            # Test a simple similarity search on the truncated database
+            test_query = "Image 3"
+            results = truncated_db.similarity_search(test_query, k=1)
+            print(f"\nSample similarity search results for query: '{test_query}' on truncated database")
+            for i, doc in enumerate(results):
+                print(f"Result {i+1}:")
+                print(f"Content: {doc.page_content[:100]}..." if len(doc.page_content) > 100 else doc.page_content)
+                print(f"Metadata: {doc.metadata}")
+                print("")
+    except Exception as e:
+        print(f"Error testing create_truncated_db: {str(e)}")

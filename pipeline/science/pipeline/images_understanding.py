@@ -20,19 +20,19 @@ if project_root not in sys.path:
 # Use try/except pattern for imports to handle both direct execution and module import
 try:
     # Try importing as a module first
-    from pipeline.science.pipeline.utils import generate_file_id
+    from pipeline.science.pipeline.utils import generate_file_id, create_truncated_db
     from pipeline.science.pipeline.config import load_config
     from pipeline.science.pipeline.embeddings import get_embedding_models
 except ImportError:
     # If that fails, try relative imports
     try:
-        from .utils import generate_file_id
+        from .utils import generate_file_id, create_truncated_db
         from .config import load_config
         from .embeddings import get_embedding_models
     except ImportError:
         # Last resort, try direct import from current directory or parent
         sys.path.append(os.path.dirname(current_dir))
-        from utils import generate_file_id
+        from utils import generate_file_id, create_truncated_db
         from config import load_config
         from embeddings import get_embedding_models
 
@@ -774,107 +774,6 @@ def create_image_context_embeddings_db(folder_list: List[Union[str, Path]], embe
             db = FAISS.from_documents(documents, embeddings_lite)
             truncated_db = create_truncated_db(db)
             return db, truncated_db
-
-
-def create_truncated_db(db: FAISS, embedding_type: str = "default") -> FAISS:
-    """
-    Create a new FAISS database with only the first 3 sentences of each chunk from the original database.
-    
-    Parameters:
-        db (FAISS): The original FAISS database to truncate
-        embedding_type (str): Type of embedding model to use ("default", "lite", or "small")
-        
-    Returns:
-        FAISS: A new FAISS database with truncated content (first 3 sentences only)
-    """
-    import re
-    
-    # Initialize required components
-    config = load_config()
-    para = config["llm"]
-    embeddings = get_embedding_models(embedding_type, para)
-    
-    # Get all documents from the original database - more reliable method
-    # First try using similarity_search_with_score which will return all docs
-    try:
-        documents = []
-        # Use a dummy query that should return all documents with their scores
-        all_docs = db.similarity_search_with_score("", k=10000)  # Large k to get all docs
-        for doc, _ in all_docs:
-            documents.append(doc)
-        
-        # If no documents found, try direct access as fallback
-        if not documents:
-            documents = list(db.docstore._dict.values())
-            
-        logger.info(f"Found {len(documents)} documents in the database")
-    except Exception as e:
-        # Fallback to direct access method
-        logger.warning(f"Error using similarity_search: {str(e)}. Falling back to direct access.")
-        documents = list(db.docstore._dict.values())
-    
-    # Create new documents with truncated content
-    truncated_documents = []
-    
-    for doc in documents:
-        # Extract the first 3 sentences using a more reliable method
-        content = doc.page_content
-        
-        # More sophisticated sentence splitting using regex
-        # This pattern handles periods, question marks, and exclamation points
-        # followed by spaces or end of string, but ignores common abbreviations
-        sentence_endings = re.compile(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|\!)\s')
-        sentences = sentence_endings.split(content)
-        
-        # Handle cases with fewer than 3 sentences
-        if len(sentences) <= 3:
-            truncated_content = content
-        else:
-            # Get the first 3 sentences
-            first_three = sentences[:3]
-            # Check if the last sentence already has ending punctuation
-            if first_three[-1].rstrip().endswith(('.', '!', '?')):
-                truncated_content = ''.join(first_three)
-            else:
-                # Add a period if the last sentence doesn't end with punctuation
-                truncated_content = ''.join(first_three) + '.'
-        
-        # Create a new document with the truncated content
-        truncated_doc = Document(
-            page_content=truncated_content,
-            metadata=doc.metadata
-        )
-        truncated_documents.append(truncated_doc)
-    
-    # Create a new FAISS database with the truncated documents
-    if not truncated_documents:
-        logger.warning("No documents to truncate. Returning empty FAISS database.")
-        # Create an empty FAISS database
-        new_db = FAISS.from_documents(
-            [Document(page_content="Empty placeholder", metadata={"source": "placeholder"})],
-            embeddings
-        )
-        return new_db
-    
-    try:
-        # Create the FAISS database with the truncated documents
-        new_db = FAISS.from_documents(truncated_documents, embeddings)
-        logger.info(f"Created truncated FAISS database with {len(truncated_documents)} documents")
-        return new_db
-    except Exception as e:
-        logger.error(f"Error creating truncated FAISS database: {str(e)}")
-        # Fallback to smaller models if available
-        try:
-            logger.info("Trying with 'small' embedding model...")
-            embeddings_small = get_embedding_models("small", para)
-            new_db = FAISS.from_documents(truncated_documents, embeddings_small)
-            return new_db
-        except Exception as e2:
-            logger.error(f"Error with small embedding model: {str(e2)}")
-            logger.info("Trying with 'lite' embedding model...")
-            embeddings_lite = get_embedding_models("lite", para)
-            new_db = FAISS.from_documents(truncated_documents, embeddings_lite)
-            return new_db
 
 
 if __name__ == "__main__":

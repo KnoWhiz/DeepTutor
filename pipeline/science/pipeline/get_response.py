@@ -28,8 +28,15 @@ from pipeline.science.pipeline.content_translator import (
 from pipeline.science.pipeline.inference import deep_inference_agent
 from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
 from pipeline.science.pipeline.get_graphrag_response import get_GraphRAG_global_response
-from pipeline.science.pipeline.get_rag_response import get_embedding_folder_rag_response, get_db_rag_response
-from pipeline.science.pipeline.images_understanding import aggregate_image_contexts_to_urls, create_image_context_embeddings_db, analyze_image
+from pipeline.science.pipeline.get_rag_response import (
+    get_embedding_folder_rag_response, 
+    get_db_rag_response
+)
+from pipeline.science.pipeline.images_understanding import (
+    aggregate_image_contexts_to_urls, 
+    create_image_context_embeddings_db, 
+    analyze_image
+)
 
 import logging
 logger = logging.getLogger("tutorpipeline.science.get_response")
@@ -374,7 +381,7 @@ async def get_query_helper(chat_session: ChatSession, user_input, context_chat_h
     if question_type == "image":
         logger.info(f"question_type for input: {user_input} is --image-- ...")
         markdown_folder_list = [os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]
-        db = create_image_context_embeddings_db(markdown_folder_list)
+        db, truncated_db = create_image_context_embeddings_db(markdown_folder_list)
         # Replace variations of "fig" or "figure" with "Image" for better matching
         processed_input = re.sub(r"\b(?:[Ff][Ii][Gg](?:ure)?\.?|[Ff]igure)\b", "Image", user_input)
         image_chunks = db.similarity_search_with_score(processed_input, k=1)

@@ -8,9 +8,10 @@ import base64
 import time
 from datetime import datetime, UTC
 import asyncio
+import numpy as np
 
 from dotenv import load_dotenv
-from typing import Tuple, Dict
+from typing import Tuple, Dict, List
 from pathlib import Path
 from PIL import Image
 
@@ -328,6 +329,7 @@ def extract_pdf_content_to_markdown_via_api(
 
     # Save markdown file and images to Azure Blob Storage
     try:
+        clean_unused_images(output_dir)
         upload_markdown_to_azure(output_dir, file_path)
         upload_images_to_azure(output_dir, file_path)
     except Exception as e:
@@ -497,6 +499,7 @@ async def extract_pdf_content_to_markdown_via_api_streaming(
     try:
         # yield "Uploading markdown and images to Azure Blob Storage..."
         logger.info("Uploading markdown and images to Azure Blob Storage...")
+        clean_unused_images(output_dir)
         upload_markdown_to_azure(output_dir, file_path)
         upload_images_to_azure(output_dir, file_path)
     except Exception as e:
@@ -597,6 +600,7 @@ def extract_pdf_content_to_markdown(
 
         # Save markdown file and images to Azure Blob Storage
         try:
+            clean_unused_images(output_dir)
             upload_markdown_to_azure(output_dir, file_path)
             upload_images_to_azure(output_dir, file_path)
         except Exception as e:
@@ -617,9 +621,80 @@ def extract_pdf_content_to_markdown(
         logger.exception(f"Error processing PDF: {str(e)}")
         raise Exception(f"Error processing PDF: {str(e)}")
 
+
+def clean_unused_images(image_dir: str | Path):
+    """
+    Scan all images in the directory and remove images that aren't useful figures
+    (like logos, decorative elements, or other non-content images).
+    
+    Args:
+        image_dir: Directory containing images to analyze and clean
+        
+    Returns:
+        List of deleted image filenames
+    """
+    image_dir = Path(image_dir)
+    if not image_dir.exists() or not image_dir.is_dir():
+        logger.warning(f"Image directory not found: {image_dir}")
+        return []
+    
+    config = load_config()
+    image_extensions = config["image_extensions"]
+    deleted_images = []
+    
+    # Get all image files
+    image_files = [
+        f for f in image_dir.iterdir() 
+        if f.is_file() and f.suffix.lower() in image_extensions
+    ]
+    
+    logger.info(f"Found {len(image_files)} images in {image_dir}")
+    
+    for img_path in image_files:
+        try:
+            # Load and analyze image
+            img = Image.open(img_path)
+            
+            # Apply heuristics to identify non-useful images
+            is_useful = True
+            
+            # Heuristic 1: Very small images are likely logos/icons
+            width, height = img.size
+            if width < 100 or height < 100:
+                is_useful = False
+            
+            # Heuristic 2: Check for unusual aspect ratios typical of banner/logos
+            aspect_ratio = width / height
+            if aspect_ratio > 10 or aspect_ratio < 0.1:
+                is_useful = False
+                
+            # Heuristic 3: Check for low complexity images (like solid backgrounds/logos)
+            # Convert to grayscale and check variance
+            if is_useful and img.mode != 'L':
+                gray_img = img.convert('L')
+                img_array = np.array(gray_img)
+                # If variance is very low, it's likely not a useful figure
+                if np.var(img_array) < 500:
+                    is_useful = False
+            
+            # If image is determined to be non-useful, delete it
+            if not is_useful:
+                img.close()  # Close image file before deletion
+                img_path.unlink()  # Delete the file
+                deleted_images.append(img_path.name)
+                logger.info(f"Deleted non-useful image: {img_path.name}")
+            
+        except Exception as e:
+            logger.exception(f"Error analyzing image {img_path}: {e}")
+    
+    logger.info(f"Cleaned up {len(deleted_images)} non-useful images out of {len(image_files)}")
+    return deleted_images
+
+
 __all__ = [
     "mdDocumentProcessor",
     "extract_pdf_content_to_markdown_via_api",
     "extract_pdf_content_to_markdown",
     "extract_pdf_content_to_markdown_via_api_streaming",
+    "clean_unused_images",
 ]

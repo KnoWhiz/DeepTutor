@@ -384,7 +384,15 @@ async def get_query_helper(chat_session: ChatSession, user_input, context_chat_h
         db, truncated_db = create_image_context_embeddings_db(markdown_folder_list)
         # Replace variations of "fig" or "figure" with "Image" for better matching
         processed_input = re.sub(r"\b(?:[Ff][Ii][Gg](?:ure)?\.?|[Ff]igure)\b", "Image", user_input)
-        image_chunks = db.similarity_search_with_score(processed_input, k=1)
+
+        # Get the image chunks from the truncated database
+        truncated_image_chunks = truncated_db.similarity_search_with_score(processed_input, k=1)
+        logger.info(f"TEST: truncated_image_chunks for image loading: {truncated_image_chunks}")
+
+        # Map the image chunks to the original database based on the index number of the chunk
+        # Find the index of the truncated image chunk in the original database
+        image_chunks = db.similarity_search_with_score(truncated_image_chunks[0][0].page_content, k=1)
+
         image_url_mapping = aggregate_image_contexts_to_urls(markdown_folder_list)
         if image_chunks:
             question.special_context = """

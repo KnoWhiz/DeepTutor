@@ -488,6 +488,7 @@ async def extract_pdf_content_to_markdown_via_api_streaming(
             except Exception as e:
                 logger.exception(f"Error saving image {filename}: {e}")
                 yield f"Error saving image {filename}: {str(e)}"
+        # FIXME: add a logic to clean up irrelevant images
     else:
         logger.info("No images were returned with the result")
         yield "No images were returned with the result"

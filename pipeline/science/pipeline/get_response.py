@@ -168,6 +168,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         Reference context from the paper: {context}
         This is a detailed plan for constructing the answer: {str(question.answer_planning)}
         The student's query is: {user_input_string}
+        For formulas, use LaTeX format with $...$ or $$...$$.
         """
         logger.info(f"user_input_string tokens: {count_tokens(user_input_string)}")
         logger.info(f"chat_history_string tokens: {count_tokens(chat_history_string)}")
@@ -182,14 +183,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 You are a deep thinking tutor helping a student reading a paper.
                 Reference context from the paper: {context}
                 The student's query is: {user_input_string}
-
-                RESPONSE GUIDELINES:
-                For formulas, use LaTeX syntax in markdown
-                For inline formulas, use single dollar sign: $a/b = c/d$
-                For block formulas, use double dollar sign:
-                $$
-                \frac{{a}}{{b}} = \frac{{c}}{{d}}
-                $$
+                For formulas, use LaTeX format with $...$ or $$...$$.
                 """
                 answer = str(deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session))
 
@@ -217,13 +211,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 You are a deep thinking tutor helping a student reading a paper.
                 Reference context from the paper: {context}
                 The student's query is: {user_input_string}
-
-                RESPONSE GUIDELINES:
-                For formulas, use LaTeX syntax in markdown
-                For inline formulas, use single dollar sign: $a/b = c/d$
-                For block formulas, use double dollar sign:
-                $$
-                \frac{{a}}{{b}} = \frac{{c}}{{d}}
+                For formulas, use LaTeX format with $...$ or $$...$$.
                 """
                 answer = deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session)
             return answer

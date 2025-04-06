@@ -7,6 +7,8 @@ from langchain_core.messages import SystemMessage, HumanMessage
 import sys
 import os.path
 from pipeline.science.pipeline.session_manager import ChatSession
+from langchain_sambanova import ChatSambaNovaCloud
+from langchain_core.prompts import ChatPromptTemplate
 
 # Handle imports for both direct execution and external import cases
 try:
@@ -38,7 +40,7 @@ def deep_inference_agent(
         chat_session = ChatSession()
     if stream is False:
         try:
-            response = deepseek_inference(prompt=user_prompt,
+            response = deepseek_langchain_inference(prompt=user_prompt,
                                         system_message=system_prompt,
                                         stream=stream,
                                         model="DeepSeek-R1",
@@ -49,7 +51,7 @@ def deep_inference_agent(
         except Exception as e:
             logger.exception(f"An error occurred when calling DeepSeek-R1: {str(e)}")
             try:
-                response = deepseek_inference(prompt=user_prompt,
+                response = deepseek_langchain_inference(prompt=user_prompt,
                                             system_message=system_prompt,
                                             stream=stream,
                                             model="DeepSeek-R1-Distill-Llama-70B",
@@ -77,7 +79,7 @@ def deep_inference_agent(
         def safe_stream_generator():
             # Try DeepSeek-R1
             try:
-                stream_response = deepseek_inference(prompt=user_prompt,
+                stream_response = deepseek_langchain_inference(prompt=user_prompt,
                                                     system_message=system_prompt,
                                                     stream=stream,
                                                     model="DeepSeek-R1",
@@ -94,7 +96,7 @@ def deep_inference_agent(
 
             # Try DeepSeek-R1-Distill-Llama-70B as fallback
             try:
-                stream_response = deepseek_inference(prompt=user_prompt,
+                stream_response = deepseek_langchain_inference(prompt=user_prompt,
                                                     system_message=system_prompt,
                                                     stream=stream,
                                                     model="DeepSeek-R1-Distill-Llama-70B",
@@ -258,6 +260,110 @@ def deepseek_inference(
         except Exception as e:
             logger.exception(f"An error occurred: {str(e)}")
             return None
+
+
+def deepseek_langchain_inference(
+    prompt: str,
+    system_message: str = "You are a professional deep thinking researcher reading a paper. Analyze the paper context content and answer the question. If the information is not provided in the paper, say you cannot find the answer in the paper but will try to answer based on your knowledge. For formulas, use LaTeX format with $...$ or $$...$$.",
+    stream: bool = False,
+    temperature: float = 0.6,
+    top_p: float = 0.1,
+    model: str = "DeepSeek-R1",
+    chat_session: ChatSession = None
+) -> Union[str, Iterator]:
+    """
+    Get completion from the DeepSeek model via LangChain with optional streaming support.
+
+    Args:
+        prompt: The user's input prompt
+        system_message: The system message to set the AI's behavior
+        stream: Whether to stream the output or not
+        temperature: Controls randomness (0.0 = deterministic, 1.0 = creative)
+        top_p: Controls diversity via nucleus sampling
+        model: The model to use (DeepSeek-R1 or DeepSeek-R1-Distill-Llama-70B)
+        chat_session: Chat session object for managing conversation state
+
+    Returns:
+        The generated text if streaming is False, or a streaming iterator if streaming is True
+    """
+    if chat_session is None:
+        chat_session = ChatSession()
+
+    config = load_config()
+    max_tokens = config["inference_token_limit"]
+    
+    # Adjust max_tokens based on the model
+    if model == "DeepSeek-R1-Distill-Llama-70B":
+        max_tokens *= 3
+    elif model == "DeepSeek-R1":
+        max_tokens *= 1
+    else:
+        max_tokens *= 3  # Default multiplier
+
+    # Create the LangChain SambaNova model
+    llm = ChatSambaNovaCloud(
+        model=model,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        top_p=top_p,
+        streaming=stream
+    )
+
+    # Create the messages
+    messages = [
+        (
+            "system",
+            system_message
+        ),
+        (
+            "human",
+            prompt
+        )
+    ]
+
+    try:
+        if stream:
+            # For streaming responses
+            def process_stream():
+                # yield "<think>"
+                first_chunk = True
+                
+                for chunk in llm.stream(messages):
+                    content = chunk.content if hasattr(chunk, "content") else ""
+                    
+                    if "</think>" in content:
+                        if content.startswith("</think>"):
+                            content = content.replace("</think>", "")
+                            yield "</think>"
+                            yield "<response>"
+                            yield content
+                            first_chunk = False
+                        elif content.endswith("</think>"):
+                            content = content.replace("</think>", "")
+                            yield content
+                            yield "</think>"
+                            yield "<response>"
+                            first_chunk = False
+                        else:
+                            yield content.split("</think>")[0]   # Before the thinking section
+                            yield "</think>"
+                            yield "<response>"
+                            yield content.split("</think>")[1]   # After the thinking section
+                            first_chunk = False
+                    else:
+                        yield content
+                
+                yield "</response>"
+            
+            return process_stream()
+        else:
+            # For non-streaming responses
+            response = llm.invoke(messages)
+            return response.content
+            
+    except Exception as e:
+        logger.exception(f"An error occurred while using LangChain with SambaNova: {str(e)}")
+        return None
 
 
 def o3mini_inference(user_prompt: str,

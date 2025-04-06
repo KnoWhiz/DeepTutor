@@ -166,12 +166,14 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         # From the highest score to the lowest score, until the total tokens exceed 3000
         total_tokens = 0
         context_chunks = []
+        context_scores = []
         for chunk in question_chunks_with_scores:
             if total_tokens + count_tokens(chunk[0].page_content) > token_limit:
                 break
             sources_chunks.append(chunk[0])
             total_tokens += count_tokens(chunk[0].page_content)
             context_chunks.append(chunk[0].page_content)
+            context_scores.append(chunk[1])
         context = "\n\n".join(context_chunks)
 
         prompt = f"""
@@ -186,9 +188,11 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         logger.info(f"For inference model, chat_history_string: {chat_history_string}")
         logger.info(f"For inference model, chat_history_string tokens: {count_tokens(chat_history_string)}")
         # logger.info(f"For inference model, context: {context}")
-        for chunk in context_chunks:
+        for index, (chunk, score) in enumerate(zip(context_chunks, context_scores)):
+            logger.info(f"For inference model, context chunk number: {index}")
             logger.info(f"For inference model, context chunk: {chunk}")
             logger.info(f"For inference model, context chunk tokens: {count_tokens(chunk)}")
+            logger.info(f"For inference model, context chunk score: {score}")
         logger.info(f"For inference model, context tokens: {count_tokens(context)}")
         logger.info("before deep_inference_agent ...")
         if stream is False:
@@ -199,6 +203,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 prompt = f"""
                 You are a deep thinking tutor helping a student reading a paper.
                 Reference context from the paper: {context}
+                This is a detailed plan for constructing the answer: {str(question.answer_planning)}
                 The student's query is: {user_input_string}
                 For formulas, use LaTeX format with $...$ or \n$$...\n$$.
                 """
@@ -228,6 +233,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 prompt = f"""
                 You are a deep thinking tutor helping a student reading a paper.
                 Reference context from the paper: {context}
+                This is a detailed plan for constructing the answer: {str(question.answer_planning)}
                 The student's query is: {user_input_string}
                 For formulas, use LaTeX format with $...$ or \n$$...\n$$.
                 """

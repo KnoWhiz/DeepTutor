@@ -315,17 +315,19 @@ def translate_content(
         # Extract just the translated text from the response
         if stream:
             def stream_response():
-                yield response[0]["translations"][0]["text"]
+                content = response[0]["translations"][0]["text"]
+                yield content.replace("$$", "\n\n$$\n\n")
             return stream_response()
         else:
-            return response[0]["translations"][0]["text"]
+            content = response[0]["translations"][0]["text"]
+            return content.replace("$$", "\n\n$$\n\n")
     except requests.RequestException as e:
         error_msg = f"Translation request failed: {e}"
         logger.error(error_msg)
         # If translation fails, return original content
         if stream:
             def stream_response():
-                yield content
+                yield content.replace("$$", "\n\n$$\n\n")
             return stream_response()
         else:
-            return content
+            return content.replace("$$", "\n\n$$\n\n")

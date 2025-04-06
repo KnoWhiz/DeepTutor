@@ -113,10 +113,10 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
             Reference context from the paper: ```{context}```
             If the concept can be better explained by formulas, use LaTeX syntax in markdown
             For inline formulas, use single dollar sign: $a/b = c/d$
-            FOr block formulas, use double dollar sign:
-            $$
+            For block formulas, use double dollar sign:
+            \n$$
             \frac{{a}}{{b}} = \frac{{c}}{{d}}
-            $$
+            \n$$
             """ + "\n\nThis is a detailed plan for constructing the answer: " + str(question.answer_planning)
 
         # Load embeddings for Non-deep thinking mode
@@ -179,7 +179,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         Reference context from the paper: {context}
         This is a detailed plan for constructing the answer: {str(question.answer_planning)}
         The student's query is: {user_input_string}
-        For formulas, use LaTeX format with $...$ or $$...$$.
+        For formulas, use LaTeX format with $...$ or \n$$...\n$$.
         """
         logger.info(f"For inference model, user_input_string: {user_input_string}")
         logger.info(f"For inference model, user_input_string tokens: {count_tokens(user_input_string)}")
@@ -200,7 +200,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 You are a deep thinking tutor helping a student reading a paper.
                 Reference context from the paper: {context}
                 The student's query is: {user_input_string}
-                For formulas, use LaTeX format with $...$ or $$...$$.
+                For formulas, use LaTeX format with $...$ or \n$$...\n$$.
                 """
                 answer = str(deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session))
 
@@ -229,7 +229,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 You are a deep thinking tutor helping a student reading a paper.
                 Reference context from the paper: {context}
                 The student's query is: {user_input_string}
-                For formulas, use LaTeX format with $...$ or $$...$$.
+                For formulas, use LaTeX format with $...$ or \n$$...\n$$.
                 """
                 answer = deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session)
             return answer

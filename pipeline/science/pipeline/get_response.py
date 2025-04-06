@@ -168,30 +168,59 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         total_tokens = 0
         context_chunks = []
         context_scores = []
-        for chunk in question_chunks_with_scores:
+        context_dict = {}
+        map_index_to_symbol = {
+            0: "⓪",
+            1: "①",
+            2: "②",
+            3: "③",
+            4: "④",
+            5: "⑤",
+            6: "⑥",
+            7: "⑦",
+            8: "⑧",
+            9: "⑨",
+            10: "⑩",
+            11: "⑪",
+            12: "⑫",
+            13: "⑬",
+            14: "⑭",
+            15: "⑮",
+            16: "⑯",
+            17: "⑰",
+            18: "⑱",
+            19: "⑲",
+            20: "⑳",
+        }
+        for index, chunk in enumerate(question_chunks_with_scores):
             if total_tokens + count_tokens(chunk[0].page_content) > token_limit:
                 break
             sources_chunks.append(chunk[0])
             total_tokens += count_tokens(chunk[0].page_content)
             context_chunks.append(chunk[0].page_content)
             context_scores.append(chunk[1])
-        context = "\n\n".join(context_chunks)
+            context_dict[map_index_to_symbol[index]] = {"content": chunk[0].page_content, "score": chunk[1]}
+        # context = "\n\n".join(context_chunks)
+        context = str(context_dict)
 
         prompt = f"""
         You are a deep thinking tutor helping a student reading a paper.
-        Reference context from the paper: {context}
+        Reference context chunks with relevance scores from the paper: {context}
         This is a detailed plan for constructing the answer: {str(question.answer_planning)}
         The student's query is: {user_input_string}
         For formulas, use LaTeX format with $...$ or \n$$...\n$$.
+
+        Format requirement:
+        Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key>]" at the end of the sentence.
         """
         logger.info(f"For inference model, user_input_string: {user_input_string}")
         logger.info(f"For inference model, user_input_string tokens: {count_tokens(user_input_string)}")
         logger.info(f"For inference model, chat_history_string: {chat_history_string}")
         logger.info(f"For inference model, chat_history_string tokens: {count_tokens(chat_history_string)}")
-        # logger.info(f"For inference model, context: {context}")
+        logger.info(f"For inference model, context: {context}")
         for index, (chunk, score) in enumerate(zip(context_chunks, context_scores)):
             logger.info(f"For inference model, context chunk number: {index}")
-            logger.info(f"For inference model, context chunk: {chunk}")
+            # logger.info(f"For inference model, context chunk: {chunk}")
             logger.info(f"For inference model, context chunk tokens: {count_tokens(chunk)}")
             logger.info(f"For inference model, context chunk score: {score}")
         logger.info(f"For inference model, context tokens: {count_tokens(context)}")
@@ -207,6 +236,9 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 This is a detailed plan for constructing the answer: {str(question.answer_planning)}
                 The student's query is: {user_input_string}
                 For formulas, use LaTeX format with $...$ or \n$$...\n$$.
+
+                Format requirement:
+                Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key>]" at the end of the sentence.
                 """
                 answer = str(deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session))
 
@@ -237,6 +269,9 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 This is a detailed plan for constructing the answer: {str(question.answer_planning)}
                 The student's query is: {user_input_string}
                 For formulas, use LaTeX format with $...$ or \n$$...\n$$.
+
+                Format requirement:
+                Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key>]" at the end of the sentence.
                 """
                 answer = deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session)
             return answer

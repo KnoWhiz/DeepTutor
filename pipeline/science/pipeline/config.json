@@ -9,11 +9,11 @@
     },
     "embedding": {
         "chunk_size": 500,
-        "chunk_overlap": 0
+        "chunk_overlap": 50
     },
     "retriever": {
         "search_type": "similarity",
-        "k": 10
+        "k": 15
     },
     "sources_retriever": {
         "search_type": "similarity",

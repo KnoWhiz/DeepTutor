@@ -37,7 +37,7 @@ def get_embedding_models(embedding_type, para):
 
 
 # Create markdown embeddings
-def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_size: int = 1000, chunk_overlap: int = 200):
+def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_size: int = 2000, chunk_overlap: int = 50):
     """
     Create markdown embeddings from a markdown document and save them to the specified directory.
 
@@ -63,12 +63,14 @@ def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_s
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
-            separators=["\n## ", "\n### ", "\n#### ", "\n", " ", ""]
         )
         markdown_texts = [
-            Document(page_content=chunk, metadata={"source": "markdown"})
+            Document(page_content=chunk.replace('<|endoftext|>', ''), metadata={"source": "markdown"})
             for chunk in text_splitter.split_text(md_document)
         ]
+
+        for text in markdown_texts:
+            logger.info(f"markdown text after text splitter: {text}")
 
         # Create and save markdown embeddings
         db_markdown = FAISS.from_documents(markdown_texts, embeddings)

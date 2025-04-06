@@ -529,7 +529,7 @@ def responses_refine(answer, reference='', stream=True):
         
         1. Properly formatting all mathematical formulas with LaTeX syntax:
            - Surround inline formulas with single dollar signs ($formula$)
-           - Surround block/display formulas with double dollar signs ($$formula$$)
+           - Surround block/display formulas with double dollar signs (\n$$formula\n$$)
            - Ensure all mathematical symbols, equations, and expressions use proper LaTeX notation
         
         2. Improving readability by:

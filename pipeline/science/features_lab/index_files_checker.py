@@ -3,16 +3,33 @@
 import os
 import faiss
 import pickle
+import tiktoken
+import logging
 from typing import Tuple, Dict, Any
 from langchain_community.docstore.in_memory import InMemoryDocstore
-
-import logging
 logger = logging.getLogger("index_files_checker.py")
 # Add logging configuration
 logging.basicConfig(
     level=logging.INFO,
     format='%(message)s'
 )
+
+# # Add new helper functions
+# def count_tokens(text, model_name='gpt-4o'):
+#     """Count tokens in text using tiktoken"""
+#     try:
+#         # logger.info(f"Counting tokens for text: {text}")
+#         encoding = tiktoken.encoding_for_model(model_name)
+#         # tokens = encoding.encode(text)
+#         tokens = encoding.encode(text, disallowed_special=(encoding.special_tokens_set - {'<|endoftext|>'}))
+#         length = len(tokens)
+#         logger.info(f"Length of tokens: {length}")
+#         return length
+#     except Exception as e:
+#         logger.exception(f"Error counting tokens: {str(e)}")
+#         length = len(text.split())
+#         logger.info(f"Length of text: {length}")
+#         return length
 
 def check_index_file(index_file_path: str, pkl_file_path: str) -> None:
     """
@@ -74,7 +91,10 @@ def check_index_file(index_file_path: str, pkl_file_path: str) -> None:
             logger.info(f"Warning: Docstore contains {len(docstore._dict)} items. Displaying all items may produce a lot of output.")
         
         for i, (key, value) in enumerate(docstore._dict.items()):
-            logger.info(f"Item {i}: {key} -> {value}")
+            logger.info(f"Item {i}: {key} -> {value.page_content}")
+            # logger.info(f"Item {i} tokens: {count_tokens(value)}")
+            logger.info(f"Item {i} length: {len(str(value.page_content))}")
+            logger.info(f"Item {i} type: {type(value)}")
 
         # # Display the first and last items of FAISS index
         # logger.info(f"\nFAISS Index Information:")
@@ -86,6 +106,6 @@ def check_index_file(index_file_path: str, pkl_file_path: str) -> None:
 
 if __name__ == "__main__":
     # Use raw strings for Windows paths to avoid escape character issues
-    index_file_path = "/Users/bingranyou/Documents/GitHub_Mac_mini/DeepTutor/embedded_content/1eecd3da808d385834c966650074b676/markdown/index.faiss"
-    pkl_file_path = "/Users/bingranyou/Documents/GitHub_Mac_mini/DeepTutor/embedded_content/1eecd3da808d385834c966650074b676/markdown/index.pkl"
+    index_file_path = "/Users/bingranyou/Documents/GitHub_Mac_mini/DeepTutor/embedded_content/a22abad3dc9862c41d41f79d59318780/markdown/index.faiss"
+    pkl_file_path = "/Users/bingranyou/Documents/GitHub_Mac_mini/DeepTutor/embedded_content/a22abad3dc9862c41d41f79d59318780/markdown/index.pkl"
     check_index_file(index_file_path, pkl_file_path)

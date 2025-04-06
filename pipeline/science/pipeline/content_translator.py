@@ -62,13 +62,60 @@ def detect_language(text):
     return language
 
 
+def replace_chinese_chars_in_formulas(text):
+    """
+    Replace Chinese characters with English equivalents in LaTeX formulas.
+    Works for both inline formulas ($ $) and block formulas ($$ $$).
+    
+    Args:
+        text (str): The text containing LaTeX formulas
+        
+    Returns:
+        str: Text with Chinese characters in formulas replaced with English equivalents
+    """
+    # Character mapping from Chinese to English
+    char_map = {
+        "（": "(",
+        "）": ")",
+        "，": ",",
+        "：": ":",
+        "；": ";",
+        "【": "[",
+        "】": "]",
+        "｛": "{",
+        "｝": "}",
+        "！": "!",
+        "？": "?",
+        "＋": "+",
+        "－": "-",
+        "＝": "=",
+        "／": "/",
+        "＊": "*",
+        "＜": "<",
+        "＞": ">",
+        "％": "%",
+        "．": ".",
+        "。": ".",
+    }
+    
+    def replace_in_formula(match):
+        formula = match.group(0)
+        for ch, en in char_map.items():
+            formula = formula.replace(ch, en)
+        return formula
+    
+    # Find all inline formulas ($ $) and block formulas ($$ $$)
+    pattern = r'\$\$[^\$]+\$\$|\$[^\$]+\$'
+    return re.sub(pattern, replace_in_formula, text)
+
+
 def translate_content_llm(content: str, target_lang: str, stream=False) -> str:
     """
     Translates content from source language to target language using the LLM.
 
     Args:
         content (str): The text content to translate
-        target_lang (str): Target language code (e.g. "en", "zh") 
+        target_lang (str): Target language code (e.g. "en", "Chinese") 
         stream (bool): Whether to stream the translation
 
     Returns:
@@ -94,7 +141,7 @@ def translate_content_llm(content: str, target_lang: str, stream=False) -> str:
     Do not include any additional information, such as "Here is the translated content:"
     """
 
-    if target_lang == "zh":
+    if target_lang == "Chinese":
         system_prompt = """
         你是一个专业的英文到中文的翻译者。
         不要引入任何额外的信息，只返回翻译后的内容。
@@ -238,6 +285,10 @@ def translate_content_llm(content: str, target_lang: str, stream=False) -> str:
             "target_lang": target_lang,
             "content": content
         })
+        
+        # Apply formula character replacement for Chinese
+        # if target_lang == "Chinese":
+        translated_content = replace_chinese_chars_in_formulas(translated_content)
 
     return translated_content
 
@@ -252,7 +303,7 @@ def translate_content(
     
     Args:
         content: The text to translate
-        target_lang: The target language code (e.g. "zh" for Chinese) or name (e.g. "English")
+        target_lang: The target language code (e.g. "Chinese" for Chinese) or name (e.g. "English")
         stream: Whether to stream the response (not used in Azure implementation)
         
     Returns:
@@ -315,17 +366,25 @@ def translate_content(
         # Extract just the translated text from the response
         if stream:
             def stream_response():
-                yield response[0]["translations"][0]["text"]
+                content = response[0]["translations"][0]["text"]
+                # Apply formula character replacement for Chinese
+                # if target_lang == "Chinese":
+                content = replace_chinese_chars_in_formulas(content)
+                yield content.replace("$$", "\n\n$$\n\n")
             return stream_response()
         else:
-            return response[0]["translations"][0]["text"]
+            content = response[0]["translations"][0]["text"]
+            # Apply formula character replacement for Chinese
+            # if target_lang == "Chinese":
+            content = replace_chinese_chars_in_formulas(content)
+            return content.replace("$$", "\n\n$$\n\n")
     except requests.RequestException as e:
         error_msg = f"Translation request failed: {e}"
         logger.error(error_msg)
         # If translation fails, return original content
         if stream:
             def stream_response():
-                yield content
+                yield content.replace("$$", "\n\n$$\n\n")
             return stream_response()
         else:
-            return content
+            return content.replace("$$", "\n\n$$\n\n")

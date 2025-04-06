@@ -113,16 +113,17 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
             Reference context from the paper: ```{context}```
             If the concept can be better explained by formulas, use LaTeX syntax in markdown
             For inline formulas, use single dollar sign: $a/b = c/d$
-            FOr block formulas, use double dollar sign:
-            $$
+            For block formulas, use double dollar sign:
+            \n$$
             \frac{{a}}{{b}} = \frac{{c}}{{d}}
-            $$
+            \n$$
             """ + "\n\nThis is a detailed plan for constructing the answer: " + str(question.answer_planning)
 
         # Load embeddings for Non-deep thinking mode
         try:
             logger.info(f"Loading markdown embeddings from {[os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]}")
-            db = load_embeddings(embedding_folder_list, 'default')
+            markdown_embedding_folder_list = [os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]
+            db = load_embeddings(markdown_embedding_folder_list, 'default')
         except Exception as e:
             logger.exception(f"Failed to load markdown embeddings for Non-deep thinking mode: {str(e)}")
             db = load_embeddings(embedding_folder_list, 'default')
@@ -146,7 +147,8 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         logger.info("deep thinking ...")
         try:
             logger.info(f"Loading markdown embeddings from {[os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]}")
-            db = load_embeddings(embedding_folder_list, 'default')
+            markdown_embedding_folder_list = [os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]
+            db = load_embeddings(markdown_embedding_folder_list, 'default')
         except Exception as e:
             logger.exception(f"Failed to load markdown embeddings for deep thinking mode: {str(e)}")
             db = load_embeddings(embedding_folder_list, 'default')
@@ -157,29 +159,37 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
 
         chat_history_string = truncate_chat_history(chat_history, token_limit=token_limit)
         user_input_string = str(user_input + "\n\n" + question.special_context)
-        # Get relevant chunks for both question and answer with scores
+        # Get relevant chunks for question with scores
         question_chunks_with_scores = db.similarity_search_with_score(user_input_string, k=config['retriever']['k'])
         # The total list of sources chunks
         sources_chunks = []
         # From the highest score to the lowest score, until the total tokens exceed 3000
         total_tokens = 0
+        context_chunks = []
         for chunk in question_chunks_with_scores:
             if total_tokens + count_tokens(chunk[0].page_content) > token_limit:
                 break
             sources_chunks.append(chunk[0])
             total_tokens += count_tokens(chunk[0].page_content)
-        context = "\n\n".join([chunk.page_content for chunk in sources_chunks])
+            context_chunks.append(chunk[0].page_content)
+        context = "\n\n".join(context_chunks)
 
         prompt = f"""
         You are a deep thinking tutor helping a student reading a paper.
         Reference context from the paper: {context}
         This is a detailed plan for constructing the answer: {str(question.answer_planning)}
         The student's query is: {user_input_string}
-        For formulas, use LaTeX format with $...$ or $$...$$.
+        For formulas, use LaTeX format with $...$ or \n$$...\n$$.
         """
-        logger.info(f"user_input_string tokens: {count_tokens(user_input_string)}")
-        logger.info(f"chat_history_string tokens: {count_tokens(chat_history_string)}")
-        logger.info(f"context tokens: {count_tokens(context)}")
+        logger.info(f"For inference model, user_input_string: {user_input_string}")
+        logger.info(f"For inference model, user_input_string tokens: {count_tokens(user_input_string)}")
+        logger.info(f"For inference model, chat_history_string: {chat_history_string}")
+        logger.info(f"For inference model, chat_history_string tokens: {count_tokens(chat_history_string)}")
+        # logger.info(f"For inference model, context: {context}")
+        for chunk in context_chunks:
+            logger.info(f"For inference model, context chunk: {chunk}")
+            logger.info(f"For inference model, context chunk tokens: {count_tokens(chunk)}")
+        logger.info(f"For inference model, context tokens: {count_tokens(context)}")
         logger.info("before deep_inference_agent ...")
         if stream is False:
             try:
@@ -190,7 +200,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 You are a deep thinking tutor helping a student reading a paper.
                 Reference context from the paper: {context}
                 The student's query is: {user_input_string}
-                For formulas, use LaTeX format with $...$ or $$...$$.
+                For formulas, use LaTeX format with $...$ or \n$$...\n$$.
                 """
                 answer = str(deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session))
 
@@ -211,6 +221,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
             # If stream is True, the answer is a generator; otherwise, it's a string
             # FIXME: Later we can add response_refine and replace_latex_formulas to the generator
             try:
+                logger.info("triggering deep_inference_agent ...")
                 answer = deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session)
             except Exception as e:
                 logger.exception(f"Error in deep_inference_agent with chat history, retry with no chat history: {e}")
@@ -218,7 +229,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 You are a deep thinking tutor helping a student reading a paper.
                 Reference context from the paper: {context}
                 The student's query is: {user_input_string}
-                For formulas, use LaTeX format with $...$ or $$...$$.
+                For formulas, use LaTeX format with $...$ or \n$$...\n$$.
                 """
                 answer = deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session)
             return answer

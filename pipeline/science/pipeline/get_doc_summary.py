@@ -123,9 +123,9 @@ def refine_document_summary(markdown_summary, llm):
     5. MATHEMATICAL FORMULA FORMATTING:
        - For inline formulas, use single $ marks. For example, $E = mc^2$
        - For block formulas, use double $$ marks. For example:
-         $$
+         \n$$
          F = ma
-         $$
+         \n$$
        - Preserve all mathematical formulas in their exact form
        - Do not change any mathematical notation or symbols
 
@@ -227,9 +227,9 @@ async def generate_document_summary(file_path, embedding_folder, md_document=Non
     - Cover the most important aspects from all parts of the document
     - For inline formulas use single $ marks. For example, $E = mc^2$
     - For block formulas use double $$ marks. For example,
-    $$
+    \n$$
     F = ma (just an example, may not be a real formula in the doc)
-    $$
+    \n$$
 
     Document: {context}
     """
@@ -248,9 +248,9 @@ async def generate_document_summary(file_path, embedding_folder, md_document=Non
     - Ensure no overlap with content in the Document Overview
     - For inline formulas use single $ marks. For example, $E = mc^2$
     - For block formulas use double $$ marks. For example,
-    $$
+    \n$$
     F = ma (just an example, may not be a real formula in the doc)
-    $$
+    \n$$
 
     Document: {context}
     """

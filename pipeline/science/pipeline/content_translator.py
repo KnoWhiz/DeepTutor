@@ -109,6 +109,52 @@ def replace_chinese_chars_in_formulas(text):
     return re.sub(pattern, replace_in_formula, text)
 
 
+def cleanup_numbered_markers(text):
+    """
+    Replace numbered markers in the format [（n）] with circled number symbols [⓪], [①], etc.
+    
+    Args:
+        text (str): The text containing numbered markers
+        
+    Returns:
+        str: Text with numbered markers replaced with circled number symbols
+    """
+    # Map of numbers to circled number symbols
+    circled_numbers = {
+        "0": "⓪",
+        "1": "①",
+        "2": "②",
+        "3": "③",
+        "4": "④",
+        "5": "⑤",
+        "6": "⑥",
+        "7": "⑦",
+        "8": "⑧",
+        "9": "⑨",
+        "10": "⑩",
+        "11": "⑪",
+        "12": "⑫",
+        "13": "⑬",
+        "14": "⑭",
+        "15": "⑮",
+        "16": "⑯",
+        "17": "⑰",
+        "18": "⑱",
+        "19": "⑲",
+        "20": "⑳"
+    }
+    
+    def replace_marker(match):
+        number = match.group(1)
+        if number in circled_numbers:
+            return f"[{circled_numbers[number]}]"
+        return match.group(0)
+    
+    # Pattern to match [（n）] format
+    pattern = r'\[（(\d+)）\]'
+    return re.sub(pattern, replace_marker, text)
+
+
 def translate_content_llm(content: str, target_lang: str, stream=False) -> str:
     """
     Translates content from source language to target language using the LLM.
@@ -287,8 +333,9 @@ def translate_content_llm(content: str, target_lang: str, stream=False) -> str:
         })
         
         # Apply formula character replacement for Chinese
-        # if target_lang == "Chinese":
         translated_content = replace_chinese_chars_in_formulas(translated_content)
+        # Apply cleanup for numbered markers
+        translated_content = cleanup_numbered_markers(translated_content)
 
     return translated_content
 
@@ -367,16 +414,18 @@ def translate_content(
         if stream:
             def stream_response():
                 content = response[0]["translations"][0]["text"]
-                # Apply formula character replacement for Chinese
-                # if target_lang == "Chinese":
+                # Apply formula character replacement
                 content = replace_chinese_chars_in_formulas(content)
+                # Apply cleanup for numbered markers
+                content = cleanup_numbered_markers(content)
                 yield content.replace("$$", "\n\n$$\n\n")
             return stream_response()
         else:
             content = response[0]["translations"][0]["text"]
-            # Apply formula character replacement for Chinese
-            # if target_lang == "Chinese":
+            # Apply formula character replacement
             content = replace_chinese_chars_in_formulas(content)
+            # Apply cleanup for numbered markers
+            content = cleanup_numbered_markers(content)
             return content.replace("$$", "\n\n$$\n\n")
     except requests.RequestException as e:
         error_msg = f"Translation request failed: {e}"

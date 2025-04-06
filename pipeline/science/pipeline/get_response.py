@@ -159,8 +159,9 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
 
         chat_history_string = truncate_chat_history(chat_history, token_limit=token_limit)
         user_input_string = str(user_input + "\n\n" + question.special_context)
+        rag_user_input_string = str(user_input + "\n\n" + question.special_context + "\n\n" + str(question.answer_planning))
         # Get relevant chunks for question with scores
-        question_chunks_with_scores = db.similarity_search_with_score(user_input_string, k=config['retriever']['k'])
+        question_chunks_with_scores = db.similarity_search_with_score(rag_user_input_string, k=config['retriever']['k'])
         # The total list of sources chunks
         sources_chunks = []
         # From the highest score to the lowest score, until the total tokens exceed 3000

@@ -133,7 +133,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
     for file_id, embedding_folder, file_path in zip(file_id_list, embedding_folder_list, file_path_list):
         if graphrag_index_files_decompress(embedding_folder):
             logger.info(f"GraphRAG index files for {file_id} are ready.")
-            yield "\n\n**🗺️ GraphRAG index files are ready.**\n\n"
+            yield "\n\n**🗺️ Loading GraphRAG embeddings ...**\n\n"
         else:
             # Files are missing and have been cleaned up
             _document, _doc = process_pdf_file(file_path)
@@ -162,7 +162,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
                     # yield f"\n\n**Error compressing and uploading GraphRAG index files for {file_id} to Azure Blob Storage.**\n\n"
     time_tracking["graphrag_generate_embedding_total"] = time.time() - graphrag_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-    yield "\n\n**🗺️ GraphRAG embeddings ready ...**\n\n"
+    yield "\n\n**🗺️ Loading GraphRAG embeddings done ...**\n\n"
 
     chat_history = chat_session.chat_history
     context_chat_history = chat_history

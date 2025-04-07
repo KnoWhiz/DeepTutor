@@ -31,7 +31,13 @@ async def get_GraphRAG_global_response(user_input, chat_history, embedding_folde
 
     # Chat history and user input
     chat_history_text = truncate_chat_history(chat_history)
-    user_input_text = str(user_input)
+    if chat_session is not None and chat_session.question is not None:
+        user_input_text = chat_session.question.text + "\n\n" + str(chat_session.question.special_context)
+        rag_user_input_text = user_input_text   # + "\n\n" + str(chat_session.question.answer_planning)
+        logger.info(f"User input text is from Question object in chat session: {user_input_text}")
+    else:
+        user_input_text = str(user_input)
+        logger.info(f"User input text is from user input: {user_input_text}")
 
     # Search for the document in the GraphRAG embeddings
     try:
@@ -122,7 +128,7 @@ async def get_GraphRAG_global_response(user_input, chat_history, embedding_folde
         f"""
         You are a patient and honest professor helping a student reading a paper.
         The student asked the following question:
-        ```{user_input_text}```
+        ```{rag_user_input_text}```
         Use the given context to answer the question.
         Previous conversation history:
         ```{chat_history_text}```
@@ -136,6 +142,7 @@ async def get_GraphRAG_global_response(user_input, chat_history, embedding_folde
     You are a deep thinking tutor helping a student reading a paper.
     The previous conversation is: {chat_history_text}
     Reference context from the paper: {context_string}
+    This is a detailed plan for constructing the answer: {str(chat_session.question.answer_planning)}
     The student's query is: {user_input_text}
     For formulas, use LaTeX format with $...$ or\n$$...\n$$ if there are any.
     """
@@ -151,6 +158,7 @@ async def get_GraphRAG_global_response(user_input, chat_history, embedding_folde
             prompt = f"""
             You are a deep thinking tutor helping a student reading a paper.
             Reference context from the paper: {context}
+            This is a detailed plan for constructing the answer: {str(chat_session.question.answer_planning)}
             The student's query is: {user_input_text}
             For formulas, use LaTeX format with $...$ or\n$$...\n$$ if there are any.
             """

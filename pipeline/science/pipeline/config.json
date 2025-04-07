@@ -58,7 +58,7 @@
     },
     "default_topics": ["Overview", "Methods", "Results", "Discussion"],
     "image_extensions": [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".webp", ".svg"],
-    "inference_token_limit": 2000,
+    "inference_token_limit": 8000,
     "stream": true,
     "summary_wording": "Can you give me a summary of this document?",
     "map_symbol_to_index": {

@@ -208,7 +208,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         Reference context chunks with relevance scores from the paper: {context}
         This is a detailed plan for constructing the answer: {str(question.answer_planning)}
         The student's query is: {user_input_string}
-        For formulas, use LaTeX format with $...$ or \n$$...\n$$.
+        For formulas, use LaTeX format with $...$ or \n$$...\n$$ and make sure latex syntax can be properly rendered in the response.
 
         Format requirement:
         Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like ①, ②, ③, etc>]" at the end of the sentence after the period mark.
@@ -235,7 +235,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 Reference context from the paper: {context}
                 This is a detailed plan for constructing the answer: {str(question.answer_planning)}
                 The student's query is: {user_input_string}
-                For formulas, use LaTeX format with $...$ or \n$$...\n$$.
+                For formulas, use LaTeX format with $...$ or \n$$...\n$$ and make sure latex syntax can be properly rendered in the response.
 
                 Format requirement:
                 Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like ①, ②, ③, etc>]" at the end of the sentence after the period mark.
@@ -268,7 +268,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 Reference context from the paper: {context}
                 This is a detailed plan for constructing the answer: {str(question.answer_planning)}
                 The student's query is: {user_input_string}
-                For formulas, use LaTeX format with $...$ or \n$$...\n$$.
+                For formulas, use LaTeX format with $...$ or \n$$...\n$$ and make sure latex syntax can be properly rendered in the response.
 
                 Format requirement:
                 Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like ①, ②, ③, etc>]" at the end of the sentence after the period mark.

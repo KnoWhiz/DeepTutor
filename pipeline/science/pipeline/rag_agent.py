@@ -40,7 +40,7 @@ from pipeline.science.pipeline.images_understanding import (
 )
 
 import logging
-logger = logging.getLogger("tutorpipeline.science.get_response")
+logger = logging.getLogger("tutorpipeline.science.rag_agent")
 
 
 async def get_rag_context(chat_session: ChatSession, file_path_list, question: Question, chat_history, embedding_folder_list, deep_thinking = True, stream=False):

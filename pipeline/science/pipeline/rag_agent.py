@@ -46,7 +46,6 @@ logger = logging.getLogger("tutorpipeline.science.rag_agent")
 async def get_rag_context(chat_session: ChatSession, file_path_list, question: Question, chat_history, embedding_folder_list, deep_thinking = True, stream=False):
     config = load_config()
     user_input = question.text
-    user_input_with_context = user_input + "\n\n" + question.special_context
     
     # Handle Lite mode first
     if chat_session.mode == ChatMode.LITE:

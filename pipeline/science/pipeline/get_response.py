@@ -6,6 +6,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
 from langchain.output_parsers import OutputFixingParser
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+import json
 
 from pipeline.science.pipeline.config import load_config
 from pipeline.science.pipeline.utils import (
@@ -179,31 +180,35 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
             total_tokens += count_tokens(chunk[0].page_content)
             context_chunks.append(chunk[0].page_content)
             context_scores.append(chunk[1])
-            context_dict[map_index_to_symbol[index]] = {"content": chunk[0].page_content, "score": chunk[1]}
-        # context = "\n\n".join(context_chunks)
-        context = str(context_dict)
+            context_dict[map_index_to_symbol[index]] = {"content": chunk[0].page_content, "score": float(chunk[1])}
+        
+        # Format context manually instead of using JSON serialization
+        formatted_context = ""
+        for key, value in context_dict.items():
+            formatted_context += f"{key}: {{\n  content: \"\"\"{value['content']}\"\"\",\n  score: {value['score']}\n}}\n\n"
 
         prompt = f"""
         You are a deep thinking tutor helping a student reading a paper.
-        Reference context chunks with relevance scores from the paper: {context}
+        Reference context chunks with relevance scores from the paper: 
+        {formatted_context}
         This is a detailed plan for constructing the answer: {str(question.answer_planning)}
         The student's query is: {user_input_string}
         For formulas, use LaTeX format with $...$ or \n$$...\n$$ and make sure latex syntax can be properly rendered in the response.
 
         Format requirement:
-        Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like ①, ②, ③, etc>]" at the end of the sentence after the period mark.
+        Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like <1>, <2>, <3>, etc>]" at the end of the sentence after the period mark. If there are more than one context chunk keys, use the format "[<chunk_key_1>][<chunk_key_2>] ..." to cite all the context chunk keys.
         """
         logger.info(f"For inference model, user_input_string: {user_input_string}")
         logger.info(f"For inference model, user_input_string tokens: {count_tokens(user_input_string)}")
         logger.info(f"For inference model, chat_history_string: {chat_history_string}")
         logger.info(f"For inference model, chat_history_string tokens: {count_tokens(chat_history_string)}")
-        logger.info(f"For inference model, context: {context}")
+        logger.info(f"For inference model, context: {formatted_context}")
         for index, (chunk, score) in enumerate(zip(context_chunks, context_scores)):
             logger.info(f"For inference model, context chunk number: {index}")
             # logger.info(f"For inference model, context chunk: {chunk}")
             logger.info(f"For inference model, context chunk tokens: {count_tokens(chunk)}")
             logger.info(f"For inference model, context chunk score: {score}")
-        logger.info(f"For inference model, context tokens: {count_tokens(context)}")
+        logger.info(f"For inference model, context tokens: {count_tokens(formatted_context)}")
         logger.info("before deep_inference_agent ...")
         if stream is False:
             try:
@@ -212,13 +217,13 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 logger.exception(f"Error in deep_inference_agent with chat history, retry with no chat history: {e}")
                 prompt = f"""
                 You are a deep thinking tutor helping a student reading a paper.
-                Reference context from the paper: {context}
+                Reference context from the paper: {formatted_context}
                 This is a detailed plan for constructing the answer: {str(question.answer_planning)}
                 The student's query is: {user_input_string}
                 For formulas, use LaTeX format with $...$ or \n$$...\n$$ and make sure latex syntax can be properly rendered in the response.
 
                 Format requirement:
-                Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like ①, ②, ③, etc>]" at the end of the sentence after the period mark.
+                Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like <1>, <2>, <3>, etc>]" at the end of the sentence after the period mark. If there are more than one context chunk keys, use the format "[<chunk_key_1>][<chunk_key_2>] ..." to cite all the context chunk keys.
                 """
                 answer = str(deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session))
 
@@ -245,13 +250,13 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 logger.exception(f"Error in deep_inference_agent with chat history, retry with no chat history: {e}")
                 prompt = f"""
                 You are a deep thinking tutor helping a student reading a paper.
-                Reference context from the paper: {context}
+                Reference context from the paper: {formatted_context}
                 This is a detailed plan for constructing the answer: {str(question.answer_planning)}
                 The student's query is: {user_input_string}
                 For formulas, use LaTeX format with $...$ or \n$$...\n$$ and make sure latex syntax can be properly rendered in the response.
 
                 Format requirement:
-                Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like ①, ②, ③, etc>]" at the end of the sentence after the period mark.
+                Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like <1>, <2>, <3>, etc>]" at the end of the sentence after the period mark. If there are more than one context chunk keys, use the format "[<chunk_key_1>][<chunk_key_2>] ..." to cite all the context chunk keys.
                 """
                 answer = deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session)
             return answer
@@ -316,11 +321,19 @@ async def get_query_helper(chat_session: ChatSession, user_input, context_chat_h
         ]
     )
     chain = prompt | llm | error_parser
-    parsed_result = chain.invoke({"input": user_input,
-                                  "context": documents_summary,
-                                  "chat_history": truncate_chat_history(context_chat_history)})
-    question = parsed_result['question']
-    question_type = parsed_result['question_type']
+    try:
+        parsed_result = chain.invoke({"input": user_input,
+                                    "context": documents_summary,
+                                    "chat_history": truncate_chat_history(context_chat_history)})
+        question = parsed_result['question']
+        question_type = parsed_result['question_type']
+    except Exception as e:
+        logger.exception(f"Error in get_query_helper: {e}")
+        parsed_result = chain.invoke({"input": user_input,
+                                    "context": documents_summary,
+                                    "chat_history": truncate_chat_history(context_chat_history)})
+        question = parsed_result['question']
+        question_type = parsed_result['question_type']
     try:
         language = detect_language(user_input)
         logger.info(f"language detected: {language}")

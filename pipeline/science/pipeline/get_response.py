@@ -169,29 +169,9 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         context_chunks = []
         context_scores = []
         context_dict = {}
-        map_index_to_symbol = {
-            0: "⓪",
-            1: "①",
-            2: "②",
-            3: "③",
-            4: "④",
-            5: "⑤",
-            6: "⑥",
-            7: "⑦",
-            8: "⑧",
-            9: "⑨",
-            10: "⑩",
-            11: "⑪",
-            12: "⑫",
-            13: "⑬",
-            14: "⑭",
-            15: "⑮",
-            16: "⑯",
-            17: "⑰",
-            18: "⑱",
-            19: "⑲",
-            20: "⑳",
-        }
+        map_symbol_to_index = config["map_symbol_to_index"]
+        # Reverse the key and value of the map_symbol_to_index
+        map_index_to_symbol = {v: k for k, v in map_symbol_to_index.items()}
         for index, chunk in enumerate(question_chunks_with_scores):
             if total_tokens + count_tokens(chunk[0].page_content) > token_limit:
                 break

@@ -173,6 +173,9 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         map_symbol_to_index = config["map_symbol_to_index"]
         # Reverse the key and value of the map_symbol_to_index
         map_index_to_symbol = {v: k for k, v in map_symbol_to_index.items()}
+        # Get the first 3 keys from map_symbol_to_index for examples in the prompt
+        first_keys = list(map_symbol_to_index.keys())[:3]
+        example_keys = ", ".join(first_keys)
         for index, chunk in enumerate(question_chunks_with_scores):
             if total_tokens + count_tokens(chunk[0].page_content) > token_limit:
                 break
@@ -196,7 +199,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         For formulas, use LaTeX format with $...$ or \n$$...\n$$ and make sure latex syntax can be properly rendered in the response.
 
         Format requirement:
-        Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like <1>, <2>, <3>, etc>]" at the end of the sentence after the period mark. If there are more than one context chunk keys, use the format "[<chunk_key_1>][<chunk_key_2>] ..." to cite all the context chunk keys.
+        Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like {example_keys}, etc>]" at the end of the sentence after the period mark. If there are more than one context chunk keys, use the format "[<chunk_key_1>][<chunk_key_2>] ..." to cite all the context chunk keys.
         """
         logger.info(f"For inference model, user_input_string: {user_input_string}")
         logger.info(f"For inference model, user_input_string tokens: {count_tokens(user_input_string)}")
@@ -223,7 +226,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 For formulas, use LaTeX format with $...$ or \n$$...\n$$ and make sure latex syntax can be properly rendered in the response.
 
                 Format requirement:
-                Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like <1>, <2>, <3>, etc>]" at the end of the sentence after the period mark. If there are more than one context chunk keys, use the format "[<chunk_key_1>][<chunk_key_2>] ..." to cite all the context chunk keys.
+                Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like {example_keys}, etc>]" at the end of the sentence after the period mark. If there are more than one context chunk keys, use the format "[<chunk_key_1>][<chunk_key_2>] ..." to cite all the context chunk keys.
                 """
                 answer = str(deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session))
 
@@ -256,7 +259,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 For formulas, use LaTeX format with $...$ or \n$$...\n$$ and make sure latex syntax can be properly rendered in the response.
 
                 Format requirement:
-                Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like <1>, <2>, <3>, etc>]" at the end of the sentence after the period mark. If there are more than one context chunk keys, use the format "[<chunk_key_1>][<chunk_key_2>] ..." to cite all the context chunk keys.
+                Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like {example_keys}, etc>]" at the end of the sentence after the period mark. If there are more than one context chunk keys, use the format "[<chunk_key_1>][<chunk_key_2>] ..." to cite all the context chunk keys.
                 """
                 answer = deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session)
             return answer

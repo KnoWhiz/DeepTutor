@@ -175,7 +175,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         map_index_to_symbol = {v: k for k, v in map_symbol_to_index.items()}
         # Get the first 3 keys from map_symbol_to_index for examples in the prompt
         first_keys = list(map_symbol_to_index.keys())[:3]
-        example_keys = ", ".join(first_keys)
+        example_keys = ", or ".join(first_keys)
         for index, chunk in enumerate(question_chunks_with_scores):
             if total_tokens + count_tokens(chunk[0].page_content) > token_limit:
                 break

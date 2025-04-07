@@ -211,7 +211,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         For formulas, use LaTeX format with $...$ or \n$$...\n$$.
 
         Format requirement:
-        Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key>]" at the end of the sentence after the period mark.
+        Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like ①, ②, ③, etc>]" at the end of the sentence after the period mark.
         """
         logger.info(f"For inference model, user_input_string: {user_input_string}")
         logger.info(f"For inference model, user_input_string tokens: {count_tokens(user_input_string)}")
@@ -238,7 +238,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 For formulas, use LaTeX format with $...$ or \n$$...\n$$.
 
                 Format requirement:
-                Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key>]" at the end of the sentence after the period mark.
+                Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like ①, ②, ③, etc>]" at the end of the sentence after the period mark.
                 """
                 answer = str(deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session))
 
@@ -271,7 +271,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 For formulas, use LaTeX format with $...$ or \n$$...\n$$.
 
                 Format requirement:
-                Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key>]" at the end of the sentence after the period mark.
+                Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like ①, ②, ③, etc>]" at the end of the sentence after the period mark.
                 """
                 answer = deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session)
             return answer

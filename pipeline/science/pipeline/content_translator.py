@@ -152,7 +152,10 @@ def cleanup_numbered_markers(text):
     
     # Pattern to match [（n）] format
     pattern = r'\[（(\d+)）\]'
-    return re.sub(pattern, replace_marker, text)
+    text = re.sub(pattern, replace_marker, text)
+    pattern = r'\[((\d+))\]'
+    text = re.sub(pattern, replace_marker, text)
+    return text
 
 
 def translate_content_llm(content: str, target_lang: str, stream=False) -> str:

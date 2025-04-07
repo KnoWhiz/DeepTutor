@@ -56,5 +56,6 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
     if chat_session.mode == ChatMode.ADVANCED:
         return None
 
+    # Handle Basic mode
     if chat_session.mode == ChatMode.BASIC:
         return None

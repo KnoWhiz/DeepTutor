@@ -58,4 +58,61 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
 
     # Handle Basic mode
     if chat_session.mode == ChatMode.BASIC:
-        return None
+        try:
+            logger.info(f"Loading markdown embeddings from {[os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]}")
+            markdown_embedding_folder_list = [os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]
+            db = load_embeddings(markdown_embedding_folder_list, 'default')
+        except Exception as e:
+            logger.exception(f"Failed to load markdown embeddings for deep thinking mode: {str(e)}")
+            db = load_embeddings(embedding_folder_list, 'default')
+
+        # Load config for deep thinking mode
+        config = load_config()
+        token_limit = config["inference_token_limit"]
+
+        chat_history_string = truncate_chat_history(chat_history, token_limit=token_limit)
+        user_input_string = str(user_input + "\n\n" + question.special_context)
+        rag_user_input_string = str(user_input + "\n\n" + question.special_context + "\n\n" + str(question.answer_planning))
+        # Get relevant chunks for question with scores
+        question_chunks_with_scores = db.similarity_search_with_score(rag_user_input_string, k=config['retriever']['k'])
+        # The total list of sources chunks
+        sources_chunks = []
+        # From the highest score to the lowest score, until the total tokens exceed 3000
+        total_tokens = 0
+        context_chunks = []
+        context_scores = []
+        context_dict = {}
+        map_symbol_to_index = config["map_symbol_to_index"]
+        # Reverse the key and value of the map_symbol_to_index
+        map_index_to_symbol = {v: k for k, v in map_symbol_to_index.items()}
+        # Get the first 3 keys from map_symbol_to_index for examples in the prompt
+        first_keys = list(map_symbol_to_index.keys())[:3]
+        example_keys = ", or ".join(first_keys)
+        for index, chunk in enumerate(question_chunks_with_scores):
+            if total_tokens + count_tokens(chunk[0].page_content) > token_limit:
+                break
+            sources_chunks.append(chunk[0])
+            total_tokens += count_tokens(chunk[0].page_content)
+            context_chunks.append(chunk[0].page_content)
+            context_scores.append(chunk[1])
+            context_dict[map_index_to_symbol[index]] = {"content": chunk[0].page_content, "score": float(chunk[1])}
+        
+        # Format context manually instead of using JSON serialization
+        formatted_context = ""
+        for key, value in context_dict.items():
+            formatted_context += f"{key}: {{\n  content: \"\"\"{value['content']}\"\"\",\n  score: {value['score']}\n}}\n\n"
+        
+        logger.info(f"For inference model, user_input_string: {user_input_string}")
+        logger.info(f"For inference model, user_input_string tokens: {count_tokens(user_input_string)}")
+        logger.info(f"For inference model, chat_history_string: {chat_history_string}")
+        logger.info(f"For inference model, chat_history_string tokens: {count_tokens(chat_history_string)}")
+        logger.info(f"For inference model, context: {formatted_context}")
+        for index, (chunk, score) in enumerate(zip(context_chunks, context_scores)):
+            logger.info(f"For inference model, context chunk number: {index}")
+            # logger.info(f"For inference model, context chunk: {chunk}")
+            logger.info(f"For inference model, context chunk tokens: {count_tokens(chunk)}")
+            logger.info(f"For inference model, context chunk score: {score}")
+        logger.info(f"For inference model, context tokens: {count_tokens(formatted_context)}")
+        logger.info("before deep_inference_agent ...")
+
+        return formatted_context

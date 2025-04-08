@@ -172,7 +172,11 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         {formatted_context}
         This is a detailed plan for constructing the answer: {str(question.answer_planning)}
         The student's query is: {user_input_string}
-        For formulas, use LaTeX format with $...$ or \n$$...\n$$ and make sure latex syntax can be properly rendered in the response.
+        For formulas, use LaTeX format with $...$ or 
+        $$
+        ...
+        $$
+        and make sure latex syntax can be properly rendered in the response.
 
         Format requirement:
         Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like {example_keys}, etc>]" at the end of the sentence after the period mark. If there are more than one context chunk keys, use the format "[<chunk_key_1>][<chunk_key_2>] ..." to cite all the context chunk keys.
@@ -188,7 +192,11 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 Reference context from the paper: {formatted_context}
                 This is a detailed plan for constructing the answer: {str(question.answer_planning)}
                 The student's query is: {user_input_string}
-                For formulas, use LaTeX format with $...$ or \n$$...\n$$ and make sure latex syntax can be properly rendered in the response.
+                For formulas, use LaTeX format with $...$ or 
+                $$
+                ...
+                $$
+                and make sure latex syntax can be properly rendered in the response.
 
                 Format requirement:
                 Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like {example_keys}, etc>]" at the end of the sentence after the period mark. If there are more than one context chunk keys, use the format "[<chunk_key_1>][<chunk_key_2>] ..." to cite all the context chunk keys.
@@ -221,7 +229,11 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 Reference context from the paper: {formatted_context}
                 This is a detailed plan for constructing the answer: {str(question.answer_planning)}
                 The student's query is: {user_input_string}
-                For formulas, use LaTeX format with $...$ or \n$$...\n$$ and make sure latex syntax can be properly rendered in the response.
+                For formulas, use LaTeX format with $...$ or 
+                $$
+                ...
+                $$
+                and make sure latex syntax can be properly rendered in the response.
 
                 Format requirement:
                 Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like {example_keys}, etc>]" at the end of the sentence after the period mark. If there are more than one context chunk keys, use the format "[<chunk_key_1>][<chunk_key_2>] ..." to cite all the context chunk keys.

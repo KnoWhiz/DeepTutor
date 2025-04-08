@@ -96,22 +96,20 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
             context_scores.append(chunk[1])
             context_dict[map_index_to_symbol[index]] = {"content": chunk[0].page_content, "score": float(chunk[1])}
         
-        # Format context manually instead of using JSON serialization
-        formatted_context = ""
-        for key, value in context_dict.items():
-            formatted_context += f"{key}: {{\n  content: \"\"\"{value['content']}\"\"\",\n  score: {value['score']}\n}}\n\n"
+        # Format context as a JSON dictionary instead of a string
+        formatted_context = context_dict
         
         logger.info(f"For inference model, user_input_string: {user_input_string}")
         logger.info(f"For inference model, user_input_string tokens: {count_tokens(user_input_string)}")
         logger.info(f"For inference model, chat_history_string: {chat_history_string}")
         logger.info(f"For inference model, chat_history_string tokens: {count_tokens(chat_history_string)}")
-        logger.info(f"For inference model, context: {formatted_context}")
+        logger.info(f"For inference model, context: {str(formatted_context)}")
         for index, (chunk, score) in enumerate(zip(context_chunks, context_scores)):
             logger.info(f"For inference model, context chunk number: {index}")
             # logger.info(f"For inference model, context chunk: {chunk}")
             logger.info(f"For inference model, context chunk tokens: {count_tokens(chunk)}")
             logger.info(f"For inference model, context chunk score: {score}")
-        logger.info(f"For inference model, context tokens: {count_tokens(formatted_context)}")
+        logger.info(f"For inference model, context tokens: {count_tokens(str(formatted_context))}")
         logger.info("before deep_inference_agent ...")
 
         return formatted_context

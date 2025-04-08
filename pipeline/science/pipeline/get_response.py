@@ -165,11 +165,12 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                                             embedding_folder_list=embedding_folder_list,
                                             deep_thinking=deep_thinking,
                                             stream=stream)
+        formatted_context_string = str(formatted_context)
 
         prompt = f"""
         You are a deep thinking tutor helping a student reading a paper.
         Reference context chunks with relevance scores from the paper: 
-        {formatted_context}
+        {formatted_context_string}
         This is a detailed plan for constructing the answer: {str(question.answer_planning)}
         The student's query is: {user_input_string}
         For formulas, use LaTeX format with $...$ or 
@@ -193,7 +194,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 logger.exception(f"Error in deep_inference_agent with chat history, retry with no chat history: {e}")
                 prompt = f"""
                 You are a deep thinking tutor helping a student reading a paper.
-                Reference context from the paper: {formatted_context}
+                Reference context from the paper: {formatted_context_string}
                 This is a detailed plan for constructing the answer: {str(question.answer_planning)}
                 The student's query is: {user_input_string}
                 For formulas, use LaTeX format with $...$ or 
@@ -234,7 +235,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 logger.exception(f"Error in deep_inference_agent with chat history, retry with no chat history: {e}")
                 prompt = f"""
                 You are a deep thinking tutor helping a student reading a paper.
-                Reference context from the paper: {formatted_context}
+                Reference context from the paper: {formatted_context_string}
                 This is a detailed plan for constructing the answer: {str(question.answer_planning)}
                 The student's query is: {user_input_string}
                 For formulas, use LaTeX format with $...$ or 

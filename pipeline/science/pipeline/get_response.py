@@ -165,7 +165,8 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                                             embedding_folder_list=embedding_folder_list,
                                             deep_thinking=deep_thinking,
                                             stream=stream)
-        formatted_context_string = str(formatted_context)
+        # formatted_context_string = str(formatted_context)
+        formatted_context_string = chat_session.formatted_context
 
         prompt = f"""
         You are a deep thinking tutor helping a student reading a paper.

@@ -112,4 +112,6 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
         logger.info(f"For inference model, context tokens: {count_tokens(str(formatted_context))}")
         logger.info("before deep_inference_agent ...")
 
+        chat_session.formatted_context = formatted_context
+
         return formatted_context

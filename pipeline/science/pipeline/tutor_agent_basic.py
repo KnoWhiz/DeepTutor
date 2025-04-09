@@ -373,7 +373,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     sources_start = time.time()
     yield "\n\n**🔍 Retrieving sources ...**\n\n"
     sources, source_pages, refined_source_pages, refined_source_index = get_response_source(
-        mode=chat_session.mode,
+        chat_session=chat_session,
         file_path_list=file_path_list,
         user_input=refined_user_input,
         answer=chat_session.current_message,

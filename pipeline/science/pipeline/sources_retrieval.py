@@ -20,11 +20,11 @@ from pipeline.science.pipeline.embeddings import (
 )
 from pipeline.science.pipeline.embeddings_agent import embeddings_agent
 from pipeline.science.pipeline.doc_processor import process_pdf_file
-
+from pipeline.science.pipeline.session_manager import ChatSession
 import logging
 logger = logging.getLogger("tutorpipeline.science.sources_retrieval")
 
-def get_response_source(mode, file_path_list, user_input, answer, chat_history, embedding_folder_list):
+def get_response_source(chat_session: ChatSession, file_path_list, user_input, answer, chat_history, embedding_folder_list):
     """
     Get the sources for the response
     Return a dictionary of sources with scores and metadata
@@ -35,6 +35,7 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
     Show them in the order they are found in the document
     Preserve image filenames but filter them based on context relevance using LLM
     """
+    mode = chat_session.mode
     config = load_config()
     para = config['llm']
 

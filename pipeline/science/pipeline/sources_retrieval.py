@@ -132,8 +132,13 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
             db_list.append(db)
 
     # Get relevant chunks for both question and answer with scores
-    question_chunks_with_scores = db_merged.similarity_search_with_score(user_input, k=config['sources_retriever']['k'])
-    answer_chunks_with_scores = db_merged.similarity_search_with_score(answer, k=config['sources_retriever']['k'])
+    question_chunks_with_scores = []
+    for key, value in chat_session.formatted_context.items():
+        source_chunk = db_merged.similarity_search_with_score(str(value["content"]), k=1)
+        question_chunks_with_scores.append(source_chunk)
+
+    # answer_chunks_with_scores = db_merged.similarity_search_with_score(answer, k=config['sources_retriever']['k'])
+    answer_chunks_with_scores = []
 
     # The total list of sources chunks from question and answer
     sources_chunks = []
@@ -142,7 +147,9 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
     for chunk in answer_chunks_with_scores:
         sources_chunks.append(chunk[0])
 
-    sources_chunks_text = [chunk.page_content for chunk in sources_chunks]
+    logger.info(f"TEST: sources_chunks: {sources_chunks}")
+
+    # sources_chunks_text = [chunk.page_content for chunk in sources_chunks]
 
     # # logger.info(f"TEST: sources_chunks: {sources_chunks}")
     # logger.info(f"TEST: sources_chunks_text: {sources_chunks_text}")

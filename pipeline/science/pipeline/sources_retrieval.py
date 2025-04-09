@@ -135,7 +135,7 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
     question_chunks_with_scores = []
     for key, value in chat_session.formatted_context.items():
         source_chunk = db_merged.similarity_search_with_score(str(value["content"]), k=1)
-        question_chunks_with_scores.append(source_chunk)
+        question_chunks_with_scores.append(source_chunk[0])
 
     # answer_chunks_with_scores = db_merged.similarity_search_with_score(answer, k=config['sources_retriever']['k'])
     answer_chunks_with_scores = []
@@ -174,10 +174,22 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
             source_file_index[chunk.page_content] = 1
 
     # Extract page content and scores, normalize scores to 0-1 range
-    max_score = max(max(score for _, score in question_chunks_with_scores),
-                   max(score for _, score in answer_chunks_with_scores))
-    min_score = min(min(score for _, score in question_chunks_with_scores),
-                   min(score for _, score in answer_chunks_with_scores))
+    if question_chunks_with_scores and answer_chunks_with_scores:
+        max_score = max(max(score for _, score in question_chunks_with_scores),
+                       max(score for _, score in answer_chunks_with_scores))
+        min_score = min(min(score for _, score in question_chunks_with_scores),
+                       min(score for _, score in answer_chunks_with_scores))
+    elif question_chunks_with_scores:
+        max_score = max(score for _, score in question_chunks_with_scores)
+        min_score = min(score for _, score in question_chunks_with_scores)
+    elif answer_chunks_with_scores:
+        max_score = max(score for _, score in answer_chunks_with_scores)
+        min_score = min(score for _, score in answer_chunks_with_scores)
+    else:
+        # If both lists are empty, set default values
+        max_score = 1.0
+        min_score = 0.0
+    
     score_range = max_score - min_score if max_score != min_score else 1
 
     # Get sources_with_scores dictionary, which maps each source to the score it has

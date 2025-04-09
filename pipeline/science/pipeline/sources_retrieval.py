@@ -20,11 +20,11 @@ from pipeline.science.pipeline.embeddings import (
 )
 from pipeline.science.pipeline.embeddings_agent import embeddings_agent
 from pipeline.science.pipeline.doc_processor import process_pdf_file
-
+from pipeline.science.pipeline.session_manager import ChatSession
 import logging
 logger = logging.getLogger("tutorpipeline.science.sources_retrieval")
 
-def get_response_source(mode, file_path_list, user_input, answer, chat_history, embedding_folder_list):
+def get_response_source(chat_session: ChatSession, file_path_list, user_input, answer, chat_history, embedding_folder_list):
     """
     Get the sources for the response
     Return a dictionary of sources with scores and metadata
@@ -35,6 +35,7 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
     Show them in the order they are found in the document
     Preserve image filenames but filter them based on context relevance using LLM
     """
+    mode = chat_session.mode
     config = load_config()
     para = config['llm']
 
@@ -131,8 +132,13 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
             db_list.append(db)
 
     # Get relevant chunks for both question and answer with scores
-    question_chunks_with_scores = db_merged.similarity_search_with_score(user_input, k=config['sources_retriever']['k'])
-    answer_chunks_with_scores = db_merged.similarity_search_with_score(answer, k=config['sources_retriever']['k'])
+    question_chunks_with_scores = []
+    for key, value in chat_session.formatted_context.items():
+        source_chunk = db_merged.similarity_search_with_score(str(value["content"]), k=1)
+        question_chunks_with_scores.append(source_chunk[0])
+
+    # answer_chunks_with_scores = db_merged.similarity_search_with_score(answer, k=config['sources_retriever']['k'])
+    answer_chunks_with_scores = []
 
     # The total list of sources chunks from question and answer
     sources_chunks = []
@@ -141,7 +147,9 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
     for chunk in answer_chunks_with_scores:
         sources_chunks.append(chunk[0])
 
-    sources_chunks_text = [chunk.page_content for chunk in sources_chunks]
+    logger.info(f"TEST: sources_chunks: {sources_chunks}")
+
+    # sources_chunks_text = [chunk.page_content for chunk in sources_chunks]
 
     # # logger.info(f"TEST: sources_chunks: {sources_chunks}")
     # logger.info(f"TEST: sources_chunks_text: {sources_chunks_text}")
@@ -166,10 +174,22 @@ def get_response_source(mode, file_path_list, user_input, answer, chat_history, 
             source_file_index[chunk.page_content] = 1
 
     # Extract page content and scores, normalize scores to 0-1 range
-    max_score = max(max(score for _, score in question_chunks_with_scores),
-                   max(score for _, score in answer_chunks_with_scores))
-    min_score = min(min(score for _, score in question_chunks_with_scores),
-                   min(score for _, score in answer_chunks_with_scores))
+    if question_chunks_with_scores and answer_chunks_with_scores:
+        max_score = max(max(score for _, score in question_chunks_with_scores),
+                       max(score for _, score in answer_chunks_with_scores))
+        min_score = min(min(score for _, score in question_chunks_with_scores),
+                       min(score for _, score in answer_chunks_with_scores))
+    elif question_chunks_with_scores:
+        max_score = max(score for _, score in question_chunks_with_scores)
+        min_score = min(score for _, score in question_chunks_with_scores)
+    elif answer_chunks_with_scores:
+        max_score = max(score for _, score in answer_chunks_with_scores)
+        min_score = min(score for _, score in answer_chunks_with_scores)
+    else:
+        # If both lists are empty, set default values
+        max_score = 1.0
+        min_score = 0.0
+    
     score_range = max_score - min_score if max_score != min_score else 1
 
     # Get sources_with_scores dictionary, which maps each source to the score it has

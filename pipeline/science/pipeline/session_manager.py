@@ -50,6 +50,7 @@ class ChatSession:
     current_message: Optional[str] = "" # Latest current response message from streaming tutor agent
     new_message_id: str = str(ObjectId()) # new message from user
     question: Optional[Question] = None # Question object
+    formatted_context: Optional[Dict] = None # Formatted context for the question
 
     def initialize(self) -> None:
         """Initialize the chat session if not already initialized."""
@@ -123,7 +124,9 @@ class ChatSession:
             "current_language": self.current_language,
             "last_updated": datetime.now().isoformat(),
             "current_message": self.current_message,
-            "new_message_id": self.new_message_id
+            "new_message_id": self.new_message_id,
+            "question": self.question,
+            "formatted_context": self.formatted_context
         }
 
     @classmethod
@@ -145,7 +148,9 @@ class ChatSession:
             uploaded_files=set(data["uploaded_files"]),
             current_language=data["current_language"],
             current_message=data["current_message"],
-            new_message_id=data["new_message_id"]
+            new_message_id=data["new_message_id"],
+            question=data["question"],
+            formatted_context=data["formatted_context"]
         )
         session.is_initialized = True
         return session

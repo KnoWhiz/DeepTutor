@@ -165,17 +165,27 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                                             embedding_folder_list=embedding_folder_list,
                                             deep_thinking=deep_thinking,
                                             stream=stream)
+        # formatted_context_string = str(formatted_context)
+        formatted_context_string = chat_session.formatted_context
 
         prompt = f"""
         You are a deep thinking tutor helping a student reading a paper.
         Reference context chunks with relevance scores from the paper: 
-        {formatted_context}
+        {formatted_context_string}
         This is a detailed plan for constructing the answer: {str(question.answer_planning)}
         The student's query is: {user_input_string}
-        For formulas, use LaTeX format with $...$ or \n$$...\n$$ and make sure latex syntax can be properly rendered in the response.
+        For formulas, use LaTeX format with $...$ or 
+        $$
+        ...
+        $$
+        and make sure latex syntax can be properly rendered in the response.
+
+        Requirement:
+        Only use the information from the context chunks to answer the question. Give the response in a scientific and academic tone. Do not make up or assume anything or guess without any evidence. If you answer some questions based on your own knowledge, clearly state that you are using your own knowledge.
 
         Format requirement:
-        Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like {example_keys}, etc>]" at the end of the sentence after the period mark. If there are more than one context chunk keys, use the format "[<chunk_key_1>][<chunk_key_2>] ..." to cite all the context chunk keys.
+        1. Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like {example_keys}, etc>]" at the end of the sentence after the period mark. If there are more than one context chunk keys, use the format "[<chunk_key_1>][<chunk_key_2>] ..." to cite all the context chunk keys.
+        2. Use markdown syntax for formatting the response to make it more clear and readable.
         """
         logger.info(f"Size of whole prompt: {len(prompt)}")
         if stream is False:
@@ -185,13 +195,21 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 logger.exception(f"Error in deep_inference_agent with chat history, retry with no chat history: {e}")
                 prompt = f"""
                 You are a deep thinking tutor helping a student reading a paper.
-                Reference context from the paper: {formatted_context}
+                Reference context from the paper: {formatted_context_string}
                 This is a detailed plan for constructing the answer: {str(question.answer_planning)}
                 The student's query is: {user_input_string}
-                For formulas, use LaTeX format with $...$ or \n$$...\n$$ and make sure latex syntax can be properly rendered in the response.
+                For formulas, use LaTeX format with $...$ or 
+                $$
+                ...
+                $$
+                and make sure latex syntax can be properly rendered in the response.
+
+                Requirement:
+                Only use the information from the context chunks to answer the question. Give the response in a scientific and academic tone. Do not make up or assume anything or guess without any evidence. If you answer some questions based on your own knowledge, clearly state that you are using your own knowledge.
 
                 Format requirement:
-                Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like {example_keys}, etc>]" at the end of the sentence after the period mark. If there are more than one context chunk keys, use the format "[<chunk_key_1>][<chunk_key_2>] ..." to cite all the context chunk keys.
+                1. Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like {example_keys}, etc>]" at the end of the sentence after the period mark. If there are more than one context chunk keys, use the format "[<chunk_key_1>][<chunk_key_2>] ..." to cite all the context chunk keys.
+                2. Use markdown syntax for formatting the response to make it more clear and readable.
                 """
                 answer = str(deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session))
 
@@ -218,13 +236,21 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 logger.exception(f"Error in deep_inference_agent with chat history, retry with no chat history: {e}")
                 prompt = f"""
                 You are a deep thinking tutor helping a student reading a paper.
-                Reference context from the paper: {formatted_context}
+                Reference context from the paper: {formatted_context_string}
                 This is a detailed plan for constructing the answer: {str(question.answer_planning)}
                 The student's query is: {user_input_string}
-                For formulas, use LaTeX format with $...$ or \n$$...\n$$ and make sure latex syntax can be properly rendered in the response.
+                For formulas, use LaTeX format with $...$ or 
+                $$
+                ...
+                $$
+                and make sure latex syntax can be properly rendered in the response.
+
+                Requirement:
+                Only use the information from the context chunks to answer the question. Give the response in a scientific and academic tone. Do not make up or assume anything or guess without any evidence. If you answer some questions based on your own knowledge, clearly state that you are using your own knowledge.
 
                 Format requirement:
-                Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like {example_keys}, etc>]" at the end of the sentence after the period mark. If there are more than one context chunk keys, use the format "[<chunk_key_1>][<chunk_key_2>] ..." to cite all the context chunk keys.
+                1. Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like {example_keys}, etc>]" at the end of the sentence after the period mark. If there are more than one context chunk keys, use the format "[<chunk_key_1>][<chunk_key_2>] ..." to cite all the context chunk keys.
+                2. Use markdown syntax for formatting the response to make it more clear and readable.
                 """
                 answer = deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session)
             return answer

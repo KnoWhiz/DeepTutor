@@ -214,13 +214,14 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
     source_file_index = {image_url_mapping_merged.get(source, source): file_index
                          for source, file_index in source_file_index.items()}
 
-    # TEST
-    logger.info(f"TEST: sources before refine: sources_with_scores - {sources_with_scores}")
+    # # TEST
+    # logger.info(f"TEST: sources before refine: sources_with_scores - {sources_with_scores}")
     logger.info(f"TEST: length of sources before refine: {len(sources_with_scores)}")
 
     # Refine and limit sources while preserving scores
     markdown_dir_list = [os.path.join(embedding_folder, "markdown") for embedding_folder in embedding_folder_list]
-    sources_with_scores = refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_input, image_url_mapping_merged, source_pages, source_file_index, image_url_mapping_merged_reverse)
+    # sources_with_scores = refine_sources_complex(sources_with_scores, file_path_list, markdown_dir_list, user_input, image_url_mapping_merged, source_pages, source_file_index, image_url_mapping_merged_reverse)
+    sources_with_scores = refine_sources_simple(sources_with_scores, file_path_list)
 
     # Refine source pages while preserving scores
     refined_source_pages = {}
@@ -232,7 +233,7 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
 
     # # TEST
     # logger.info(f"TEST: sources after refine: sources_with_scores - {sources_with_scores}")
-    # logger.info(f"TEST: length of sources after refine: {len(sources_with_scores)}")
+    logger.info(f"TEST: length of sources after refine: {len(sources_with_scores)}")
 
 
     # # TEST
@@ -264,7 +265,41 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
     return sources_with_scores, source_pages, refined_source_pages, refined_source_index
 
 
-def refine_sources(sources_with_scores, file_path_list, markdown_dir_list, user_input, image_url_mapping_merged, source_pages, source_file_index, image_url_mapping_merged_reverse):
+def refine_sources_simple(sources_with_scores, file_path_list):
+    """
+    Simplified version of refine_sources_complex that only checks if text chunks can be found in the document.
+    Returns a dictionary of refined sources with their scores.
+    
+    Args:
+        sources_with_scores: A dictionary mapping text chunks to their relevance scores
+        file_path_list: List of PDF file paths to search in
+        
+    Returns:
+        Dictionary of refined sources that were found in the original documents
+    """
+    refined_sources = {}
+    
+    # Process text sources
+    _docs = []
+    for file_path in file_path_list:
+        try:
+            _, _doc = process_pdf_file(file_path)
+            _docs.append(_doc)
+        except Exception as e:
+            logger.exception(f"Error opening document {file_path}: {e}")
+    
+    # Check each source against the document pages
+    for _doc in _docs:
+        for page in _doc:
+            for source, score in sources_with_scores.items():
+                text_instances = robust_search_for(page, source)
+                if text_instances:
+                    refined_sources[source] = score
+    
+    return refined_sources
+
+
+def refine_sources_complex(sources_with_scores, file_path_list, markdown_dir_list, user_input, image_url_mapping_merged, source_pages, source_file_index, image_url_mapping_merged_reverse):
     """
     Refine sources by checking if they can be found in the document
     Only get first 20 sources

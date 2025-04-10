@@ -28,7 +28,6 @@ from pipeline.science.pipeline.content_translator import (
 )
 from pipeline.science.pipeline.inference import deep_inference_agent
 from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
-from pipeline.science.pipeline.get_graphrag_response import get_GraphRAG_global_response
 from pipeline.science.pipeline.get_rag_response import (
     get_embedding_folder_rag_response, 
     get_db_rag_response
@@ -43,20 +42,17 @@ import logging
 logger = logging.getLogger("tutorpipeline.science.rag_agent")
 
 
-async def get_rag_context(chat_session: ChatSession, file_path_list, question: Question, chat_history, embedding_folder_list, deep_thinking = True, stream=False):
+async def get_rag_context(chat_session: ChatSession, file_path_list, question: Question, chat_history, embedding_folder_list, deep_thinking = True, stream=False, context=""):
     config = load_config()
-    user_input = question.text
+    # Add the context to the user input to improve the retrieval quality
+    user_input = question.text + "\n\n" + context
     
     # Handle Lite mode first
     if chat_session.mode == ChatMode.LITE:
         return None
 
-    # Handle Advanced mode
-    if chat_session.mode == ChatMode.ADVANCED:
-        return None
-
-    # Handle Basic mode
-    if chat_session.mode == ChatMode.BASIC:
+    # Handle Basic mode and Advanced mode
+    if chat_session.mode == ChatMode.BASIC or ChatMode.ADVANCED:
         try:
             logger.info(f"Loading markdown embeddings from {[os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]}")
             markdown_embedding_folder_list = [os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]

@@ -48,6 +48,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
     generators_list = []
     config = load_config()
     user_input = question.text
+    user_input_string = str(user_input + "\n\n" + question.special_context)
     # Handle Lite mode first
     if chat_session.mode == ChatMode.LITE:
         lite_prompt = """
@@ -93,12 +94,14 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
     # Handle Advanced mode
     if chat_session.mode == ChatMode.ADVANCED:
         try:
-            answer = await get_GraphRAG_global_response(user_input=user_input + "\n\n" + question.special_context, 
+            answer = await get_GraphRAG_global_response(question=question, 
                                                         chat_history=chat_history, 
+                                                        file_path_list=file_path_list,
                                                         embedding_folder_list=embedding_folder_list, 
                                                         deep_thinking=deep_thinking, 
                                                         chat_session=chat_session, 
                                                         stream=stream)
+            logger.info(f"TEST: chat_session.formatted_context after get_GraphRAG_global_response: {chat_session.formatted_context}")
             return answer
         except Exception as e:
             logger.exception("Error getting response from GraphRAG:", e)
@@ -156,7 +159,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         first_keys = list(map_symbol_to_index.keys())[:3]
         example_keys = ", or ".join(first_keys)
         chat_history_string = truncate_chat_history(chat_history, token_limit=token_limit)
-        user_input_string = str(user_input + "\n\n" + question.special_context)
+        # user_input_string = str(user_input + "\n\n" + question.special_context)
         
         formatted_context = await get_rag_context(chat_session=chat_session,
                                             file_path_list=file_path_list,
@@ -164,7 +167,8 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                                             chat_history=chat_history,
                                             embedding_folder_list=embedding_folder_list,
                                             deep_thinking=deep_thinking,
-                                            stream=stream)
+                                            stream=stream,
+                                            context="")
         # formatted_context_string = str(formatted_context)
         formatted_context_string = chat_session.formatted_context
 

@@ -20,13 +20,24 @@ from pipeline.science.pipeline.session_manager import ChatSession
 from pipeline.science.pipeline.utils import (
     truncate_chat_history,
     responses_refine,
+    Question
 )
+from pipeline.science.pipeline.config import load_config
+from pipeline.science.pipeline.rag_agent import get_rag_context
 
 import logging
 logger = logging.getLogger("tutorpipeline.science.get_graphrag_response")
 
 
-async def get_GraphRAG_global_response(user_input, chat_history, embedding_folder_list, deep_thinking = True, chat_session: ChatSession = None, stream: bool = False):
+async def get_GraphRAG_global_response(question: Question, chat_history, file_path_list, embedding_folder_list, deep_thinking = True, chat_session: ChatSession = None, stream: bool = False):
+    user_input=question.text + "\n\n" + question.special_context
+    config = load_config()
+    token_limit = config["inference_token_limit"]
+    map_symbol_to_index = config["map_symbol_to_index"]
+    # Get the first 3 keys from map_symbol_to_index for examples in the prompt
+    first_keys = list(map_symbol_to_index.keys())[:3]
+    example_keys = ", or ".join(first_keys)
+    
     embedding_folder = embedding_folder_list[0]
 
     # Chat history and user input
@@ -132,19 +143,46 @@ async def get_GraphRAG_global_response(user_input, chat_history, embedding_folde
         Use the given context to answer the question.
         Previous conversation history:
         ```{chat_history_text}```
+        This is a detailed plan for constructing the answer: {str(chat_session.question.answer_planning)}
         """,
     )
     
     context = search_engine_result.context_data["reports"]
     answer_string = search_engine_result.response
     context_string = str(answer_string)
+    logger.info(f"TEST: formatted_context_string before get_rag_context: {chat_session.formatted_context}")
+    formatted_context = await get_rag_context(chat_session=chat_session,
+                                        file_path_list=file_path_list,
+                                        question=question,
+                                        chat_history=chat_history,
+                                        embedding_folder_list=embedding_folder_list,
+                                        deep_thinking=deep_thinking,
+                                        stream=stream,
+                                        context=context_string)
+    # formatted_context_string = str(formatted_context)
+    formatted_context_string = chat_session.formatted_context
+    logger.info(f"TEST: formatted_context_string after get_rag_context: {chat_session.formatted_context}")
     prompt = f"""
     You are a deep thinking tutor helping a student reading a paper.
-    The previous conversation is: {chat_history_text}
-    Reference context from the paper: {context_string}
+    This is the global context from the paper: {context_string}
+    Reference context chunks with relevance scores from the paper: 
+    ```
+    {formatted_context_string}
+    ```
     This is a detailed plan for constructing the answer: {str(chat_session.question.answer_planning)}
     The student's query is: {user_input_text}
-    For formulas, use LaTeX format with $...$ or\n$$...\n$$ if there are any.
+    For formulas, use LaTeX format with $...$ or 
+    $$
+    ...
+    $$
+    and make sure latex syntax can be properly rendered in the response.
+
+    Requirement:
+    Only use the information from the context chunks to answer the question. Give the response in a scientific and academic tone. Do not make up or assume anything or guess without any evidence. If you answer some questions based on your own knowledge, clearly state that you are using your own knowledge.
+
+    Format requirement:
+    1. Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like {example_keys}, etc>]" at the end of the sentence after the period mark. If there are more than one context chunk keys, use the format "[<chunk_key_1>][<chunk_key_2>] ..." to cite all the context chunk keys.
+    2. Use markdown syntax for formatting the response to make it more clear and readable.
     """
 
     if deep_thinking:
@@ -154,13 +192,25 @@ async def get_GraphRAG_global_response(user_input, chat_history, embedding_folde
             logger.info(f"Prompt for advanced deep thinking: {prompt}")
             answer = deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session)
         except Exception as e:
-            logger.exception(f"Error in deep_inference_agent: {e}")
+            logger.exception(f"Error in deep_inference_agent, trying standard deep thinking mode: {e}")
             prompt = f"""
             You are a deep thinking tutor helping a student reading a paper.
-            Reference context from the paper: {context}
-            This is a detailed plan for constructing the answer: {str(chat_session.question.answer_planning)}
+            Reference context chunks with relevance scores from the paper: 
+            {formatted_context_string}
+            This is a detailed plan for constructing the answer: {str(question.answer_planning)}
             The student's query is: {user_input_text}
-            For formulas, use LaTeX format with $...$ or\n$$...\n$$ if there are any.
+            For formulas, use LaTeX format with $...$ or 
+            $$
+            ...
+            $$
+            and make sure latex syntax can be properly rendered in the response.
+
+            Requirement:
+            Only use the information from the context chunks to answer the question. Give the response in a scientific and academic tone. Do not make up or assume anything or guess without any evidence. If you answer some questions based on your own knowledge, clearly state that you are using your own knowledge.
+
+            Format requirement:
+            1. Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like {example_keys}, etc>]" at the end of the sentence after the period mark. If there are more than one context chunk keys, use the format "[<chunk_key_1>][<chunk_key_2>] ..." to cite all the context chunk keys.
+            2. Use markdown syntax for formatting the response to make it more clear and readable.
             """
             answer = deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session)
 

@@ -48,7 +48,8 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
     user_input = question.text + "\n\n" + context
 
     # Handle Basic mode and Advanced mode
-    if chat_session.mode == ChatMode.BASIC or ChatMode.ADVANCED:
+    if chat_session.mode == ChatMode.BASIC or chat_session.mode == ChatMode.ADVANCED:
+        logger.info(f"Current mode is {chat_session.mode}")
         try:
             logger.info(f"Loading markdown embeddings from {[os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]}")
             markdown_embedding_folder_list = [os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]
@@ -56,8 +57,11 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
         except Exception as e:
             logger.exception(f"Failed to load markdown embeddings for deep thinking mode: {str(e)}")
             db = load_embeddings(embedding_folder_list, 'default')
-    elif chat_session.mode == ChatMode.LITE:
+    # elif chat_session.mode == ChatMode.LITE:
+    else:
+        logger.info(f"Current mode is {chat_session.mode}")
         actual_embedding_folder_list = [os.path.join(embedding_folder, 'lite_embedding') for embedding_folder in embedding_folder_list]
+        logger.info(f"actual_embedding_folder_list in get_rag_context: {actual_embedding_folder_list}")
         db = load_embeddings(actual_embedding_folder_list, 'lite')
 
     # Load config for deep thinking mode

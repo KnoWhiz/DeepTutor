@@ -122,12 +122,14 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         1. Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like {example_keys}, etc>]" at the end of the sentence after the period mark. If there are more than one context chunk keys, use the format "[<chunk_key_1>][<chunk_key_2>] ..." to cite all the context chunk keys.
         2. Use markdown syntax for formatting the response to make it more clear and readable.
         """
+        # prompt = ChatPromptTemplate.from_template(prompt)
         llm = get_llm('advanced', config['llm'])
-        chain = prompt | llm | StrOutputParser()
-        answer = chain.stream({"formatted_context_string": formatted_context_string,
-                               "question_answer_planning": question.answer_planning,
-                               "user_input_string": user_input_string})
-        return answer
+        # chain = prompt | llm | StrOutputParser()
+        answer = llm.stream(prompt)
+        def process_stream():
+            for chunk in answer:
+                yield chunk
+        return process_stream()
 
     # Handle Advanced mode
     if chat_session.mode == ChatMode.ADVANCED:

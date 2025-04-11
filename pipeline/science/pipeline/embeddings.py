@@ -8,7 +8,7 @@ from langchain_core.documents import Document
 
 from pipeline.science.pipeline.config import load_config
 from pipeline.science.pipeline.api_handler import ApiHandler
-from pipeline.science.pipeline.utils import create_searchable_chunks
+# from pipeline.science.pipeline.utils import create_searchable_chunks
 
 import logging
 logger = logging.getLogger("tutorpipeline.science.embeddings")
@@ -18,6 +18,85 @@ load_dotenv()
 # Control whether to use Marker API or not. Only for local environment we skip Marker API.
 SKIP_MARKER_API = True if os.getenv("ENVIRONMENT") == "local" else False
 logger.info(f"SKIP_MARKER_API: {SKIP_MARKER_API}")
+
+# Define create_searchable_chunks here to avoid circular import
+def create_searchable_chunks(doc, chunk_size: int) -> list:
+    """
+    Create searchable chunks from a PDF document.
+
+    Args:
+        doc: The PDF document object
+        chunk_size: Maximum size of each text chunk in characters
+
+    Returns:
+        list: A list of Document objects containing the chunks
+    """
+    chunks = []
+    for page_num in range(len(doc)):
+        page = doc[page_num]
+        text_blocks = []
+
+        # Get text blocks that can be found via search
+        for block in page.get_text("blocks"):
+            text = block[4]  # The text content is at index 4
+            # Clean up the text
+            clean_text = text.strip()
+
+            if clean_text:
+                # Remove hyphenation at line breaks
+                clean_text = clean_text.replace("-\n", "")
+                # Normalize spaces
+                clean_text = " ".join(clean_text.split())
+                # Replace special characters that might cause issues
+                replacements = {
+                    # "−": "-",  # Replace unicode minus with hyphen
+                    # "⊥": "_|_",  # Replace perpendicular symbol
+                    # "≫": ">>",  # Replace much greater than
+                    # "%": "",     # Remove percentage signs that might be formatting artifacts
+                    # "→": "->",   # Replace arrow
+                }
+                for old, new in replacements.items():
+                    clean_text = clean_text.replace(old, new)
+
+                # Split into chunks of specified size
+                while len(clean_text) > 0:
+                    # Find a good break point near chunk_size characters
+                    end_pos = min(chunk_size, len(clean_text))
+                    if end_pos < len(clean_text):
+                        # Try to break at a sentence or period
+                        last_period = clean_text[:end_pos].rfind(". ")
+                        if last_period > 0:
+                            end_pos = last_period + 1
+                        else:
+                            # If no period, try to break at a space
+                            last_space = clean_text[:end_pos].rfind(" ")
+                            if last_space > 0:
+                                end_pos = last_space
+
+                    chunk_text = clean_text[:end_pos].strip()
+                    if chunk_text:
+                        text_blocks.append(Document(
+                            page_content=chunk_text,
+                            metadata={
+                                "page": page_num,
+                                "source": f"page_{page_num + 1}",
+                                "chunk_index": len(text_blocks),  # Track position within page
+                                "block_bbox": block[:4],  # Store block bounding box coordinates
+                                "total_blocks_in_page": len(page.get_text("blocks")),
+                                "relative_position": len(text_blocks) / len(page.get_text("blocks"))
+                            }
+                        ))
+                    clean_text = clean_text[end_pos:].strip()
+
+        chunks.extend(text_blocks)
+
+    # Sort chunks by page number and then by chunk index
+    chunks.sort(key=lambda x: (
+        x.metadata.get("page", 0),
+        x.metadata.get("chunk_index", 0)
+    ))
+
+    return chunks
 
 
 def get_embedding_models(embedding_type, para):
@@ -106,8 +185,7 @@ async def generate_LiteRAG_embedding(_doc, file_path, embedding_folder):
         # )
         # raw_text = "\n\n".join([page.get_text() for page in _doc])
         # chunks = text_splitter.create_documents([raw_text])
-        create_searchable_chunks_start_time = time.time()
-        average_page_length = sum(len(doc.page_content) for doc in _doc) / len(_doc)
+        average_page_length = 30000
         chunk_size = int(average_page_length // 3)
         logger.info(f"Average page length: {average_page_length}")
         # yield f"\n\n**Average page length: {int(average_page_length)}**"

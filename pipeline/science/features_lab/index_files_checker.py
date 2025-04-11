@@ -106,6 +106,9 @@ def check_index_file(index_file_path: str, pkl_file_path: str) -> None:
 
 if __name__ == "__main__":
     # Use raw strings for Windows paths to avoid escape character issues
-    index_file_path = "/Users/bingranyou/Documents/GitHub_Mac_mini/DeepTutor/embedded_content/a22abad3dc9862c41d41f79d59318780/markdown/index.faiss"
-    pkl_file_path = "/Users/bingranyou/Documents/GitHub_Mac_mini/DeepTutor/embedded_content/a22abad3dc9862c41d41f79d59318780/markdown/index.pkl"
+    # index_file_path = "/Users/bingranyou/Documents/GitHub_Mac_mini/DeepTutor/embedded_content/a22abad3dc9862c41d41f79d59318780/markdown/index.faiss"
+    # pkl_file_path = "/Users/bingranyou/Documents/GitHub_Mac_mini/DeepTutor/embedded_content/a22abad3dc9862c41d41f79d59318780/markdown/index.pkl"
+
+    index_file_path = "/Users/bingranyou/Documents/GitHub_Mac_mini/DeepTutor/embedded_content/lite_mode/7ebfb3495a81793a0daa2246d0ed24db/lite_embedding/index.faiss"
+    pkl_file_path = "/Users/bingranyou/Documents/GitHub_Mac_mini/DeepTutor/embedded_content/lite_mode/7ebfb3495a81793a0daa2246d0ed24db/lite_embedding/index.pkl"
     check_index_file(index_file_path, pkl_file_path)

@@ -214,13 +214,23 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     # Add source retrieval - similar to what's in basic and advanced modes
     yield "\n\n**🔍 Retrieving sources ...**\n\n"
     sources_start = time.time()
+    # Update the embedding folder paths to include the lite_embedding subdirectory
+    lite_embedding_folder_list = [os.path.join(folder, "lite_embedding") for folder in embedding_folder_list]
+    
+    # Ensure the markdown directories exist for storing image context and URLs
+    for folder in lite_embedding_folder_list:
+        markdown_dir = os.path.join(folder, "markdown")
+        if not os.path.exists(markdown_dir):
+            os.makedirs(markdown_dir, exist_ok=True)
+            logger.info(f"Created markdown directory: {markdown_dir}")
+    
     sources, source_pages, refined_source_pages, refined_source_index = get_response_source(
         chat_session=chat_session,
         file_path_list=file_path_list,
         user_input=refined_user_input,
         answer=chat_session.current_message,
         chat_history=chat_history,
-        embedding_folder_list=embedding_folder_list
+        embedding_folder_list=lite_embedding_folder_list
     )
 
     for source_key, source_value in sources.items():

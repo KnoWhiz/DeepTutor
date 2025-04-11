@@ -147,7 +147,7 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
             _document, _doc = process_pdf_file(file_path)
             save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
             logger.info(f"Loading LiteRAG embedding for {file_id} ...")
-            yield "\n\n**🔍 Loading LiteRAG embedding ...**"
+            yield "\n\n**🔍 Loading LiteRAG embeddings ...**"
             async for chunk in embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder):
                 yield chunk
     time_tracking["lite_embedding_total"] = time.time() - lite_embedding_start_time

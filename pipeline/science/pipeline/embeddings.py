@@ -1,4 +1,5 @@
 import os
+import time
 from pathlib import Path
 from dotenv import load_dotenv
 from langchain_community.vectorstores import FAISS
@@ -7,6 +8,7 @@ from langchain_core.documents import Document
 
 from pipeline.science.pipeline.config import load_config
 from pipeline.science.pipeline.api_handler import ApiHandler
+from pipeline.science.pipeline.utils import create_searchable_chunks
 
 import logging
 logger = logging.getLogger("tutorpipeline.science.embeddings")
@@ -96,15 +98,23 @@ async def generate_LiteRAG_embedding(_doc, file_path, embedding_folder):
         # Try to load existing txt file in graphrag_embedding folder
         logger.info("LiteRAG embedding already exists. We can load existing embeddings...")
     else:
-        # If embeddings don't exist, create them from raw text
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000,
-            chunk_overlap=200,
-            separators=["\n\n", "\n", " ", ""]
-        )
-        raw_text = "\n\n".join([page.get_text() for page in _doc])
-        chunks = text_splitter.create_documents([raw_text])
-        db = FAISS.from_documents(chunks, embeddings)
+        # # If embeddings don't exist, create them from raw text
+        # text_splitter = RecursiveCharacterTextSplitter(
+        #     chunk_size=1000,
+        #     chunk_overlap=200,
+        #     separators=["\n\n", "\n", " ", ""]
+        # )
+        # raw_text = "\n\n".join([page.get_text() for page in _doc])
+        # chunks = text_splitter.create_documents([raw_text])
+        create_searchable_chunks_start_time = time.time()
+        average_page_length = sum(len(doc.page_content) for doc in _doc) / len(_doc)
+        chunk_size = int(average_page_length // 3)
+        logger.info(f"Average page length: {average_page_length}")
+        # yield f"\n\n**Average page length: {int(average_page_length)}**"
+        logger.info(f"Chunk size: {chunk_size}")
+        # yield f"\n\n**Chunk size: {int(chunk_size)}**"
+        texts = create_searchable_chunks(_doc, chunk_size)
+        db = FAISS.from_documents(texts, embeddings)
         db.save_local(lite_embedding_folder)
 
 

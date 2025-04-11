@@ -152,8 +152,8 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
                 yield chunk
     time_tracking["lite_embedding_total"] = time.time() - lite_embedding_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-    logger.info("LiteRAG embedding ready ...")
-    yield "\n\n**🔍 LiteRAG embedding ready ...**"
+    logger.info("LiteRAG embeddings ready ...")
+    yield "\n\n**🔍 LiteRAG embeddings ready ...**"
     yield "</thinking>"
     yield "\n\n**🧠 Loading response ...**\n\n"
 

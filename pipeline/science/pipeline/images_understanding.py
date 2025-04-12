@@ -503,10 +503,9 @@ def process_folder_images(folder_path):
                                         analysis_text += chunk_text
                                         yield chunk_text
                                 else:
-                                    # Fallback if the chunk structure is different
-                                    chunk_text = str(chunk)
-                                    analysis_text += chunk_text
-                                    yield chunk_text
+                                    # Skip empty or malformed chunks instead of converting them to string
+                                    # Only process chunks that have actual content
+                                    continue
                             yield "\n\n"
                             # Update context with analysis text instead of the raw chunk objects
                             contexts[image_name][i] = f"{context}\nImage Analysis: {analysis_text}"

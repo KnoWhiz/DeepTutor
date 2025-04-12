@@ -127,12 +127,14 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         # chain = prompt | llm | StrOutputParser()
         answer = llm.stream(prompt)
         def process_stream():
+            yield "<response>"
             for chunk in answer:
                 # Convert AIMessageChunk to string
                 if hasattr(chunk, 'content'):
                     yield chunk.content
                 else:
                     yield str(chunk)
+            yield "</response>"
         return process_stream()
 
     # Handle Advanced mode

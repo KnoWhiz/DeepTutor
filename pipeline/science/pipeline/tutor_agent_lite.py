@@ -186,31 +186,6 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
 
     yield "<appendix>"
 
-    # For Lite mode, we have minimal sources and follow-up questions
-    yield "\n\n**💬 Loading follow-up questions ...**\n\n"
-    message_content = chat_session.current_message
-    if isinstance(message_content, list) and len(message_content) > 0:
-        message_content = message_content[0]
-    
-    follow_up_questions = generate_follow_up_questions(message_content, [])
-    for i in range(len(follow_up_questions)):
-        follow_up_questions[i] = translate_content(
-            content=follow_up_questions[i],
-            target_lang=chat_session.current_language,
-            stream=False
-        )
-        # Clean up translation prefixes - apply before including in XML
-        follow_up_questions[i] = clean_translation_prefix(follow_up_questions[i])
-
-    for chunk in follow_up_questions:
-        # Ensure the chunk is properly cleaned and formatted before wrapping in XML
-        cleaned_chunk = chunk.strip()
-        if cleaned_chunk:
-            yield "<followup_question>"
-            yield f"{cleaned_chunk}"
-            yield "</followup_question>\n\n"
-    yield "\n\n**💬 Loading follow-up questions done ...**\n\n"
-
     # Add source retrieval - similar to what's in basic and advanced modes
     yield "\n\n**🔍 Retrieving sources ...**\n\n"
     sources_start = time.time()
@@ -257,6 +232,31 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     time_tracking["source_retrieval"] = time.time() - sources_start
     yield "\n\n**🔍 Retrieving sources done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+
+    # For Lite mode, we have minimal sources and follow-up questions
+    yield "\n\n**💬 Loading follow-up questions ...**\n\n"
+    message_content = chat_session.current_message
+    if isinstance(message_content, list) and len(message_content) > 0:
+        message_content = message_content[0]
+    
+    follow_up_questions = generate_follow_up_questions(message_content, [])
+    for i in range(len(follow_up_questions)):
+        follow_up_questions[i] = translate_content(
+            content=follow_up_questions[i],
+            target_lang=chat_session.current_language,
+            stream=False
+        )
+        # Clean up translation prefixes - apply before including in XML
+        follow_up_questions[i] = clean_translation_prefix(follow_up_questions[i])
+
+    for chunk in follow_up_questions:
+        # Ensure the chunk is properly cleaned and formatted before wrapping in XML
+        cleaned_chunk = chunk.strip()
+        if cleaned_chunk:
+            yield "<followup_question>"
+            yield f"{cleaned_chunk}"
+            yield "</followup_question>\n\n"
+    yield "\n\n**💬 Loading follow-up questions done ...**\n\n"
 
     yield "</appendix>"
 

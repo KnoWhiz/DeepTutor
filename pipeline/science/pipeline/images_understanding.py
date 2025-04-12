@@ -381,7 +381,7 @@ Start the response with "##Image Analysis:"
    - Note any visible statistical information or metrics
    - Mention any apparent limitations or qualifications shown
 
-4. SCIENTIFIC TONE:
+4. SCIENTIFIC:
    - Use formal, technical language appropriate for a scientific publication
    - Maintain objectivity throughout your description
    - Be concise yet thorough
@@ -493,10 +493,24 @@ def process_folder_images(folder_path):
                             yield "\n\n"
                         else:
                             yield "\n\n"
+                            analysis_text = ""
                             for chunk in analysis:
-                                yield chunk
+                                if hasattr(chunk, "choices") and chunk.choices:
+                                    # Extract the actual text content from the ChatCompletionChunk
+                                    delta = chunk.choices[0].delta
+                                    if hasattr(delta, "content") and delta.content:
+                                        chunk_text = delta.content
+                                        analysis_text += chunk_text
+                                        yield chunk_text
+                                else:
+                                    # Fallback if the chunk structure is different
+                                    chunk_text = str(chunk)
+                                    analysis_text += chunk_text
+                                    yield chunk_text
                             yield "\n\n"
-                        # yield f"\n\n**Image analysis for {image_name} completed.**"
+                            # Update context with analysis text instead of the raw chunk objects
+                            contexts[image_name][i] = f"{context}\nImage Analysis: {analysis_text}"
+                            continue
                         # Update context with analysis
                         contexts[image_name][i] = f"{context}\nImage Analysis: {analysis}"
 

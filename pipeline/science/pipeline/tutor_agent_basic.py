@@ -81,17 +81,21 @@ async def tutor_agent_basic(chat_session: ChatSession, file_path_list, user_inpu
 async def tutor_agent_basic_streaming_tracking(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
     async for chunk in tutor_agent_basic_streaming(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream):
         yield chunk
-        chat_session.current_message += chunk
-
-    # answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions = extract_basic_mode_content(chat_session.current_message)
-    # logger.info(f"Extracted answer: {answer}")
-    # logger.info(f"Extracted sources: {sources}")
-    # logger.info(f"Extracted source pages: {source_pages}")
-    # logger.info(f"Extracted source annotations: {source_annotations}")
-    # logger.info(f"Extracted refined source pages: {refined_source_pages}")
-    # logger.info(f"Extracted refined source index: {refined_source_index}")
-    # logger.info(f"Extracted follow-up questions: {follow_up_questions}")
-    # logger.info(f"Current message: {chat_session.current_message}")
+        # Extract text content from ChatCompletionChunk if needed
+        if isinstance(chunk, str):
+            chat_session.current_message += chunk
+        elif hasattr(chunk, "choices") and chunk.choices:
+            # Extract the actual text content from the ChatCompletionChunk
+            delta = chunk.choices[0].delta
+            if hasattr(delta, "content") and delta.content:
+                chat_session.current_message += delta.content
+        else:
+            # Fallback for other types of chunks
+            try:
+                chat_session.current_message += str(chunk)
+            except Exception as e:
+                logger.warning(f"Could not concatenate chunk to message: {e}")
+                # Skip this chunk if it can't be converted to string
 
 
 async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):

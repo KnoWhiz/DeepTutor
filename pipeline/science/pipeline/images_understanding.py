@@ -355,7 +355,10 @@ def analyze_image(image_url=None, system_prompt=None, user_prompt=None, context=
    - Trends, patterns, or relationships evident in the data
    - Statistical indicators (p-values, error bars, confidence intervals)
 
-CRITICAL: Do NOT speculate beyond what is explicitly shown. If information is unclear or not provided, state this plainly rather than making assumptions. Deliver your analysis in a scientific, precise tone."""
+CRITICAL: Do NOT speculate beyond what is explicitly shown. If information is unclear or not provided, state this plainly rather than making assumptions. Deliver your analysis in a scientific, precise tone.
+
+Start the response with "##Image Analysis:"
+"""
 
     system_prompt = system_prompt + f"""You are analyzing a scientific figure. Your task is to provide a comprehensive, accurate, and factual description of EXACTLY what appears in the image. 
 
@@ -382,7 +385,10 @@ CRITICAL: Do NOT speculate beyond what is explicitly shown. If information is un
    - Maintain objectivity throughout your description
    - Be concise yet thorough
 
-If certain details are unclear or not visible, simply state "This information is not visible in the image" rather than making educated guesses."""
+If certain details are unclear or not visible, simply state "This information is not visible in the image" rather than making educated guesses.
+
+Start the response with "##Image Analysis:"
+"""
 
     # Initialize Azure OpenAI client
     api_base = os.getenv('AZURE_OPENAI_ENDPOINT')

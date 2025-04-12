@@ -60,7 +60,7 @@
     "image_extensions": [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".webp", ".svg"],
     "inference_token_limit": 8000,
     "stream": true,
-    "summary_wording": "Can you give me a summary of this document?",
+    "summary_wording": "Based on the context provided, make a summary for the document. Begin with \"Summary\"",
     "map_symbol_to_index": {
         "<1>": 0,
         "<2>": 1,

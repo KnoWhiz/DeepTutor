@@ -166,7 +166,7 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     pdf_content = ""
     
     # Calculate word budget per file
-    total_word_budget = 20000
+    total_word_budget = 2000
     files_count = len(file_path_list)
     words_per_file = total_word_budget // files_count if files_count > 0 else total_word_budget
     
@@ -200,15 +200,15 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     # Handle initial welcome message when chat history is empty
     # initial_message_start_time = time.time()
     if user_input == config["summary_wording"] or not chat_history:
-        question = Question(text=user_input, language=chat_session.current_language, question_type="local")
         # Include the PDF content in addition to user_input as refined_user_input
         refined_user_input = f"{user_input}\n\nThis is the document content: {pdf_content}"
+        question = Question(text=refined_user_input, language=chat_session.current_language, question_type="local")
     else:
-        # Regular chat flow - include PDF content in the user input
-        question = Question(text=user_input, language=chat_session.current_language, question_type="local")
         refined_user_input = f"{user_input}\n\n{pdf_content}"
+        # Regular chat flow - include PDF content in the user input
+        question = Question(text=refined_user_input, language=chat_session.current_language, question_type="local")
 
-    logger.info(f"Refined user input created with PDF content")
+    logger.info(f"Refined user input created with PDF content: {refined_user_input}")
 
     # time_tracking["summary_message"] = time.time() - initial_message_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")

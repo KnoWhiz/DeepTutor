@@ -314,7 +314,7 @@ def extract_image_context(folder_dir: str | Path, file_path: str = "", context_t
     logger.info(f"Image context data saved to: {image_context_path}")
 
 
-def analyze_image(image_url=None, system_prompt=None, user_prompt=None):
+def analyze_image(image_url=None, system_prompt=None, user_prompt=None, context=None):
     """
     Analyze an image using Azure OpenAI's vision model.
 
@@ -322,7 +322,8 @@ def analyze_image(image_url=None, system_prompt=None, user_prompt=None):
         image_url (str, optional): URL of the image to analyze. Defaults to a test image if none provided.
         system_prompt (str, optional): System prompt for the vision model. Defaults to a test image if none provided.
         user_prompt (str, optional): User prompt for the vision model. Defaults to a test image if none provided.
-
+        context (str, optional): Context for the image. Defaults to None.
+        
     Returns:
         str: The analysis result from the vision model
     """
@@ -445,9 +446,10 @@ def process_folder_images(folder_path):
                         yield "\n\n**📊 Getting image analysis for saved image ...**"
                         image_url = urls[image_name]
                         yield f"\n\n![{image_name}]({image_url})"
-                        analysis = analyze_image(image_url)
+                        analysis = analyze_image(image_url, context = context)
                         if type(analysis) == str:
                             yield "\n\n"
+                            # yield f"Context: {context}"
                             yield analysis
                             yield "\n\n"
                         # yield f"\n\n**Image analysis for {image_name} completed.**"

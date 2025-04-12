@@ -185,7 +185,7 @@ async def generate_LiteRAG_embedding(_doc, file_path, embedding_folder):
         # )
         # raw_text = "\n\n".join([page.get_text() for page in _doc])
         # chunks = text_splitter.create_documents([raw_text])
-        average_page_length = 30000
+        average_page_length = 3000
         chunk_size = int(average_page_length // 3)
         logger.info(f"Average page length: {average_page_length}")
         # yield f"\n\n**Average page length: {int(average_page_length)}**"

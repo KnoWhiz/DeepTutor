@@ -314,7 +314,7 @@ def extract_image_context(folder_dir: str | Path, file_path: str = "", context_t
     logger.info(f"Image context data saved to: {image_context_path}")
 
 
-def analyze_image(image_url=None, system_prompt=None, user_prompt=None, context=None):
+def analyze_image(image_url=None, system_prompt=None, user_prompt=None, context=None, stream=True):
     """
     Analyze an image using Azure OpenAI's vision model.
 
@@ -323,9 +323,10 @@ def analyze_image(image_url=None, system_prompt=None, user_prompt=None, context=
         system_prompt (str, optional): System prompt for the vision model. Defaults to a test image if none provided.
         user_prompt (str, optional): User prompt for the vision model. Defaults to a test image if none provided.
         context (str, optional): Context for the image. Defaults to None.
+        stream (bool, optional): Whether to stream the response incrementally. Defaults to True.
 
     Returns:
-        str: The analysis result from the vision model
+        str or generator: The analysis result as text, or a generator of response chunks if stream=True
     """
     if system_prompt is None:
         system_prompt = ""
@@ -432,8 +433,15 @@ Start the response with "##Image Analysis:"
         response = client.chat.completions.create(
             model=deployment_name,
             messages=messages,
-            max_tokens=2000
+            max_tokens=2000,
+            stream=stream
         )
+        
+        # Handle streaming response
+        if stream:
+            return response  # Return the streaming response generator
+        
+        # Handle non-streaming response
         result = response.choices[0].message.content
         return result
 
@@ -441,7 +449,7 @@ Start the response with "##Image Analysis:"
         logger.exception(f"Error occurred in analyze_image with Azure OpenAI: {str(e)}")
 
         # Try another model for image understanding
-        result = process_image_with_llama(image_url, system_prompt)
+        result = process_image_with_llama(image_url, system_prompt, stream)
         return result
 
 
@@ -477,11 +485,16 @@ def process_folder_images(folder_path):
                         yield "\n\n**📊 Getting image analysis for saved image ...**"
                         image_url = urls[image_name]
                         yield f"\n\n![{image_name}]({image_url})"
-                        analysis = analyze_image(image_url, context = context)
+                        analysis = analyze_image(image_url, context=context, stream=True)
                         if type(analysis) == str:
                             yield "\n\n"
                             # yield f"Context: {context}"
                             yield analysis
+                            yield "\n\n"
+                        else:
+                            yield "\n\n"
+                            for chunk in analysis:
+                                yield chunk
                             yield "\n\n"
                         # yield f"\n\n**Image analysis for {image_name} completed.**"
                         # Update context with analysis

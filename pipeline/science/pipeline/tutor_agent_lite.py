@@ -163,17 +163,18 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     # Handle initial welcome message when chat history is empty
     # initial_message_start_time = time.time()
     if user_input == config["summary_wording"] or not chat_history:
-        pass
-        # yield "<response>"
-        # yield "Hello! How can I assist you today?"
-        # yield "</response>"
+        question = Question(text=user_input, language=chat_session.current_language, question_type="local")
+        # Include the first 10000 words in the document in addition to user_input as refined_user_input
+        refined_user_input = user_input
+    else:
+        # Regular chat flow - for Lite mode, we don't need to refine the user input
+        question = Question(text=user_input, language=chat_session.current_language, question_type="local")
+        refined_user_input = user_input  # No refinement in lite mode
+
+    logger.info(f"Refined user input: {refined_user_input}")
 
     # time_tracking["summary_message"] = time.time() - initial_message_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-
-    # Regular chat flow - for Lite mode, we don't need to refine the user input
-    question = Question(text=user_input, language=chat_session.current_language, question_type="local")
-    refined_user_input = user_input  # No refinement in lite mode
 
     # Get response
     response_start = time.time()

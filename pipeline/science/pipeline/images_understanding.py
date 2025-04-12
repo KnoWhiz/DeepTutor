@@ -323,13 +323,18 @@ def analyze_image(image_url=None, system_prompt=None, user_prompt=None, context=
         system_prompt (str, optional): System prompt for the vision model. Defaults to a test image if none provided.
         user_prompt (str, optional): User prompt for the vision model. Defaults to a test image if none provided.
         context (str, optional): Context for the image. Defaults to None.
-        
+
     Returns:
         str: The analysis result from the vision model
     """
     if system_prompt is None:
         system_prompt = ""
-    system_prompt = system_prompt + """You are an expert data scientist analyzing scientific figures. Provide factual, accurate analysis of what is ACTUALLY VISIBLE in the image. Focus on statistical information, data visualization elements, and clearly presented facts.
+    if context is not None:
+        context = ""
+    if user_prompt is None:
+        user_prompt = ""
+
+    user_prompt = user_prompt + """You are an expert data scientist analyzing scientific figures. Provide factual, accurate analysis of what is ACTUALLY VISIBLE in the image. Focus on statistical information, data visualization elements, and clearly presented facts.
 
 CRITICAL: Do NOT speculate beyond what is explicitly shown. If information is unclear or not provided, state this plainly rather than making assumptions.
 
@@ -340,9 +345,7 @@ Analyze:
 
 Your analysis should be thorough but strictly limited to observable content."""
 
-    if user_prompt is None:
-        user_prompt = ""
-    user_prompt = user_prompt + """Analyze this scientific figure with focus on statistical content:
+    system_prompt = system_prompt + """Analyze this scientific figure with focus on statistical content:
 
 1. DESCRIPTION:
    - Visualization type, axes, legend components

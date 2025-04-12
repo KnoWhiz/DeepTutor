@@ -16,6 +16,7 @@ from pipeline.science.pipeline.content_translator import (
 from pipeline.science.pipeline.doc_processor import (
     save_file_txt_locally,
     process_pdf_file,
+    extract_document_from_file,
 )
 from pipeline.science.pipeline.session_manager import ChatSession
 from pipeline.science.pipeline.helper.index_files_saving import (
@@ -27,6 +28,7 @@ from pipeline.science.pipeline.get_response import (
     generate_follow_up_questions,
 )
 from pipeline.science.pipeline.config import load_config
+from pipeline.science.pipeline.sources_retrieval import get_response_source
 
 import logging
 logger = logging.getLogger("tutorpipeline.science.tutor_agent_lite")
@@ -68,7 +70,11 @@ async def tutor_agent_lite(chat_session: ChatSession, file_path_list, user_input
 async def tutor_agent_lite_streaming_tracking(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
     async for chunk in tutor_agent_lite_streaming(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream):
         yield chunk
-        chat_session.current_message += chunk
+        # Ensure chunk is a string before concatenating
+        if hasattr(chunk, 'content'):
+            chat_session.current_message += chunk.content
+        else:
+            chat_session.current_message += str(chunk)
 
     # answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions = extract_lite_mode_content(chat_session.current_message)
     # logger.info(f"Extracted answer: {answer}")
@@ -105,14 +111,15 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     yield "Processing documents ...\n\n"
     hashing_start_time = time.time()
     file_id_list = [generate_file_id(file_path) for file_path in file_path_list]
-    path_prefix = os.getenv("FILE_PATH_PREFIX")
-    if not path_prefix:
-        path_prefix = ""
-    embedded_content_path = os.path.join(path_prefix, 'embedded_content')
-    embedding_folder_list = [os.path.join(embedded_content_path, file_id) for file_id in file_id_list]
+    # path_prefix = os.getenv("FILE_PATH_PREFIX")
+    # if not path_prefix:
+    #     path_prefix = ""
+    # embedded_content_path = os.path.join(path_prefix, 'embedded_content')
+    # embedding_folder_list = [os.path.join(embedded_content_path, file_id) for file_id in file_id_list]
+    embedding_folder_list = [os.path.join("embedded_content/lite_mode", file_id) for file_id in file_id_list]
     logger.info(f"Embedding folder: {embedding_folder_list}")
-    if not os.path.exists(embedded_content_path):
-        os.makedirs(embedded_content_path)
+    if not os.path.exists("embedded_content/lite_mode"):
+        os.makedirs("embedded_content/lite_mode")
     for embedding_folder in embedding_folder_list:
         if not os.path.exists(embedding_folder):
             os.makedirs(embedding_folder)
@@ -141,32 +148,70 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
             _document, _doc = process_pdf_file(file_path)
             save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
             logger.info(f"Loading LiteRAG embedding for {file_id} ...")
-            yield "\n\n**🔍 Loading LiteRAG embedding ...**"
+            yield "\n\n**🔍 Loading LiteRAG embeddings ...**"
             async for chunk in embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder):
                 yield chunk
     time_tracking["lite_embedding_total"] = time.time() - lite_embedding_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-    logger.info("LiteRAG embedding ready ...")
-    yield "\n\n**🔍 LiteRAG embedding ready ...**"
+    logger.info("LiteRAG embeddings ready ...")
+    yield "\n\n**🔍 LiteRAG embeddings ready ...**"
     yield "</thinking>"
     yield "\n\n**🧠 Loading response ...**\n\n"
 
     chat_history = chat_session.chat_history
     context_chat_history = chat_history
 
+    # Load PDF content with distributed word budget
+    pdf_content_loading_start = time.time()
+    pdf_content = ""
+    
+    # Calculate word budget per file
+    total_word_budget = 2000
+    files_count = len(file_path_list)
+    words_per_file = total_word_budget // files_count if files_count > 0 else total_word_budget
+    
+    logger.info(f"Loading PDF content with {words_per_file} words per file from {files_count} files")
+    yield "\n\n**📚 Loading PDF content with distributed word budget...**\n\n"
+    
+    for file_path in file_path_list:
+        try:
+            # Extract document from the file
+            document = extract_document_from_file(file_path)
+            # Extract text from the document
+            file_content = ""
+            for doc in document:
+                if hasattr(doc, 'page_content') and doc.page_content:
+                    file_content += doc.page_content.strip() + "\n"
+            # Take only the words_per_file words from this file
+            file_words = file_content.split()
+            if len(file_words) > words_per_file:
+                file_words = file_words[:words_per_file]
+            file_excerpt = " ".join(file_words)
+            pdf_content += f"\n\n--- Content from {os.path.basename(file_path)} ---\n{file_excerpt}\n"
+            logger.info(f"Added {len(file_words)} words from {file_path}")
+        except Exception as e:
+            logger.error(f"Error extracting content from {file_path}: {str(e)}")
+            yield f"\n\n**⚠️ Error loading content from {os.path.basename(file_path)}: {str(e)}**\n\n"
+    
+    time_tracking["pdf_content_loading"] = time.time() - pdf_content_loading_start
+    logger.info(f"PDF content loading complete. Time: {format_time_tracking(time_tracking)}")
+    yield "\n\n**📚 PDF content loading complete**\n\n"
+
     # Handle initial welcome message when chat history is empty
     # initial_message_start_time = time.time()
     if user_input == config["summary_wording"] or not chat_history:
-        pass
-        # yield "<response>"
-        # yield "Hello! How can I assist you today?"
-        # yield "</response>"
+        # Include the PDF content in addition to user_input as refined_user_input
+        refined_user_input = f"{user_input}\n\nThis is the document content: {pdf_content}"
+        question = Question(text=refined_user_input, language=chat_session.current_language, question_type="local")
+    else:
+        refined_user_input = f"{user_input}\n\n{pdf_content}"
+        # Regular chat flow - include PDF content in the user input
+        question = Question(text=refined_user_input, language=chat_session.current_language, question_type="local")
+
+    logger.info(f"Refined user input created with PDF content: {refined_user_input}")
 
     # time_tracking["summary_message"] = time.time() - initial_message_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-
-    # Regular chat flow - for Lite mode, we don't need to refine the user input
-    question = Question(text=user_input, language=chat_session.current_language, question_type="local")
 
     # Get response
     response_start = time.time()
@@ -178,6 +223,53 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     yield "<appendix>"
+
+    # Add source retrieval - similar to what's in basic and advanced modes
+    yield "\n\n**🔍 Retrieving sources ...**\n\n"
+    sources_start = time.time()
+    # Update the embedding folder paths to include the lite_embedding subdirectory
+    lite_embedding_folder_list = [os.path.join(folder, "lite_embedding") for folder in embedding_folder_list]
+    
+    # Ensure the markdown directories exist for storing image context and URLs
+    for folder in lite_embedding_folder_list:
+        markdown_dir = os.path.join(folder, "markdown")
+        if not os.path.exists(markdown_dir):
+            os.makedirs(markdown_dir, exist_ok=True)
+            logger.info(f"Created markdown directory: {markdown_dir}")
+    
+    sources, source_pages, refined_source_pages, refined_source_index = get_response_source(
+        chat_session=chat_session,
+        file_path_list=file_path_list,
+        user_input=refined_user_input,
+        answer=chat_session.current_message,
+        chat_history=chat_history,
+        embedding_folder_list=lite_embedding_folder_list
+    )
+
+    for source_key, source_value in sources.items():
+        yield "<source>"
+        yield "{" + str(source_key) + "}"
+        yield "{" + str(source_value) + "}"
+        yield "</source>"
+    for source_page_key, source_page_value in source_pages.items():
+        yield "<source_page>"
+        yield "{" + str(source_page_key) + "}"
+        yield "{" + str(source_page_value) + "}"
+        yield "</source_page>"
+    for refined_source_page_key, refined_source_page_value in refined_source_pages.items():
+        yield "<refined_source_page>"
+        yield "{" + str(refined_source_page_key) + "}"
+        yield "{" + str(refined_source_page_value) + "}"
+        yield "</refined_source_page>"
+    for refined_source_index_key, refined_source_index_value in refined_source_index.items():
+        yield "<refined_source_index>"
+        yield "{" + str(refined_source_index_key) + "}"
+        yield "{" + str(refined_source_index_value) + "}"
+        yield "</refined_source_index>"
+
+    time_tracking["source_retrieval"] = time.time() - sources_start
+    yield "\n\n**🔍 Retrieving sources done ...**\n\n"
+    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # For Lite mode, we have minimal sources and follow-up questions
     yield "\n\n**💬 Loading follow-up questions ...**\n\n"
@@ -203,21 +295,6 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
             yield f"{cleaned_chunk}"
             yield "</followup_question>\n\n"
     yield "\n\n**💬 Loading follow-up questions done ...**\n\n"
-
-    yield "\n\n**🔍 Retrieving sources ...**\n\n"
-    yield "\n\n**🔍 Retrieving sources done ...**\n\n"
-
-    yield "\n\n**🔍 Retrieving source pages ...**\n\n"
-    yield "\n\n**🔍 Retrieving source pages done ...**\n\n"
-
-    yield "\n\n**🔍 Retrieving source annotations ...**\n\n"
-    yield "\n\n**🔍 Retrieving source annotations done ...**\n\n"
-
-    yield "\n\n**🔍 Refining source pages ...**\n\n"
-    yield "\n\n**🔍 Refining source pages done ...**\n\n"
-
-    yield "\n\n**🔍 Refining source index ...**\n\n"
-    yield "\n\n**🔍 Refining source index done ...**\n\n"
 
     yield "</appendix>"
 

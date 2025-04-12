@@ -48,17 +48,71 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
     generators_list = []
     config = load_config()
     user_input = question.text
+    user_input_string = str(user_input + "\n\n" + question.special_context)
     # Handle Lite mode first
     if chat_session.mode == ChatMode.LITE:
-        lite_prompt = """
-        You are an expert tutor specializing in precise, professional explanations of complex document content.
+        # lite_prompt = """
+        # You are an expert tutor specializing in precise, professional explanations of complex document content.
+        # CONTEXT INFORMATION:
+        # - Previous conversation: {chat_history}
+        # - Reference content from document: {context}
+        # USER QUESTION:
+        # {input}
+        # RESPONSE GUIDELINES:
+        # 1. Provide concise, accurate answers directly addressing the question
+        # 2. Use clear, precise language with appropriate technical terminology
+        # 3. Format key concepts and important points in **bold**
+        # 4. Maintain a professional, academic tone throughout the response
+        # 5. Break down complex information into structured, logical segments
+        # 6. When explaining technical concepts, include relevant examples or applications
+        # 7. Clearly state limitations of explanations when uncertainty exists
+        # 8. Use bullet points or numbered lists for sequential explanations
+        # 9. Cite specific parts of the document when directly referencing content
+        # Your goal is to deliver accurate, clear, and professionally structured responses that enhance comprehension of complex topics.
+        # """
+        # actual_embedding_folder_list = [os.path.join(embedding_folder, 'lite_embedding') for embedding_folder in embedding_folder_list]
+        # db = load_embeddings(actual_embedding_folder_list, 'lite')
+        # logger.info(f"Type of db: {type(db)}")
+        # answer = await get_db_rag_response(
+        #     prompt_string=lite_prompt,
+        #     user_input=user_input + "\n\n" + question.special_context,
+        #     chat_history=chat_history,
+        #     chat_session=chat_session,
+        #     db=db,
+        #     stream=stream
+        # )   # If stream is True, the answer is a generator; otherwise, it's a string
+        # if stream is True:
+        #     return answer
+        # else:
+        #     return answer
 
-        CONTEXT INFORMATION:
-        - Previous conversation: {chat_history}
-        - Reference content from document: {context}
-
-        USER QUESTION:
-        {input}
+        config = load_config()
+        token_limit = config["inference_token_limit"]
+        map_symbol_to_index = config["map_symbol_to_index"]
+        # Get the first 3 keys from map_symbol_to_index for examples in the prompt
+        first_keys = list(map_symbol_to_index.keys())[:3]
+        example_keys = ", or ".join(first_keys)
+        logger.info(f"embedding_folder_list in get_response: {embedding_folder_list}")
+        formatted_context = await get_rag_context(chat_session=chat_session,
+                                            file_path_list=file_path_list,
+                                            question=question,
+                                            chat_history=chat_history,
+                                            embedding_folder_list=embedding_folder_list,
+                                            deep_thinking=deep_thinking,
+                                            stream=stream,
+                                            context="")
+        # formatted_context_string = str(formatted_context)
+        formatted_context_string = chat_session.formatted_context
+        prompt = f"""
+        You are a deep thinking tutor helping a student reading a paper.
+        Reference context chunks with relevance scores from the paper: 
+        {formatted_context_string}
+        The student's query is: {user_input_string}
+        For formulas, use LaTeX format with $...$ or 
+        $$
+        ...
+        $$
+        and make sure latex syntax can be properly rendered in the response.
 
         RESPONSE GUIDELINES:
         1. Provide concise, accurate answers directly addressing the question
@@ -70,35 +124,41 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         7. Clearly state limitations of explanations when uncertainty exists
         8. Use bullet points or numbered lists for sequential explanations
         9. Cite specific parts of the document when directly referencing content
-
         Your goal is to deliver accurate, clear, and professionally structured responses that enhance comprehension of complex topics.
-        """
-        actual_embedding_folder_list = [os.path.join(embedding_folder, 'lite_embedding') for embedding_folder in embedding_folder_list]
 
-        db = load_embeddings(actual_embedding_folder_list, 'lite')
-        logger.info(f"Type of db: {type(db)}")
-        answer = await get_db_rag_response(
-            prompt_string=lite_prompt,
-            user_input=user_input + "\n\n" + question.special_context,
-            chat_history=chat_history,
-            chat_session=chat_session,
-            db=db,
-            stream=stream
-        )   # If stream is True, the answer is a generator; otherwise, it's a string
-        if stream is True:
-            return answer
-        else:
-            return answer
+        Requirement:
+        Only use the information from the context chunks to answer the question. Give the response in a scientific and academic tone. Do not make up or assume anything or guess without any evidence. If you answer some questions based on your own knowledge, clearly state that you are using your own knowledge.
+
+        Format requirement:
+        1. Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like {example_keys}, etc>]" at the end of the sentence after the period mark. If there are more than one context chunk keys, use the format "[<chunk_key_1>][<chunk_key_2>] ..." to cite all the context chunk keys.
+        2. Use markdown syntax for formatting the response to make it more clear and readable.
+        """
+        # prompt = ChatPromptTemplate.from_template(prompt)
+        llm = get_llm('advanced', config['llm'])
+        # chain = prompt | llm | StrOutputParser()
+        answer = llm.stream(prompt)
+        def process_stream():
+            yield "<response>"
+            for chunk in answer:
+                # Convert AIMessageChunk to string
+                if hasattr(chunk, 'content'):
+                    yield chunk.content
+                else:
+                    yield str(chunk)
+            yield "</response>"
+        return process_stream()
 
     # Handle Advanced mode
     if chat_session.mode == ChatMode.ADVANCED:
         try:
-            answer = await get_GraphRAG_global_response(user_input=user_input + "\n\n" + question.special_context, 
+            answer = await get_GraphRAG_global_response(question=question, 
                                                         chat_history=chat_history, 
+                                                        file_path_list=file_path_list,
                                                         embedding_folder_list=embedding_folder_list, 
                                                         deep_thinking=deep_thinking, 
                                                         chat_session=chat_session, 
                                                         stream=stream)
+            logger.info(f"TEST: chat_session.formatted_context after get_GraphRAG_global_response: {chat_session.formatted_context}")
             return answer
         except Exception as e:
             logger.exception("Error getting response from GraphRAG:", e)
@@ -156,7 +216,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         first_keys = list(map_symbol_to_index.keys())[:3]
         example_keys = ", or ".join(first_keys)
         chat_history_string = truncate_chat_history(chat_history, token_limit=token_limit)
-        user_input_string = str(user_input + "\n\n" + question.special_context)
+        # user_input_string = str(user_input + "\n\n" + question.special_context)
         
         formatted_context = await get_rag_context(chat_session=chat_session,
                                             file_path_list=file_path_list,
@@ -164,7 +224,8 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                                             chat_history=chat_history,
                                             embedding_folder_list=embedding_folder_list,
                                             deep_thinking=deep_thinking,
-                                            stream=stream)
+                                            stream=stream,
+                                            context="")
         # formatted_context_string = str(formatted_context)
         formatted_context_string = chat_session.formatted_context
 

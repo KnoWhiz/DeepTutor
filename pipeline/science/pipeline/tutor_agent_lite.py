@@ -16,6 +16,7 @@ from pipeline.science.pipeline.content_translator import (
 from pipeline.science.pipeline.doc_processor import (
     save_file_txt_locally,
     process_pdf_file,
+    extract_document_from_file,
 )
 from pipeline.science.pipeline.session_manager import ChatSession
 from pipeline.science.pipeline.helper.index_files_saving import (
@@ -160,18 +161,54 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     chat_history = chat_session.chat_history
     context_chat_history = chat_history
 
+    # Load PDF content with distributed word budget
+    pdf_content_loading_start = time.time()
+    pdf_content = ""
+    
+    # Calculate word budget per file
+    total_word_budget = 20000
+    files_count = len(file_path_list)
+    words_per_file = total_word_budget // files_count if files_count > 0 else total_word_budget
+    
+    logger.info(f"Loading PDF content with {words_per_file} words per file from {files_count} files")
+    yield "\n\n**📚 Loading PDF content with distributed word budget...**\n\n"
+    
+    for file_path in file_path_list:
+        try:
+            # Extract document from the file
+            document = extract_document_from_file(file_path)
+            # Extract text from the document
+            file_content = ""
+            for doc in document:
+                if hasattr(doc, 'page_content') and doc.page_content:
+                    file_content += doc.page_content.strip() + "\n"
+            # Take only the words_per_file words from this file
+            file_words = file_content.split()
+            if len(file_words) > words_per_file:
+                file_words = file_words[:words_per_file]
+            file_excerpt = " ".join(file_words)
+            pdf_content += f"\n\n--- Content from {os.path.basename(file_path)} ---\n{file_excerpt}\n"
+            logger.info(f"Added {len(file_words)} words from {file_path}")
+        except Exception as e:
+            logger.error(f"Error extracting content from {file_path}: {str(e)}")
+            yield f"\n\n**⚠️ Error loading content from {os.path.basename(file_path)}: {str(e)}**\n\n"
+    
+    time_tracking["pdf_content_loading"] = time.time() - pdf_content_loading_start
+    logger.info(f"PDF content loading complete. Time: {format_time_tracking(time_tracking)}")
+    yield "\n\n**📚 PDF content loading complete**\n\n"
+
     # Handle initial welcome message when chat history is empty
     # initial_message_start_time = time.time()
     if user_input == config["summary_wording"] or not chat_history:
         question = Question(text=user_input, language=chat_session.current_language, question_type="local")
-        # Include the first 10000 words in the document in addition to user_input as refined_user_input
-        refined_user_input = user_input
+        # Include the PDF content in addition to user_input as refined_user_input
+        refined_user_input = f"{user_input}\n\nThis is the document content: {pdf_content}"
     else:
-        # Regular chat flow - for Lite mode, we don't need to refine the user input
+        # Regular chat flow - include PDF content in the user input
         question = Question(text=user_input, language=chat_session.current_language, question_type="local")
-        refined_user_input = user_input  # No refinement in lite mode
+        refined_user_input = f"{user_input}\n\n{pdf_content}"
 
-    logger.info(f"Refined user input: {refined_user_input}")
+    logger.info(f"Refined user input created with PDF content")
 
     # time_tracking["summary_message"] = time.time() - initial_message_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")

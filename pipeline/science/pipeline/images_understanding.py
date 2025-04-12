@@ -329,39 +329,60 @@ def analyze_image(image_url=None, system_prompt=None, user_prompt=None, context=
     """
     if system_prompt is None:
         system_prompt = ""
-    if context is not None:
-        context = ""
     if user_prompt is None:
         user_prompt = ""
+    
+    context_info = ""
+    if context is not None and context:
+        context_info = f"REFERENCE CONTEXT FROM DOCUMENT: {context}\n\n"
+    
+    user_prompt = user_prompt + f"""You are an expert scientist analyzing scientific figures. Provide a factual, objective analysis of what is ACTUALLY VISIBLE in the image. Adapt your analysis to the type of figure shown (data plot, experimental illustration, conceptual diagram, etc.).
 
-    user_prompt = user_prompt + """You are an expert data scientist analyzing scientific figures. Provide factual, accurate analysis of what is ACTUALLY VISIBLE in the image. Focus on statistical information, data visualization elements, and clearly presented facts.
+{context_info}Based on the image and any provided context, analyze ONLY what is clearly observable:
 
-CRITICAL: Do NOT speculate beyond what is explicitly shown. If information is unclear or not provided, state this plainly rather than making assumptions.
+1. FIGURE TYPE AND PURPOSE:
+   - Identify if this is a data visualization, experimental setup, conceptual diagram, microscopy image, etc.
+   - Note the apparent scientific discipline or subject area
 
-Analyze:
-1. Visual elements (chart type, axes, legend, data series)
-2. Visible statistical content (values, trends, error bars)
-3. Explicitly stated information (labels, captions, annotations)
+2. VISIBLE ELEMENTS:
+   - For data plots: chart type, axes, scales, legends, data series, error indicators
+   - For diagrams: labeled components, pathways, relationships, structures
+   - For experimental illustrations: equipment, materials, procedures, conditions
+   - For microscopy/imagery: visible structures, scale markers, coloration, highlighting
 
-Your analysis should be thorough but strictly limited to observable content."""
+3. QUANTITATIVE INFORMATION:
+   - Any explicitly visible measurements, values, statistics
+   - Trends, patterns, or relationships evident in the data
+   - Statistical indicators (p-values, error bars, confidence intervals)
 
-    system_prompt = system_prompt + """Analyze this scientific figure with focus on statistical content:
+CRITICAL: Do NOT speculate beyond what is explicitly shown. If information is unclear or not provided, state this plainly rather than making assumptions. Deliver your analysis in a scientific, precise tone."""
 
-1. DESCRIPTION:
-   - Visualization type, axes, legend components
-   - Variables and data series presented
+    system_prompt = system_prompt + f"""You are analyzing a scientific figure. Your task is to provide a comprehensive, accurate, and factual description of EXACTLY what appears in the image. 
 
-2. STATISTICAL CONTENT:
-   - Numerical values, ranges, and distributions shown
-   - Statistical indicators visible (means, p-values, error bars)
-   - Apparent trends, patterns or correlations
-   - Notable data points or outliers
+{context_info}Guidelines for your analysis:
 
-3. FACTUAL INTERPRETATION:
-   - What conclusions are explicitly supported by the visible data
-   - Any stated limitations or qualifications
+1. ADAPTABILITY: 
+   - Adjust your analysis based on the figure type (graph, diagram, microscopy image, etc.)
+   - Focus on the most relevant aspects for each type of visualization
 
-Provide precise descriptions of visible statistical elements. If something is unclear or not shown, simply state "This information is not visible in the image" rather than inferring details."""
+2. PRECISION AND FACTUALITY:
+   - Describe only what is visibly present - no speculation or assumptions
+   - Use precise scientific terminology appropriate to the apparent field
+   - When exact values are visible, report them accurately with units
+   - When relationships or trends are shown, describe them objectively
+
+3. COMPLETENESS:
+   - Identify all labeled elements, axes, legends, and annotations
+   - Describe the visualization structure and organization
+   - Note any visible statistical information or metrics
+   - Mention any apparent limitations or qualifications shown
+
+4. SCIENTIFIC TONE:
+   - Use formal, technical language appropriate for a scientific publication
+   - Maintain objectivity throughout your description
+   - Be concise yet thorough
+
+If certain details are unclear or not visible, simply state "This information is not visible in the image" rather than making educated guesses."""
 
     # Initialize Azure OpenAI client
     api_base = os.getenv('AZURE_OPENAI_ENDPOINT')
@@ -399,6 +420,7 @@ Provide precise descriptions of visible statistical elements. If something is un
                 ]
             }
         ]
+        logger.info(f"The full messages are: {messages}")
 
         # Generate response
         response = client.chat.completions.create(

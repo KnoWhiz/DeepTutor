@@ -314,7 +314,7 @@ def extract_image_context(folder_dir: str | Path, file_path: str = "", context_t
     logger.info(f"Image context data saved to: {image_context_path}")
 
 
-def analyze_image(image_url=None, system_prompt=None, user_prompt=None):
+def analyze_image(image_url=None, system_prompt=None, user_prompt=None, context=None, stream=True):
     """
     Analyze an image using Azure OpenAI's vision model.
 
@@ -322,42 +322,74 @@ def analyze_image(image_url=None, system_prompt=None, user_prompt=None):
         image_url (str, optional): URL of the image to analyze. Defaults to a test image if none provided.
         system_prompt (str, optional): System prompt for the vision model. Defaults to a test image if none provided.
         user_prompt (str, optional): User prompt for the vision model. Defaults to a test image if none provided.
+        context (str, optional): Context for the image. Defaults to None.
+        stream (bool, optional): Whether to stream the response incrementally. Defaults to True.
 
     Returns:
-        str: The analysis result from the vision model
+        str or generator: The analysis result as text, or a generator of response chunks if stream=True
     """
     if system_prompt is None:
         system_prompt = ""
-    system_prompt = system_prompt + """You are an expert data scientist analyzing scientific figures. Provide factual, accurate analysis of what is ACTUALLY VISIBLE in the image. Focus on statistical information, data visualization elements, and clearly presented facts.
-
-CRITICAL: Do NOT speculate beyond what is explicitly shown. If information is unclear or not provided, state this plainly rather than making assumptions.
-
-Analyze:
-1. Visual elements (chart type, axes, legend, data series)
-2. Visible statistical content (values, trends, error bars)
-3. Explicitly stated information (labels, captions, annotations)
-
-Your analysis should be thorough but strictly limited to observable content."""
-
     if user_prompt is None:
         user_prompt = ""
-    user_prompt = user_prompt + """Analyze this scientific figure with focus on statistical content:
+    
+    context_info = ""
+    if context is not None and context:
+        context_info = f"REFERENCE CONTEXT FROM DOCUMENT: {context}\n\n"
+    
+    user_prompt = user_prompt + f"""You are an expert scientist analyzing scientific figures. Provide a factual, objective analysis of what is ACTUALLY VISIBLE in the image. Adapt your analysis to the type of figure shown (data plot, experimental illustration, conceptual diagram, etc.).
 
-1. DESCRIPTION:
-   - Visualization type, axes, legend components
-   - Variables and data series presented
+{context_info}Based on the image and any provided context, analyze ONLY what is clearly observable:
 
-2. STATISTICAL CONTENT:
-   - Numerical values, ranges, and distributions shown
-   - Statistical indicators visible (means, p-values, error bars)
-   - Apparent trends, patterns or correlations
-   - Notable data points or outliers
+1. FIGURE TYPE AND PURPOSE:
+   - Identify if this is a data visualization, experimental setup, conceptual diagram, microscopy image, etc.
+   - Note the apparent scientific discipline or subject area
 
-3. FACTUAL INTERPRETATION:
-   - What conclusions are explicitly supported by the visible data
-   - Any stated limitations or qualifications
+2. VISIBLE ELEMENTS:
+   - For data plots: chart type, axes, scales, legends, data series, error indicators
+   - For diagrams: labeled components, pathways, relationships, structures
+   - For experimental illustrations: equipment, materials, procedures, conditions
+   - For microscopy/imagery: visible structures, scale markers, coloration, highlighting
 
-Provide precise descriptions of visible statistical elements. If something is unclear or not shown, simply state "This information is not visible in the image" rather than inferring details."""
+3. QUANTITATIVE INFORMATION:
+   - Any explicitly visible measurements, values, statistics
+   - Trends, patterns, or relationships evident in the data
+   - Statistical indicators (p-values, error bars, confidence intervals)
+
+CRITICAL: Do NOT speculate beyond what is explicitly shown. If information is unclear or not provided, state this plainly rather than making assumptions. Deliver your analysis in a scientific, precise tone.
+
+Start the response with "##Image Analysis:"
+"""
+
+    system_prompt = system_prompt + f"""You are analyzing a scientific figure. Your task is to provide a comprehensive, accurate, and factual description of EXACTLY what appears in the image. 
+
+{context_info}Guidelines for your analysis:
+
+1. ADAPTABILITY: 
+   - Adjust your analysis based on the figure type (graph, diagram, microscopy image, etc.)
+   - Focus on the most relevant aspects for each type of visualization
+
+2. PRECISION AND FACTUALITY:
+   - Describe only what is visibly present - no speculation or assumptions
+   - Use precise scientific terminology appropriate to the apparent field
+   - When exact values are visible, report them accurately with units
+   - When relationships or trends are shown, describe them objectively
+
+3. COMPLETENESS:
+   - Identify all labeled elements, axes, legends, and annotations
+   - Describe the visualization structure and organization
+   - Note any visible statistical information or metrics
+   - Mention any apparent limitations or qualifications shown
+
+4. SCIENTIFIC:
+   - Use formal, technical language appropriate for a scientific publication
+   - Maintain objectivity throughout your description
+   - Be concise yet thorough
+
+If certain details are unclear or not visible, simply state "This information is not visible in the image" rather than making educated guesses.
+
+Start the response with "##Image Analysis:"
+"""
 
     # Initialize Azure OpenAI client
     api_base = os.getenv('AZURE_OPENAI_ENDPOINT')
@@ -395,13 +427,21 @@ Provide precise descriptions of visible statistical elements. If something is un
                 ]
             }
         ]
+        logger.info(f"The full messages are: {messages}")
 
         # Generate response
         response = client.chat.completions.create(
             model=deployment_name,
             messages=messages,
-            max_tokens=2000
+            max_tokens=2000,
+            stream=stream
         )
+        
+        # Handle streaming response
+        if stream:
+            return response  # Return the streaming response generator
+        
+        # Handle non-streaming response
         result = response.choices[0].message.content
         return result
 
@@ -409,7 +449,7 @@ Provide precise descriptions of visible statistical elements. If something is un
         logger.exception(f"Error occurred in analyze_image with Azure OpenAI: {str(e)}")
 
         # Try another model for image understanding
-        result = process_image_with_llama(image_url, system_prompt)
+        result = process_image_with_llama(image_url, system_prompt, stream)
         return result
 
 
@@ -445,8 +485,31 @@ def process_folder_images(folder_path):
                         yield "\n\n**📊 Getting image analysis for saved image ...**"
                         image_url = urls[image_name]
                         yield f"\n\n![{image_name}]({image_url})"
-                        analysis = analyze_image(image_url)
-                        # yield f"\n\n**Image analysis for {image_name} completed.**"
+                        analysis = analyze_image(image_url, context=context, stream=True)
+                        if type(analysis) == str:
+                            yield "\n\n"
+                            # yield f"Context: {context}"
+                            yield analysis
+                            yield "\n\n"
+                        else:
+                            yield "\n\n"
+                            analysis_text = ""
+                            for chunk in analysis:
+                                if hasattr(chunk, "choices") and chunk.choices:
+                                    # Extract the actual text content from the ChatCompletionChunk
+                                    delta = chunk.choices[0].delta
+                                    if hasattr(delta, "content") and delta.content:
+                                        chunk_text = delta.content
+                                        analysis_text += chunk_text
+                                        yield chunk_text
+                                else:
+                                    # Skip empty or malformed chunks instead of converting them to string
+                                    # Only process chunks that have actual content
+                                    continue
+                            yield "\n\n"
+                            # Update context with analysis text instead of the raw chunk objects
+                            contexts[image_name][i] = f"{context}\nImage Analysis: {analysis_text}"
+                            continue
                         # Update context with analysis
                         contexts[image_name][i] = f"{context}\nImage Analysis: {analysis}"
 

@@ -390,7 +390,8 @@ async def extract_pdf_content_to_markdown_via_api_streaming(
 
     API_URL = "https://www.datalab.to/api/v1/marker"
 
-    yield "Start parsing PDF to markdown ..."
+    # yield f"\n\n**📑 PDF parsing progress: {progress_update}**"
+    yield "\n\n**📑 PDF parsing progress: Start parsing PDF to markdown ...**"
     # Submit the file to API - use requests for initial upload since it handles multipart/form-data better
     with open(file_path, "rb") as f:
         form_data = {
@@ -413,7 +414,7 @@ async def extract_pdf_content_to_markdown_via_api_streaming(
 
     request_check_url = data.get("request_check_url")
     logger.info("Submitted request. Polling for results...")
-    yield "Polling for PDF parsing results ..."
+    yield "\n\n**📑 PDF parsing progress: Polling for PDF parsing results ...**"
 
     # Poll until processing is complete using aiohttp
     max_polls = 300
@@ -429,7 +430,7 @@ async def extract_pdf_content_to_markdown_via_api_streaming(
                         if poll_response.status != 200:
                             error_text = await poll_response.text()
                             logger.error(f"API polling error: Status {poll_response.status}, {error_text}")
-                            yield f"Error during polling: Status {poll_response.status}"
+                            yield f"\n\n**📑 PDF parsing progress: Error during polling: Status {poll_response.status}**"
                             continue
                             
                         result = await poll_response.json()
@@ -442,13 +443,13 @@ async def extract_pdf_content_to_markdown_via_api_streaming(
                             break
                 except aiohttp.ClientError as e:
                     logger.error(f"Network error during polling: {str(e)}")
-                    yield f"Network error during polling: {str(e)}"
+                    yield f"\n\n**📑 PDF parsing progress: Network error during polling: {str(e)}**"
                     await asyncio.sleep(poll_interval * 2)  # Wait longer before retrying
             else:
                 raise Exception("The request did not complete within the expected time.")
     except Exception as e:
         logger.exception(f"Unexpected error during polling: {str(e)}")
-        yield f"Error: {str(e)}"
+        yield f"\n\n**📑 PDF parsing progress: Unexpected error during polling: {str(e)}**"
         raise
 
     # Process and save results
@@ -456,7 +457,7 @@ async def extract_pdf_content_to_markdown_via_api_streaming(
         raise Exception(f"Processing failed: {result.get('error')}")
 
     # Save markdown content with hash ID
-    yield "Saving markdown content ..."
+    yield "\n\n**📑 PDF parsing progress: Saving markdown content ...**"
     markdown = result.get("markdown", "")
     md_path = output_dir / f"{file_id}.md"
     with open(md_path, "w", encoding="utf-8") as md_file:
@@ -489,11 +490,11 @@ async def extract_pdf_content_to_markdown_via_api_streaming(
                 # yield f"Saved image {idx}/{img_count}"
             except Exception as e:
                 logger.exception(f"Error saving image {filename}: {e}")
-                yield f"Error saving image {filename}: {str(e)}"
+                yield f"\n\n**📑 PDF parsing progress: Error saving image {filename}: {str(e)}**"
         # FIXME: add a logic to clean up irrelevant images
     else:
         logger.info("No images were returned with the result")
-        yield "No images were returned with the result"
+        yield "\n\n**📑 PDF parsing progress: No images were returned with the result**"
 
     # Save markdown file and images to Azure Blob Storage
     try:
@@ -504,7 +505,7 @@ async def extract_pdf_content_to_markdown_via_api_streaming(
         upload_images_to_azure(output_dir, file_path)
     except Exception as e:
         logger.exception(f"Error uploading markdown and images to Azure Blob Storage: {e}")
-        yield f"Error uploading to Azure: {str(e)}"
+        yield f"\n\n**📑 PDF parsing progress: Error uploading to Azure: {str(e)}**"
 
     # Extract image context
     try:
@@ -516,7 +517,7 @@ async def extract_pdf_content_to_markdown_via_api_streaming(
             yield chunk
     except Exception as e:
         logger.exception(f"Error extracting image context: {e}")
-        yield f"Error extracting image context: {str(e)}"
+        yield f"\n\n**📑 PDF parsing progress: Error extracting image context: {str(e)}**"
         raise Exception(f"Error extracting image context: {e}")
 
     # yield "PDF extraction complete!"

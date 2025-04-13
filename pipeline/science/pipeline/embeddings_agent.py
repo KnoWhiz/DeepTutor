@@ -138,12 +138,13 @@ async def embeddings_agent(
                             md_path, saved_images, md_document = progress_update
                             logger.info("Received final result tuple from streaming function")
                         else:
-                            # This is a progress update if there is no "**" in the string
-                            if "**" not in progress_update and "![" not in progress_update:
-                                yield f"\n\n**📑 PDF parsing progress: {progress_update}**"
-                            else:
-                                yield f"\n\n{progress_update}"
-                                # pass
+                            # # This is a progress update if there is no "**" in the string
+                            # if "**" not in progress_update and "![" not in progress_update and len(progress_update) < 100:
+                            #     yield f"\n\n**📑 PDF parsing progress: {progress_update}**"
+                            # else:
+                            #     yield f"\n\n{progress_update}"
+                            #     # pass
+                            yield progress_update
                     
                     # Verify we received the expected return values
                     if md_path is None or saved_images is None or md_document is None:

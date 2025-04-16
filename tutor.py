@@ -68,7 +68,8 @@ if st.session_state['isAuth']:
         else:
             # Save the file locally
             file = st.session_state.uploaded_file.read()
-            input_dir = './input_files/'
+            path_prefix = os.getenv("FILE_PATH_PREFIX")
+            input_dir = os.path.join(path_prefix, 'input_files')
             if not os.path.exists(input_dir):
                 os.makedirs(input_dir)
             file_path = os.path.join(input_dir, st.session_state.uploaded_file.name)
@@ -76,7 +77,9 @@ if st.session_state['isAuth']:
                 f.write(file)
 
             document, doc = state_process_pdf_file(file_path)
-            embedding_folder = os.path.join('embedded_content', generate_file_id(file_path))
+            path_prefix = os.getenv("FILE_PATH_PREFIX")
+            embedded_content_path = os.path.join(path_prefix, 'embedded_content')
+            embedding_folder = os.path.join(embedded_content_path, generate_file_id(file_path))
 
             if len(document) > 200:
                 st.error("File contains more than 200 pages. Please upload a shorter document.")

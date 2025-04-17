@@ -316,6 +316,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
             logger.info(f"Processing user_input: {user_input}...")
             with st.spinner("Generating deep agentic response..."):
                 try:
+                    # FIXME: Temporary use single file path
                     file_path_list = [file_path]
                     # Get response
                     # answer, sources, source_pages, source_annotations, refined_source_pages, follow_up_questions, refined_source_index

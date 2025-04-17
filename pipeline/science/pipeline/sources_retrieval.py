@@ -115,9 +115,9 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
             # Load existing embeddings
             logger.info(f"Loading existing embeddings for {embedding_folder}...")
             db = load_embeddings([embedding_folder], 'default')
-            # For each document in db, add "file_index" to the metadata
-            # FAISS doesn't have a get_collection().find() method - it's not MongoDB
-            # We need to add this metadata during merging instead
+            # For each document chunk in db, add "file_index" to the metadata
+            for doc in db.get_collection().find():
+                doc['metadata']['file_index'] = file_index
             db_merged = db_merged.merge_from(db)
             db_list.append(db)
         else:
@@ -125,9 +125,9 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
             _document, _doc = process_pdf_file(file_path)
             embeddings_agent(mode, _document, _doc, file_path, embedding_folder)
             db = load_embeddings([embedding_folder], 'default')
-            # For each document in db, add "file_index" to the metadata
-            # FAISS doesn't have a get_collection().find() method - it's not MongoDB
-            # We need to add this metadata during merging instead
+            # For each document chunk in db, add "file_index" to the metadata
+            for doc in db.get_collection().find():
+                doc['metadata']['file_index'] = file_index
             db_merged = db_merged.merge_from(db)
             db_list.append(db)
 

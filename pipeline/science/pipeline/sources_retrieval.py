@@ -166,8 +166,8 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
             source_pages[chunk.page_content] = 1
         try:
             # FIXME: KeyError: 'file_index' is not in the metadata
-            # source_file_index[chunk.page_content] = chunk.metadata['file_index']
-            source_file_index[chunk.page_content] = 1
+            source_file_index[chunk.page_content] = chunk.metadata['file_index']
+            # source_file_index[chunk.page_content] = 1
         except KeyError:
             logger.exception(f"Error getting source file index for {chunk.page_content}")
             logger.info(f"Chunk metadata: {chunk.metadata}")
@@ -221,7 +221,8 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
     # Refine and limit sources while preserving scores
     markdown_dir_list = [os.path.join(embedding_folder, "markdown") for embedding_folder in embedding_folder_list]
     # sources_with_scores = refine_sources_complex(sources_with_scores, file_path_list, markdown_dir_list, user_input, image_url_mapping_merged, source_pages, source_file_index, image_url_mapping_merged_reverse)
-    sources_with_scores = refine_sources_simple(sources_with_scores, file_path_list)
+    # FIXME: Temporary use simple version and remove filtering logic
+    # sources_with_scores = refine_sources_simple(sources_with_scores, file_path_list)
 
     # Refine source pages while preserving scores
     refined_source_pages = {}

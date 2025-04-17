@@ -121,10 +121,12 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
     yield "\n\n**📙 Loading documents ...**\n\n"
     hashing_start_time = time.time()
     file_id_list = [generate_file_id(file_path) for file_path in file_path_list]
-    embedding_folder_list = [os.path.join("embedded_content", file_id) for file_id in file_id_list]
+    path_prefix = os.getenv("FILE_PATH_PREFIX")
+    embedded_content_path = os.path.join(path_prefix, 'embedded_content')
+    embedding_folder_list = [os.path.join(embedded_content_path, file_id) for file_id in file_id_list]
     logger.info(f"Embedding folder: {embedding_folder_list}")
-    if not os.path.exists("embedded_content"):
-        os.makedirs("embedded_content")
+    if not os.path.exists(embedded_content_path):
+        os.makedirs(embedded_content_path)
     for embedding_folder in embedding_folder_list:
         if not os.path.exists(embedding_folder):
             os.makedirs(embedding_folder)

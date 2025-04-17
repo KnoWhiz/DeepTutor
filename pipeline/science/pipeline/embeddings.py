@@ -198,15 +198,31 @@ async def generate_LiteRAG_embedding(_doc, file_path, embedding_folder):
 
 def load_embeddings(embedding_folder_list: list[str | Path], embedding_type: str = 'default'):
     """
-    Load embeddings from the specified folder
+    Load embeddings from the specified folder.
+    Adds a file_index metadata field to each document indicating which folder it came from.
     """
     config = load_config()
     para = config['llm']
     embeddings = get_embedding_models(embedding_type, para)
-    # Create a large db that contains all the embeddings
-    db_merged = FAISS.load_local(embedding_folder_list[0], embeddings, allow_dangerous_deserialization=True)
-    for embedding_folder in embedding_folder_list[1:]:
+    
+    # Load each database separately and add file_index to metadata
+    all_docs = []
+    for i, embedding_folder in enumerate(embedding_folder_list):
         db = FAISS.load_local(embedding_folder, embeddings, allow_dangerous_deserialization=True)
-        db_merged.merge_from(db)
-
+        # Get the documents and add file_index to their metadata
+        docs = db.docstore._dict.values()
+        for doc in docs:
+            doc.metadata["file_index"] = i
+            all_docs.append(doc)
+    
+    # Create a new database with all the documents that have updated metadata
+    db_merged = FAISS.from_documents(all_docs, embeddings)
+    
+    # Log the first 5 chunks for testing
+    logger.info(f"Total chunks in merged database: {len(all_docs)}")
+    for i, doc in enumerate(all_docs[:5]):
+        logger.info(f"Chunk {i+1} - Content preview: {doc.page_content[:50]}...")
+        logger.info(f"Chunk {i+1} - Metadata: {doc.metadata}")
+        logger.info(f"Chunk {i+1} - From embedding folder index: {doc.metadata['file_index']} (corresponds to {embedding_folder_list[doc.metadata['file_index']]})")
+    
     return db_merged

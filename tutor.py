@@ -61,58 +61,157 @@ if st.session_state['isAuth']:
     show_footer()
 
     if __name__ == "__main__" and st.session_state.uploaded_file is not None and st.session_state.page == "📑 Document reading":
-        file_size = st.session_state.uploaded_file.size
-        max_file_size = 50 * 1024 * 1024  # 50 MB
-        if file_size > max_file_size:
-            st.error("File size exceeds the 50 MB limit. Please upload a smaller file.")
-        else:
-            # Save the file locally
-            file = st.session_state.uploaded_file.read()
+        # Check if we're in Lite mode with multiple files
+        is_lite_mode = st.session_state.get('mode', 'Basic') == "Lite"
+        is_multiple_files = is_lite_mode and isinstance(st.session_state.uploaded_file, list)
+        
+        # Process single file or multiple files based on mode
+        if is_multiple_files:
+            # Handle multiple file upload (Lite mode only)
+            uploaded_files = st.session_state.uploaded_file
+            
+            # Check if any files were actually uploaded
+            if not uploaded_files or len(uploaded_files) == 0:
+                st.info("Please upload at least one PDF file.")
+                st.stop()
+            
+            # Check if any file exceeds the size limit
+            max_file_size = 50 * 1024 * 1024  # 50 MB
+            for uploaded_file in uploaded_files:
+                if uploaded_file.size > max_file_size:
+                    st.error(f"File '{uploaded_file.name}' exceeds the 50 MB limit. Please upload smaller files.")
+                    st.stop()
+            
+            # Set up directory for saving files
             path_prefix = os.getenv("FILE_PATH_PREFIX")
             input_dir = os.path.join(path_prefix, 'input_files')
             if not os.path.exists(input_dir):
                 os.makedirs(input_dir)
-            file_path = os.path.join(input_dir, st.session_state.uploaded_file.name)
-            with open(file_path, 'wb') as f:
-                f.write(file)
-
-            document, doc = state_process_pdf_file(file_path)
+            
+            # Save all files and build the file_path_list
+            file_path_list = []
+            for idx, uploaded_file in enumerate(uploaded_files):
+                file = uploaded_file.read()
+                file_path = os.path.join(input_dir, uploaded_file.name)
+                with open(file_path, 'wb') as f:
+                    f.write(file)
+                file_path_list.append(file_path)
+            
+            # Only process the first file for preview
+            document, doc = state_process_pdf_file(file_path_list[0])
+            
             path_prefix = os.getenv("FILE_PATH_PREFIX")
             embedded_content_path = os.path.join(path_prefix, 'embedded_content')
-            embedding_folder = os.path.join(embedded_content_path, generate_file_id(file_path))
-
+            
+            # Create a list of embedding folders
+            embedding_folder_list = []
+            for file_path in file_path_list:
+                embedding_folder = os.path.join(embedded_content_path, generate_file_id(file_path))
+                embedding_folder_list.append(embedding_folder)
+            
+            # Use the first embedding folder for initialization
+            embedding_folder = embedding_folder_list[0]
+            
+            # Check if first document exceeds page limit
             if len(document) > 200:
                 st.error("File contains more than 200 pages. Please upload a shorter document.")
                 st.stop()
-
-            # Initialize state
+            
+            # Initialize state with the main embedding folder
             initialize_session_state(embedding_folder=embedding_folder)
-
-            # If document are found, proceed to show chat interface and PDF viewer
+            
+            # Store the file_path_list in session state for use in chat interface
+            st.session_state.file_path_list = file_path_list
+            
+            # If document is found, proceed to show chat interface and PDF viewer (first file only)
             if document:
                 outer_columns = st.columns([1, 1])
-
-            if len(st.session_state.chat_session.chat_history) == 0:
-                with outer_columns[0]:
-                    show_pdf_viewer(file)
-                    
-                with outer_columns[1]:
-                    show_chat_interface(
-                        doc=doc,
-                        document=document,
-                        file_path=file_path,
-                        embedding_folder=embedding_folder,
-                    )
+                
+                if len(st.session_state.chat_session.chat_history) == 0:
+                    with outer_columns[0]:
+                        # Only show the first file in the PDF viewer
+                        show_pdf_viewer(file_path_list[0])
+                        
+                    with outer_columns[1]:
+                        show_chat_interface(
+                            doc=doc,
+                            document=document,
+                            file_path=file_path_list,
+                            embedding_folder=embedding_folder,
+                        )
+                else:
+                    with outer_columns[1]:
+                        show_chat_interface(
+                            doc=doc,
+                            document=document,
+                            file_path=file_path_list,
+                            embedding_folder=embedding_folder,
+                        )
+                    with outer_columns[0]:
+                        show_pdf_viewer(file_path_list[0])
+                
+        else:
+            # Original single file handling
+            # This is a safety check, though the outer if should prevent this
+            if st.session_state.uploaded_file is None:
+                st.info("Please upload a PDF file.")
+                st.stop()
+                
+            file_size = st.session_state.uploaded_file.size
+            max_file_size = 50 * 1024 * 1024  # 50 MB
+            if file_size > max_file_size:
+                st.error("File size exceeds the 50 MB limit. Please upload a smaller file.")
             else:
-                with outer_columns[1]:
-                    show_chat_interface(
-                        doc=doc,
-                        document=document,
-                        file_path=file_path,
-                        embedding_folder=embedding_folder,
-                    )
-                with outer_columns[0]:
-                    show_pdf_viewer(file)
+                # Save the file locally
+                file = st.session_state.uploaded_file.read()
+                path_prefix = os.getenv("FILE_PATH_PREFIX")
+                input_dir = os.path.join(path_prefix, 'input_files')
+                if not os.path.exists(input_dir):
+                    os.makedirs(input_dir)
+                file_path = os.path.join(input_dir, st.session_state.uploaded_file.name)
+                with open(file_path, 'wb') as f:
+                    f.write(file)
+
+                document, doc = state_process_pdf_file(file_path)
+                path_prefix = os.getenv("FILE_PATH_PREFIX")
+                embedded_content_path = os.path.join(path_prefix, 'embedded_content')
+                embedding_folder = os.path.join(embedded_content_path, generate_file_id(file_path))
+
+                if len(document) > 200:
+                    st.error("File contains more than 200 pages. Please upload a shorter document.")
+                    st.stop()
+
+                # Initialize state
+                initialize_session_state(embedding_folder=embedding_folder)
+                
+                # Store single file path as a list for consistency
+                st.session_state.file_path_list = [file_path]
+
+                # If document are found, proceed to show chat interface and PDF viewer
+                if document:
+                    outer_columns = st.columns([1, 1])
+
+                if len(st.session_state.chat_session.chat_history) == 0:
+                    with outer_columns[0]:
+                        show_pdf_viewer(file)
+                        
+                    with outer_columns[1]:
+                        show_chat_interface(
+                            doc=doc,
+                            document=document,
+                            file_path=file_path,
+                            embedding_folder=embedding_folder,
+                        )
+                else:
+                    with outer_columns[1]:
+                        show_chat_interface(
+                            doc=doc,
+                            document=document,
+                            file_path=file_path,
+                            embedding_folder=embedding_folder,
+                        )
+                    with outer_columns[0]:
+                        show_pdf_viewer(file)
 
             logger.info(f"st.session_state.current_page is {st.session_state.current_page}")
 

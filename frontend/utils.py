@@ -10,9 +10,12 @@ logger = logging.getLogger("tutorfrontend.utils")
 
 
 def streamlit_tutor_agent(chat_session, file_path, user_input):    
+    # Convert single file path to a list if it's not already a list
+    file_path_list = file_path if isinstance(file_path, list) else [file_path]
+    
     answer_generator = asyncio.run(tutor_agent(
         chat_session=chat_session,
-        file_path_list=[file_path],
+        file_path_list=file_path_list,
         user_input=user_input,
         deep_thinking=True
     ))

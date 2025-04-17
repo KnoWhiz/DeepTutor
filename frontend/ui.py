@@ -20,6 +20,7 @@ from frontend.utils import streamlit_tutor_agent, process_response_phase, proces
 
 import logging
 import re
+import os
 
 logger = logging.getLogger("tutorfrontend.ui")
 
@@ -109,13 +110,32 @@ def show_mode_option():
 def show_file_upload(on_change=None):
     with st.sidebar:
         previous_file = st.session_state.get('uploaded_file', None)
-        current_file = st.file_uploader("Upload a document no more than **200 pages** to get started.", type="pdf", on_change=on_change)
+        
+        # Get current mode to decide if multiple uploads are allowed
+        current_mode = st.session_state.get('mode', 'Basic')
+        allow_multiple = current_mode == "Lite"
+        
+        # Use the appropriate file uploader based on mode
+        if allow_multiple:
+            current_file = st.file_uploader("Upload documents no more than **200 pages** to get started.", 
+                                          type="pdf", 
+                                          on_change=on_change,
+                                          accept_multiple_files=True)
+        else:
+            current_file = st.file_uploader("Upload a document no more than **200 pages** to get started.", 
+                                          type="pdf", 
+                                          on_change=on_change)
         
         # Check if file has changed
         if previous_file is not None and current_file is not None:
-            if previous_file.name != current_file.name:
-                # File has changed, trigger the change handler
-                on_change()
+            if allow_multiple:
+                # For multiple files, check if the list has changed
+                if previous_file != current_file:
+                    on_change()
+            else:
+                # For single file, check if the file name has changed
+                if previous_file.name != current_file.name:
+                    on_change()
         
         st.session_state.uploaded_file = current_file
         
@@ -149,7 +169,7 @@ def show_language_option():
             st.session_state.chat_session.set_language(selected_lang)
 
 
-# Function to display the chat interface
+# Function to display the page option
 def show_page_option():
     with st.sidebar:
         # Navigation Menu
@@ -176,6 +196,9 @@ def get_relevance_color(score):
 
 # Function to display the chat interface
 def show_chat_interface(doc, document, file_path, embedding_folder):
+    # Handle file_path as a list for multiple files or a single string
+    file_path_for_agent = file_path if isinstance(file_path, list) else [file_path]
+    
     # Init float function for chat_input textbox
     learner_avatar = "frontend/images/learner.svg"
     tutor_avatar = "frontend/images/tutor.svg"
@@ -194,6 +217,14 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
     chat_container = st.container(border=st.session_state.show_chat_border, height=1005)
 
     with chat_container:
+        # Display list of uploaded files if in Lite mode with multiple files
+        if isinstance(file_path, list) and len(file_path) > 1 and st.session_state.get('mode') == "Lite":
+            with st.expander("📚 Uploaded Files", expanded=False):
+                for i, path in enumerate(file_path, 1):
+                    filename = os.path.basename(path)
+                    st.write(f"{i}. {filename}")
+            st.markdown("---")
+        
         if st.session_state.chat_session.chat_history:
             # Display chat history
             logger.info("Display chat history ...")
@@ -326,7 +357,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                     refined_source_index,\
                     follow_up_questions = streamlit_tutor_agent(
                         chat_session=st.session_state.chat_session,
-                        file_path=file_path,
+                        file_path=file_path_for_agent,
                         user_input=user_input
                     )
                     st.session_state.source_annotations = source_annotations
@@ -460,6 +491,12 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
 
 # Function to display the pdf viewer
 def show_pdf_viewer(file):
+    """
+    Display the PDF viewer.
+    
+    Args:
+        file: Either a file object or a file path to the PDF
+    """
     if "current_page" not in st.session_state:
         logger.info("current_page not in st.session_state")
         st.session_state.current_page = 1
@@ -469,7 +506,12 @@ def show_pdf_viewer(file):
     if "total_pages" not in st.session_state:
         logger.info("total_pages not in st.session_state")
         # Get total pages from the PDF file
-        pdf = PyPDF2.PdfReader(file)
+        if isinstance(file, str):
+            # If file is a path, open it
+            pdf = PyPDF2.PdfReader(open(file, 'rb'))
+        else:
+            # If file is a file object
+            pdf = PyPDF2.PdfReader(file)
         st.session_state.total_pages = len(pdf.pages)
 
     with st.container():

@@ -74,9 +74,12 @@ def handle_file_change():
     
     # Update mode
     if 'mode' in st.session_state:
-        st.session_state.chat_session.set_mode(
-            ChatMode.ADVANCED if st.session_state.mode == "Advanced" else ChatMode.BASIC
-        )
+        if st.session_state.mode == "Advanced":
+            st.session_state.chat_session.set_mode(ChatMode.ADVANCED)
+        elif st.session_state.mode == "Lite":
+            st.session_state.chat_session.set_mode(ChatMode.LITE)
+        else:
+            st.session_state.chat_session.set_mode(ChatMode.BASIC)
     
     # Update language
     if 'language' in st.session_state:
@@ -97,6 +100,7 @@ def handle_file_change():
     st.session_state.document = None
     st.session_state.doc = None
     st.session_state.file_path = None
+    st.session_state.file_path_list = None
     st.session_state.annotations = []
     st.session_state.chat_occurred = False
     st.session_state.sources = {}
@@ -127,6 +131,7 @@ def state_process_pdf_file(file_path):
     st.session_state.document = document
     st.session_state.doc = doc
     st.session_state.file_path = file_path
+    st.session_state.file_path_list = [file_path]  # Initialize file_path_list as a list with the current file
     st.session_state.total_pages = len(doc)
     st.session_state.annotations = []  # Initialize annotations
     st.session_state.chat_occurred = False  # Initialize chat state

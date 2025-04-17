@@ -75,6 +75,7 @@ if st.session_state['isAuth']:
             file_path = os.path.join(input_dir, st.session_state.uploaded_file.name)
             with open(file_path, 'wb') as f:
                 f.write(file)
+            file_path_list = [file_path]
 
             document, doc = state_process_pdf_file(file_path)
             path_prefix = os.getenv("FILE_PATH_PREFIX")
@@ -100,7 +101,7 @@ if st.session_state['isAuth']:
                     show_chat_interface(
                         doc=doc,
                         document=document,
-                        file_path=file_path,
+                        file_path_list=file_path_list,
                         embedding_folder=embedding_folder,
                     )
             else:
@@ -108,7 +109,7 @@ if st.session_state['isAuth']:
                     show_chat_interface(
                         doc=doc,
                         document=document,
-                        file_path=file_path,
+                        file_path_list=file_path_list,
                         embedding_folder=embedding_folder,
                     )
                 with outer_columns[0]:

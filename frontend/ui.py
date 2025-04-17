@@ -175,7 +175,7 @@ def get_relevance_color(score):
 
 
 # Function to display the chat interface
-def show_chat_interface(doc, document, file_path, embedding_folder):
+def show_chat_interface(doc, document, file_path_list, embedding_folder):
     # Init float function for chat_input textbox
     learner_avatar = "frontend/images/learner.svg"
     tutor_avatar = "frontend/images/tutor.svg"
@@ -316,8 +316,6 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
             logger.info(f"Processing user_input: {user_input}...")
             with st.spinner("Generating deep agentic response..."):
                 try:
-                    # FIXME: Temporary use single file path
-                    file_path_list = [file_path]
                     # Get response
                     # answer, sources, source_pages, source_annotations, refined_source_pages, follow_up_questions, refined_source_index
                     answer,\

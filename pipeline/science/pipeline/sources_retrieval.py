@@ -79,11 +79,11 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
 
     # Create a single mapping from description to image URL, mapping from image description to image URL
     image_url_mapping_merged = {}
-    for idx, (image_mapping, image_url_mapping_merged) in enumerate(zip(image_mapping_list, image_url_mapping_list)):
+    for idx, (image_mapping, image_url_mapping) in enumerate(zip(image_mapping_list, image_url_mapping_list)):
         for description, image_name in image_mapping.items():
-            if image_name in image_url_mapping_merged.keys():
+            if image_name in image_url_mapping:
                 # If the image name exists in URL mapping, link the description directly to the URL
-                image_url_mapping_merged[description] = image_url_mapping_merged[image_name]
+                image_url_mapping_merged[description] = image_url_mapping[image_name]
             else:
                 # If image URL not found, log a warning but don't break the process
                 logger.warning(f"Image URL not found for {image_name} in embedding folder {idx}")
@@ -96,46 +96,97 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
     db_list = []
     faiss_path_0 = os.path.join(embedding_folder_list[0], "index.faiss")
     pkl_path_0 = os.path.join(embedding_folder_list[0], "index.pkl")
-    if os.path.exists(faiss_path_0) and os.path.exists(pkl_path_0):
-        db_merged = load_embeddings([embedding_folder_list[0]], 'default')
-        db_list.append(db_merged)
-    else:
-        _document, _doc = process_pdf_file(file_path_list[0])
-        embeddings_agent(mode, _document, _doc, file_path_list[0], embedding_folder_list[0])
-        db_merged = load_embeddings([embedding_folder_list[0]], 'default')
-        db_list.append(db_merged)
+    
+    # Initialize db_merged
+    db_merged = None
+    
+    # Load or generate the first embeddings DB
+    try:
+        if os.path.exists(faiss_path_0) and os.path.exists(pkl_path_0):
+            logger.info(f"Loading existing embeddings for first file from {embedding_folder_list[0]}...")
+            db_merged = load_embeddings([embedding_folder_list[0]], 'default')
+            if db_merged is not None:
+                db_list.append(db_merged)
+            else:
+                logger.error(f"Failed to load embeddings from {embedding_folder_list[0]}")
+                # If loading fails, try generating new embeddings
+                _document, _doc = process_pdf_file(file_path_list[0])
+                embeddings_agent(mode, _document, _doc, file_path_list[0], embedding_folder_list[0])
+                db_merged = load_embeddings([embedding_folder_list[0]], 'default')
+                if db_merged is not None:
+                    db_list.append(db_merged)
+                else:
+                    logger.error(f"Failed to generate and load embeddings for {embedding_folder_list[0]}")
+                    # Return empty results if we can't get any embeddings
+                    return {}, {}, {}, {}
+        else:
+            logger.info(f"No existing embeddings found for {embedding_folder_list[0]}, creating new ones...")
+            _document, _doc = process_pdf_file(file_path_list[0])
+            embeddings_agent(mode, _document, _doc, file_path_list[0], embedding_folder_list[0])
+            db_merged = load_embeddings([embedding_folder_list[0]], 'default')
+            if db_merged is not None:
+                db_list.append(db_merged)
+            else:
+                logger.error(f"Failed to generate and load embeddings for {embedding_folder_list[0]}")
+                # Return empty results if we can't get any embeddings
+                return {}, {}, {}, {}
+    except Exception as e:
+        logger.exception(f"Error processing first file embeddings: {e}")
+        # Return empty results if we can't get any embeddings
+        return {}, {}, {}, {}
+    
+    # Process additional files if any
     file_index = 0
     for file_path, embedding_folder in zip(file_path_list[1:], embedding_folder_list[1:]):
         file_index += 1
         # Define the default filenames used by FAISS when saving
         faiss_path = os.path.join(embedding_folder, "index.faiss")
         pkl_path = os.path.join(embedding_folder, "index.pkl")
-        # Check if all necessary files exist to load the embeddings
-        if os.path.exists(faiss_path) and os.path.exists(pkl_path):
-            # Load existing embeddings
-            logger.info(f"Loading existing embeddings for {embedding_folder}...")
-            db = load_embeddings([embedding_folder], 'default')
-            # For each document in db, add "file_index" to the metadata
-            # FAISS doesn't have a get_collection().find() method - it's not MongoDB
-            # We need to add this metadata during merging instead
-            db_merged = db_merged.merge_from(db)
-            db_list.append(db)
-        else:
-            logger.info(f"No existing embeddings found for {embedding_folder}, creating new ones...")
-            _document, _doc = process_pdf_file(file_path)
-            embeddings_agent(mode, _document, _doc, file_path, embedding_folder)
-            db = load_embeddings([embedding_folder], 'default')
-            # For each document in db, add "file_index" to the metadata
-            # FAISS doesn't have a get_collection().find() method - it's not MongoDB
-            # We need to add this metadata during merging instead
-            db_merged = db_merged.merge_from(db)
-            db_list.append(db)
+        
+        try:
+            # Check if all necessary files exist to load the embeddings
+            if os.path.exists(faiss_path) and os.path.exists(pkl_path):
+                # Load existing embeddings
+                logger.info(f"Loading existing embeddings for {embedding_folder}...")
+                db = load_embeddings([embedding_folder], 'default')
+                if db is not None:
+                    # For each document in db, add "file_index" to the metadata (in future implementation)
+                    # Merge the embeddings
+                    db_merged = db_merged.merge_from(db)
+                    db_list.append(db)
+                else:
+                    logger.warning(f"Skipping {embedding_folder} as embeddings could not be loaded")
+            else:
+                logger.info(f"No existing embeddings found for {embedding_folder}, creating new ones...")
+                _document, _doc = process_pdf_file(file_path)
+                embeddings_agent(mode, _document, _doc, file_path, embedding_folder)
+                db = load_embeddings([embedding_folder], 'default')
+                if db is not None:
+                    # Merge the embeddings
+                    db_merged = db_merged.merge_from(db)
+                    db_list.append(db)
+                else:
+                    logger.warning(f"Skipping {embedding_folder} as embeddings could not be generated")
+        except Exception as e:
+            logger.exception(f"Error processing embeddings for {embedding_folder}: {e}")
+            # Continue with other files instead of failing completely
 
     # Get relevant chunks for both question and answer with scores
     question_chunks_with_scores = []
-    for key, value in chat_session.formatted_context.items():
-        source_chunk = db_merged.similarity_search_with_score(str(value["content"]), k=1)
-        question_chunks_with_scores.append(source_chunk[0])
+    try:
+        for key, value in chat_session.formatted_context.items():
+            try:
+                source_chunk = db_merged.similarity_search_with_score(str(value["content"]), k=1)
+                if source_chunk and len(source_chunk) > 0:
+                    question_chunks_with_scores.append(source_chunk[0])
+            except Exception as e:
+                logger.exception(f"Error in similarity search for question chunk: {e}")
+                continue
+    except Exception as e:
+        logger.exception(f"Error processing question chunks: {e}")
+        # If we can't get any question chunks, return empty results
+        if not question_chunks_with_scores:
+            return {}, {}, {}, {}
 
     # answer_chunks_with_scores = db_merged.similarity_search_with_score(answer, k=config['sources_retriever']['k'])
     answer_chunks_with_scores = []
@@ -157,62 +208,129 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
     # Get source pages dictionary, which maps each source to the page number it is found in. the page number is in the metadata of the document chunks
     source_pages = {}
     source_file_index = {}
+    
+    if not sources_chunks:
+        logger.warning("No source chunks found to extract pages from")
+        return {}, {}, {}, {}
+        
     for chunk in sources_chunks:
         try:
-            source_pages[chunk.page_content] = chunk.metadata['page']
-        except KeyError:
-            logger.exception(f"Error getting source pages for {chunk.page_content}")
-            logger.info(f"Chunk metadata: {chunk.metadata}")
-            source_pages[chunk.page_content] = 1
-        try:
-            # FIXME: KeyError: 'file_index' is not in the metadata
-            # source_file_index[chunk.page_content] = chunk.metadata['file_index']
-            source_file_index[chunk.page_content] = 1
-        except KeyError:
-            logger.exception(f"Error getting source file index for {chunk.page_content}")
-            logger.info(f"Chunk metadata: {chunk.metadata}")
-            source_file_index[chunk.page_content] = 1
+            if not hasattr(chunk, 'metadata') or not hasattr(chunk, 'page_content'):
+                logger.warning(f"Chunk missing metadata or page_content attributes: {chunk}")
+                continue
+                
+            source_content = chunk.page_content
+            if not source_content:
+                logger.warning(f"Empty source content in chunk: {chunk}")
+                continue
+                
+            # Get page number
+            try:
+                page_num = chunk.metadata.get('page', 1)  # Default to page 1 if missing
+                source_pages[source_content] = page_num
+            except Exception as e:
+                logger.exception(f"Error getting source pages for {source_content[:100]}...: {e}")
+                source_pages[source_content] = 1
+                
+            # Get file index
+            try:
+                # Default to file_index 1 (first file) if missing
+                file_idx = chunk.metadata.get('file_index', 1)
+                source_file_index[source_content] = file_idx
+            except Exception as e:
+                logger.exception(f"Error getting source file index for {source_content[:100]}...: {e}")
+                source_file_index[source_content] = 1
+        except Exception as e:
+            logger.exception(f"Error processing chunk: {e}")
+            continue
 
     # Extract page content and scores, normalize scores to 0-1 range
-    if question_chunks_with_scores and answer_chunks_with_scores:
-        max_score = max(max(score for _, score in question_chunks_with_scores),
-                       max(score for _, score in answer_chunks_with_scores))
-        min_score = min(min(score for _, score in question_chunks_with_scores),
-                       min(score for _, score in answer_chunks_with_scores))
-    elif question_chunks_with_scores:
-        max_score = max(score for _, score in question_chunks_with_scores)
-        min_score = min(score for _, score in question_chunks_with_scores)
-    elif answer_chunks_with_scores:
-        max_score = max(score for _, score in answer_chunks_with_scores)
-        min_score = min(score for _, score in answer_chunks_with_scores)
-    else:
-        # If both lists are empty, set default values
-        max_score = 1.0
-        min_score = 0.0
-    
-    score_range = max_score - min_score if max_score != min_score else 1
-
-    # Get sources_with_scores dictionary, which maps each source to the score it has
     sources_with_scores = {}
-    # Process question chunks
-    for chunk, score in question_chunks_with_scores:
-        normalized_score = 1 - (score - min_score) / score_range  # Invert because lower distance = higher relevance
-        sources_with_scores[chunk.page_content] = max(normalized_score, sources_with_scores.get(chunk.page_content, 0))
-    # Process answer chunks
-    for chunk, score in answer_chunks_with_scores:
-        normalized_score = 1 - (score - min_score) / score_range  # Invert because lower distance = higher relevance
-        sources_with_scores[chunk.page_content] = max(normalized_score, sources_with_scores.get(chunk.page_content, 0))
+    
+    # Check if we have any chunks to process
+    if not question_chunks_with_scores and not answer_chunks_with_scores:
+        logger.warning("No chunks with scores found for normalization")
+        return {}, source_pages, {}, {}
+    
+    try:
+        # Calculate score range for normalization
+        if question_chunks_with_scores and answer_chunks_with_scores:
+            max_score = max(max(score for _, score in question_chunks_with_scores),
+                           max(score for _, score in answer_chunks_with_scores))
+            min_score = min(min(score for _, score in question_chunks_with_scores),
+                           min(score for _, score in answer_chunks_with_scores))
+        elif question_chunks_with_scores:
+            max_score = max(score for _, score in question_chunks_with_scores)
+            min_score = min(score for _, score in question_chunks_with_scores)
+        elif answer_chunks_with_scores:
+            max_score = max(score for _, score in answer_chunks_with_scores)
+            min_score = min(score for _, score in answer_chunks_with_scores)
+        else:
+            # If both lists are empty, set default values
+            max_score = 1.0
+            min_score = 0.0
+        
+        score_range = max_score - min_score if max_score != min_score else 1
+
+        # Get sources_with_scores dictionary, which maps each source to the score it has
+        sources_with_scores = {}
+        
+        # Process question chunks
+        for chunk, score in question_chunks_with_scores:
+            try:
+                if not hasattr(chunk, 'page_content'):
+                    logger.warning(f"Chunk missing page_content attribute: {chunk}")
+                    continue
+                
+                normalized_score = 1 - (score - min_score) / score_range  # Invert because lower distance = higher relevance
+                sources_with_scores[chunk.page_content] = max(normalized_score, sources_with_scores.get(chunk.page_content, 0))
+            except Exception as e:
+                logger.exception(f"Error processing question chunk score: {e}")
+                continue
+        
+        # Process answer chunks
+        for chunk, score in answer_chunks_with_scores:
+            try:
+                if not hasattr(chunk, 'page_content'):
+                    logger.warning(f"Chunk missing page_content attribute: {chunk}")
+                    continue
+                
+                normalized_score = 1 - (score - min_score) / score_range  # Invert because lower distance = higher relevance
+                sources_with_scores[chunk.page_content] = max(normalized_score, sources_with_scores.get(chunk.page_content, 0))
+            except Exception as e:
+                logger.exception(f"Error processing answer chunk score: {e}")
+                continue
+    except Exception as e:
+        logger.exception(f"Error during score normalization: {e}")
+        if not sources_with_scores:
+            # If we couldn't process any scores, return empty results
+            return {}, source_pages, {}, {}
 
     # Replace matching sources with image names while preserving scores
-    #     Source_pages: a dictionary that maps each source to the page number it is found in
-    #     Source_file_index: a dictionary that maps each source to the file index it is found in
-    #     Sources_with_scores: a dictionary that maps each source to the score it has
-    sources_with_scores = {image_url_mapping_merged.get(source, source): score
-                         for source, score in sources_with_scores.items()}
-    source_pages = {image_url_mapping_merged.get(source, source): page
-                         for source, page in source_pages.items()}
-    source_file_index = {image_url_mapping_merged.get(source, source): file_index
-                         for source, file_index in source_file_index.items()}
+    try:
+        #     Source_pages: a dictionary that maps each source to the page number it is found in
+        #     Source_file_index: a dictionary that maps each source to the file index it is found in
+        #     Sources_with_scores: a dictionary that maps each source to the score it has
+        sources_with_scores_new = {}
+        for source, score in sources_with_scores.items():
+            mapped_source = image_url_mapping_merged.get(source, source)
+            sources_with_scores_new[mapped_source] = score
+        sources_with_scores = sources_with_scores_new
+        
+        source_pages_new = {}
+        for source, page in source_pages.items():
+            mapped_source = image_url_mapping_merged.get(source, source)
+            source_pages_new[mapped_source] = page
+        source_pages = source_pages_new
+        
+        source_file_index_new = {}
+        for source, file_index in source_file_index.items():
+            mapped_source = image_url_mapping_merged.get(source, source)
+            source_file_index_new[mapped_source] = file_index
+        source_file_index = source_file_index_new
+    except Exception as e:
+        logger.exception(f"Error replacing sources with image URLs: {e}")
+        # Continue with original sources rather than failing
 
     # # TEST
     # logger.info(f"TEST: sources before refine: sources_with_scores - {sources_with_scores}")
@@ -227,41 +345,24 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
     # Refine source pages while preserving scores
     refined_source_pages = {}
     refined_source_index = {}
-    for source, page in source_pages.items():
-        if source in sources_with_scores:
-            refined_source_pages[source] = page + 1
-            refined_source_index[source] = source_file_index[source]
+    try:
+        for source, page in source_pages.items():
+            if source in sources_with_scores:
+                # Add 1 to page number because we want 1-indexed pages for display
+                refined_source_pages[source] = page + 1
+                refined_source_index[source] = source_file_index.get(source, 1)  # Default to first file if missing
+    except Exception as e:
+        logger.exception(f"Error refining source pages: {e}")
+        # Continue with empty refined pages rather than failing
 
     # # TEST
     # logger.info(f"TEST: sources after refine: sources_with_scores - {sources_with_scores}")
     logger.info(f"TEST: length of sources after refine: {len(sources_with_scores)}")
 
-
-    # # TEST
-    # logger.info("TEST: refined source index:")
-    # for source, index in refined_source_index.items():
-    #     logger.info(f"{source}: {index}")
-    # logger.info(f"TEST: length of refined source index: {len(refined_source_index)}")
-
-    # # TEST
-    # logger.info(f"TEST: sources after refine: sources_with_scores - {sources_with_scores}")
-    # logger.info(f"TEST: length of sources after refine: {len(sources_with_scores)}")
-
-
-    # # TEST
-    # logger.info("TEST: refined source index:")
-    # for source, index in refined_source_index.items():
-    #     logger.info(f"{source}: {index}")
-    # logger.info(f"TEST: length of refined source index: {len(refined_source_index)}")
-
-    # # TEST
-    # logger.info("TEST: refined source pages:")
-    # for source, page in refined_source_pages.items():
-    #     logger.info(f"{source}: {page}")
-    # logger.info(f"TEST: length of refined source pages: {len(refined_source_pages)}")
-
     # Memory cleanup
     db = None
+    db_merged = None
+    db_list = []
 
     return sources_with_scores, source_pages, refined_source_pages, refined_source_index
 

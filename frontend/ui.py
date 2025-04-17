@@ -316,6 +316,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
             logger.info(f"Processing user_input: {user_input}...")
             with st.spinner("Generating deep agentic response..."):
                 try:
+                    file_path_list = [file_path]
                     # Get response
                     # answer, sources, source_pages, source_annotations, refined_source_pages, follow_up_questions, refined_source_index
                     answer,\
@@ -326,7 +327,7 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                     refined_source_index,\
                     follow_up_questions = streamlit_tutor_agent(
                         chat_session=st.session_state.chat_session,
-                        file_path=file_path,
+                        file_path_list=file_path_list,
                         user_input=user_input
                     )
                     st.session_state.source_annotations = source_annotations

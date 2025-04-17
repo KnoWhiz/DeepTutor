@@ -9,10 +9,10 @@ import logging
 logger = logging.getLogger("tutorfrontend.utils")
 
 
-def streamlit_tutor_agent(chat_session, file_path, user_input):    
+def streamlit_tutor_agent(chat_session, file_path_list, user_input):    
     answer_generator = asyncio.run(tutor_agent(
         chat_session=chat_session,
-        file_path_list=[file_path],
+        file_path_list=file_path_list,
         user_input=user_input,
         deep_thinking=True
     ))

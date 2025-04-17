@@ -66,6 +66,9 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
     config = load_config()
     stream = config["stream"]
 
+    if len(file_path_list) > 1:
+        chat_session.mode = ChatMode.LITE
+
     # Route to appropriate specialized agent based on mode
     if chat_session.mode == ChatMode.LITE:
         return await tutor_agent_lite(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream)

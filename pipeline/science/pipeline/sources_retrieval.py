@@ -116,6 +116,7 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
             logger.info(f"Loading existing embeddings for {embedding_folder}...")
             db = load_embeddings([embedding_folder], 'default')
             # For each document chunk in db, add "file_index" to the metadata
+            logger.info(f"Adding file_index to metadata for {embedding_folder}...")
             for doc in db.get_collection().find():
                 doc['metadata']['file_index'] = file_index
             db_merged = db_merged.merge_from(db)

@@ -189,7 +189,7 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
             if len(file_words) > words_per_file:
                 file_words = file_words[:words_per_file]
             file_excerpt = " ".join(file_words)
-            pdf_content += f"\n\n--- Content from {os.path.basename(file_path)} ---\n{file_excerpt}\n"
+            pdf_content += f"\n\n--- Related content ---\n{file_excerpt}\n"
             logger.info(f"Added {len(file_words)} words from {file_path}")
         except Exception as e:
             logger.error(f"Error extracting content from {file_path}: {str(e)}")

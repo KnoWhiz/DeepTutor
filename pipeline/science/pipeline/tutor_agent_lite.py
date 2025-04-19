@@ -195,6 +195,10 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
             logger.error(f"Error extracting content from {file_path}: {str(e)}")
             yield f"\n\n**⚠️ Error loading content from {os.path.basename(file_path)}: {str(e)}**\n\n"
     
+    if len(file_path_list) > 1 and user_input != config["summary_wording"]:
+        # FIXME: Add a logic to include only the most relevant file_excerpt
+        pdf_content = ""
+    
     time_tracking["pdf_content_loading"] = time.time() - pdf_content_loading_start
     logger.info(f"PDF content loading complete. Time: {format_time_tracking(time_tracking)}")
     yield "\n\n**📚 PDF content loading complete**\n\n"

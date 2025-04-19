@@ -93,43 +93,46 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
     image_url_mapping_merged_reverse = {v: k for k, v in image_url_mapping_merged.items()}
 
     # Load / generate embeddings for each file and merge them
-    db_list = []
-    faiss_path_0 = os.path.join(embedding_folder_list[0], "index.faiss")
-    pkl_path_0 = os.path.join(embedding_folder_list[0], "index.pkl")
-    if os.path.exists(faiss_path_0) and os.path.exists(pkl_path_0):
-        db_merged = load_embeddings([embedding_folder_list[0]], 'default')
-        db_list.append(db_merged)
-    else:
-        _document, _doc = process_pdf_file(file_path_list[0])
-        embeddings_agent(mode, _document, _doc, file_path_list[0], embedding_folder_list[0])
-        db_merged = load_embeddings([embedding_folder_list[0]], 'default')
-        db_list.append(db_merged)
-    file_index = 0
-    for file_path, embedding_folder in zip(file_path_list[1:], embedding_folder_list[1:]):
-        file_index += 1
-        # Define the default filenames used by FAISS when saving
-        faiss_path = os.path.join(embedding_folder, "index.faiss")
-        pkl_path = os.path.join(embedding_folder, "index.pkl")
-        # Check if all necessary files exist to load the embeddings
-        if os.path.exists(faiss_path) and os.path.exists(pkl_path):
-            # Load existing embeddings
-            logger.info(f"Loading existing embeddings for {embedding_folder}...")
-            db = load_embeddings([embedding_folder], 'default')
-            # For each document chunk in db, add "file_index" to the metadata
-            for doc in db.get_collection().find():
-                doc['metadata']['file_index'] = file_index
-            db_merged = db_merged.merge_from(db)
-            db_list.append(db)
-        else:
-            logger.info(f"No existing embeddings found for {embedding_folder}, creating new ones...")
-            _document, _doc = process_pdf_file(file_path)
-            embeddings_agent(mode, _document, _doc, file_path, embedding_folder)
-            db = load_embeddings([embedding_folder], 'default')
-            # For each document chunk in db, add "file_index" to the metadata
-            for doc in db.get_collection().find():
-                doc['metadata']['file_index'] = file_index
-            db_merged = db_merged.merge_from(db)
-            db_list.append(db)
+    # # db_list = []
+    # faiss_path_0 = os.path.join(embedding_folder_list[0], "index.faiss")
+    # pkl_path_0 = os.path.join(embedding_folder_list[0], "index.pkl")
+    # if os.path.exists(faiss_path_0) and os.path.exists(pkl_path_0):
+    #     db_merged = load_embeddings([embedding_folder_list[0]], 'default')
+    #     # db_list.append(db_merged)
+    # else:
+    #     _document, _doc = process_pdf_file(file_path_list[0])
+    #     embeddings_agent(mode, _document, _doc, file_path_list[0], embedding_folder_list[0])
+    #     db_merged = load_embeddings([embedding_folder_list[0]], 'default')
+    #     # db_list.append(db_merged)
+    # file_index = 0
+    # for file_path, embedding_folder in zip(file_path_list[1:], embedding_folder_list[1:]):
+    #     file_index += 1
+    #     # Define the default filenames used by FAISS when saving
+    #     faiss_path = os.path.join(embedding_folder, "index.faiss")
+    #     pkl_path = os.path.join(embedding_folder, "index.pkl")
+    #     # Check if all necessary files exist to load the embeddings
+    #     if os.path.exists(faiss_path) and os.path.exists(pkl_path):
+    #         # Load existing embeddings
+    #         logger.info(f"Loading existing embeddings for {embedding_folder}...")
+    #         db = load_embeddings([embedding_folder], 'default')
+    #         # For each document chunk in db, add "file_index" to the metadata
+    #         logger.info(f"Adding file_index to metadata for {embedding_folder}...")
+    #         for doc in db.get_collection().find():
+    #             doc['metadata']['file_index'] = file_index
+    #         db_merged = db_merged.merge_from(db)
+    #         # db_list.append(db)
+    #     else:
+    #         logger.info(f"No existing embeddings found for {embedding_folder}, creating new ones...")
+    #         _document, _doc = process_pdf_file(file_path)
+    #         embeddings_agent(mode, _document, _doc, file_path, embedding_folder)
+    #         db = load_embeddings([embedding_folder], 'default')
+    #         # For each document chunk in db, add "file_index" to the metadata
+    #         for doc in db.get_collection().find():
+    #             doc['metadata']['file_index'] = file_index
+    #         db_merged = db_merged.merge_from(db)
+    #         # db_list.append(db)
+
+    db_merged = load_embeddings(embedding_folder_list, 'default')
 
     # Get relevant chunks for both question and answer with scores
     question_chunks_with_scores = []

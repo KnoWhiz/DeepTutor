@@ -189,11 +189,15 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
             if len(file_words) > words_per_file:
                 file_words = file_words[:words_per_file]
             file_excerpt = " ".join(file_words)
-            pdf_content += f"\n\n--- Content from {os.path.basename(file_path)} ---\n{file_excerpt}\n"
+            pdf_content += f"\n\n--- Related content ---\n{file_excerpt}\n"
             logger.info(f"Added {len(file_words)} words from {file_path}")
         except Exception as e:
             logger.error(f"Error extracting content from {file_path}: {str(e)}")
             yield f"\n\n**⚠️ Error loading content from {os.path.basename(file_path)}: {str(e)}**\n\n"
+    
+    if len(file_path_list) > 1 and user_input != config["summary_wording"]:
+        # FIXME: Add a logic to include only the most relevant file_excerpt
+        pdf_content = ""
     
     time_tracking["pdf_content_loading"] = time.time() - pdf_content_loading_start
     logger.info(f"PDF content loading complete. Time: {format_time_tracking(time_tracking)}")

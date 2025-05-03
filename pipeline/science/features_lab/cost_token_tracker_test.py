@@ -10,18 +10,6 @@ from dotenv import load_dotenv
 import os
 load_dotenv()
 
-# First LLM instance declaration is not used, so removing it
-# Second LLM declaration with callback handler
-llm = AzureChatOpenAI(
-    api_key=os.getenv("AZURE_OPENAI_API_KEY_BACKUP"),
-    azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP"),
-    openai_api_version="2024-06-01",
-    azure_deployment="gpt-4o",
-    temperature=0,
-    streaming=True,
-    model_kwargs={"stream_options": {"include_usage": True}}
-)
-
 llm = ChatSambaNovaCloud(
     model="Meta-Llama-3.3-70B-Instruct",
     api_key=os.getenv("SAMBANOVA_API_KEY"),
@@ -30,6 +18,26 @@ llm = ChatSambaNovaCloud(
     temperature=0,
     top_p=0.1,
     streaming=True
+)
+
+llm = AzureChatOpenAI(
+    api_key=os.getenv("AZURE_OPENAI_API_KEY_BACKUP"),
+    azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP"),
+    openai_api_version="2024-07-01-preview",
+    azure_deployment="gpt-4o-mini",
+    temperature=0,
+    streaming=True,
+    model_kwargs={"stream_options": {"include_usage": True}}
+)
+
+llm = AzureChatOpenAI(
+    api_key=os.getenv("AZURE_OPENAI_API_KEY_BACKUP"),
+    azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP"),
+    openai_api_version="2024-08-01-preview",
+    azure_deployment="gpt-4o",
+    temperature=0,
+    streaming=True,
+    model_kwargs={"stream_options": {"include_usage": True}}
 )
 
 parser = StrOutputParser()

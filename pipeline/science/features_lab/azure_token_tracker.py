@@ -17,19 +17,23 @@ llm = AzureChatOpenAI(
     openai_api_version="2024-06-01",
     azure_deployment="gpt-4o",
     temperature=0,
-    streaming=False,
+    streaming=True,
+    model_kwargs={"stream_options": {"include_usage": True}}
 )
 
 parser = StrOutputParser()
 error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
-prompt = "what is 2 + 2 = ? explain the answer"
+prompt = "what is 2 + 2 = ? explain the answer in great detail"
 prompt = ChatPromptTemplate.from_template(prompt)
 chain = prompt | llm | error_parser
 
 # Using the get_openai_callback context manager to track token usage and cost
 with get_openai_callback() as cb:
-    response = chain.invoke({})
-    print(response)
+    response = chain.stream({})
+    print(type(response))
+    # print(response)
+    for chunk in response:
+        print(chunk, end="\n", flush=True)
     
     # Print token usage and cost information
     print("\nToken Usage Statistics:")

@@ -8,6 +8,8 @@ from langchain_core.tracers import ConsoleCallbackHandler
 
 from dotenv import load_dotenv
 import os
+import json
+import pathlib
 load_dotenv()
 
 llm = AzureChatOpenAI(
@@ -61,3 +63,42 @@ with get_openai_callback() as cb:
     print(f"Completion Tokens: {cb.completion_tokens}")
     print(f"Total Tokens: {cb.total_tokens}")
     print(f"Total Cost (USD): ${cb.total_cost:.10f}")
+    
+    # Check if total cost is 0 and provide information from the cost config file
+    if cb.total_cost == 0:
+        # Determine current model and provider
+        if isinstance(llm, AzureChatOpenAI):
+            provider = "azure"
+            model = llm.azure_deployment
+        elif isinstance(llm, ChatSambaNovaCloud):
+            provider = "sambanova"
+            model = llm.model
+        else:
+            provider = "unknown"
+            model = "unknown"
+        
+        # Get the cost config
+        config_path = pathlib.Path(__file__).parents[2] / "science" / "pipeline" / "cost_config.json"
+        try:
+            with open(config_path, "r") as f:
+                cost_config = json.load(f)
+            
+            # Retrieve model-specific cost information
+            if provider in cost_config["providers"] and model in cost_config["providers"][provider]["models"]:
+                model_config = cost_config["providers"][provider]["models"][model]
+                input_cost = model_config["input_cost_per_token"]
+                output_cost = model_config["output_cost_per_token"]
+                
+                # Calculate estimated cost based on actual token usage
+                estimated_cost = (cb.prompt_tokens * input_cost) + (cb.completion_tokens * output_cost)
+                
+                print("\nCost calculation from config:")
+                print(f"Provider: {provider}")
+                print(f"Model: {model}")
+                print(f"Input cost per token: ${input_cost}")
+                print(f"Output cost per token: ${output_cost}")
+                print(f"Estimated cost: ${estimated_cost:.10f}")
+            else:
+                print(f"\nNo cost information found for {provider}/{model} in config file")
+        except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
+            print(f"\nError retrieving cost configuration: {str(e)}")

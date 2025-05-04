@@ -60,6 +60,7 @@ class ApiHandler:
                 api_key=api_key,
                 model_name=deployment_name,
                 temperature=temperature,
+                model_kwargs={"stream_options": {"include_usage": True}} if stream else {}
             )
         elif host == 'azure':
             return AzureChatOpenAI(
@@ -69,6 +70,7 @@ class ApiHandler:
                 azure_deployment=deployment_name,
                 temperature=temperature,
                 streaming=stream,
+                model_kwargs={"stream_options": {"include_usage": True}} if stream else {}
             )
         elif host == 'sambanova':
             return ChatSambaNovaCloud(
@@ -78,7 +80,8 @@ class ApiHandler:
                 max_tokens=1024,
                 temperature=temperature,
                 top_p=0.1,
-                streaming=stream
+                streaming=stream,
+                model_kwargs={"stream_options": {"include_usage": True}} if stream else {}
             )
         # elif host == 'deepseek':
         #     return ChatDeepSeek(

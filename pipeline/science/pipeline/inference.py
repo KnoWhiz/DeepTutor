@@ -9,6 +9,7 @@ from langchain_core.prompts import ChatPromptTemplate
 import sys
 import os.path
 from pipeline.science.pipeline.session_manager import ChatSession
+from pipeline.science.pipeline.cost_tracker import track_cost_and_stream
 from langchain_sambanova import ChatSambaNovaCloud
 
 # Handle imports for both direct execution and external import cases
@@ -329,8 +330,10 @@ def deepseek_langchain_inference(
             def process_stream():
                 # yield "<think>"
                 first_chunk = True
+
+                stream_generator, cost_info = track_cost_and_stream(user_input=prompt, chain=chain)
                 
-                for chunk in chain.stream({"user_input": prompt}):
+                for chunk in stream_generator:
                     if "</think>" in chunk:
                         if chunk.startswith("</think>"):
                             chunk = chunk.replace("</think>", "")
@@ -354,6 +357,8 @@ def deepseek_langchain_inference(
                         yield chunk
                 
                 yield "</response>"
+
+                logger.info(f"Cost info dict: {cost_info}")
             
             return process_stream()
         else:
@@ -416,13 +421,15 @@ def o3mini_inference(user_prompt: str,
         def o3mini_stream_response(chain, user_prompt, stream):
             yield "<think>"
             first_token = True
-            for chunk in chain.stream({"user_input": user_prompt}):
+            stream_generator, cost_info = track_cost_and_stream(user_input=user_prompt, chain=chain)
+            for chunk in stream_generator:
                 if first_token:
                     yield "</think>"
                     yield "<response>"
                     first_token = False
                 yield chunk
             yield "</response>"
+            logger.info(f"Cost info dict: {cost_info}")
         return o3mini_stream_response(chain, user_prompt, stream)
     else:
         # Return just the content string from the complete response

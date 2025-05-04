@@ -359,6 +359,10 @@ def deepseek_langchain_inference(
                 yield "</response>"
 
                 logger.info(f"Cost info dict: {cost_info}")
+                # Update the accumulated cost in chat_session
+                if chat_session is not None and "total_cost" in cost_info:
+                    chat_session.update_cost(cost_info["total_cost"])
+                    logger.info(f"Updated session cost: ${chat_session.get_accumulated_cost():.6f}")
             
             return process_stream()
         else:
@@ -430,6 +434,10 @@ def o3mini_inference(user_prompt: str,
                 yield chunk
             yield "</response>"
             logger.info(f"Cost info dict: {cost_info}")
+            # Update the accumulated cost in chat_session
+            if chat_session is not None and "total_cost" in cost_info:
+                chat_session.update_cost(cost_info["total_cost"])
+                logger.info(f"Updated session cost: ${chat_session.get_accumulated_cost():.6f}")
         return o3mini_stream_response(chain, user_prompt, stream)
     else:
         # Return just the content string from the complete response

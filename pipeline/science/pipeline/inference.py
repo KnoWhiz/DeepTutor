@@ -306,7 +306,8 @@ def deepseek_langchain_inference(
         max_tokens=max_tokens,
         temperature=temperature,
         top_p=top_p,
-        streaming=stream
+        streaming=stream,
+        model_kwargs={"stream_options": {"include_usage": True}} if stream else {}
     )
 
     # Create the messages
@@ -394,7 +395,7 @@ def o3mini_inference(user_prompt: str,
         api_key=subscription_key,
         api_version="2024-12-01-preview",
         deployment_name=deployment,
-        model_kwargs={"max_completion_tokens": 100000},
+        model_kwargs={"max_completion_tokens": 100000, "stream_options": {"include_usage": True}} if stream else {"max_completion_tokens": 100000},
         streaming=stream
     )
 

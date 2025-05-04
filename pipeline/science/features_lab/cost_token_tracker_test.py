@@ -10,16 +10,6 @@ from dotenv import load_dotenv
 import os
 load_dotenv()
 
-llm = ChatSambaNovaCloud(
-    model="Meta-Llama-3.3-70B-Instruct",
-    api_key=os.getenv("SAMBANOVA_API_KEY"),
-    base_url="https://api.sambanova.ai/v1",
-    max_tokens=1024,
-    temperature=0,
-    top_p=0.1,
-    streaming=True
-)
-
 llm = AzureChatOpenAI(
     api_key=os.getenv("AZURE_OPENAI_API_KEY_BACKUP"),
     azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP"),
@@ -36,6 +26,17 @@ llm = AzureChatOpenAI(
     openai_api_version="2024-08-01-preview",
     azure_deployment="gpt-4o",
     temperature=0,
+    streaming=True,
+    model_kwargs={"stream_options": {"include_usage": True}}
+)
+
+llm = ChatSambaNovaCloud(
+    model="Meta-Llama-3.3-70B-Instruct",
+    api_key=os.getenv("SAMBANOVA_API_KEY"),
+    base_url="https://api.sambanova.ai/v1",
+    max_tokens=1024,
+    temperature=0,
+    top_p=0.1,
     streaming=True,
     model_kwargs={"stream_options": {"include_usage": True}}
 )

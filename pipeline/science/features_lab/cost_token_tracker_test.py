@@ -6,6 +6,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_community.callbacks.manager import get_openai_callback
 from langchain_core.tracers import ConsoleCallbackHandler
 from typing import Dict, Any, Generator, Tuple, Iterator, TypedDict, Union, cast
+import time
 
 from dotenv import load_dotenv
 import os
@@ -22,6 +23,7 @@ class CostInfo(TypedDict):
     total_cost: float
     provider: str
     model: str
+    time_elapsed: float
 
 def track_cost_and_stream(user_input: str, chain: Any) -> Tuple[Iterator[str], CostInfo]:
     """
@@ -34,7 +36,7 @@ def track_cost_and_stream(user_input: str, chain: Any) -> Tuple[Iterator[str], C
     Returns:
         Tuple containing:
         - A generator that yields chunks from the chain's response
-        - A dictionary with cost information including tokens and cost details
+        - A dictionary with cost information including tokens, cost details, and time elapsed
     """
     # Dictionary to store cost information
     cost_info: CostInfo = {
@@ -43,7 +45,8 @@ def track_cost_and_stream(user_input: str, chain: Any) -> Tuple[Iterator[str], C
         "total_tokens": 0,
         "total_cost": 0.0,
         "provider": "",
-        "model": ""
+        "model": "",
+        "time_elapsed": 0.0
     }
     
     # Get the LLM from the chain to determine provider and model
@@ -68,14 +71,25 @@ def track_cost_and_stream(user_input: str, chain: Any) -> Tuple[Iterator[str], C
             self.chain = chain
             self.callback = get_openai_callback()
             self.chunks = []
+            self.start_time = 0.0
+            self.end_time = 0.0
         
         def __iter__(self) -> Iterator[str]:
             with self.callback as cb:
                 try:
+                    # Record start time
+                    self.start_time = time.time()
+                    
                     response = self.chain.stream({"user_input": user_input})
                     for chunk in response:
                         self.chunks.append(chunk)
                         yield chunk
+                    
+                    # Record end time
+                    self.end_time = time.time()
+                    
+                    # Calculate time elapsed
+                    cost_info["time_elapsed"] = self.end_time - self.start_time
                     
                     # Update cost information
                     cost_info["input_tokens"] = cb.prompt_tokens
@@ -87,6 +101,9 @@ def track_cost_and_stream(user_input: str, chain: Any) -> Tuple[Iterator[str], C
                     if cb.total_cost == 0 and cost_info["provider"] != "unknown":
                         self._compute_cost_from_config()
                 except Exception as e:
+                    # Still record end time even if there's an error
+                    self.end_time = time.time()
+                    cost_info["time_elapsed"] = self.end_time - self.start_time
                     print(f"Error in streaming: {str(e)}")
         
         def _compute_cost_from_config(self) -> None:
@@ -130,8 +147,8 @@ if __name__ == "__main__":
     llm = AzureChatOpenAI(
         api_key=os.getenv("AZURE_OPENAI_API_KEY_BACKUP"),
         azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP"),
-        openai_api_version="2024-08-01-preview",
-        azure_deployment="gpt-4o",
+        openai_api_version="2024-07-01-preview",
+        azure_deployment="gpt-4o-mini",
         temperature=0,
         streaming=True,
         model_kwargs={"stream_options": {"include_usage": True}}
@@ -161,3 +178,4 @@ if __name__ == "__main__":
     
     print("\n\nCost Information:")
     print(json.dumps(cost_info, indent=2))
+    print(f"\nTime elapsed: {cost_info['time_elapsed']:.4f} seconds")

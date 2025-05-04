@@ -13,6 +13,9 @@ import os
 import json
 import pathlib
 from functools import wraps
+import logging
+
+logging.basicConfig(level=logging.INFO)
 load_dotenv()
 
 class CostInfo(TypedDict):
@@ -24,6 +27,7 @@ class CostInfo(TypedDict):
     provider: str
     model: str
     time_elapsed: float
+    cost_source: str  # Indicates whether cost came from callback or was calculated from config
 
 def track_cost_and_stream(user_input: str, chain: Any) -> Tuple[Iterator[str], CostInfo]:
     """
@@ -37,6 +41,12 @@ def track_cost_and_stream(user_input: str, chain: Any) -> Tuple[Iterator[str], C
         Tuple containing:
         - A generator that yields chunks from the chain's response
         - A dictionary with cost information including tokens, cost details, and time elapsed
+
+        "callback" - Cost was directly obtained from the LLM provider's callback
+        "config_calculation" - Cost was calculated using token counts and rates from the configuration file
+        "config_not_found" - Provider/model information was not found in the config file
+        "config_error" - An error occurred while trying to access the config file
+        "unknown" - Default value if no cost calculation was performed
     """
     # Dictionary to store cost information
     cost_info: CostInfo = {
@@ -46,7 +56,8 @@ def track_cost_and_stream(user_input: str, chain: Any) -> Tuple[Iterator[str], C
         "total_cost": 0.0,
         "provider": "",
         "model": "",
-        "time_elapsed": 0.0
+        "time_elapsed": 0.0,
+        "cost_source": "unknown"  # Initialize as unknown
     }
     
     # Get the LLM from the chain to determine provider and model
@@ -90,15 +101,20 @@ def track_cost_and_stream(user_input: str, chain: Any) -> Tuple[Iterator[str], C
                     
                     # Calculate time elapsed
                     cost_info["time_elapsed"] = self.end_time - self.start_time
-                    
+
                     # Update cost information
                     cost_info["input_tokens"] = cb.prompt_tokens
                     cost_info["output_tokens"] = cb.completion_tokens
                     cost_info["total_tokens"] = cb.total_tokens
                     cost_info["total_cost"] = cb.total_cost
+
+                    logging.info(f"Callback cost info: {cost_info}")
                     
+                    # Check if the callback provided a non-zero cost
+                    if cb.total_cost > 0:
+                        cost_info["cost_source"] = "callback"
                     # Check if total cost is 0 and compute from config
-                    if cb.total_cost == 0 and cost_info["provider"] != "unknown":
+                    elif cost_info["provider"] != "unknown":
                         self._compute_cost_from_config()
                 except Exception as e:
                     # Still record end time even if there's an error
@@ -125,7 +141,11 @@ def track_cost_and_stream(user_input: str, chain: Any) -> Tuple[Iterator[str], C
                     # Calculate estimated cost based on actual token usage
                     estimated_cost = (cost_info["input_tokens"] * input_cost) + (cost_info["output_tokens"] * output_cost)
                     cost_info["total_cost"] = estimated_cost
+                    cost_info["cost_source"] = "config_calculation"
+                else:
+                    cost_info["cost_source"] = "config_not_found"
             except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
+                cost_info["cost_source"] = "config_error"
                 print(f"Error retrieving cost configuration: {str(e)}")
     
     # Return the generator wrapper and cost info
@@ -170,7 +190,7 @@ if __name__ == "__main__":
         api_key=os.getenv("AZURE_OPENAI_API_KEY_BACKUP"),
         api_version="2024-12-01-preview",
         deployment_name="o3-mini",
-        model_kwargs={"max_completion_tokens": 100000, "stream_options": {"include_usage": True}},
+        model_kwargs={"stream_options": {"include_usage": True}, "max_completion_tokens": 100000},
         streaming=True
     )
 

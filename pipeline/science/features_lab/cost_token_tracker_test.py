@@ -164,7 +164,16 @@ if __name__ == "__main__":
         streaming=True,
         model_kwargs={"stream_options": {"include_usage": True}}
     )
-    
+
+    llm = AzureChatOpenAI(
+        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP"),
+        api_key=os.getenv("AZURE_OPENAI_API_KEY_BACKUP"),
+        api_version="2024-12-01-preview",
+        deployment_name="o3-mini",
+        model_kwargs={"max_completion_tokens": 100000, "stream_options": {"include_usage": True}},
+        streaming=True
+    )
+
     parser = StrOutputParser()
     prompt = ChatPromptTemplate.from_template("""what is {user_input}? explain the answer in great detail""")
     chain = prompt | llm | parser

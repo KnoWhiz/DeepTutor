@@ -398,31 +398,36 @@ def o3mini_inference(user_prompt: str,
         streaming=stream
     )
 
-    # Create messages
-    messages = [
-        SystemMessage(content=system_prompt),
-        HumanMessage(content=user_prompt)
-    ]
+    # Create prompt template for the chain
+    prompt_template = ChatPromptTemplate.from_messages([
+        ("system", system_prompt),
+        ("human", "{user_input}")
+    ])
+    
+    # Create a parser
+    parser = StrOutputParser()
+    
+    # Define the chain using LCEL
+    chain = prompt_template | model | parser
 
     # Generate response - use different methods depending on streaming mode
     if stream:
         # Return the streaming response generator
-        def o3mini_stream_response(model, messages, stream):
+        def o3mini_stream_response(chain, user_prompt, stream):
             yield "<think>"
             first_token = True
-            for chunk in model.stream(messages):
-                if hasattr(chunk, "content"):
-                    if first_token:
-                        yield "</think>"
-                        yield "<response>"
-                        first_token = False
-                    yield chunk.content
+            for chunk in chain.stream({"user_input": user_prompt}):
+                if first_token:
+                    yield "</think>"
+                    yield "<response>"
+                    first_token = False
+                yield chunk
             yield "</response>"
-        return o3mini_stream_response(model, messages, stream)
+        return o3mini_stream_response(chain, user_prompt, stream)
     else:
         # Return just the content string from the complete response
-        response = model.invoke(messages)
-        return response.content
+        response = chain.invoke({"user_input": user_prompt})
+        return response
 
 
 # Example usage

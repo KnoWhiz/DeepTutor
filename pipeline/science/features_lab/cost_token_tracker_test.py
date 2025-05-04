@@ -179,6 +179,32 @@ if __name__ == "__main__":
             ),
         ),
         (
+            "DeepSeek-R1",
+            ChatSambaNovaCloud(
+                model="DeepSeek-R1",
+                api_key=os.getenv("SAMBANOVA_API_KEY"),
+                base_url="https://preview.snova.ai/v1",
+                max_tokens=1024,
+                temperature=0,
+                top_p=0.1,
+                streaming=True,
+                model_kwargs={"stream_options": {"include_usage": True}},
+            ),
+        ),
+        (
+            "DeepSeek-R1-Distill-Llama-70B",
+            ChatSambaNovaCloud(
+                model="DeepSeek-R1-Distill-Llama-70B",
+                api_key=os.getenv("SAMBANOVA_API_KEY"),
+                base_url="https://api.sambanova.ai/v1",
+                max_tokens=1024,
+                temperature=0,
+                top_p=0.1,
+                streaming=True,
+                model_kwargs={"stream_options": {"include_usage": True}},
+            ),
+        ),
+        (
             "o3-mini",
             AzureChatOpenAI(
                 azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP"),

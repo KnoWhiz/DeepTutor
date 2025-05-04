@@ -4,11 +4,12 @@ from typing import Optional, Dict, Any, Union, Iterator
 from dotenv import load_dotenv
 from langchain_openai import AzureChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
 import sys
 import os.path
 from pipeline.science.pipeline.session_manager import ChatSession
 from langchain_sambanova import ChatSambaNovaCloud
-from langchain_core.prompts import ChatPromptTemplate
 
 # Handle imports for both direct execution and external import cases
 try:
@@ -310,17 +311,17 @@ def deepseek_langchain_inference(
         model_kwargs={"stream_options": {"include_usage": True}} if stream else {}
     )
 
-    # Create the messages
-    messages = [
-        (
-            "system",
-            system_message
-        ),
-        (
-            "human",
-            prompt
-        )
-    ]
+    # Create the prompt template for the chain
+    prompt_template = ChatPromptTemplate.from_messages([
+        ("system", system_message),
+        ("human", "{user_input}")
+    ])
+    
+    # Create a parser
+    parser = StrOutputParser()
+    
+    # Define the chain using LCEL
+    chain = prompt_template | llm | parser
 
     try:
         if stream:
@@ -329,38 +330,36 @@ def deepseek_langchain_inference(
                 # yield "<think>"
                 first_chunk = True
                 
-                for chunk in llm.stream(messages):
-                    content = chunk.content if hasattr(chunk, "content") else ""
-                    
-                    if "</think>" in content:
-                        if content.startswith("</think>"):
-                            content = content.replace("</think>", "")
+                for chunk in chain.stream({"user_input": prompt}):
+                    if "</think>" in chunk:
+                        if chunk.startswith("</think>"):
+                            chunk = chunk.replace("</think>", "")
                             yield "</think>"
                             yield "<response>"
-                            yield content
+                            yield chunk
                             first_chunk = False
-                        elif content.endswith("</think>"):
-                            content = content.replace("</think>", "")
-                            yield content
+                        elif chunk.endswith("</think>"):
+                            chunk = chunk.replace("</think>", "")
+                            yield chunk
                             yield "</think>"
                             yield "<response>"
                             first_chunk = False
                         else:
-                            yield content.split("</think>")[0]   # Before the thinking section
+                            yield chunk.split("</think>")[0]   # Before the thinking section
                             yield "</think>"
                             yield "<response>"
-                            yield content.split("</think>")[1]   # After the thinking section
+                            yield chunk.split("</think>")[1]   # After the thinking section
                             first_chunk = False
                     else:
-                        yield content
+                        yield chunk
                 
                 yield "</response>"
             
             return process_stream()
         else:
             # For non-streaming responses
-            response = llm.invoke(messages)
-            return response.content
+            response = chain.invoke({"user_input": prompt})
+            return response
             
     except Exception as e:
         logger.exception(f"An error occurred while using LangChain with SambaNova: {str(e)}")

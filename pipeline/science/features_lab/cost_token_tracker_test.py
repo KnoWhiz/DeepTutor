@@ -253,7 +253,7 @@ if __name__ == "__main__":
     parser = StrOutputParser()
     prompt = ChatPromptTemplate.from_template("""what is {user_input}? explain the answer in great detail""")
 
-    for model_name, llm in llm_instances[-6:-4]:
+    for model_name, llm in llm_instances[:]:
         print("=" * 80)
         print(f"Testing model: {model_name}")
         chain = prompt | llm | parser

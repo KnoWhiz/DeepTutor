@@ -3,28 +3,28 @@
       "azure": {
         "models": {
           "gpt-4o-mini": {
-            "input_cost_per_token": 0.00015,
-            "output_cost_per_token": 0.0006
+            "input_cost_per_token": 0.00000015,
+            "output_cost_per_token": 0.00000060
           },
           "gpt-4o": {
-            "input_cost_per_token": 0.0005,
-            "output_cost_per_token": 0.0015
+            "input_cost_per_token": 0.00000500,
+            "output_cost_per_token": 0.00001500
           },
           "o3-mini": {
-            "input_cost_per_token": 0.0011,
-            "output_cost_per_token": 0.0044
+            "input_cost_per_token": 0.00000110,
+            "output_cost_per_token": 0.00000440
           },
           "o4-mini": {
-            "input_cost_per_token": 0.0011,
-            "output_cost_per_token": 0.0044
+            "input_cost_per_token": 0.00000110,
+            "output_cost_per_token": 0.00000440
           },
           "gpt-4.1": {
-            "input_cost_per_token": 0.0005,
-            "output_cost_per_token": 0.0015
+            "input_cost_per_token": 0.00000200,
+            "output_cost_per_token": 0.00000800
           },
           "gpt-4.1-mini": {
-            "input_cost_per_token": 0.0005,
-            "output_cost_per_token": 0.0015
+            "input_cost_per_token": 0.00000040,
+            "output_cost_per_token": 0.00000160
           }
         }
       },
@@ -39,12 +39,12 @@
             "output_cost_per_token": 0.0000012
           },
           "Meta-Llama-3.1-405B-Instruct": {
-            "input_cost_per_token": 0.000005,
-            "output_cost_per_token": 0.00001
+            "input_cost_per_token": 0.0000050,
+            "output_cost_per_token": 0.0000100
           },
           "DeepSeek-R1": {
-            "input_cost_per_token": 0.000005,
-            "output_cost_per_token": 0.000007
+            "input_cost_per_token": 0.0000050,
+            "output_cost_per_token": 0.0000070
           },
           "DeepSeek-R1-Distill-Llama-70B": {
             "input_cost_per_token": 0.0000007,

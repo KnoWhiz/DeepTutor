@@ -144,8 +144,8 @@ if __name__ == "__main__":
         (
             "gpt-4o",
             AzureChatOpenAI(
-                api_key=os.getenv("AZURE_OPENAI_API_KEY_BACKUP"),
-                azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP"),
+                api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+                azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
                 openai_api_version="2024-08-01-preview",
                 deployment_name="gpt-4o",
                 temperature=0,
@@ -156,8 +156,8 @@ if __name__ == "__main__":
         (
             "gpt-4o-mini",
             AzureChatOpenAI(
-                api_key=os.getenv("AZURE_OPENAI_API_KEY_BACKUP"),
-                azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP"),
+                api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+                azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
                 openai_api_version="2024-07-01-preview",
                 azure_deployment="gpt-4o-mini",
                 temperature=0,
@@ -215,12 +215,45 @@ if __name__ == "__main__":
                 streaming=True,
             ),
         ),
+        (
+            "o4-mini",
+            AzureChatOpenAI(
+                azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP"),
+                api_key=os.getenv("AZURE_OPENAI_API_KEY_BACKUP"),
+                api_version="2024-12-01-preview",
+                deployment_name="o4-mini",
+                model_kwargs={"stream_options": {"include_usage": True}, "max_completion_tokens": 100000},
+                streaming=True,
+            ),
+        ),
+        (
+            "gpt-4.1",
+            AzureChatOpenAI(
+                azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP"),
+                api_key=os.getenv("AZURE_OPENAI_API_KEY_BACKUP"),
+                api_version="2024-12-01-preview",
+                deployment_name="gpt-4.1",
+                model_kwargs={"stream_options": {"include_usage": True}},
+                streaming=True,
+            ),
+        ),
+        (
+            "gpt-4.1-mini",
+            AzureChatOpenAI(
+                azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP"),
+                api_key=os.getenv("AZURE_OPENAI_API_KEY_BACKUP"),
+                api_version="2024-12-01-preview",
+                deployment_name="gpt-4.1-mini",
+                model_kwargs={"stream_options": {"include_usage": True}},
+                streaming=True,
+            ),
+        ),
     ]
 
     parser = StrOutputParser()
     prompt = ChatPromptTemplate.from_template("""what is {user_input}? explain the answer in great detail""")
 
-    for model_name, llm in llm_instances:
+    for model_name, llm in llm_instances[-2:]:
         print("=" * 80)
         print(f"Testing model: {model_name}")
         chain = prompt | llm | parser

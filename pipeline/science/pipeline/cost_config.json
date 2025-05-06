@@ -30,17 +30,25 @@
       },
       "sambanova": {
         "models": {
-          "Meta-Llama-3.3-70B-Instruct": {
-            "input_cost_per_token": 0.0001,
-            "output_cost_per_token": 0.0004
+          "Meta-Llama-3.1-8B-Instruct": {
+            "input_cost_per_token": 0.0000001,
+            "output_cost_per_token": 0.0000002
+          },
+          "Meta-Llama-3.1-70B-Instruct": {
+            "input_cost_per_token": 0.0000006,
+            "output_cost_per_token": 0.0000012
+          },
+          "Meta-Llama-3.1-405B-Instruct": {
+            "input_cost_per_token": 0.000005,
+            "output_cost_per_token": 0.00001
           },
           "DeepSeek-R1": {
-            "input_cost_per_token": 0.00055,
-            "output_cost_per_token": 0.00219
+            "input_cost_per_token": 0.000005,
+            "output_cost_per_token": 0.000007
           },
           "DeepSeek-R1-Distill-Llama-70B": {
-            "input_cost_per_token": 0.00075,
-            "output_cost_per_token": 0.00099
+            "input_cost_per_token": 0.0000007,
+            "output_cost_per_token": 0.0000014
           }
         }
       }

@@ -1,4 +1,7 @@
 import os
+import io
+import re
+import fitz
 # import pprint
 import json
 
@@ -23,6 +26,53 @@ from pipeline.science.pipeline.doc_processor import process_pdf_file
 from pipeline.science.pipeline.session_manager import ChatSession
 import logging
 logger = logging.getLogger("tutorpipeline.science.sources_retrieval")
+
+def locate_chunk_in_pdf(chunk: str, pdf_path: str) -> dict:
+    """
+    Locates a text chunk within a PDF file and returns its position information.
+    
+    Args:
+        chunk: A string of text to locate within the PDF
+        pdf_path: Path to the PDF file
+    
+    Returns:
+        Dictionary containing:
+            - page_num: The page number where the chunk was found (0-indexed)
+            - start_char: The starting character position in the page
+            - end_char: The ending character position in the page
+            - success: Boolean indicating if the chunk was found
+    """
+    result = {
+        "page_num": -1,
+        "start_char": -1,
+        "end_char": -1,
+        "success": False
+    }
+    
+    try:
+        # Open the PDF file
+        doc = fitz.open(pdf_path)
+        
+        # Search for the chunk in each page
+        for page_num in range(len(doc)):
+            page = doc[page_num]
+            text = page.get_text()
+            
+            # Look for the chunk in the page text
+            start_pos = text.find(chunk)
+            if start_pos != -1:
+                end_pos = start_pos + len(chunk)
+                result["page_num"] = page_num
+                result["start_char"] = start_pos
+                result["end_char"] = end_pos
+                result["success"] = True
+                break
+        
+        doc.close()
+    except Exception as e:
+        print(f"Error processing PDF: {e}")
+    
+    return result
 
 def get_response_source(chat_session: ChatSession, file_path_list, user_input, answer, chat_history, embedding_folder_list):
     """

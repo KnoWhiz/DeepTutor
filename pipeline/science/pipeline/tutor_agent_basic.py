@@ -38,7 +38,7 @@ from pipeline.science.pipeline.get_response import (
     get_response,
     generate_follow_up_questions,
 )
-from pipeline.science.pipeline.sources_retrieval import get_response_source
+from pipeline.science.pipeline.sources_retrieval import get_response_source, locate_chunk_in_pdf
 from pipeline.science.pipeline.config import load_config
 
 import logging

@@ -436,10 +436,13 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     source_annotations = {}
     for source, index in refined_source_index.items():
         _doc = process_pdf_file(file_path_list[index-1])[1]
-        annotations, _ = get_highlight_info(_doc, [source])
+        # annotations, _ = get_highlight_info(_doc, [source])
+        # logger.info(f"TEST: source: {source}, index: {index}, file_path: {file_path_list[refined_source_index[source]]}")
+        annotations = locate_chunk_in_pdf(source, file_path_list[refined_source_index[source]])
         source_annotations[source] = annotations
     time_tracking["annotations"] = time.time() - annotations_start
     yield "\n\n**🔍 Retrieving source annotations done ...**\n\n"
+    logger.info(f"source_annotations: {source_annotations}")
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Generate follow-up questions

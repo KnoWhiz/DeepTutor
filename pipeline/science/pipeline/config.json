@@ -13,11 +13,11 @@
     },
     "retriever": {
         "search_type": "similarity",
-        "k": 15
+        "k": 9
     },
     "sources_retriever": {
         "search_type": "similarity",
-        "k": 15
+        "k": 9
     },
     "languages": {
         "🇺🇸 English": "English",
@@ -58,7 +58,7 @@
     },
     "default_topics": ["Overview", "Methods", "Results", "Discussion"],
     "image_extensions": [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".webp", ".svg"],
-    "inference_token_limit": 8000,
+    "inference_token_limit": 30000,
     "stream": true,
     "summary_wording": "Based on the context provided, make a summary for the document. Begin with \"Summary\"",
     "map_symbol_to_index": {

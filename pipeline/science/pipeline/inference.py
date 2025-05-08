@@ -319,7 +319,7 @@ def deepseek_langchain_inference(
     elif model == "DeepSeek-R1":
         max_tokens *= 1
     else:
-        max_tokens *= 3  # Default multiplier
+        max_tokens *= 2  # Default multiplier
 
     # Create the LangChain SambaNova model
     llm = ChatSambaNovaCloud(

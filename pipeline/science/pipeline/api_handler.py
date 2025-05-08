@@ -32,6 +32,8 @@ class ApiHandler:
         self.para['stream'] = stream
         self.api_key = str(os.getenv("AZURE_OPENAI_API_KEY"))
         self.azure_endpoint = str(os.getenv("AZURE_OPENAI_ENDPOINT"))
+        self.azure_endpoint_backup = str(os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP"))
+        self.azure_api_key_backup = str(os.getenv("AZURE_OPENAI_API_KEY_BACKUP"))
         # self.openai_api_key = str(os.getenv("OPENAI_API_KEY"))
         # self.deepseek_api_key = str(os.getenv("DEEPSEEK_API_KEY"))
         self.sambanova_api_key = str(os.getenv("SAMBANOVA_API_KEY"))
@@ -60,6 +62,7 @@ class ApiHandler:
                 api_key=api_key,
                 model_name=deployment_name,
                 temperature=temperature,
+                model_kwargs={"stream_options": {"include_usage": True}} if stream else {}
             )
         elif host == 'azure':
             return AzureChatOpenAI(
@@ -69,6 +72,7 @@ class ApiHandler:
                 azure_deployment=deployment_name,
                 temperature=temperature,
                 streaming=stream,
+                model_kwargs={"stream_options": {"include_usage": True}} if stream else {}
             )
         elif host == 'sambanova':
             return ChatSambaNovaCloud(
@@ -78,7 +82,8 @@ class ApiHandler:
                 max_tokens=1024,
                 temperature=temperature,
                 top_p=0.1,
-                streaming=stream
+                streaming=stream,
+                model_kwargs={"stream_options": {"include_usage": True}} if stream else {}
             )
         # elif host == 'deepseek':
         #     return ChatDeepSeek(
@@ -91,25 +96,25 @@ class ApiHandler:
 
 
     def load_models(self):
-        llm_basic = self.get_models(api_key=self.api_key,
+        llm_basic = self.get_models(api_key=self.azure_api_key_backup,
                                     temperature=self.para['temperature'],
-                                    deployment_name='gpt-4o-mini',
-                                    endpoint=self.azure_endpoint,
-                                    api_version='2024-07-01-preview',
+                                    deployment_name='gpt-4.1-mini',
+                                    endpoint=self.azure_endpoint_backup,
+                                    api_version='2024-12-01-preview',
                                     host='azure',
                                     stream=self.para['stream'])
-        llm_advance = self.get_models(api_key=self.api_key,
+        llm_advance = self.get_models(api_key=self.azure_api_key_backup,
                                       temperature=self.para['temperature'],
-                                      deployment_name='gpt-4o',
-                                      endpoint=self.azure_endpoint,
-                                      api_version='2024-08-01-preview',
+                                      deployment_name='gpt-4.1',
+                                      endpoint=self.azure_endpoint_backup,
+                                      api_version='2024-12-01-preview',
                                       host='azure',
                                       stream=self.para['stream'])
-        llm_creative = self.get_models(api_key=self.api_key,
+        llm_creative = self.get_models(api_key=self.azure_api_key_backup,
                                       temperature=self.para['creative_temperature'],
-                                      deployment_name='gpt-4o',
-                                      endpoint=self.azure_endpoint,
-                                      api_version='2024-06-01',
+                                      deployment_name='gpt-4.1',
+                                      endpoint=self.azure_endpoint_backup,
+                                      api_version='2024-12-01-preview',
                                       host='azure',
                                       stream=self.para['stream'])
         # llm_deepseek = self.get_models(api_key=self.deepseek_api_key,

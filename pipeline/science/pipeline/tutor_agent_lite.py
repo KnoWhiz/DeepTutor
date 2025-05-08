@@ -28,7 +28,7 @@ from pipeline.science.pipeline.get_response import (
     generate_follow_up_questions,
 )
 from pipeline.science.pipeline.config import load_config
-from pipeline.science.pipeline.sources_retrieval import get_response_source, locate_chunk_in_pdf
+from pipeline.science.pipeline.sources_retrieval import get_response_source
 
 import logging
 logger = logging.getLogger("tutorpipeline.science.tutor_agent_lite")

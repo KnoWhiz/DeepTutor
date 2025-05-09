@@ -274,8 +274,27 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
         yield "</refined_source_index>"
 
     time_tracking["source_retrieval"] = time.time() - sources_start
-    yield "\n\n**🔍 Retrieving sources done ...**\n\n"
+    # yield "\n\n**🔍 Retrieving sources done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+
+    source_annotations = {}
+    i = 0
+    for source, index in refined_source_index.items():
+        _doc = process_pdf_file(file_path_list[index-1])[1]
+        # annotations, _ = get_highlight_info(_doc, [source])
+        # logger.info(f"TEST: source: {source}, index: {index}, file_path: {file_path_list[refined_source_index[source]]}")
+        annotations = locate_chunk_in_pdf(source, file_path_list[refined_source_index[source]])
+        source_annotations[source] = annotations
+        logger.info(f"For source number {i}, the annotations extraction is: {annotations}")
+        i += 1
+    # yield "\n\n**🔍 Retrieving source annotations done ...**\n\n"
+    # logger.info(f"source_annotations: {source_annotations}")
+
+    for source_annotations_key, source_annotations_value in source_annotations.items():
+        yield "<source_annotations>"
+        yield "{" + str(source_annotations_key) + "}"
+        yield "{" + str(source_annotations_value) + "}"
+        yield "</source_annotations>"
 
     # For Lite mode, we have minimal sources and follow-up questions
     yield "\n\n**💬 Loading follow-up questions ...**\n\n"

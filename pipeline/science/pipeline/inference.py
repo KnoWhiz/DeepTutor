@@ -42,24 +42,33 @@ def deep_inference_agent(
         chat_session = ChatSession()
     if stream is False:
         try:
-            response = deepseek_langchain_inference(prompt=user_prompt,
-                                        system_message=system_prompt,
+            # response = deepseek_langchain_inference(prompt=user_prompt,
+            #                             system_message=system_prompt,
+            #                             stream=stream,
+            #                             model="DeepSeek-R1",
+            #                             chat_session=chat_session)
+            response = o4mini_inference(user_prompt=user_prompt,
                                         stream=stream,
-                                        model="DeepSeek-R1",
                                         chat_session=chat_session)
             if response == None:
-                raise Exception("No response from DeepSeek-R1")
+                # raise Exception("No response from DeepSeek-R1")
+                raise Exception("No response from o4mini")
             return response
         except Exception as e:
-            logger.exception(f"An error occurred when calling DeepSeek-R1: {str(e)}")
+            # logger.exception(f"An error occurred when calling DeepSeek-R1: {str(e)}")
+            logger.exception(f"An error occurred when calling o4mini: {str(e)}")
             try:
-                response = deepseek_langchain_inference(prompt=user_prompt,
-                                            system_message=system_prompt,
+                # response = deepseek_langchain_inference(prompt=user_prompt,
+                #                             system_message=system_prompt,
+                #                             stream=stream,
+                #                             model="DeepSeek-R1-Distill-Llama-70B",
+                #                             chat_session=chat_session)
+                response = o3mini_inference(user_prompt=user_prompt,
                                             stream=stream,
-                                            model="DeepSeek-R1-Distill-Llama-70B",
                                             chat_session=chat_session)
                 if response == None:
-                    raise Exception("No response from DeepSeek-R1-Distill-Llama-70B")
+                    # raise Exception("No response from DeepSeek-R1-Distill-Llama-70B")
+                    raise Exception("No response from o3mini")
                 return response
             except Exception as e:
                 logger.exception(f"An error occurred when calling DeepSeek-R1-Distill-Llama-70B: {str(e)}")
@@ -81,37 +90,47 @@ def deep_inference_agent(
         def safe_stream_generator():
             # Try DeepSeek-R1
             try:
-                stream_response = deepseek_langchain_inference(prompt=user_prompt,
-                                                    system_message=system_prompt,
+                # stream_response = deepseek_langchain_inference(prompt=user_prompt,
+                #                                     system_message=system_prompt,
+                #                                     stream=stream,
+                #                                     model="DeepSeek-R1",
+                #                                     chat_session=chat_session)
+                stream_response = o4mini_inference(user_prompt=user_prompt,
                                                     stream=stream,
-                                                    model="DeepSeek-R1",
                                                     chat_session=chat_session)
                 if stream_response is None:
-                    raise Exception("No response from DeepSeek-R1")
+                    # raise Exception("No response from DeepSeek-R1")
+                    raise Exception("No response from o4mini")
 
                 # Try to consume the generator - any errors will be caught here
                 for chunk in stream_response:
                     yield chunk
                 return  # Exit if successful
             except Exception as e:
-                logger.exception(f"An error occurred when calling DeepSeek-R1: {str(e)}")
+                # logger.exception(f"An error occurred when calling DeepSeek-R1: {str(e)}")
+                logger.exception(f"An error occurred when calling o4mini: {str(e)}")
 
             # Try DeepSeek-R1-Distill-Llama-70B as fallback
             try:
-                stream_response = deepseek_langchain_inference(prompt=user_prompt,
-                                                    system_message=system_prompt,
+                # stream_response = deepseek_langchain_inference(prompt=user_prompt,
+                #                                     system_message=system_prompt,
+                #                                     stream=stream,
+                #                                     model="DeepSeek-R1-Distill-Llama-70B",
+                #                                     chat_session=chat_session)
+                stream_response = o3mini_inference(user_prompt=user_prompt,
                                                     stream=stream,
-                                                    model="DeepSeek-R1-Distill-Llama-70B",
                                                     chat_session=chat_session)
                 if stream_response is None:
-                    raise Exception("No response from DeepSeek-R1-Distill-Llama-70B")
+                    # raise Exception("No response from DeepSeek-R1-Distill-Llama-70B")
+                    raise Exception("No response from o3mini")
 
                 # Try to consume the generator - any errors will be caught here
                 for chunk in stream_response:
                     yield chunk
                 return  # Exit if successful
             except Exception as e:
-                logger.exception(f"An error occurred when calling DeepSeek-R1-Distill-Llama-70B: {str(e)}")
+                # logger.exception(f"An error occurred when calling DeepSeek-R1-Distill-Llama-70B: {str(e)}")
+                logger.exception(f"An error occurred when calling o3mini: {str(e)}")
 
             # Try o3mini as final fallback
             try:
@@ -300,7 +319,7 @@ def deepseek_langchain_inference(
     elif model == "DeepSeek-R1":
         max_tokens *= 1
     else:
-        max_tokens *= 3  # Default multiplier
+        max_tokens *= 2  # Default multiplier
 
     # Create the LangChain SambaNova model
     llm = ChatSambaNovaCloud(
@@ -439,6 +458,76 @@ def o3mini_inference(user_prompt: str,
                 chat_session.update_cost(cost_info["total_cost"])
                 logger.info(f"Updated session cost: ${chat_session.get_accumulated_cost():.6f}")
         return o3mini_stream_response(chain, user_prompt, stream)
+    else:
+        # Return just the content string from the complete response
+        response = chain.invoke({"user_input": user_prompt})
+        return response
+
+
+def o4mini_inference(user_prompt: str,
+                     system_prompt: str = "You are a professional deep thinking researcher reading a paper. Analyze the paper context content and answer the question. If the information is not provided in the paper, say you cannot find the answer in the paper but will try to answer based on your knowledge. For formulas, use LaTeX format with $...$ or \n$$...\n$$.",
+                     stream: bool = False,
+                     chat_session: ChatSession = None) -> Union[str, Iterator]:
+    """
+    Generate a response using Azure OpenAI through LangChain
+
+    Args:
+        system_prompt: The system instruction for the AI
+        user_prompt: The user's query or input
+        stream: Whether to stream the response (default: False)
+
+    Returns:
+        If stream = False: The text content of the model's response as a string
+        If stream = True: A streaming response iterator that can be iterated over
+    """
+    # Azure OpenAI credentials
+    endpoint = os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP")
+    deployment = "o4-mini"
+    subscription_key = os.getenv("AZURE_OPENAI_API_KEY_BACKUP")
+
+    # Initialize the Azure OpenAI model through LangChain
+    # Use model_kwargs to properly pass the max_completion_tokens parameter
+    model = AzureChatOpenAI(
+        azure_endpoint=endpoint,
+        api_key=subscription_key,
+        api_version="2024-12-01-preview",
+        deployment_name=deployment,
+        model_kwargs={"max_completion_tokens": 100000, "stream_options": {"include_usage": True}} if stream else {"max_completion_tokens": 100000},
+        streaming=stream
+    )
+
+    # Create prompt template for the chain
+    prompt_template = ChatPromptTemplate.from_messages([
+        ("system", system_prompt),
+        ("human", "{user_input}")
+    ])
+    
+    # Create a parser
+    parser = StrOutputParser()
+    
+    # Define the chain using LCEL
+    chain = prompt_template | model | parser
+
+    # Generate response - use different methods depending on streaming mode
+    if stream:
+        # Return the streaming response generator
+        def o4mini_stream_response(chain, user_prompt, stream):
+            yield "<think>"
+            first_token = True
+            stream_generator, cost_info = track_cost_and_stream(user_input=user_prompt, chain=chain)
+            for chunk in stream_generator:
+                if first_token:
+                    yield "</think>"
+                    yield "<response>"
+                    first_token = False
+                yield chunk
+            yield "</response>"
+            logger.info(f"Cost info dict: {cost_info}")
+            # Update the accumulated cost in chat_session
+            if chat_session is not None and "total_cost" in cost_info:
+                chat_session.update_cost(cost_info["total_cost"])
+                logger.info(f"Updated session cost: ${chat_session.get_accumulated_cost():.6f}")
+        return o4mini_stream_response(chain, user_prompt, stream)
     else:
         # Return just the content string from the complete response
         response = chain.invoke({"user_input": user_prompt})

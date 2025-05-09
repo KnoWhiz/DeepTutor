@@ -432,7 +432,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
         logger.info(f"For source number {i}, the annotations extraction is: {annotations}")
         i += 1
     time_tracking["annotations"] = time.time() - annotations_start
-    logger.info(f"source_annotations: {source_annotations}")
+    # logger.info(f"source_annotations: {source_annotations}")
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     for source_annotations_key, source_annotations_value in source_annotations.items():

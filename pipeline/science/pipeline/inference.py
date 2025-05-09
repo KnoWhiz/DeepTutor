@@ -47,16 +47,16 @@ def deep_inference_agent(
             #                             stream=stream,
             #                             model="DeepSeek-R1",
             #                             chat_session=chat_session)
-            response = o4mini_inference(user_prompt=user_prompt,
+            response = o3mini_inference(user_prompt=user_prompt,
                                         stream=stream,
                                         chat_session=chat_session)
             if response == None:
                 # raise Exception("No response from DeepSeek-R1")
-                raise Exception("No response from o4mini")
+                raise Exception("No response from o3mini")
             return response
         except Exception as e:
             # logger.exception(f"An error occurred when calling DeepSeek-R1: {str(e)}")
-            logger.exception(f"An error occurred when calling o4mini: {str(e)}")
+            logger.exception(f"An error occurred when calling o3mini: {str(e)}")
             try:
                 # response = deepseek_langchain_inference(prompt=user_prompt,
                 #                             system_message=system_prompt,
@@ -71,7 +71,8 @@ def deep_inference_agent(
                     raise Exception("No response from o3mini")
                 return response
             except Exception as e:
-                logger.exception(f"An error occurred when calling DeepSeek-R1-Distill-Llama-70B: {str(e)}")
+                # logger.exception(f"An error occurred when calling DeepSeek-R1-Distill-Llama-70B: {str(e)}")
+                logger.exception(f"An error occurred when calling o3mini: {str(e)}")
                 try:
                     response = o3mini_inference(user_prompt=user_prompt,
                                                 stream=stream,

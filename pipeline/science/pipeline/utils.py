@@ -668,7 +668,7 @@ def clean_translation_prefix(text):
 def extract_answer_content(message_content):
     sources = {}    # {source_string: source_score}
     source_pages = {}    # {source_page_string: source_page_score}
-    source_annotations = {}    # {text_content: {metadata}}
+    source_annotations = {}    # {source_annotation_string: source_annotation_data}
     refined_source_pages = {}    # {refined_source_page_string: refined_source_page_score}
     refined_source_index = {}    # {refined_source_index_string: refined_source_index_score}
     follow_up_questions = []
@@ -791,6 +791,39 @@ def extract_answer_content(message_content):
             logger.warning(f"Could not find text/metadata separator in annotation: {source_annotation_content[:50]}...")
     
     logger.info(f"Completed source annotations extraction. Found {annotation_count} annotations, extracted {len(source_annotations)} valid entries")
+
+    # Extract source annotations (content between <source_annotations> tags)
+    source_annotation_matches = re.finditer(r'<source_annotations>(.*?)</source_annotations>', message_content, re.DOTALL)
+    for match in source_annotation_matches:
+        source_annotation_content = match.group(1).strip()
+        # Extract the content and JSON data
+        # The format is {text content}{JSON data}
+        annotation_match = re.match(r'\{(.*?)\}\{(.*)\}', source_annotation_content, re.DOTALL)
+        if annotation_match:
+            text = annotation_match.group(1)
+            json_str = annotation_match.group(2)
+            
+            # Make sure the JSON string is valid by checking for proper closing brace
+            if not json_str.endswith('}'):
+                json_str += '}'
+                
+            try:
+                # Parse the JSON data directly from the string
+                # Replace single quotes with double quotes for valid JSON
+                # And handle Python bool literals
+                processed_json = json_str.replace("'", '"').replace("True", "true").replace("False", "false")
+                data = {
+                    "page_num": int(re.search(r'"page_num":\s*(\d+)', processed_json).group(1)),
+                    "start_char": int(re.search(r'"start_char":\s*(\d+)', processed_json).group(1)),
+                    "end_char": int(re.search(r'"end_char":\s*(\d+)', processed_json).group(1)),
+                    "success": True if "true" in processed_json else False,
+                    "similarity": float(re.search(r'"similarity":\s*([\d\.]+)', processed_json).group(1))
+                }
+                source_annotations[text] = data
+            except Exception as e:
+                logger.error(f"Failed to extract source annotation data: {e}")
+                # Fall back to storing as string if parsing fails
+                source_annotations[text] = json_str
 
     # Extract refined source pages (content between <refined_source_page> tags)
     refined_source_page_matches = re.finditer(r'<refined_source_page>(.*?)</refined_source_page>', message_content, re.DOTALL)

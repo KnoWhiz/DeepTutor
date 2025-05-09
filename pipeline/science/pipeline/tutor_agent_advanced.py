@@ -38,7 +38,7 @@ from pipeline.science.pipeline.get_response import (
     get_response,
     generate_follow_up_questions,
 )
-from pipeline.science.pipeline.sources_retrieval import get_response_source
+from pipeline.science.pipeline.sources_retrieval import get_response_source, locate_chunk_in_pdf
 from pipeline.science.pipeline.config import load_config
 
 import logging
@@ -395,11 +395,11 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
         yield "</refined_source_index>"
 
     time_tracking["source_retrieval"] = time.time() - sources_start
-    yield "\n\n**🔍 Retrieving sources done ...**\n\n"
+    # yield "\n\n**🔍 Retrieving sources done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Process image sources
-    yield "\n\n**📊 Processing image sources ...**\n\n"
+    # yield "\n\n**📊 Processing image sources ...**\n\n"
     images_processing_start = time.time()
     image_url_list = []
     for source, index, page in zip(refined_source_index.keys(), refined_source_index.values(), refined_source_pages.values()):
@@ -408,7 +408,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
             image_url = source
             image_url_list.append(image_url)
     time_tracking["image_processing"] = time.time() - images_processing_start
-    yield "\n\n**📊 Processing image sources done ...**\n\n"
+    # yield "\n\n**📊 Processing image sources done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Append images URL in markdown format to the end of the answer
@@ -422,12 +422,24 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
                 yield f"![]({image_url})"
 
     source_annotations = {}
+    i = 0
     for source, index in refined_source_index.items():
         _doc = process_pdf_file(file_path_list[index-1])[1]
-        annotations, _ = get_highlight_info(_doc, [source])
+        # annotations, _ = get_highlight_info(_doc, [source])
+        # logger.info(f"TEST: source: {source}, index: {index}, file_path: {file_path_list[refined_source_index[source]]}")
+        annotations = locate_chunk_in_pdf(source, file_path_list[refined_source_index[source]])
         source_annotations[source] = annotations
+        logger.info(f"For source number {i}, the annotations extraction is: {annotations}")
+        i += 1
     time_tracking["annotations"] = time.time() - annotations_start
+    # logger.info(f"source_annotations: {source_annotations}")
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+
+    for source_annotations_key, source_annotations_value in source_annotations.items():
+        yield "<source_annotations>"
+        yield "{" + str(source_annotations_key) + "}"
+        yield "{" + str(source_annotations_value) + "}"
+        yield "</source_annotations>"
 
     # Generate follow-up questions
     yield "\n\n**💬 Loading follow-up questions ...**\n\n"

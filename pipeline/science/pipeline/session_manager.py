@@ -39,6 +39,7 @@ class ChatSession:
         uploaded_files: Set of uploaded file paths
         current_language: Current programming language context
         is_initialized: Whether the session has been initialized
+        accumulated_cost: Total accumulated cost for the current session
     """
 
     session_id: str = field(default_factory=create_session_id)
@@ -51,6 +52,7 @@ class ChatSession:
     new_message_id: str = str(ObjectId()) # new message from user
     question: Optional[Question] = None # Question object
     formatted_context: Optional[Dict] = None # Formatted context for the question
+    accumulated_cost: float = 0.0 # Total accumulated cost for the current session
 
     def initialize(self) -> None:
         """Initialize the chat session if not already initialized."""
@@ -77,6 +79,7 @@ class ChatSession:
         """Clear the chat history."""
         self.chat_history = []
         delete_chat_history(self.session_id)
+        self.accumulated_cost = 0.0  # Reset accumulated cost when history is cleared
 
     def set_mode(self, mode: ChatMode) -> None:
         """Set the chat mode.
@@ -109,6 +112,23 @@ class ChatSession:
             language: Programming language to set
         """
         self.current_language = language
+        
+    def update_cost(self, cost: float) -> None:
+        """Update the accumulated cost of the session.
+        
+        Args:
+            cost: Cost to add to the total accumulated cost
+        """
+        self.accumulated_cost += cost
+        logger.info(f"Updated accumulated cost for session {self.session_id}: ${self.accumulated_cost:.6f}")
+        
+    def get_accumulated_cost(self) -> float:
+        """Get the total accumulated cost of the session.
+        
+        Returns:
+            Total accumulated cost as a float
+        """
+        return self.accumulated_cost
 
     def to_dict(self) -> Dict:
         """Convert session state to dictionary format.
@@ -126,7 +146,8 @@ class ChatSession:
             "current_message": self.current_message,
             "new_message_id": self.new_message_id,
             "question": self.question,
-            "formatted_context": self.formatted_context
+            "formatted_context": self.formatted_context,
+            "accumulated_cost": self.accumulated_cost
         }
 
     @classmethod
@@ -141,6 +162,8 @@ class ChatSession:
         """
         if not "current_message" in data:
             data["current_message"] = ""
+        # Set default accumulated_cost if not present in data
+        accumulated_cost = data.get("accumulated_cost", 0.0)
         session = cls(
             session_id=data["session_id"],
             mode=ChatMode(data["mode"]),
@@ -150,7 +173,8 @@ class ChatSession:
             current_message=data["current_message"],
             new_message_id=data["new_message_id"],
             question=data["question"],
-            formatted_context=data["formatted_context"]
+            formatted_context=data["formatted_context"],
+            accumulated_cost=accumulated_cost
         )
         session.is_initialized = True
         return session

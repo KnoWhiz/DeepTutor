@@ -1,0 +1,39 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Frontend Structure
+
+The frontend of DeepTutor is built with Streamlit and is organized into several key files:
+
+## Main UI Components
+
+- [frontend/ui.py](mdc:frontend/ui.py): Contains all UI components and layout definitions:
+  - `setup_page_config()`: Configures the page title, icon, and layout
+  - `show_header()`: Renders the application header with logo
+  - `show_mode_option()`: Creates the mode selection radio buttons (Lite, Basic, Advanced)
+  - `show_file_upload()`: Handles PDF file uploading
+  - `show_language_option()`: Provides language selection
+  - `show_chat_interface()`: Builds the main chat UI with message history
+  - `show_pdf_viewer()`: Displays the PDF document
+
+## State Management
+
+- [frontend/state.py](mdc:frontend/state.py): Manages application state using Streamlit's session state:
+  - `initialize_session_state()`: Sets up default state values
+  - `handle_file_change()`: Responds to file upload changes
+  - `state_process_pdf_file()`: Processes PDF files for analysis
+
+## Utilities and Helpers
+
+- [frontend/utils.py](mdc:frontend/utils.py): Contains helper functions:
+  - PDF navigation functions
+  - Response formatting
+  - Agent interface functions
+
+## Authentication
+
+- [frontend/auth.py](mdc:frontend/auth.py): Handles user authentication:
+  - Configurable to skip authentication in development environments
+  - Integrates with user pool authentication

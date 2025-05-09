@@ -668,7 +668,7 @@ def clean_translation_prefix(text):
 def extract_answer_content(message_content):
     sources = {}    # {source_string: source_score}
     source_pages = {}    # {source_page_string: source_page_score}
-    source_annotations = {}    # {text_content: {metadata}}
+    source_annotations = {}    # {source_annotation_string: source_annotation_data}
     refined_source_pages = {}    # {refined_source_page_string: refined_source_page_score}
     refined_source_index = {}    # {refined_source_index_string: refined_source_index_score}
     follow_up_questions = []
@@ -739,58 +739,39 @@ def extract_answer_content(message_content):
             except ValueError:
                 # If conversion fails, store as string
                 source_pages[key] = value
-    
+
     # Extract source annotations (content between <source_annotations> tags)
     source_annotation_matches = re.finditer(r'<source_annotations>(.*?)</source_annotations>', message_content, re.DOTALL)
-    logger.info(f"Starting source annotations extraction")
-    annotation_count = 0
-    
     for match in source_annotation_matches:
-        annotation_count += 1
         source_annotation_content = match.group(1).strip()
-        logger.debug(f"Processing source annotation #{annotation_count}: {source_annotation_content[:100]}...")
-        
-        # Find the last occurrence of "}{"
-        last_separator_index = source_annotation_content.rfind("}{")
-        
-        if last_separator_index != -1:
-            # Extract text content (everything before the last "}{")
-            text_content = source_annotation_content[:last_separator_index].strip()
-            # Extract metadata string (everything after the last "}{" plus an opening brace)
-            metadata_str = "{" + source_annotation_content[last_separator_index+1:].strip()
-            logger.debug(f"Extracted text content (first 50 chars): {text_content[:50]}...")
-            logger.debug(f"Extracted metadata string: {metadata_str[:100]}...")
+        # Extract the content and JSON data
+        # The format is {text content}{JSON data}
+        annotation_match = re.match(r'\{(.*?)\}\{(.*)\}', source_annotation_content, re.DOTALL)
+        if annotation_match:
+            text = annotation_match.group(1)
+            json_str = annotation_match.group(2)
             
+            # Make sure the JSON string is valid by checking for proper closing brace
+            if not json_str.endswith('}'):
+                json_str += '}'
+                
             try:
-                # Clean up any potential trailing/leading characters for JSON parsing
-                metadata_str = metadata_str.rstrip("}")
-                if not metadata_str.endswith("}"):
-                    metadata_str += "}"
-                
-                # Convert the metadata string to a dictionary
-                metadata = json.loads(metadata_str)
-                source_annotations[text_content] = metadata
-                logger.info(f"Successfully parsed metadata: page_num={metadata.get('page_num', 'N/A')}, success={metadata.get('success', False)}, similarity={metadata.get('similarity', 0)}")
-                
-                # Also extract page information for source_pages if successful
-                if 'page_num' in metadata and metadata.get('success', False) and metadata.get('similarity', 0) > 0:
-                    page_num = metadata['page_num']
-                    # Only add if page_num is valid (not -1)
-                    if page_num >= 0:
-                        page_key = f"page_{page_num + 1}"
-                        source_pages[page_key] = metadata['similarity']
-                        logger.info(f"Added to source_pages: {page_key} with similarity {metadata['similarity']}")
-                    else:
-                        logger.warning(f"Skipped invalid page_num: {page_num}")
-            except json.JSONDecodeError as e:
-                # If JSON parsing fails, log it and store the raw string
-                logger.warning(f"Failed to parse source annotation metadata: {e}")
-                logger.debug(f"Problematic JSON string: {metadata_str}")
-                source_annotations[text_content] = metadata_str
-        else:
-            logger.warning(f"Could not find text/metadata separator in annotation: {source_annotation_content[:50]}...")
-    
-    logger.info(f"Completed source annotations extraction. Found {annotation_count} annotations, extracted {len(source_annotations)} valid entries")
+                # Parse the JSON data directly from the string
+                # Replace single quotes with double quotes for valid JSON
+                # And handle Python bool literals
+                processed_json = json_str.replace("'", '"').replace("True", "true").replace("False", "false")
+                data = {
+                    "page_num": int(re.search(r'"page_num":\s*(\d+)', processed_json).group(1)),
+                    "start_char": int(re.search(r'"start_char":\s*(\d+)', processed_json).group(1)),
+                    "end_char": int(re.search(r'"end_char":\s*(\d+)', processed_json).group(1)),
+                    "success": True if "true" in processed_json else False,
+                    "similarity": float(re.search(r'"similarity":\s*([\d\.]+)', processed_json).group(1))
+                }
+                source_annotations[text] = data
+            except Exception as e:
+                logger.error(f"Failed to extract source annotation data: {e}")
+                # Fall back to storing as string if parsing fails
+                source_annotations[text] = json_str
 
     # Extract refined source pages (content between <refined_source_page> tags)
     refined_source_page_matches = re.finditer(r'<refined_source_page>(.*?)</refined_source_page>', message_content, re.DOTALL)

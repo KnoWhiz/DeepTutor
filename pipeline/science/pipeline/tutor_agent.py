@@ -57,6 +57,18 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
 
     This function acts as a router that calls the appropriate specialized function
     based on the chat session mode.
+    
+    Args:
+        chat_session: The current chat session containing state and history
+        file_path_list: List of paths to document files
+        user_input: The user's input/query text
+        time_tracking: Optional dictionary to track timing information
+        deep_thinking: Whether to use deep thinking mode
+        stream: Whether to stream the response
+        
+    Returns:
+        A generator that yields response chunks. The chat_session.current_message will be 
+        populated with the complete response once the generator is fully consumed.
     """
     # Initialize the current message
     chat_session.current_message = ""

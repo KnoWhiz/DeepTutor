@@ -9,19 +9,29 @@ import logging
 logger = logging.getLogger("tutorfrontend.utils")
 
 
-def streamlit_tutor_agent(chat_session, file_path_list, user_input):    
-    answer_generator = asyncio.run(tutor_agent(
+async def streamlit_tutor_agent(chat_session, file_path_list, user_input):    
+    # Get the generator from tutor_agent
+    answer_generator = await tutor_agent(
         chat_session=chat_session,
         file_path_list=file_path_list,
         user_input=user_input,
         deep_thinking=True
-    ))
+    )
+    
+    # Initialize variables
     source_pages = {}
     source_annotations = {}
     refined_source_pages = {}
     refined_source_index = {}
     follow_up_questions = []
-    thinking = ""
+    
+    # Return the generator and empty data structures first
+    # The content will be extracted after the generator is consumed
+    return answer_generator, {}, {}, {}, {}, {}, []
+
+
+def extract_content_after_generation(chat_session):
+    """Extract content from chat_session after generation is complete."""
     # Check the session type and set the extract_content_func
     if chat_session.mode == ChatMode.LITE:
         extract_content_func = extract_lite_mode_content
@@ -29,8 +39,11 @@ def streamlit_tutor_agent(chat_session, file_path_list, user_input):
         extract_content_func = extract_basic_mode_content
     elif chat_session.mode == ChatMode.ADVANCED:
         extract_content_func = extract_advanced_mode_content
+    
+    # Now the current_message should be populated
+    logger.info(f"Extracting content from message: {chat_session.current_message}")
     answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions, thinking = extract_content_func(chat_session.current_message)
-    return answer_generator, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions
+    return sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions, thinking
 
 
 def format_reasoning_response(thinking_content):

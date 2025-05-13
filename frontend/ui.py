@@ -11,7 +11,8 @@ from frontend.utils import (
     previous_page,
     next_page,
     handle_follow_up_click,
-    format_reasoning_response
+    format_reasoning_response,
+    extract_content_after_generation
 )
 from frontend.forms.contact import contact_form
 from pipeline.science.pipeline.config import load_config
@@ -21,6 +22,7 @@ from frontend.utils import streamlit_tutor_agent, process_response_phase, proces
 import logging
 import re
 import os
+import asyncio
 
 logger = logging.getLogger("tutorfrontend.ui")
 
@@ -349,40 +351,42 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                 try:
                     # Get response
                     # answer, sources, source_pages, source_annotations, refined_source_pages, follow_up_questions, refined_source_index
-                    answer,\
-                    sources,\
-                    source_pages,\
-                    source_annotations,\
-                    refined_source_pages,\
-                    refined_source_index,\
-                    follow_up_questions = streamlit_tutor_agent(
+                    answer_generator,\
+                    _,\
+                    _,\
+                    _,\
+                    _,\
+                    _,\
+                    _ = asyncio.run(streamlit_tutor_agent(
                         chat_session=st.session_state.chat_session,
                         file_path_list=file_path_for_agent,
                         user_input=user_input
-                    )
-                    st.session_state.source_annotations = source_annotations
-
-                    # Convert sources to dict if it's a list (for backward compatibility)
-                    if isinstance(sources, list):
-                        sources = {source: 1.0 for source in sources}  # Assign max relevance to old sources
-                    else:
-                        # Validate sources is a dictionary
-                        sources = sources if isinstance(sources, dict) else {}
+                    ))
                     
                     # Display current response
                     response_placeholder = st.chat_message("assistant", avatar=tutor_avatar)
                     with response_placeholder:
-                        # For live responses, process_thinking_phase already displays the thinking UI
-                        # We just need to capture the content and format it for storage
-                        # answer_content = process_thinking_phase(response_placeholder, answer)
-                        # thinking_content = process_thinking_phase(response_placeholder, answer)
-                        response_content = process_response_phase(response_placeholder, stream_response=answer, mode=st.session_state.chat_session.mode, stream = stream)
-                        # def process_response_phase(response_placeholder, stream_response: Generator, mode: ChatMode = None, stream: bool = False):
+                        # Process the response stream first
+                        response_content = process_response_phase(response_placeholder, stream_response=answer_generator, mode=st.session_state.chat_session.mode, stream=stream)
                         answer_content = response_content
                         
-                        # # Display the content directly as markdown
-                        # # The thinking UI was already shown by process_thinking_phase
-                        # st.markdown(answer_content)
+                        # After consuming the generator, extract content from the chat session
+                        sources,\
+                        source_pages,\
+                        source_annotations,\
+                        refined_source_pages,\
+                        refined_source_index,\
+                        follow_up_questions,\
+                        thinking = extract_content_after_generation(st.session_state.chat_session)
+                        
+                        st.session_state.source_annotations = source_annotations
+
+                        # Convert sources to dict if it's a list (for backward compatibility)
+                        if isinstance(sources, list):
+                            sources = {source: 1.0 for source in sources}  # Assign max relevance to old sources
+                        else:
+                            # Validate sources is a dictionary
+                            sources = sources if isinstance(sources, dict) else {}
                         
                         # First display source buttons
                         if sources and len(sources) > 0:

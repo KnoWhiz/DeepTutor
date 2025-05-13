@@ -378,6 +378,10 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                         refined_source_index,\
                         follow_up_questions,\
                         thinking = extract_content_after_generation(st.session_state.chat_session)
+
+                        logger.info(f"After generation, source_annotations: {source_annotations.values()}")
+                        logger.info(f"After generation, refined_source_index: {refined_source_index.values()}")
+                        logger.info(f"After generation, source_pages: {source_pages.values()}")
                         
                         st.session_state.source_annotations = source_annotations
 

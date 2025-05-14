@@ -3,7 +3,6 @@ import fitz  # PyMuPDF
 import random
 import re
 from difflib import SequenceMatcher
-import os
 
 def normalize_text(text):
     """
@@ -31,28 +30,7 @@ def normalize_text(text):
     
     return text.strip()
 
-def create_position_mapping(text):
-    """
-    Creates a mapping between positions in text with line breaks removed and
-    positions in the original text.
-    
-    Args:
-        text: Original text with line breaks
-        
-    Returns:
-        Tuple of (text_without_breaks, position_mapping)
-    """
-    position_mapping = []
-    text_without_breaks = ""
-    
-    for i, char in enumerate(text):
-        if char != '\n' and char != '\r':
-            text_without_breaks += char
-            position_mapping.append(i)
-    
-    return text_without_breaks, position_mapping
-
-def locate_chunk_in_pdf(chunk: str, pdf_path: str, similarity_threshold: float = 0.8, ignore_line_breaks: bool = True) -> dict:
+def locate_chunk_in_pdf(chunk: str, pdf_path: str, similarity_threshold: float = 0.8) -> dict:
     """
     Locates a text chunk within a PDF file and returns its position information.
     Uses both exact matching and fuzzy matching for robustness.
@@ -61,7 +39,6 @@ def locate_chunk_in_pdf(chunk: str, pdf_path: str, similarity_threshold: float =
         chunk: A string of text to locate within the PDF
         pdf_path: Path to the PDF file
         similarity_threshold: Threshold for fuzzy matching (0.0-1.0)
-        ignore_line_breaks: If True, ignores line breaks when calculating positions
     
     Returns:
         Dictionary containing:
@@ -82,12 +59,6 @@ def locate_chunk_in_pdf(chunk: str, pdf_path: str, similarity_threshold: float =
     try:
         # Normalize the search chunk
         normalized_chunk = normalize_text(chunk)
-        
-        # Handle line breaks in chunk if needed
-        if ignore_line_breaks:
-            chunk_without_breaks, chunk_mapping = create_position_mapping(chunk)
-            normalized_chunk = normalize_text(chunk_without_breaks)
-        
         chunk_words = normalized_chunk.split()
         min_match_length = min(100, len(normalized_chunk))  # For long chunks, we'll use word-based search
         
@@ -98,28 +69,12 @@ def locate_chunk_in_pdf(chunk: str, pdf_path: str, similarity_threshold: float =
         for page_num in range(len(doc)):
             page = doc[page_num]
             text = page.get_text()
-            
-            # Handle line breaks in page text if needed
-            if ignore_line_breaks:
-                text_without_breaks, text_mapping = create_position_mapping(text)
-                normalized_text = normalize_text(text_without_breaks)
-            else:
-                normalized_text = normalize_text(text)
+            normalized_text = normalize_text(text)
             
             # Try exact match first
             start_pos = normalized_text.find(normalized_chunk)
             if start_pos != -1:
                 end_pos = start_pos + len(normalized_chunk)
-                
-                # Convert positions if we're ignoring line breaks
-                if ignore_line_breaks:
-                    if start_pos < len(text_mapping):
-                        start_pos = text_mapping[start_pos]
-                    if end_pos < len(text_mapping):
-                        end_pos = text_mapping[end_pos]
-                    else:
-                        end_pos = text_mapping[-1] + 1  # Use last position + 1
-                
                 result["page_num"] = page_num
                 result["start_char"] = start_pos
                 result["end_char"] = end_pos
@@ -142,20 +97,9 @@ def locate_chunk_in_pdf(chunk: str, pdf_path: str, similarity_threshold: float =
                         similarity = SequenceMatcher(None, normalized_chunk, potential_match).ratio()
                         
                         if similarity > similarity_threshold:
-                            end_pos = start_pos + len(potential_match)
-                            
-                            # Convert positions if we're ignoring line breaks
-                            if ignore_line_breaks:
-                                if start_pos < len(text_mapping):
-                                    start_pos = text_mapping[start_pos]
-                                if end_pos < len(text_mapping):
-                                    end_pos = text_mapping[end_pos]
-                                else:
-                                    end_pos = text_mapping[-1] + 1  # Use last position + 1
-                            
                             result["page_num"] = page_num
                             result["start_char"] = start_pos
-                            result["end_char"] = end_pos
+                            result["end_char"] = start_pos + len(potential_match)
                             result["success"] = True
                             result["similarity"] = similarity
                             break
@@ -165,13 +109,7 @@ def locate_chunk_in_pdf(chunk: str, pdf_path: str, similarity_threshold: float =
             for page_num in range(len(doc)):
                 page = doc[page_num]
                 text = page.get_text()
-                
-                # Handle line breaks in page text if needed
-                if ignore_line_breaks:
-                    text_without_breaks, text_mapping = create_position_mapping(text)
-                    normalized_text = normalize_text(text_without_breaks)
-                else:
-                    normalized_text = normalize_text(text)
+                normalized_text = normalize_text(text)
                 
                 # For very long chunks, we'll use a sliding window approach
                 # to find the most similar section
@@ -204,21 +142,9 @@ def locate_chunk_in_pdf(chunk: str, pdf_path: str, similarity_threshold: float =
                                 best_start = start_pos
                     
                     if best_similarity > similarity_threshold:
-                        start_pos = best_start
-                        end_pos = best_start + len(normalized_chunk)
-                        
-                        # Convert positions if we're ignoring line breaks
-                        if ignore_line_breaks:
-                            if start_pos < len(text_mapping):
-                                start_pos = text_mapping[start_pos]
-                            if end_pos < len(text_mapping):
-                                end_pos = text_mapping[end_pos]
-                            else:
-                                end_pos = text_mapping[-1] + 1  # Use last position + 1
-                        
                         result["page_num"] = page_num
-                        result["start_char"] = start_pos
-                        result["end_char"] = end_pos
+                        result["start_char"] = best_start
+                        result["end_char"] = best_start + len(normalized_chunk)
                         result["success"] = True
                         result["similarity"] = best_similarity
                         break
@@ -231,14 +157,7 @@ def locate_chunk_in_pdf(chunk: str, pdf_path: str, similarity_threshold: float =
 
 # Test function with 5 randomly selected chunks
 def test_locate_chunks():
-    # Update the path to use a path relative to the current user
-    pdf_path = "/Users/bingranyou/Documents/GitHub_Mac_mini/DeepTutor/embedded_content/input_files/Multiplexed_single_photon_source_arXiv__resubmit_.pdf"
-    
-    # Check if the PDF file exists
-    if not os.path.exists(pdf_path):
-        print(f"Error: PDF file not found at path: {pdf_path}")
-        print("Please update the path in the test_locate_chunks function to point to a valid PDF file.")
-        return
+    pdf_path = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/tmp/tutor_pipeline/input_files/Multiplexed_single_photon_source_arXiv__resubmit_.pdf"
     
     # Open the PDF to extract test chunks
     doc = fitz.open(pdf_path)
@@ -364,15 +283,11 @@ def test_locate_chunks():
         original = original_locations[i]
         print(f"Original location: Page {original['page_num']}, Chars {original['start_char']}-{original['end_char']}")
         
-        # Test the locate function with ignore_line_breaks=True (default)
+        # Test the locate function
         result = locate_chunk_in_pdf(chunk, pdf_path)
-        print(f"Found location (ignoring line breaks): Page {result['page_num']}, Chars {result['start_char']}-{result['end_char']}")
+        print(f"Found location: Page {result['page_num']}, Chars {result['start_char']}-{result['end_char']}")
         
-        # Also test with ignore_line_breaks=False
-        result_with_breaks = locate_chunk_in_pdf(chunk, pdf_path, ignore_line_breaks=False)
-        print(f"Found location (with line breaks): Page {result_with_breaks['page_num']}, Chars {result_with_breaks['start_char']}-{result_with_breaks['end_char']}")
-        
-        # Validate results (for the default ignore_line_breaks=True case)
+        # Validate results
         is_page_correct = result["page_num"] == original["page_num"]
         is_start_correct = result["start_char"] == original["start_char"]
         is_end_correct = result["end_char"] == original["end_char"]
@@ -402,65 +317,15 @@ def test_locate_chunks():
         print(f"Chunk text: '{chunk[:50]}...'")
         print(f"Chunk length: {len(chunk)} characters")
         
-        # Test with ignore_line_breaks=True (default)
+        # Test the locate function
         result = locate_chunk_in_pdf(chunk, pdf_path)
         
         if result["success"]:
-            print(f"Found location (ignoring line breaks): Page {result['page_num']}, Chars {result['start_char']}-{result['end_char']}")
+            print(f"Found location: Page {result['page_num']}, Chars {result['start_char']}-{result['end_char']}")
             print(f"Match similarity: {result['similarity']:.2f}")
             print("✅ Chunk found in document")
         else:
             print("❌ Chunk NOT found in document")
-            
-        # Test with ignore_line_breaks=False
-        result_with_breaks = locate_chunk_in_pdf(chunk, pdf_path, ignore_line_breaks=False)
-        
-        if result_with_breaks["success"]:
-            print(f"Found location (with line breaks): Page {result_with_breaks['page_num']}, Chars {result_with_breaks['start_char']}-{result_with_breaks['end_char']}")
-            print(f"Match similarity: {result_with_breaks['similarity']:.2f}")
-            print("✅ Chunk found in document (with line breaks)")
-        else:
-            print("❌ Chunk NOT found in document (with line breaks)")
-    
-    # Test chunk with artificial line breaks for compare both methods
-    print("\n\nTesting with chunks containing artificial line breaks:")
-    
-    # Create chunks with artificial line breaks
-    line_break_chunks = []
-    for chunk in test_chunks[:2]:  # Use first two chunks from previous tests
-        # Insert random line breaks
-        chars = list(chunk)
-        # Insert 2-4 line breaks at random positions
-        for _ in range(random.randint(2, 4)):
-            pos = random.randint(10, len(chars) - 10)
-            chars.insert(pos, '\n')
-        modified_chunk = ''.join(chars)
-        line_break_chunks.append(modified_chunk)
-    
-    for i, chunk in enumerate(line_break_chunks):
-        print(f"\nLine Break Test Chunk {i+1}:")
-        print(f"Chunk text with line breaks: '{chunk.replace('\n', '\\n')[:50]}...'")
-        print(f"Chunk length: {len(chunk)} characters")
-        
-        # Test with ignore_line_breaks=True (default)
-        result = locate_chunk_in_pdf(chunk, pdf_path)
-        
-        if result["success"]:
-            print(f"Found location (ignoring line breaks): Page {result['page_num']}, Chars {result['start_char']}-{result['end_char']}")
-            print(f"Match similarity: {result['similarity']:.2f}")
-            print("✅ Chunk with line breaks found in document (ignoring line breaks)")
-        else:
-            print("❌ Chunk with line breaks NOT found in document (ignoring line breaks)")
-            
-        # Test with ignore_line_breaks=False
-        result_with_breaks = locate_chunk_in_pdf(chunk, pdf_path, ignore_line_breaks=False)
-        
-        if result_with_breaks["success"]:
-            print(f"Found location (with line breaks): Page {result_with_breaks['page_num']}, Chars {result_with_breaks['start_char']}-{result_with_breaks['end_char']}")
-            print(f"Match similarity: {result_with_breaks['similarity']:.2f}")
-            print("✅ Chunk with line breaks found in document (with line breaks)")
-        else:
-            print("❌ Chunk with line breaks NOT found in document (with line breaks)")
     
     doc.close()
 

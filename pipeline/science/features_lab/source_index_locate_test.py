@@ -3,17 +3,23 @@ import fitz  # PyMuPDF
 import random
 import re
 from difflib import SequenceMatcher
+import os
 
-def normalize_text(text):
+def normalize_text(text, remove_linebreaks=True):
     """
     Normalize text by removing excessive whitespace and standardizing common special characters.
     
     Args:
         text: Text to normalize
+        remove_linebreaks: If True, replace line breaks with empty string, otherwise keep current behavior
         
     Returns:
         Normalized text
     """
+    if remove_linebreaks:
+        # Replace line breaks with empty string
+        text = re.sub(r'[\n\r]+', '', text)
+    
     # Replace multiple whitespaces with a single space
     text = re.sub(r'\s+', ' ', text)
     
@@ -30,7 +36,58 @@ def normalize_text(text):
     
     return text.strip()
 
-def locate_chunk_in_pdf(chunk: str, pdf_path: str, similarity_threshold: float = 0.8) -> dict:
+# Test function for normalize_text
+def test_normalize_text():
+    """
+    Test the normalize_text function with different input types and settings.
+    """
+    print("\nTesting normalize_text function:")
+    
+    # Test case 1: Text with line breaks
+    test_case_1 = "This is a test\nwith line\r\nbreaks."
+    result_1a = normalize_text(test_case_1, remove_linebreaks=True)
+    result_1b = normalize_text(test_case_1, remove_linebreaks=False)
+    print(f"Original text: '{test_case_1}'")
+    print(f"With remove_linebreaks=True: '{result_1a}'")
+    print(f"With remove_linebreaks=False: '{result_1b}'")
+    assert result_1a == "This is a testwith linebreaks."  # No spaces when line breaks are removed
+    assert result_1b == "This is a test with line breaks."  # Line breaks become spaces with remove_linebreaks=False
+    
+    # Test case 2: Text with multiple spaces and special characters
+    test_case_2 = "Text with    multiple  spaces and − special ∼ characters"
+    result_2 = normalize_text(test_case_2)
+    print(f"Original text: '{test_case_2}'")
+    print(f"Normalized: '{result_2}'")
+    assert result_2 == "Text with multiple spaces and - special ~ characters"
+    
+    # Test case 3: Text with math symbols
+    test_case_3 = "Quantum state | ↓ ⟩ and | ↑ ⟩"
+    result_3 = normalize_text(test_case_3)
+    print(f"Original text: '{test_case_3}'")
+    print(f"Normalized: '{result_3}'")
+    assert result_3 == "Quantum state |↓⟩ and |↑⟩"
+    
+    # Test case 4: Text with citations
+    test_case_4 = "Reference [ 39 ] and [ 42 ]"
+    result_4 = normalize_text(test_case_4)
+    print(f"Original text: '{test_case_4}'")
+    print(f"Normalized: '{result_4}'")
+    assert result_4 == "Reference[39] and[42]"  # There's no space between Reference and [39]
+    
+    # Test case 5: Line breaks with other normalization
+    test_case_5 = "Line 1\nLine 2 with [ 39 ] and | ↓ ⟩"
+    result_5a = normalize_text(test_case_5, remove_linebreaks=True)
+    result_5b = normalize_text(test_case_5, remove_linebreaks=False)
+    print(f"Original text: '{test_case_5}'")
+    print(f"With remove_linebreaks=True: '{result_5a}'")
+    print(f"With remove_linebreaks=False: '{result_5b}'")
+    assert result_5a == "Line 1Line 2 with[39] and |↓⟩"
+    assert result_5b == "Line 1 Line 2 with[39] and |↓⟩"
+    
+    print("All normalize_text tests passed!\n")
+
+
+def locate_chunk_in_pdf(chunk: str, pdf_path: str, similarity_threshold: float = 0.8, remove_linebreaks: bool = True) -> dict:
     """
     Locates a text chunk within a PDF file and returns its position information.
     Uses both exact matching and fuzzy matching for robustness.
@@ -39,6 +96,7 @@ def locate_chunk_in_pdf(chunk: str, pdf_path: str, similarity_threshold: float =
         chunk: A string of text to locate within the PDF
         pdf_path: Path to the PDF file
         similarity_threshold: Threshold for fuzzy matching (0.0-1.0)
+        remove_linebreaks: If True, remove line breaks during text normalization
     
     Returns:
         Dictionary containing:
@@ -58,7 +116,7 @@ def locate_chunk_in_pdf(chunk: str, pdf_path: str, similarity_threshold: float =
     
     try:
         # Normalize the search chunk
-        normalized_chunk = normalize_text(chunk)
+        normalized_chunk = normalize_text(chunk, remove_linebreaks)
         chunk_words = normalized_chunk.split()
         min_match_length = min(100, len(normalized_chunk))  # For long chunks, we'll use word-based search
         
@@ -69,7 +127,7 @@ def locate_chunk_in_pdf(chunk: str, pdf_path: str, similarity_threshold: float =
         for page_num in range(len(doc)):
             page = doc[page_num]
             text = page.get_text()
-            normalized_text = normalize_text(text)
+            normalized_text = normalize_text(text, remove_linebreaks)
             
             # Try exact match first
             start_pos = normalized_text.find(normalized_chunk)
@@ -109,7 +167,7 @@ def locate_chunk_in_pdf(chunk: str, pdf_path: str, similarity_threshold: float =
             for page_num in range(len(doc)):
                 page = doc[page_num]
                 text = page.get_text()
-                normalized_text = normalize_text(text)
+                normalized_text = normalize_text(text, remove_linebreaks)
                 
                 # For very long chunks, we'll use a sliding window approach
                 # to find the most similar section
@@ -157,9 +215,71 @@ def locate_chunk_in_pdf(chunk: str, pdf_path: str, similarity_threshold: float =
 
 # Test function with 5 randomly selected chunks
 def test_locate_chunks():
-    pdf_path = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/tmp/tutor_pipeline/input_files/Multiplexed_single_photon_source_arXiv__resubmit_.pdf"
+    # Check for file existence first
+    pdf_path = "/Users/bingranyou/Documents/GitHub_Mac_mini/DeepTutor/tmp/tutor_pipeline/input_files/Multiplexed_single_photon_source_arXiv__resubmit_.pdf"
     
-    # Open the PDF to extract test chunks
+    if not os.path.exists(pdf_path):
+        print(f"PDF file not found: {pdf_path}")
+        print("Skipping PDF-based tests")
+        
+        # Run a simple mock test of the locate function instead
+        print("\nRunning mock test of locate_chunk_in_pdf:")
+        
+        # Create a MockPDF class to simulate the PyMuPDF behavior
+        class MockDocument:
+            def __init__(self):
+                self.pages = [MockPage("Page 1 content with some test text."), 
+                              MockPage("Another page with different content.")]
+            
+            def __len__(self):
+                return len(self.pages)
+            
+            def __getitem__(self, idx):
+                return self.pages[idx]
+            
+            def close(self):
+                pass
+                
+        class MockPage:
+            def __init__(self, text):
+                self.text = text
+                
+            def get_text(self):
+                return self.text
+        
+        # Monkey patch fitz.open to return our mock
+        original_open = fitz.open
+        fitz.open = lambda path: MockDocument()
+        
+        try:
+            # Test with a chunk that should be found
+            mock_chunk = "test text"
+            result = locate_chunk_in_pdf(mock_chunk, "mock_path.pdf")
+            print(f"Mock test result: {result}")
+            assert result['success'] == True
+            assert result['page_num'] == 0  # Should find it on the first page
+            
+            # Test with a chunk that shouldn't be found
+            mock_chunk2 = "not present chunk"
+            result2 = locate_chunk_in_pdf(mock_chunk2, "mock_path.pdf")
+            print(f"Mock test result (not found): {result2}")
+            assert result2['success'] == False
+            
+            # Test with line break handling
+            mock_chunk3 = "test\ntext"
+            result3a = locate_chunk_in_pdf(mock_chunk3, "mock_path.pdf", remove_linebreaks=True)
+            result3b = locate_chunk_in_pdf(mock_chunk3, "mock_path.pdf", remove_linebreaks=False)
+            print(f"Mock test with line breaks removed: {result3a}")
+            print(f"Mock test with line breaks preserved: {result3b}")
+            
+            print("All mock tests passed!")
+        finally:
+            # Restore the original function
+            fitz.open = original_open
+            
+        return
+    
+    # If file exists, proceed with the original test
     doc = fitz.open(pdf_path)
     
     # Get total number of pages
@@ -303,6 +423,17 @@ def test_locate_chunks():
             if not is_end_correct:
                 print(f"  - End positions don't match: Expected {original['end_char']}, Got {result['end_char']}")
     
+    # Test without line break removal
+    print("\nTesting with random chunks and line break preservation (remove_linebreaks=False):")
+    if len(test_chunks) > 0:
+        chunk = test_chunks[0]
+        result_default = locate_chunk_in_pdf(chunk, pdf_path)
+        result_preserve = locate_chunk_in_pdf(chunk, pdf_path, remove_linebreaks=False)
+        
+        print(f"Chunk text: '{chunk[:30]}...'")
+        print(f"Default (remove_linebreaks=True): Page {result_default['page_num']}, Success: {result_default['success']}")
+        print(f"With line breaks preserved: Page {result_preserve['page_num']}, Success: {result_preserve['success']}")
+    
     # Add specific chunks for testing
     print("\n\nTesting with specific chunks:")
     specific_chunks = [
@@ -317,7 +448,7 @@ def test_locate_chunks():
         print(f"Chunk text: '{chunk[:50]}...'")
         print(f"Chunk length: {len(chunk)} characters")
         
-        # Test the locate function
+        # Test the locate function with default settings
         result = locate_chunk_in_pdf(chunk, pdf_path)
         
         if result["success"]:
@@ -326,8 +457,16 @@ def test_locate_chunks():
             print("✅ Chunk found in document")
         else:
             print("❌ Chunk NOT found in document")
+            
+        # Test with line break preservation
+        result_preserve = locate_chunk_in_pdf(chunk, pdf_path, remove_linebreaks=False)
+        print(f"With line breaks preserved: Success: {result_preserve['success']}, Similarity: {result_preserve['similarity']:.2f}")
     
     doc.close()
 
 if __name__ == "__main__":
+    # Test normalize_text function
+    test_normalize_text()
+    
+    # Test chunk location function
     test_locate_chunks()

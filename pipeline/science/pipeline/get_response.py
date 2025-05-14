@@ -16,7 +16,12 @@ from pipeline.science.pipeline.utils import (
     count_tokens,
     replace_latex_formulas,
     generators_list_stream_response,
-    Question
+    Question,
+    truncate_document
+)
+from pipeline.science.pipeline.doc_processor import (
+    extract_document_from_file,
+    process_pdf_file
 )
 from pipeline.science.pipeline.embeddings import (
     get_embedding_models,
@@ -44,11 +49,148 @@ import logging
 logger = logging.getLogger("tutorpipeline.science.get_response")
 
 
+async def get_multiple_files_summary(file_path_list, embedding_folder_list, chat_session=None, stream=False):
+    """
+    Generate a summary for multiple files by combining previews of each file.
+    
+    Args:
+        file_path_list: List of file paths to generate a summary for
+        embedding_folder_list: List of embedding folders
+        chat_session: The current chat session for tracking responses
+        stream: Whether to stream the response
+        
+    Returns:
+        A generator yielding the summary if stream=True, otherwise a string
+    """
+    config = load_config()
+    llm = get_llm('advanced', config['llm'])
+    
+    # Log the list of files being processed
+    logger.info(f"Processing multiple files for summary: {file_path_list}")
+    logger.info(f"Using embedding folders: {embedding_folder_list}")
+    
+    # Extract first 3000 tokens from each file
+    file_previews = []
+    for i, file_path in enumerate(file_path_list):
+        try:
+            logger.info(f"Processing file {i+1}/{len(file_path_list)}: {file_path}")
+            # Process the PDF file properly
+            document, doc = process_pdf_file(file_path)
+            logger.info(f"File {os.path.basename(file_path)} processed, document has {len(document)} pages")
+            
+            # Extract text from the document
+            file_content = ""
+            for page_doc in document:
+                if hasattr(page_doc, 'page_content') and page_doc.page_content:
+                    file_content += page_doc.page_content.strip() + "\n"
+            
+            # Calculate token limit per file - maximum 3000 tokens per file but adjust for file count
+            token_limit = min(3000, 10000 // len(file_path_list))
+            
+            # Get total tokens in the content
+            try:
+                total_tokens = count_tokens(file_content)
+                logger.info(f"File {file_path} has {total_tokens} tokens, limiting to {token_limit}")
+                
+                # Log the first chunk of content (up to 200 chars)
+                first_content_preview = file_content[:200].replace("\n", " ") + "..."
+                logger.info(f"First content chunk for {os.path.basename(file_path)}: {first_content_preview}")
+                
+                # Truncate to token limit
+                if total_tokens > token_limit:
+                    # Take approximately the first X tokens (by characters, not exact)
+                    char_limit = int(len(file_content) * (token_limit / total_tokens))
+                    truncated_content = file_content[:char_limit]
+                    truncated_content += "\n\n[Content truncated due to length...]"
+                    logger.info(f"File {os.path.basename(file_path)} truncated from {len(file_content)} to {len(truncated_content)} characters")
+                else:
+                    truncated_content = file_content
+                    logger.info(f"File {os.path.basename(file_path)} content used in full ({len(file_content)} characters)")
+            except Exception as e:
+                logger.exception(f"Error calculating tokens for {file_path}: {str(e)}")
+                # Fallback to character-based approximation (roughly 4 chars per token)
+                char_limit = token_limit * 4
+                if len(file_content) > char_limit:
+                    truncated_content = file_content[:char_limit]
+                    truncated_content += "\n\n[Content truncated due to length...]"
+                    logger.info(f"Using character-based fallback: truncated {os.path.basename(file_path)} to {char_limit} characters")
+                else:
+                    truncated_content = file_content
+                    logger.info(f"Using character-based fallback: using full content of {os.path.basename(file_path)}")
+            
+            file_previews.append((os.path.basename(file_path), truncated_content))
+            logger.info(f"Extracted preview from {os.path.basename(file_path)}: {len(truncated_content)} characters")
+        except Exception as e:
+            logger.exception(f"Error extracting content from {file_path}: {str(e)}")
+            file_name = os.path.basename(file_path)
+            file_previews.append((file_name, f"Error extracting content: {str(e)}"))
+    
+    # Format the prompt with file previews
+    prompt_parts = []
+    for i, (file_name, preview) in enumerate(file_previews):
+        prompt_parts.append(f"\n\n## DOCUMENT {i+1}: {file_name}\n\nPreview Content:\n```\n{preview}\n```\n")
+    
+    formatted_previews = "\n".join(prompt_parts)
+    logger.info(f"Created formatted previews for {len(file_previews)} files, total length: {len(formatted_previews)} characters")
+    
+    prompt = f"""
+    You are an expert academic tutor helping a student understand multiple documents. 
+    The student has loaded multiple PDF files and needs a comprehensive summary that explains what each document is about.
+    
+    Here are the files with previews of their content:
+    {formatted_previews}
+    
+    Please provide a comprehensive summary that:
+    1. Introduces each document with its title (derived from content if possible) and main topic
+    2. Summarizes the key content and main findings of each document
+    3. Identifies relationships or connections between the documents (they appear to be related scientific papers)
+    4. Highlights the most important concepts across all documents
+    5. Uses markdown formatting for clear organization with sections and subsections
+    6. Makes appropriate use of bold, bullet points, and other formatting to improve readability
+    
+    Format your summary with a friendly welcome message at the beginning and a closing "Ask me anything" message at the end.
+    """
+    
+    logger.info(f"Generated summary prompt with length: {len(prompt)} characters")
+    logger.info(f"Generating summary for multiple files: {[os.path.basename(fp) for fp in file_path_list]}")
+    
+    if stream:
+        # Stream response for real-time feedback - remove thinking part
+        logger.info("Using streaming mode for summary generation")
+        answer = llm.stream(prompt)
+        
+        def process_stream():
+            yield "<response>\n\n"
+            for chunk in answer:
+                # Convert AIMessageChunk to string
+                if hasattr(chunk, 'content'):
+                    yield chunk.content
+                else:
+                    yield str(chunk)
+            yield "</response>"
+            logger.info("Completed streaming summary generation")
+        
+        return process_stream()
+    else:
+        # Return complete response at once - remove thinking part
+        logger.info("Using non-streaming mode for summary generation")
+        response = llm.invoke(prompt)
+        response_text = response.content if hasattr(response, 'content') else str(response)
+        logger.info(f"Generated summary with length: {len(response_text)} characters")
+        return f"<response>\n\n{response_text}</response>"
+
+
 async def get_response(chat_session: ChatSession, file_path_list, question: Question, chat_history, embedding_folder_list, deep_thinking = True, stream=False):
     generators_list = []
     config = load_config()
     user_input = question.text
     user_input_string = str(user_input + "\n\n" + question.special_context)
+    
+    # Check if this is a summary request for multiple files
+    if len(file_path_list) > 1 and user_input == config["summary_wording"]:
+        logger.info("Handling multiple files summary request")
+        return await get_multiple_files_summary(file_path_list, embedding_folder_list, chat_session, stream)
+    
     # Handle Lite mode first
     if chat_session.mode == ChatMode.LITE:
         # lite_prompt = """

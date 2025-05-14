@@ -29,16 +29,22 @@ from pipeline.science.pipeline.session_manager import ChatSession
 import logging
 logger = logging.getLogger("tutorpipeline.science.sources_retrieval")
 
-def normalize_text(text):
+
+def normalize_text(text, remove_linebreaks=True):
     """
     Normalize text by removing excessive whitespace and standardizing common special characters.
     
     Args:
         text: Text to normalize
+        remove_linebreaks: If True, replace line breaks with empty string, otherwise keep current behavior
         
     Returns:
         Normalized text
     """
+    if remove_linebreaks:
+        # Replace line breaks with empty string
+        text = re.sub(r'[\n\r]+', '', text)
+    
     # Replace multiple whitespaces with a single space
     text = re.sub(r'\s+', ' ', text)
     
@@ -56,7 +62,7 @@ def normalize_text(text):
     return text.strip()
 
 
-def locate_chunk_in_pdf(chunk: str, pdf_path: str, similarity_threshold: float = 0.8) -> dict:
+def locate_chunk_in_pdf(chunk: str, pdf_path: str, similarity_threshold: float = 0.8, remove_linebreaks: bool = True) -> dict:
     """
     Locates a text chunk within a PDF file and returns its position information.
     Uses both exact matching and fuzzy matching for robustness.
@@ -65,6 +71,7 @@ def locate_chunk_in_pdf(chunk: str, pdf_path: str, similarity_threshold: float =
         chunk: A string of text to locate within the PDF
         pdf_path: Path to the PDF file
         similarity_threshold: Threshold for fuzzy matching (0.0-1.0)
+        remove_linebreaks: If True, remove line breaks during text normalization
     
     Returns:
         Dictionary containing:
@@ -84,7 +91,7 @@ def locate_chunk_in_pdf(chunk: str, pdf_path: str, similarity_threshold: float =
     
     try:
         # Normalize the search chunk
-        normalized_chunk = normalize_text(chunk)
+        normalized_chunk = normalize_text(chunk, remove_linebreaks)
         chunk_words = normalized_chunk.split()
         min_match_length = min(100, len(normalized_chunk))  # For long chunks, we'll use word-based search
         
@@ -95,7 +102,7 @@ def locate_chunk_in_pdf(chunk: str, pdf_path: str, similarity_threshold: float =
         for page_num in range(len(doc)):
             page = doc[page_num]
             text = page.get_text()
-            normalized_text = normalize_text(text)
+            normalized_text = normalize_text(text, remove_linebreaks)
             
             # Try exact match first
             start_pos = normalized_text.find(normalized_chunk)
@@ -135,7 +142,7 @@ def locate_chunk_in_pdf(chunk: str, pdf_path: str, similarity_threshold: float =
             for page_num in range(len(doc)):
                 page = doc[page_num]
                 text = page.get_text()
-                normalized_text = normalize_text(text)
+                normalized_text = normalize_text(text, remove_linebreaks)
                 
                 # For very long chunks, we'll use a sliding window approach
                 # to find the most similar section

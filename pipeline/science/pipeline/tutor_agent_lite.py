@@ -196,19 +196,63 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
             yield f"\n\n**⚠️ Error loading content from {os.path.basename(file_path)}: {str(e)}**\n\n"
     
     if len(file_path_list) > 1 and user_input != config["summary_wording"]:
-        # FIXME: Add a logic to include only the most relevant file_excerpt
+        # For regular queries with multiple files, we'll rely on embeddings
+        # rather than including all PDF content directly
         pdf_content = ""
     
     time_tracking["pdf_content_loading"] = time.time() - pdf_content_loading_start
     logger.info(f"PDF content loading complete. Time: {format_time_tracking(time_tracking)}")
     yield "\n\n**📚 PDF content loading complete**\n\n"
 
-    # Handle initial welcome message when chat history is empty
-    # initial_message_start_time = time.time()
+    # Handle initial welcome message when chat history is empty or summary is requested
     if user_input == config["summary_wording"] or not chat_history:
-        # Include the PDF content in addition to user_input as refined_user_input
-        refined_user_input = f"{user_input}\n\nThis is the document content: {pdf_content}"
-        question = Question(text=refined_user_input, language=chat_session.current_language, question_type="local")
+        # If summary is requested and we have multiple files, get_response will handle it with the special function
+        # Just pass the request through to get_response
+        if user_input == config["summary_wording"] and len(file_path_list) > 1:
+            logger.info("Handling multiple files summary request in lite mode")
+            yield "\n\n**🧠 Analyzing multiple files and generating a comprehensive summary...**\n\n"
+            # get_response will handle the multiple file summary generation
+            response_start = time.time()
+            question = Question(text=user_input, language=chat_session.current_language, question_type="global")
+            response = await get_response(chat_session, file_path_list, question, context_chat_history, embedding_folder_list, deep_thinking=deep_thinking, stream=stream)
+            answer = response[0] if isinstance(response, tuple) else response
+            for chunk in answer:
+                yield chunk
+            time_tracking["response_generation"] = time.time() - response_start
+            
+            # Handle appendix with follow-up questions
+            yield "<appendix>"
+            yield "\n\n**💬 Loading follow-up questions ...**\n\n"
+            message_content = chat_session.current_message
+            if isinstance(message_content, list) and len(message_content) > 0:
+                message_content = message_content[0]
+            
+            follow_up_questions = generate_follow_up_questions(message_content, [])
+            for i in range(len(follow_up_questions)):
+                follow_up_questions[i] = translate_content(
+                    content=follow_up_questions[i],
+                    target_lang=chat_session.current_language,
+                    stream=False
+                )
+                # Clean up translation prefixes - apply before including in XML
+                follow_up_questions[i] = clean_translation_prefix(follow_up_questions[i])
+
+            for chunk in follow_up_questions:
+                # Ensure the chunk is properly cleaned and formatted before wrapping in XML
+                cleaned_chunk = chunk.strip()
+                if cleaned_chunk:
+                    yield "<followup_question>"
+                    yield f"{cleaned_chunk}"
+                    yield "</followup_question>\n\n"
+            yield "\n\n**💬 Loading follow-up questions done ...**\n\n"
+
+            yield "</appendix>"
+            return
+        else:
+            # Regular summary for single file or initial message when no chat history
+            # Include the PDF content in addition to user_input as refined_user_input
+            refined_user_input = f"{user_input}\n\nThis is the document content: {pdf_content}"
+            question = Question(text=refined_user_input, language=chat_session.current_language, question_type="local")
     else:
         refined_user_input = f"{user_input}\n\n{pdf_content}"
         # Regular chat flow - include PDF content in the user input

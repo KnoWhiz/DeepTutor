@@ -85,7 +85,8 @@ def test_normalize_text():
     assert result_5b == "Line 1 Line 2 with[39] and |↓⟩"
     
     print("All normalize_text tests passed!\n")
-    
+
+
 def locate_chunk_in_pdf(chunk: str, pdf_path: str, similarity_threshold: float = 0.8, remove_linebreaks: bool = True) -> dict:
     """
     Locates a text chunk within a PDF file and returns its position information.

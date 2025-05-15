@@ -147,6 +147,7 @@ async def get_multiple_files_summary(file_path_list, embedding_folder_list, chat
     4. Highlights the most important concepts across all documents
     5. Uses markdown formatting for clear organization with sections and subsections
     6. Makes appropriate use of bold, bullet points, and other formatting to improve readability
+    7. Highest title level is 3, and the title should be concise and informative.
     
     Format your summary with a friendly welcome message at the beginning and a closing "Ask me anything" message at the end.
     """
@@ -167,7 +168,7 @@ async def get_multiple_files_summary(file_path_list, embedding_folder_list, chat
                     yield chunk.content
                 else:
                     yield str(chunk)
-            yield "</response>"
+            yield "\n\n</response>"
             logger.info("Completed streaming summary generation")
         
         return process_stream()
@@ -177,7 +178,7 @@ async def get_multiple_files_summary(file_path_list, embedding_folder_list, chat
         response = llm.invoke(prompt)
         response_text = response.content if hasattr(response, 'content') else str(response)
         logger.info(f"Generated summary with length: {len(response_text)} characters")
-        return f"<response>\n\n{response_text}</response>"
+        return f"<response>\n\n{response_text}\n\n</response>"
 
 
 async def get_response(chat_session: ChatSession, file_path_list, question: Question, chat_history, embedding_folder_list, deep_thinking = True, stream=False):
@@ -280,14 +281,14 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         # chain = prompt | llm | StrOutputParser()
         answer = llm.stream(prompt)
         def process_stream():
-            yield "<response>"
+            yield "<response>\n\n"
             for chunk in answer:
                 # Convert AIMessageChunk to string
                 if hasattr(chunk, 'content'):
                     yield chunk.content
                 else:
                     yield str(chunk)
-            yield "</response>"
+            yield "\n\n</response>"
         return process_stream()
 
     # Handle Advanced mode

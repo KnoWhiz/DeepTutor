@@ -188,7 +188,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
     
     # Check if this is a summary request for multiple files
     if len(file_path_list) > 1 and user_input == config["summary_wording"]:
-        logger.info("Handling multiple files summary request")
+        logger.info("Handling multiple files summary request.")
         return await get_multiple_files_summary(file_path_list, embedding_folder_list, chat_session, stream)
     
     # Handle Lite mode first

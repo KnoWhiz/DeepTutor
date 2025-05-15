@@ -128,7 +128,7 @@ async def get_multiple_files_summary(file_path_list, embedding_folder_list, chat
     # Format the prompt with file previews
     prompt_parts = []
     for i, (file_name, preview) in enumerate(file_previews):
-        prompt_parts.append(f"\n\n## DOCUMENT {i+1}: {file_name}\n\nPreview Content:\n```\n{preview}\n```\n")
+        prompt_parts.append(f"\n\n### DOCUMENT {i+1}: {file_name}\n\nPreview Content:\n```\n{preview}\n```\n")
     
     formatted_previews = "\n".join(prompt_parts)
     logger.info(f"Created formatted previews for {len(file_previews)} files, total length: {len(formatted_previews)} characters")
@@ -186,7 +186,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
     user_input = question.text
     user_input_string = str(user_input + "\n\n" + question.special_context)
     
-    # Check if this is a summary request for multiple files
+    # Check if this is a summary request for multiple files. If so, return a generator from get_multiple_files_summary
     if len(file_path_list) > 1 and user_input == config["summary_wording"]:
         logger.info("Handling multiple files summary request.")
         return await get_multiple_files_summary(file_path_list, embedding_folder_list, chat_session, stream)

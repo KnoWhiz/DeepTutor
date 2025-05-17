@@ -106,14 +106,28 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
     # Get the first 3 keys from map_symbol_to_index for examples in the prompt
     first_keys = list(map_symbol_to_index.keys())[:3]
     example_keys = ", or ".join(first_keys)
-    for index, chunk in enumerate(question_chunks_with_scores):
-        if total_tokens + count_tokens(chunk[0].page_content) > token_limit:
+    
+    # Track seen content to avoid duplicates
+    seen_contents = set()
+    
+    symbol_index = 0
+    for chunk, score in question_chunks_with_scores:
+        # Skip if content already seen
+        if chunk.page_content in seen_contents:
+            continue
+            
+        if total_tokens + count_tokens(chunk.page_content) > token_limit:
             break
-        sources_chunks.append(chunk[0])
-        total_tokens += count_tokens(chunk[0].page_content)
-        context_chunks.append(chunk[0].page_content)
-        context_scores.append(chunk[1])
-        context_dict[map_index_to_symbol[index]] = {"content": chunk[0].page_content, "score": float(chunk[1])}
+            
+        # Add content to seen set
+        seen_contents.add(chunk.page_content)
+        
+        sources_chunks.append(chunk)
+        total_tokens += count_tokens(chunk.page_content)
+        context_chunks.append(chunk.page_content)
+        context_scores.append(score)
+        context_dict[map_index_to_symbol[symbol_index]] = {"content": chunk.page_content, "score": float(score)}
+        symbol_index += 1
     
     # Format context as a JSON dictionary instead of a string
     formatted_context = context_dict

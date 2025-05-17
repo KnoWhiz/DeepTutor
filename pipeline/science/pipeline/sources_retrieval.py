@@ -62,7 +62,7 @@ def normalize_text(text, remove_linebreaks=True):
     return text.strip()
 
 
-def locate_chunk_in_pdf(chunk: str, pdf_path: str, similarity_threshold: float = 0.8, remove_linebreaks: bool = True) -> dict:
+def locate_chunk_in_pdf(chunk: str, pdf_path: str, similarity_threshold: float = 0.8, remove_linebreaks: bool = False) -> dict:
     """
     Locates a text chunk within a PDF file and returns its position information.
     Uses both exact matching and fuzzy matching for robustness.
@@ -82,9 +82,9 @@ def locate_chunk_in_pdf(chunk: str, pdf_path: str, similarity_threshold: float =
             - similarity: Similarity score if found by fuzzy matching
     """
     result = {
-        "page_num": -1,
-        "start_char": -1,
-        "end_char": -1,
+        "page_num": 1,
+        "start_char": 1,
+        "end_char": 10,
         "success": False,
         "similarity": 0.0
     }
@@ -186,7 +186,19 @@ def locate_chunk_in_pdf(chunk: str, pdf_path: str, similarity_threshold: float =
     except Exception as e:
         print(f"Error processing PDF: {e}")
     
-    return result
+    logger.info(f"TEST: result: {result}")
+    logger.info(f"Format of result: {type(result)}")
+
+    if isinstance(result, dict):
+        return result
+    else:
+        return {
+        "page_num": 1,
+        "start_char": 1,
+        "end_char": 10,
+        "success": False,
+        "similarity": 0.0
+    }
 
 
 def get_response_source(chat_session: ChatSession, file_path_list, user_input, answer, chat_history, embedding_folder_list):

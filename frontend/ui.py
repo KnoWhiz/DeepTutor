@@ -385,6 +385,23 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                         
                         st.session_state.source_annotations = source_annotations
 
+                        # Add the format check for sources_annotations
+                        source_objects = []
+                        for index, (key, value) in enumerate(refined_source_pages.items()):
+                            source_objects.append({
+                                "index": index,
+                                "referenceString": key,
+                                "page": value,
+                                "refinedIndex": refined_source_index.get(key, {}),
+                                "sourceAnnotation": {
+                                    "pageNum": source_annotations.get(key, {}).get("page_num", 0),
+                                    "startChar": source_annotations.get(key, {}).get("start_char", 0),
+                                    "endChar": source_annotations.get(key, {}).get("end_char", 0),
+                                    "success": source_annotations.get(key, {}).get("success", True),
+                                    "similarity": source_annotations.get(key, {}).get("similarity", 0.0)
+                                }
+                            })
+
                         # Convert sources to dict if it's a list (for backward compatibility)
                         if isinstance(sources, list):
                             sources = {source: 1.0 for source in sources}  # Assign max relevance to old sources

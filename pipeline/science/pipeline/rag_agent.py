@@ -83,7 +83,7 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
     all_chunks_with_scores = db.similarity_search_with_score(rag_user_input_string, k=fetch_k)
 
     logger.info(f"TEST: all_chunks_with_scores: {all_chunks_with_scores}")
-    
+
     # Filter chunks by length > 15
     filtered_chunks_with_scores = [
         (chunk, score) for chunk, score in all_chunks_with_scores 

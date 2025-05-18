@@ -348,7 +348,13 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                                                         st.session_state.annotations = []
                                                     else:
                                                         # For other files, get annotations from source_annotations
-                                                        st.session_state.annotations = st.session_state.source_annotations[source]
+                                                        source_anno = st.session_state.source_annotations.get(source, {})
+                                                        # Ensure we're passing a list of annotations, not a dictionary
+                                                        if isinstance(source_anno, list):
+                                                            st.session_state.annotations = source_anno
+                                                        else:
+                                                            # Convert dict or other format to a list if needed
+                                                            st.session_state.annotations = []
                                                 except Exception as e:
                                                     logger.exception(f"Failed to get annotations: {str(e)}")
                                                     st.session_state.annotations = []
@@ -505,7 +511,13 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                                                         st.session_state.annotations = []
                                                     else:
                                                         # For other files, get annotations from source_annotations
-                                                        st.session_state.annotations = st.session_state.source_annotations[source]
+                                                        source_anno = st.session_state.source_annotations.get(source, {})
+                                                        # Ensure we're passing a list of annotations, not a dictionary
+                                                        if isinstance(source_anno, list):
+                                                            st.session_state.annotations = source_anno
+                                                        else:
+                                                            # Convert dict or other format to a list if needed
+                                                            st.session_state.annotations = []
                                                 except Exception as e:
                                                     logger.exception(f"Failed to get annotations: {str(e)}")
                                                     st.session_state.annotations = []
@@ -559,7 +571,13 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                             st.session_state.annotations = []
                         else:
                             # For other files, get annotations from source_annotations
-                            st.session_state.annotations = st.session_state.source_annotations[source]
+                            source_anno = st.session_state.source_annotations.get(source, {})
+                            # Ensure we're passing a list of annotations, not a dictionary
+                            if isinstance(source_anno, list):
+                                st.session_state.annotations = source_anno
+                            else:
+                                # Convert dict or other format to a list if needed
+                                st.session_state.annotations = []
                     except Exception as e:
                         logger.exception(f"Failed to get annotations: {str(e)}")
                         st.session_state.annotations = []
@@ -741,13 +759,18 @@ def show_pdf_viewer(file):
         # Ensure current_page is an integer
         page_num = int(st.session_state.current_page)
         
+        # Ensure annotations is a list (not a dictionary or other non-iterable)
+        annotations = st.session_state.get('annotations', [])
+        if not isinstance(annotations, list):
+            annotations = []
+            
         pdf_viewer(
             current_file,
             width="100%",
-            annotations=st.session_state.annotations,
+            annotations=annotations,
             pages_to_render=[page_num],
             render_text=True,
-            key=f"pdf_viewer_{page_num}_{st.session_state.get('current_file_index', 0)}_{id(st.session_state.get('annotations', []))}"
+            key=f"pdf_viewer_{page_num}_{st.session_state.get('current_file_index', 0)}_{id(annotations)}"
         )
 
     # Create three columns for the navigation controls

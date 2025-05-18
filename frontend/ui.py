@@ -317,14 +317,26 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                                                     # Extract file index from source if possible
                                                     file_index = 0  # Default to first file
                                                     
-                                                    # Try to extract file index from source name if it follows a pattern
+                                                    # Try to extract file index from source name using more precise matching
                                                     for i, path in enumerate(file_path):
                                                         filename = os.path.basename(path)
-                                                        if filename in source:
+                                                        # Check for exact filename in source or with brackets
+                                                        if f"{filename}" == source or f"[{filename}]" in source:
+                                                            file_index = i
+                                                            break
+                                                        # Fallback to partial match if exact match fails
+                                                        elif filename in source:
                                                             file_index = i
                                                             break
                                                     
+                                                    # Get current index and update
+                                                    current_index = st.session_state.get('current_file_index', 0)
                                                     st.session_state.current_file_index = file_index
+                                                    # Force a refresh if the file changed
+                                                    if current_index != file_index:
+                                                        # Set flag to indicate this is a source button click
+                                                        st.session_state.source_button_click = True
+                                                        st.rerun()
                                                 
                                                 st.session_state.current_page = page_num
                                                 try:
@@ -462,14 +474,26 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                                                     # Extract file index from source if possible
                                                     file_index = 0  # Default to first file
                                                     
-                                                    # Try to extract file index from source name if it follows a pattern
+                                                    # Try to extract file index from source name using more precise matching
                                                     for i, path in enumerate(file_path):
                                                         filename = os.path.basename(path)
-                                                        if filename in source:
+                                                        # Check for exact filename in source or with brackets
+                                                        if f"{filename}" == source or f"[{filename}]" in source:
+                                                            file_index = i
+                                                            break
+                                                        # Fallback to partial match if exact match fails
+                                                        elif filename in source:
                                                             file_index = i
                                                             break
                                                     
+                                                    # Get current index and update
+                                                    current_index = st.session_state.get('current_file_index', 0)
                                                     st.session_state.current_file_index = file_index
+                                                    # Force a refresh if the file changed
+                                                    if current_index != file_index:
+                                                        # Set flag to indicate this is a source button click
+                                                        st.session_state.source_button_click = True
+                                                        st.rerun()
                                                 
                                                 st.session_state.current_page = page_num
                                                 try:
@@ -557,8 +581,12 @@ def change_file_index():
     """Update the current file index based on selection and reset page to 1."""
     # Reset current page when changing files
     st.session_state.current_page = 1
-    # Reset annotations when changing files
-    st.session_state.annotations = []
+    # Reset annotations when user explicitly changes files through the selector
+    # but keep annotations when auto-changing from source button clicks
+    if not st.session_state.get('source_button_click', False):
+        st.session_state.annotations = []
+    # Reset the flag
+    st.session_state.source_button_click = False
     # Force a rerun to update the UI
     st.rerun()
 
@@ -701,22 +729,25 @@ def show_pdf_viewer(file):
         st.session_state.current_file_index = selected_index
         st.markdown("---")
     
-    # Create a unique key for the PDF container based on current page and file index
+    # Create a unique key for the PDF container based on current page, file index, and annotations
     pdf_container = st.container(
         border=st.session_state.show_chat_border, 
         height=1005, 
-        key=f"pdf_container_{st.session_state.current_page}_{st.session_state.get('current_file_index', 0)}"
+        key=f"pdf_container_{st.session_state.current_page}_{st.session_state.get('current_file_index', 0)}_{id(st.session_state.get('annotations', []))}"
     )
 
     with pdf_container:
         # Use current_page and file_index in the key to force refresh when either changes
+        # Ensure current_page is an integer
+        page_num = int(st.session_state.current_page)
+        
         pdf_viewer(
             current_file,
             width="100%",
             annotations=st.session_state.annotations,
-            pages_to_render=[st.session_state.current_page],
+            pages_to_render=[page_num],
             render_text=True,
-            key=f"pdf_viewer_{st.session_state.current_page}_{st.session_state.get('current_file_index', 0)}_{st.session_state.annotations}"
+            key=f"pdf_viewer_{page_num}_{st.session_state.get('current_file_index', 0)}_{id(st.session_state.get('annotations', []))}"
         )
 
     # Create three columns for the navigation controls

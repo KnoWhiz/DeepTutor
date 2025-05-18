@@ -67,9 +67,11 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
 
     # Load config for deep thinking mode
     config = load_config()
-    token_limit = config["inference_token_limit"]
-
-    chat_history_string = truncate_chat_history(chat_history, token_limit=token_limit)
+    if chat_session.mode == ChatMode.LITE:
+        token_limit = config["basic_token_limit"]
+    else:
+        token_limit = config["inference_token_limit"]
+    chat_history_string = truncate_chat_history(chat_history, token_limit=token_limit / 2)
     user_input_string = str(user_input + "\n\n" + question.special_context)
     rag_user_input_string = str(user_input + "\n\n" + question.special_context + "\n\n" + str(question.answer_planning))
     logger.info(f"rag_user_input_string: {rag_user_input_string}")
@@ -77,23 +79,23 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
     # First retrieve more candidates than needed to ensure we have enough after filtering
     filter_min_length = 50
     fetch_k = config['retriever']['k'] * 3  # Fetch 3x more to ensure enough pass the filter
-    
+
     all_chunks_with_scores = db.similarity_search_with_score(rag_user_input_string, k=fetch_k)
 
     logger.info(f"TEST: all_chunks_with_scores: {all_chunks_with_scores}")
-    
+
     # Filter chunks by length > 15
     filtered_chunks_with_scores = [
         (chunk, score) for chunk, score in all_chunks_with_scores 
         if len(chunk.page_content) > filter_min_length
     ]
-    
+
     # Sort by score (lowest score is better in many embeddings) and take top k
     question_chunks_with_scores = sorted(
         filtered_chunks_with_scores, 
         key=lambda x: x[1]
     )[:config['retriever']['k']]
-    
+
     # The total list of sources chunks
     sources_chunks = []
     # From the highest score to the lowest score, until the total tokens exceed 3000
@@ -107,19 +109,19 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
     # Get the first 3 keys from map_symbol_to_index for examples in the prompt
     first_keys = list(map_symbol_to_index.keys())[:3]
     example_keys = ", or ".join(first_keys)
-    
+
     # Track seen content to avoid duplicates
     seen_contents = set()
-    
+
     symbol_index = 0
     for chunk, score in question_chunks_with_scores:
         # Skip if content already seen
         if chunk.page_content in seen_contents:
             continue
-            
+
         if total_tokens + count_tokens(chunk.page_content) > token_limit:
             break
-            
+
         # Add content to seen set
         seen_contents.add(chunk.page_content)
         
@@ -133,17 +135,17 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
     # Format context as a JSON dictionary instead of a string
     formatted_context = context_dict
     
-    logger.info(f"For inference model, user_input_string: {user_input_string}")
-    logger.info(f"For inference model, user_input_string tokens: {count_tokens(user_input_string)}")
-    logger.info(f"For inference model, chat_history_string: {chat_history_string}")
-    logger.info(f"For inference model, chat_history_string tokens: {count_tokens(chat_history_string)}")
-    logger.info(f"For inference model, context: {str(formatted_context)}")
+    logger.info(f"For {chat_session.mode} model, user_input_string: {user_input_string}")
+    logger.info(f"For {chat_session.mode} model, user_input_string tokens: {count_tokens(user_input_string)}")
+    logger.info(f"For {chat_session.mode} model, chat_history_string: {chat_history_string}")
+    logger.info(f"For {chat_session.mode} model, chat_history_string tokens: {count_tokens(chat_history_string)}")
+    logger.info(f"For {chat_session.mode} model, context: {str(formatted_context)}")
     for index, (chunk, score) in enumerate(zip(context_chunks, context_scores)):
-        logger.info(f"For inference model, context chunk number: {index}")
+        logger.info(f"For {chat_session.mode} model, context chunk number: {index}")
         # logger.info(f"For inference model, context chunk: {chunk}")
-        logger.info(f"For inference model, context chunk tokens: {count_tokens(chunk)}")
-        logger.info(f"For inference model, context chunk score: {score}")
-    logger.info(f"For inference model, context tokens: {count_tokens(str(formatted_context))}")
+        logger.info(f"For {chat_session.mode} model, context chunk tokens: {count_tokens(chunk)}")
+        logger.info(f"For {chat_session.mode} model, context chunk score: {score}")
+    logger.info(f"For {chat_session.mode} model, context tokens: {count_tokens(str(formatted_context))}")
     logger.info("before deep_inference_agent ...")
 
     chat_session.formatted_context = formatted_context

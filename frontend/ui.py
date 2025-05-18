@@ -2,7 +2,8 @@ import json
 import base64
 import PyPDF2
 import streamlit as st
-from typing import Set
+import os
+from typing import Set, List, Union
 from streamlit_pdf_viewer import pdf_viewer
 from streamlit_float import float_init, float_parent, float_css_helper
 from streamlit_extras.stylable_container import stylable_container
@@ -123,6 +124,10 @@ def show_file_upload(on_change=None):
                                           type="pdf", 
                                           on_change=on_change,
                                           accept_multiple_files=True)
+            
+            # Add a helpful message when files are uploaded in Lite mode
+            if current_file and len(current_file) > 0:
+                st.success(f"{len(current_file)} documents uploaded. Select a document from the dropdown in the document view.")
         else:
             current_file = st.file_uploader("Upload a document no more than **200 pages** to get started.", 
                                           type="pdf", 
@@ -307,9 +312,21 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                                             css_styles=button_style.format(button_color=button_color)
                                         ):
                                             if st.button(to_emoji_number(src_idx), key=f"source_btn_{idx}_{src_idx}", use_container_width=True):
+                                                # If we have multiple files, we need to identify which file this source belongs to
+                                                if isinstance(file_path, list) and len(file_path) > 1:
+                                                    # Extract file index from source if possible
+                                                    file_index = 0  # Default to first file
+                                                    
+                                                    # Try to extract file index from source name if it follows a pattern
+                                                    for i, path in enumerate(file_path):
+                                                        filename = os.path.basename(path)
+                                                        if filename in source:
+                                                            file_index = i
+                                                            break
+                                                    
+                                                    st.session_state.current_file_index = file_index
+                                                
                                                 st.session_state.current_page = page_num
-                                                # Display the highlight info for that single source button
-                                                # st.session_state.annotations, st.session_state.react_annotations = get_highlight_info(doc, [source])
                                                 try:
                                                     image_extensions: Set[str] = set(config["image_extensions"])
                                                     is_image_file = any(source.lower().endswith(ext.lower()) for ext in image_extensions)
@@ -440,9 +457,21 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                                             css_styles=button_style.format(button_color=button_color)
                                         ):
                                             if st.button(to_emoji_number(idx), key=f"source_btn_{idx}_current", use_container_width=True):
+                                                # If we have multiple files, we need to identify which file this source belongs to
+                                                if isinstance(file_path, list) and len(file_path) > 1:
+                                                    # Extract file index from source if possible
+                                                    file_index = 0  # Default to first file
+                                                    
+                                                    # Try to extract file index from source name if it follows a pattern
+                                                    for i, path in enumerate(file_path):
+                                                        filename = os.path.basename(path)
+                                                        if filename in source:
+                                                            file_index = i
+                                                            break
+                                                    
+                                                    st.session_state.current_file_index = file_index
+                                                
                                                 st.session_state.current_page = page_num
-                                                # st.session_state.annotations, st.session_state.react_annotations = get_highlight_info(doc, [source])
-                                                # i = list(sources.keys()).index(source)
                                                 try:
                                                     image_extensions: Set[str] = set(config["image_extensions"])
                                                     is_image_file = any(source.lower().endswith(ext.lower()) for ext in image_extensions)
@@ -456,7 +485,6 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                                                 except Exception as e:
                                                     logger.exception(f"Failed to get annotations: {str(e)}")
                                                     st.session_state.annotations = []
-                                                # logger.info(f"type of st.session_state.annotations: {type(st.session_state.annotations)}")
 
                                             # Add response with follow-up questions to chat history
                         
@@ -514,14 +542,71 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                     # logger.info(f"type of st.session_state.annotations: {type(st.session_state.annotations)}")
 
 
+# Function to initialize session state variables for multi-file support
+def initialize_multi_file_state():
+    """Initialize session state variables needed for multi-file support."""
+    if "current_file_index" not in st.session_state:
+        st.session_state.current_file_index = 0
+    if "file_paths" not in st.session_state:
+        st.session_state.file_paths = []
+    if "file_names" not in st.session_state:
+        st.session_state.file_names = []
+
+# Function to change the current file
+def change_file_index():
+    """Update the current file index based on selection and reset page to 1."""
+    # Reset current page when changing files
+    st.session_state.current_page = 1
+    # Reset annotations when changing files
+    st.session_state.annotations = []
+    # Force a rerun to update the UI
+    st.rerun()
+
+# Function to display the file selection
+def show_file_selector():
+    """Display a selectbox for choosing which file to view when multiple files are uploaded."""
+    if isinstance(st.session_state.get('uploaded_file'), list) and len(st.session_state.get('uploaded_file', [])) > 1:
+        file_names = [f.name for f in st.session_state.uploaded_file]
+        current_index = st.session_state.get('current_file_index', 0)
+        
+        selected_index = st.selectbox(
+            "Select file to view:",
+            range(len(file_names)),
+            format_func=lambda i: f"{i+1}. {file_names[i]}",
+            index=current_index,
+            key="file_selector",
+            on_change=change_file_index
+        )
+        
+        st.session_state.current_file_index = selected_index
+
 # Function to display the pdf viewer
 def show_pdf_viewer(file):
     """
     Display the PDF viewer.
     
     Args:
-        file: Either a file object or a file path to the PDF
+        file: Either a file object or a file path to the PDF, or a list of files/paths
     """
+    # Initialize multi-file state variables
+    initialize_multi_file_state()
+    
+    # Handle multiple files case
+    if isinstance(file, list):
+        # If we have multiple files, determine the current file to display
+        if not file:  # Empty list
+            st.warning("No files uploaded")
+            return
+            
+        # Set the current file based on the index
+        current_index = st.session_state.get('current_file_index', 0)
+        # Ensure index is within bounds
+        current_index = min(current_index, len(file) - 1)
+        current_file = file[current_index]
+    else:
+        # Single file case
+        current_file = file
+    
     if "current_page" not in st.session_state:
         logger.info("current_page not in st.session_state")
         st.session_state.current_page = 1
@@ -531,12 +616,49 @@ def show_pdf_viewer(file):
     if "total_pages" not in st.session_state:
         logger.info("total_pages not in st.session_state")
         # Get total pages from the PDF file
-        if isinstance(file, str):
+        if isinstance(current_file, str):
             # If file is a path, open it
-            pdf = PyPDF2.PdfReader(open(file, 'rb'))
+            pdf = PyPDF2.PdfReader(open(current_file, 'rb'))
+        elif isinstance(current_file, bytes):
+            # If file is bytes, use BytesIO to create a file-like object
+            import io
+            pdf = PyPDF2.PdfReader(io.BytesIO(current_file))
         else:
             # If file is a file object
-            pdf = PyPDF2.PdfReader(file)
+            # Save the current position
+            pos = current_file.tell() if hasattr(current_file, 'tell') else 0
+            # Rewind to the beginning
+            if hasattr(current_file, 'seek'):
+                current_file.seek(0)
+            try:
+                pdf = PyPDF2.PdfReader(current_file)
+            finally:
+                # Restore position if possible
+                if hasattr(current_file, 'seek'):
+                    current_file.seek(pos)
+        st.session_state.total_pages = len(pdf.pages)
+    else:
+        # Update total pages when changing files
+        if isinstance(current_file, str):
+            # If file is a path, open it
+            pdf = PyPDF2.PdfReader(open(current_file, 'rb'))
+        elif isinstance(current_file, bytes):
+            # If file is bytes, use BytesIO to create a file-like object
+            import io
+            pdf = PyPDF2.PdfReader(io.BytesIO(current_file))
+        else:
+            # If file is a file object
+            # Save the current position
+            pos = current_file.tell() if hasattr(current_file, 'tell') else 0
+            # Rewind to the beginning
+            if hasattr(current_file, 'seek'):
+                current_file.seek(0)
+            try:
+                pdf = PyPDF2.PdfReader(current_file)
+            finally:
+                # Restore position if possible
+                if hasattr(current_file, 'seek'):
+                    current_file.seek(pos)
         st.session_state.total_pages = len(pdf.pages)
 
     with st.container():
@@ -555,18 +677,46 @@ def show_pdf_viewer(file):
         </style>
         """, unsafe_allow_html=True)
     
-    # Create a unique key for the PDF container based on current page
-    pdf_container = st.container(border=st.session_state.show_chat_border, height=1005, key=f"pdf_container_{st.session_state.current_page}")
+    # Show file selector in a prominent position ABOVE the PDF viewer
+    if isinstance(file, list) and len(file) > 1:
+        st.markdown("### 📑 Select Document")
+        file_names = []
+        for f in file:
+            if hasattr(f, 'name'):
+                file_names.append(f.name)
+            else:
+                file_names.append(os.path.basename(f))
+        
+        current_index = st.session_state.get('current_file_index', 0)
+        
+        selected_index = st.selectbox(
+            "Choose a document to view:",
+            range(len(file_names)),
+            format_func=lambda i: f"{i+1}. {file_names[i]}",
+            index=current_index,
+            key="file_selector_prominent",
+            on_change=change_file_index
+        )
+        
+        st.session_state.current_file_index = selected_index
+        st.markdown("---")
+    
+    # Create a unique key for the PDF container based on current page and file index
+    pdf_container = st.container(
+        border=st.session_state.show_chat_border, 
+        height=1005, 
+        key=f"pdf_container_{st.session_state.current_page}_{st.session_state.get('current_file_index', 0)}"
+    )
 
     with pdf_container:
-        # Use current_page in the key to force refresh when page changes
+        # Use current_page and file_index in the key to force refresh when either changes
         pdf_viewer(
-            file,
+            current_file,
             width="100%",
             annotations=st.session_state.annotations,
             pages_to_render=[st.session_state.current_page],
             render_text=True,
-            key=f"pdf_viewer_{st.session_state.current_page}_{st.session_state.annotations}"
+            key=f"pdf_viewer_{st.session_state.current_page}_{st.session_state.get('current_file_index', 0)}_{st.session_state.annotations}"
         )
 
     # Create three columns for the navigation controls
@@ -575,37 +725,50 @@ def show_pdf_viewer(file):
     # Left arrow button
     with columns[0]:
         with stylable_container(
-            key=f"left_aligned_button_{st.session_state.current_page}",
+            key=f"left_aligned_button_{st.session_state.current_page}_{st.session_state.get('current_file_index', 0)}",
             css_styles="""
             button {
                 float: left;
             }
             """
         ):
-            st.button("←", key=f"prev_{st.session_state.current_page}", on_click=previous_page)
+            st.button("←", key=f"prev_{st.session_state.current_page}_{st.session_state.get('current_file_index', 0)}", on_click=previous_page)
             button_css = float_css_helper(width="1.2rem", bottom="1.2rem", transition=0)
             float_parent(css=button_css)
     
     # Page counter in the middle
     with columns[1]:
-        st.markdown(
-            f"""<div style="text-align: center; color: #666666;">
-                Page {st.session_state.current_page} of {st.session_state.total_pages}
-                </div>""",
-            unsafe_allow_html=True
-        )
+        # For multiple files, show which file we're viewing
+        if isinstance(file, list) and len(file) > 1:
+            current_index = st.session_state.get('current_file_index', 0)
+            file_name = file[current_index].name if hasattr(file[current_index], 'name') else os.path.basename(file[current_index])
+            
+            st.markdown(
+                f"""<div style="text-align: center; color: #666666;">
+                    File {current_index + 1}/{len(file)}: {file_name}<br>
+                    Page {st.session_state.current_page} of {st.session_state.total_pages}
+                    </div>""",
+                unsafe_allow_html=True
+            )
+        else:
+            st.markdown(
+                f"""<div style="text-align: center; color: #666666;">
+                    Page {st.session_state.current_page} of {st.session_state.total_pages}
+                    </div>""",
+                unsafe_allow_html=True
+            )
         
     # Right arrow button
     with columns[2]:
         with stylable_container(
-            key=f"right_aligned_button_{st.session_state.current_page}",
+            key=f"right_aligned_button_{st.session_state.current_page}_{st.session_state.get('current_file_index', 0)}",
             css_styles="""
             button {
                 float: right;
             }
             """
         ):
-            st.button("→", key=f"next_{st.session_state.current_page}", on_click=next_page)
+            st.button("→", key=f"next_{st.session_state.current_page}_{st.session_state.get('current_file_index', 0)}", on_click=next_page)
             button_css = float_css_helper(width="1.2rem", bottom="1.2rem", transition=0)
             float_parent(css=button_css)
 

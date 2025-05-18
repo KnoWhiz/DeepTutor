@@ -58,6 +58,7 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
             logger.exception(f"Failed to load markdown embeddings for deep thinking mode: {str(e)}")
             db = load_embeddings(embedding_folder_list, 'default')
     # elif chat_session.mode == ChatMode.LITE:
+    # Handle Lite mode in other cases
     else:
         logger.info(f"Current mode is {chat_session.mode}")
         actual_embedding_folder_list = [os.path.join(embedding_folder, 'lite_embedding') for embedding_folder in embedding_folder_list]
@@ -74,7 +75,7 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
     logger.info(f"rag_user_input_string: {rag_user_input_string}")
     # Get relevant chunks for question with scores
     # First retrieve more candidates than needed to ensure we have enough after filtering
-    filter_min_length = 15
+    filter_min_length = 50
     fetch_k = config['retriever']['k'] * 3  # Fetch 3x more to ensure enough pass the filter
     
     all_chunks_with_scores = db.similarity_search_with_score(rag_user_input_string, k=fetch_k)

@@ -128,9 +128,9 @@ class ApiHandler:
 
         if self.para['llm_source'] == 'azure' or self.para['llm_source'] == 'openai':
             models = {
-                'basic': {'instance': llm_basic, 'context_window': 128000},
-                'advanced': {'instance': llm_advance, 'context_window': 128000},
-                'creative': {'instance': llm_creative, 'context_window': 128000},
+                'basic': {'instance': llm_basic, 'context_window': 1047576},
+                'advanced': {'instance': llm_advance, 'context_window': 1047576},
+                'creative': {'instance': llm_creative, 'context_window': 1047576},
                 'backup': {'instance': llm_llama, 'context_window': 128000},
             }
         elif self.para['llm_source'] == 'sambanova':
@@ -138,7 +138,7 @@ class ApiHandler:
                 'basic': {'instance': llm_llama, 'context_window': 128000},
                 'advanced': {'instance': llm_llama, 'context_window': 128000},
                 'creative': {'instance': llm_llama, 'context_window': 128000},
-                'backup': {'instance': llm_basic, 'context_window': 128000},
+                'backup': {'instance': llm_basic, 'context_window': 1047576},
             }
         # elif self.para['llm_source'] == 'deepseek':
         #     models = {

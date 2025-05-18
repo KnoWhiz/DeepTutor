@@ -303,6 +303,22 @@ def test_extract_answer_content():
     print("Refined Source Pages extracted:", refined_source_pages)
     print("Refined Source Index extracted:", refined_source_index)
     print("Follow-up Questions extracted:", follow_up_questions)
+
+    source_objects = []
+    for index, (key, value) in enumerate(refined_source_pages.items()):
+        source_objects.append({
+            "index": index,
+            "referenceString": key,
+            "page": value,
+            "refinedIndex": refined_source_index.get(key, {}),
+            "sourceAnnotation": {
+                "pageNum": source_annotations.get(key, {}).get("page_num", 0),
+                "startChar": source_annotations.get(key, {}).get("start_char", 0),
+                "endChar": source_annotations.get(key, {}).get("end_char", 0),
+                "success": source_annotations.get(key, {}).get("success", True),
+                "similarity": source_annotations.get(key, {}).get("similarity", 0.0)
+            }
+        })
     
     # Test case 2: Message with sources and source pages
     test_message_2 = """
@@ -323,6 +339,22 @@ def test_extract_answer_content():
     print("Refined Source Pages extracted:", refined_source_pages)
     print("Refined Source Index extracted:", refined_source_index)
     print("Follow-up Questions extracted:", follow_up_questions)
+
+    source_objects = []
+    for index, (key, value) in enumerate(refined_source_pages.items()):
+        source_objects.append({
+            "index": index,
+            "referenceString": key,
+            "page": value,
+            "refinedIndex": refined_source_index.get(key, {}),
+            "sourceAnnotation": {
+                "pageNum": source_annotations.get(key, {}).get("page_num", 0),
+                "startChar": source_annotations.get(key, {}).get("start_char", 0),
+                "endChar": source_annotations.get(key, {}).get("end_char", 0),
+                "success": source_annotations.get(key, {}).get("success", True),
+                "similarity": source_annotations.get(key, {}).get("similarity", 0.0)
+            }
+        })
     
     # Test case 3: Message with follow-up questions
     test_message_3 = """
@@ -346,6 +378,22 @@ def test_extract_answer_content():
     print(type(source_annotations["High-rate remote entanglement between photon and matter-based qubits is essential for distributed quantum information processing. A key technique to increase the modest entangling rates of existing long-distance quantum networking approaches is multiplexing. Here, we demonstrate a temporally multiplexed ion-photon interface via rapid transport of a chain of nine calcium ions across 74 µm within 86 µs. The non-classical nature of the multiplexed photons is verified by measuring the second-order correlation function with an average value of g(2)(0) = 0.060(13). This indicates low crosstalk between the multiplexed modes, and can be reduced to negligible level once fiber coupling of single photons is incorporated. In addition, we characterize the motional degree-of-freedom of the ion crystal after transport and find that it is coherently excited to as much as ¯nα ≈110 for the center-of-mass mode. Our proof-of-principle implementation paves the way for large-scale quantum networking with trapped ions, but highlights some challenges that must be overcome."]))
     print(source_annotations["High-rate remote entanglement between photon and matter-based qubits is essential for distributed quantum information processing. A key technique to increase the modest entangling rates of existing long-distance quantum networking approaches is multiplexing. Here, we demonstrate a temporally multiplexed ion-photon interface via rapid transport of a chain of nine calcium ions across 74 µm within 86 µs. The non-classical nature of the multiplexed photons is verified by measuring the second-order correlation function with an average value of g(2)(0) = 0.060(13). This indicates low crosstalk between the multiplexed modes, and can be reduced to negligible level once fiber coupling of single photons is incorporated. In addition, we characterize the motional degree-of-freedom of the ion crystal after transport and find that it is coherently excited to as much as ¯nα ≈110 for the center-of-mass mode. Our proof-of-principle implementation paves the way for large-scale quantum networking with trapped ions, but highlights some challenges that must be overcome."]['start_char'])
     print("Sources annotations extracted (first item):", next(iter(source_annotations.items())))
+
+    source_objects = []
+    for index, (key, value) in enumerate(refined_source_pages.items()):
+        source_objects.append({
+            "index": index,
+            "referenceString": key,
+            "page": value,
+            "refinedIndex": refined_source_index.get(key, {}),
+            "sourceAnnotation": {
+                "pageNum": source_annotations.get(key, {}).get("page_num", 0),
+                "startChar": source_annotations.get(key, {}).get("start_char", 0),
+                "endChar": source_annotations.get(key, {}).get("end_char", 0),
+                "success": source_annotations.get(key, {}).get("success", True),
+                "similarity": source_annotations.get(key, {}).get("similarity", 0.0)
+            }
+        })
     
     # Test case 4: Empty message
     test_message_4 = """
@@ -415,6 +463,23 @@ The document also highlights the broader context of fall detection technologies,
     print("Refined Source Index extracted:", refined_source_index.values())
     print("Follow-up Questions extracted:", follow_up_questions)
     print("Sources annotations extracted:", source_annotations.items())
+
+    # Add the format check for sources_annotations
+    source_objects = []
+    for index, (key, value) in enumerate(refined_source_pages.items()):
+        source_objects.append({
+            "index": index,
+            "referenceString": key,
+            "page": value,
+            "refinedIndex": refined_source_index.get(key, {}),
+            "sourceAnnotation": {
+                "pageNum": source_annotations.get(key, {}).get("page_num", 0),
+                "startChar": source_annotations.get(key, {}).get("start_char", 0),
+                "endChar": source_annotations.get(key, {}).get("end_char", 0),
+                "success": source_annotations.get(key, {}).get("success", True),
+                "similarity": source_annotations.get(key, {}).get("similarity", 0.0)
+            }
+        })
 
 if __name__ == "__main__":
     test_extract_answer_content()

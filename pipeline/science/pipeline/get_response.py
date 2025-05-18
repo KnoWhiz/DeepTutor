@@ -128,7 +128,7 @@ async def get_multiple_files_summary(file_path_list, embedding_folder_list, chat
     # Format the prompt with file previews
     prompt_parts = []
     for i, (file_name, preview) in enumerate(file_previews):
-        prompt_parts.append(f"\n\n## DOCUMENT {i+1}: {file_name}\n\nPreview Content:\n```\n{preview}\n```\n")
+        prompt_parts.append(f"\n\n### DOCUMENT {i+1}: {file_name}\n\nPreview Content:\n```\n{preview}\n```\n")
     
     formatted_previews = "\n".join(prompt_parts)
     logger.info(f"Created formatted previews for {len(file_previews)} files, total length: {len(formatted_previews)} characters")
@@ -147,6 +147,7 @@ async def get_multiple_files_summary(file_path_list, embedding_folder_list, chat
     4. Highlights the most important concepts across all documents
     5. Uses markdown formatting for clear organization with sections and subsections
     6. Makes appropriate use of bold, bullet points, and other formatting to improve readability
+    7. Highest title level is 3, and the title should be concise and informative.
     
     Format your summary with a friendly welcome message at the beginning and a closing "Ask me anything" message at the end.
     """
@@ -167,7 +168,7 @@ async def get_multiple_files_summary(file_path_list, embedding_folder_list, chat
                     yield chunk.content
                 else:
                     yield str(chunk)
-            yield "</response>"
+            yield "\n\n</response>"
             logger.info("Completed streaming summary generation")
         
         return process_stream()
@@ -177,7 +178,7 @@ async def get_multiple_files_summary(file_path_list, embedding_folder_list, chat
         response = llm.invoke(prompt)
         response_text = response.content if hasattr(response, 'content') else str(response)
         logger.info(f"Generated summary with length: {len(response_text)} characters")
-        return f"<response>\n\n{response_text}</response>"
+        return f"<response>\n\n{response_text}\n\n</response>"
 
 
 async def get_response(chat_session: ChatSession, file_path_list, question: Question, chat_history, embedding_folder_list, deep_thinking = True, stream=False):
@@ -186,9 +187,9 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
     user_input = question.text
     user_input_string = str(user_input + "\n\n" + question.special_context)
     
-    # Check if this is a summary request for multiple files
+    # Check if this is a summary request for multiple files. If so, return a generator from get_multiple_files_summary
     if len(file_path_list) > 1 and user_input == config["summary_wording"]:
-        logger.info("Handling multiple files summary request")
+        logger.info("Handling multiple files summary request.")
         return await get_multiple_files_summary(file_path_list, embedding_folder_list, chat_session, stream)
     
     # Handle Lite mode first
@@ -280,14 +281,14 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         # chain = prompt | llm | StrOutputParser()
         answer = llm.stream(prompt)
         def process_stream():
-            yield "<response>"
+            yield "<response>\n\n"
             for chunk in answer:
                 # Convert AIMessageChunk to string
                 if hasattr(chunk, 'content'):
                     yield chunk.content
                 else:
                     yield str(chunk)
-            yield "</response>"
+            yield "\n\n</response>"
         return process_stream()
 
     # Handle Advanced mode

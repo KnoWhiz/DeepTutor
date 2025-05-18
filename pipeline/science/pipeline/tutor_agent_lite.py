@@ -139,25 +139,25 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
 
     # Process LiteRAG embeddings
     lite_embedding_start_time = time.time()
-    yield "\n\n**🔍 Loading LiteRAG embeddings ...**"
+    # yield "\n\n**🔍 Loading LiteRAG embeddings ...**"
     for file_id, embedding_folder, file_path in zip(file_id_list, embedding_folder_list, file_path_list):
         if literag_index_files_decompress(embedding_folder):
             # Check if the LiteRAG index files are ready locally
             logger.info(f"LiteRAG embedding index files for {file_id} are ready.")
-            yield "\n\n**🔍 LiteRAG embedding index files are ready.**"
+            # yield "\n\n**🔍 LiteRAG embedding index files are ready.**"
         else:
             # Files are missing and have been cleaned up
             _document, _doc = process_pdf_file(file_path)
             save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
             logger.info(f"Loading LiteRAG embedding for {file_id} ...")
-            yield "\n\n**🔍 Loading LiteRAG embeddings ...**"
+            # yield "\n\n**🔍 Loading LiteRAG embeddings ...**"
             async for chunk in embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder):
                 yield chunk
     time_tracking["lite_embedding_total"] = time.time() - lite_embedding_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
     logger.info("LiteRAG embeddings ready ...")
     yield "\n\n**🔍 LiteRAG embeddings ready ...**"
-    yield "</thinking>"
+    # yield "</thinking>"
     yield "\n\n**🧠 Loading response ...**\n\n"
 
     chat_history = chat_session.chat_history
@@ -203,6 +203,7 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     time_tracking["pdf_content_loading"] = time.time() - pdf_content_loading_start
     logger.info(f"PDF content loading complete. Time: {format_time_tracking(time_tracking)}")
     yield "\n\n**📚 PDF content loading complete**\n\n"
+    yield "</thinking>"
 
     # Handle initial welcome message when chat history is empty or summary is requested
     if user_input == config["summary_wording"] or not chat_history:
@@ -210,7 +211,8 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
         # Just pass the request through to get_response
         if user_input == config["summary_wording"] and len(file_path_list) > 1:
             logger.info("Handling multiple files summary request in lite mode")
-            yield "\n\n**🧠 Analyzing multiple files and generating a comprehensive summary...**\n\n"
+            # yield "\n\n**🧠 Analyzing multiple files and generating a comprehensive summary...**\n\n"
+            # yield "</thinking>"
             # get_response will handle the multiple file summary generation
             response_start = time.time()
             question = Question(text=user_input, language=chat_session.current_language, question_type="global")
@@ -254,6 +256,7 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
             refined_user_input = f"{user_input}\n\nThis is the document content: {pdf_content}"
             question = Question(text=refined_user_input, language=chat_session.current_language, question_type="local")
     else:
+        # yield "</thinking>"
         refined_user_input = f"{user_input}\n\n{pdf_content}"
         # Regular chat flow - include PDF content in the user input
         question = Question(text=refined_user_input, language=chat_session.current_language, question_type="local")

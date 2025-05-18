@@ -58,6 +58,7 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
             logger.exception(f"Failed to load markdown embeddings for deep thinking mode: {str(e)}")
             db = load_embeddings(embedding_folder_list, 'default')
     # elif chat_session.mode == ChatMode.LITE:
+    # Handle Lite mode in other cases
     else:
         logger.info(f"Current mode is {chat_session.mode}")
         actual_embedding_folder_list = [os.path.join(embedding_folder, 'lite_embedding') for embedding_folder in embedding_folder_list]
@@ -74,7 +75,7 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
     logger.info(f"rag_user_input_string: {rag_user_input_string}")
     # Get relevant chunks for question with scores
     # First retrieve more candidates than needed to ensure we have enough after filtering
-    filter_min_length = 15
+    filter_min_length = 50
     fetch_k = config['retriever']['k'] * 3  # Fetch 3x more to ensure enough pass the filter
     
     all_chunks_with_scores = db.similarity_search_with_score(rag_user_input_string, k=fetch_k)
@@ -106,14 +107,28 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
     # Get the first 3 keys from map_symbol_to_index for examples in the prompt
     first_keys = list(map_symbol_to_index.keys())[:3]
     example_keys = ", or ".join(first_keys)
-    for index, chunk in enumerate(question_chunks_with_scores):
-        if total_tokens + count_tokens(chunk[0].page_content) > token_limit:
+    
+    # Track seen content to avoid duplicates
+    seen_contents = set()
+    
+    symbol_index = 0
+    for chunk, score in question_chunks_with_scores:
+        # Skip if content already seen
+        if chunk.page_content in seen_contents:
+            continue
+            
+        if total_tokens + count_tokens(chunk.page_content) > token_limit:
             break
-        sources_chunks.append(chunk[0])
-        total_tokens += count_tokens(chunk[0].page_content)
-        context_chunks.append(chunk[0].page_content)
-        context_scores.append(chunk[1])
-        context_dict[map_index_to_symbol[index]] = {"content": chunk[0].page_content, "score": float(chunk[1])}
+            
+        # Add content to seen set
+        seen_contents.add(chunk.page_content)
+        
+        sources_chunks.append(chunk)
+        total_tokens += count_tokens(chunk.page_content)
+        context_chunks.append(chunk.page_content)
+        context_scores.append(score)
+        context_dict[map_index_to_symbol[symbol_index]] = {"content": chunk.page_content, "score": float(score)}
+        symbol_index += 1
     
     # Format context as a JSON dictionary instead of a string
     formatted_context = context_dict

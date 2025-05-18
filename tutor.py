@@ -193,7 +193,7 @@ if st.session_state['isAuth']:
 
                 if len(st.session_state.chat_session.chat_history) == 0:
                     with outer_columns[0]:
-                        show_pdf_viewer(file)
+                        show_pdf_viewer(file_path)
                         
                     with outer_columns[1]:
                         show_chat_interface(
@@ -211,7 +211,7 @@ if st.session_state['isAuth']:
                             embedding_folder=embedding_folder,
                         )
                     with outer_columns[0]:
-                        show_pdf_viewer(file)
+                        show_pdf_viewer(file_path)
 
             logger.info(f"st.session_state.current_page is {st.session_state.current_page}")
 

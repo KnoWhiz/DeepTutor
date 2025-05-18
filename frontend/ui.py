@@ -619,18 +619,46 @@ def show_pdf_viewer(file):
         if isinstance(current_file, str):
             # If file is a path, open it
             pdf = PyPDF2.PdfReader(open(current_file, 'rb'))
+        elif isinstance(current_file, bytes):
+            # If file is bytes, use BytesIO to create a file-like object
+            import io
+            pdf = PyPDF2.PdfReader(io.BytesIO(current_file))
         else:
             # If file is a file object
-            pdf = PyPDF2.PdfReader(current_file)
+            # Save the current position
+            pos = current_file.tell() if hasattr(current_file, 'tell') else 0
+            # Rewind to the beginning
+            if hasattr(current_file, 'seek'):
+                current_file.seek(0)
+            try:
+                pdf = PyPDF2.PdfReader(current_file)
+            finally:
+                # Restore position if possible
+                if hasattr(current_file, 'seek'):
+                    current_file.seek(pos)
         st.session_state.total_pages = len(pdf.pages)
     else:
         # Update total pages when changing files
         if isinstance(current_file, str):
             # If file is a path, open it
             pdf = PyPDF2.PdfReader(open(current_file, 'rb'))
+        elif isinstance(current_file, bytes):
+            # If file is bytes, use BytesIO to create a file-like object
+            import io
+            pdf = PyPDF2.PdfReader(io.BytesIO(current_file))
         else:
             # If file is a file object
-            pdf = PyPDF2.PdfReader(current_file)
+            # Save the current position
+            pos = current_file.tell() if hasattr(current_file, 'tell') else 0
+            # Rewind to the beginning
+            if hasattr(current_file, 'seek'):
+                current_file.seek(0)
+            try:
+                pdf = PyPDF2.PdfReader(current_file)
+            finally:
+                # Restore position if possible
+                if hasattr(current_file, 'seek'):
+                    current_file.seek(pos)
         st.session_state.total_pages = len(pdf.pages)
 
     with st.container():

@@ -115,23 +115,41 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
     # Track seen content to avoid duplicates
     seen_contents = set()
 
-    symbol_index = 0
+    # Pre-process all chunks and filter duplicates
+    filtered_question_chunks = []
     for chunk, score in question_chunks_with_scores:
-        # Skip if content already seen
-        if chunk.page_content in seen_contents:
-            continue
-
+        if chunk.page_content not in seen_contents:
+            seen_contents.add(chunk.page_content)
+            filtered_question_chunks.append((chunk, score))
+    
+    symbol_index = 0
+    for i, (chunk, score) in enumerate(filtered_question_chunks):
+        # Skip if adding this chunk would exceed token limit
         if total_tokens + count_tokens(chunk.page_content) > token_limit:
             break
-
-        # Add content to seen set
-        seen_contents.add(chunk.page_content)
+        
+        # Get surrounding chunks (2 before and 2 after)
+        surrounding_content = []
+        
+        # Add 2 chunks before
+        for j in range(max(0, i-2), i):
+            surrounding_content.append(filtered_question_chunks[j][0].page_content)
+        
+        # Add current chunk
+        surrounding_content.append(chunk.page_content)
+        
+        # Add 2 chunks after
+        for j in range(i+1, min(i+3, len(filtered_question_chunks))):
+            surrounding_content.append(filtered_question_chunks[j][0].page_content)
+        
+        # Combine all chunks into one context
+        combined_content = "\n\n".join(surrounding_content)
         
         sources_chunks.append(chunk)
-        total_tokens += count_tokens(chunk.page_content)
-        context_chunks.append(chunk.page_content)
+        total_tokens += count_tokens(combined_content)
+        context_chunks.append(combined_content)
         context_scores.append(score)
-        context_dict[map_index_to_symbol[symbol_index]] = {"content": chunk.page_content, "score": float(score)}
+        context_dict[map_index_to_symbol[symbol_index]] = {"content": combined_content, "score": float(score)}
         symbol_index += 1
     
     # Format context as a JSON dictionary instead of a string

@@ -168,7 +168,7 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     pdf_content = ""
     
     # Calculate word budget per file
-    total_word_budget = config["basic_token_limit"] / 10
+    total_word_budget = config["basic_token_limit"] / 5
     files_count = len(file_path_list)
     words_per_file = total_word_budget // files_count if files_count > 0 else total_word_budget
     

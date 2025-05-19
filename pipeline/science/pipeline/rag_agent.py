@@ -71,7 +71,7 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
         token_limit = config["basic_token_limit"]
     else:
         token_limit = config["inference_token_limit"]
-    chat_history_string = truncate_chat_history(chat_history, token_limit=token_limit / 2)
+    chat_history_string = truncate_chat_history(chat_history, token_limit=token_limit)
     user_input_string = str(user_input + "\n\n" + question.special_context)
     rag_user_input_string = str(user_input + "\n\n" + question.special_context + "\n\n" + str(question.answer_planning))
     logger.info(f"rag_user_input_string: {rag_user_input_string}")

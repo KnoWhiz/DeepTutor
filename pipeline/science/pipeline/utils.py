@@ -243,9 +243,9 @@ def truncate_chat_history(chat_history, model_name='gpt-4o', token_limit=None):
     else:
         model_level = 'basic'
     if token_limit is None:
-        max_tokens = int(api.models[model_level]['context_window']/3)
+        max_tokens = int(api.models[model_level]['context_window'] / 3)
     else:
-        max_tokens = token_limit
+        max_tokens = token_limit / 3
 
     logger.info(f"max_tokens: {max_tokens}")
     

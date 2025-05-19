@@ -24,6 +24,7 @@ import logging
 import re
 import os
 import asyncio
+from pipeline.science.pipeline.doc_processor import get_highlight_info
 
 logger = logging.getLogger("tutorfrontend.ui")
 
@@ -347,14 +348,32 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                                                         # For image files, use empty annotations
                                                         st.session_state.annotations = []
                                                     else:
-                                                        # For other files, get annotations from source_annotations
-                                                        source_anno = st.session_state.source_annotations.get(source, {})
-                                                        # Ensure we're passing a list of annotations, not a dictionary
-                                                        if isinstance(source_anno, list):
-                                                            st.session_state.annotations = source_anno
+                                                        # Find the proper document based on file index
+                                                        if isinstance(file_path, list):
+                                                            current_doc = doc[file_index] if isinstance(doc, list) else doc
                                                         else:
-                                                            # Convert dict or other format to a list if needed
-                                                            st.session_state.annotations = []
+                                                            current_doc = doc
+                                                            
+                                                        # Get highlight info directly from the document using the source text
+                                                        try:
+                                                            # Try to use highlight info first for precise highlighting
+                                                            annotations, _ = get_highlight_info(current_doc, [source])
+                                                            if not annotations:
+                                                                # Fall back to stored annotations if highlight info fails
+                                                                source_anno = st.session_state.source_annotations.get(source, [])
+                                                                if isinstance(source_anno, list):
+                                                                    annotations = source_anno
+                                                                else:
+                                                                    annotations = []
+                                                            st.session_state.annotations = annotations
+                                                        except Exception as e:
+                                                            logger.exception(f"Failed to get highlight info: {str(e)}")
+                                                            # Fall back to stored annotations
+                                                            source_anno = st.session_state.source_annotations.get(source, [])
+                                                            if isinstance(source_anno, list):
+                                                                st.session_state.annotations = source_anno
+                                                            else:
+                                                                st.session_state.annotations = []
                                                 except Exception as e:
                                                     logger.exception(f"Failed to get annotations: {str(e)}")
                                                     st.session_state.annotations = []
@@ -510,14 +529,32 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                                                         # For image files, use empty annotations
                                                         st.session_state.annotations = []
                                                     else:
-                                                        # For other files, get annotations from source_annotations
-                                                        source_anno = st.session_state.source_annotations.get(source, {})
-                                                        # Ensure we're passing a list of annotations, not a dictionary
-                                                        if isinstance(source_anno, list):
-                                                            st.session_state.annotations = source_anno
+                                                        # Find the proper document based on file index
+                                                        if isinstance(file_path, list):
+                                                            current_doc = doc[file_index] if isinstance(doc, list) else doc
                                                         else:
-                                                            # Convert dict or other format to a list if needed
-                                                            st.session_state.annotations = []
+                                                            current_doc = doc
+                                                            
+                                                        # Get highlight info directly from the document using the source text
+                                                        try:
+                                                            # Try to use highlight info first for precise highlighting
+                                                            annotations, _ = get_highlight_info(current_doc, [source])
+                                                            if not annotations:
+                                                                # Fall back to stored annotations if highlight info fails
+                                                                source_anno = st.session_state.source_annotations.get(source, [])
+                                                                if isinstance(source_anno, list):
+                                                                    annotations = source_anno
+                                                                else:
+                                                                    annotations = []
+                                                            st.session_state.annotations = annotations
+                                                        except Exception as e:
+                                                            logger.exception(f"Failed to get highlight info: {str(e)}")
+                                                            # Fall back to stored annotations
+                                                            source_anno = st.session_state.source_annotations.get(source, [])
+                                                            if isinstance(source_anno, list):
+                                                                st.session_state.annotations = source_anno
+                                                            else:
+                                                                st.session_state.annotations = []
                                                 except Exception as e:
                                                     logger.exception(f"Failed to get annotations: {str(e)}")
                                                     st.session_state.annotations = []
@@ -559,25 +596,47 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                 if "current_page" not in st.session_state:
                     st.session_state.current_page = 1
                 if st.session_state.get("sources"):
-                    # st.session_state.annotations, st.session_state.react_annotations = get_highlight_info(doc, list(st.session_state.sources.keys()))
-                    # i = list(st.session_state.sources.keys()).index(source)
                     image_extensions: Set[str] = set(config["image_extensions"])
                     try:
-                        # Check if source is an image file by checking its extension
-                        is_image_file = any(source.lower().endswith(ext.lower()) for ext in image_extensions)
-                        
-                        if is_image_file:
-                            # For image files, use empty annotations
-                            st.session_state.annotations = []
-                        else:
-                            # For other files, get annotations from source_annotations
-                            source_anno = st.session_state.source_annotations.get(source, {})
-                            # Ensure we're passing a list of annotations, not a dictionary
-                            if isinstance(source_anno, list):
-                                st.session_state.annotations = source_anno
-                            else:
-                                # Convert dict or other format to a list if needed
+                        # Since we're at the "highlight PDF excerpts" section, use all sources
+                        first_source = next(iter(st.session_state.get("sources", {}).keys()), None)
+                        if first_source:
+                            # Check if source is an image file by checking its extension
+                            is_image_file = any(first_source.lower().endswith(ext.lower()) for ext in image_extensions)
+                            
+                            if is_image_file:
+                                # For image files, use empty annotations
                                 st.session_state.annotations = []
+                            else:
+                                # Find the proper document based on current file index
+                                current_index = st.session_state.get('current_file_index', 0)
+                                if isinstance(file_path, list):
+                                    current_doc = doc[current_index] if isinstance(doc, list) else doc
+                                else:
+                                    current_doc = doc
+                                
+                                # Get highlight info directly using the source text
+                                try:
+                                    # Use all source texts from the current response
+                                    source_texts = list(st.session_state.sources.keys())
+                                    annotations, _ = get_highlight_info(current_doc, source_texts)
+                                    if annotations:
+                                        st.session_state.annotations = annotations
+                                    else:
+                                        # Fall back to stored annotations
+                                        source_anno = st.session_state.source_annotations.get(first_source, [])
+                                        if isinstance(source_anno, list):
+                                            st.session_state.annotations = source_anno
+                                        else:
+                                            st.session_state.annotations = []
+                                except Exception as e:
+                                    logger.exception(f"Failed to get highlight info: {str(e)}")
+                                    # Fall back to stored annotations
+                                    source_anno = st.session_state.source_annotations.get(first_source, [])
+                                    if isinstance(source_anno, list):
+                                        st.session_state.annotations = source_anno
+                                    else:
+                                        st.session_state.annotations = []
                     except Exception as e:
                         logger.exception(f"Failed to get annotations: {str(e)}")
                         st.session_state.annotations = []

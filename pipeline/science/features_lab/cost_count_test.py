@@ -3,7 +3,7 @@
 
 """
 Script to estimate the number of tokens per page in PDF papers.
-This script downloads random arXiv papers, processes them using two different PDF loaders,
+This script can analyze existing PDF files in a directory and/or download random arXiv papers,
 and calculates the average number of tokens per page.
 """
 
@@ -24,6 +24,9 @@ from typing import Dict, List, Tuple, Any, Optional
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# Default directory for papers
+DEFAULT_PAPERS_DIR = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/tmp/tutor_pipeline/input_files"
 
 # Import tiktoken for token counting
 try:
@@ -47,23 +50,19 @@ def count_tokens(text, model_name='gpt-4o'):
         logger.info(f"Length of text: {length}")
         return length
 
-def download_random_papers(num_papers: int = 10, temp_dir: Optional[str] = None) -> List[str]:
+def download_random_papers(num_papers: int = 10, output_dir: str = DEFAULT_PAPERS_DIR) -> List[str]:
     """
     Download a specified number of random arXiv papers.
     
     Args:
         num_papers: Number of papers to download
-        temp_dir: Directory to save papers to (uses temporary directory if None)
+        output_dir: Directory to save papers to
         
     Returns:
         List of paths to downloaded papers
     """
-    if temp_dir is None:
-        temp_dir = tempfile.mkdtemp()
-    else:
-        os.makedirs(temp_dir, exist_ok=True)
-        
-    logger.info(f"Downloading {num_papers} random papers to {temp_dir}")
+    os.makedirs(output_dir, exist_ok=True)
+    logger.info(f"Downloading {num_papers} random papers to {output_dir}")
     
     # Categories to sample from
     categories = [
@@ -109,11 +108,11 @@ def download_random_papers(num_papers: int = 10, temp_dir: Optional[str] = None)
                 paper_title = result.title.replace(" ", "_").replace("/", "-").replace(":", "")[:50]
                 paper_title = "".join(c for c in paper_title if c.isalnum() or c in "_-")
                 filename = f"{paper_id}_{paper_title}.pdf"
-                output_path = os.path.join(temp_dir, filename)
+                output_path = os.path.join(output_dir, filename)
                 
                 try:
                     logger.info(f"Downloading: {result.title} (ID: {paper_id})")
-                    result.download_pdf(dirpath=temp_dir, filename=filename)
+                    result.download_pdf(dirpath=output_dir, filename=filename)
                     downloaded_paths.append(output_path)
                     logger.info(f"Downloaded ({len(downloaded_paths)}/{num_papers}): {output_path}")
                     time.sleep(1)  # Avoid rate limiting
@@ -126,6 +125,27 @@ def download_random_papers(num_papers: int = 10, temp_dir: Optional[str] = None)
     
     logger.info(f"Successfully downloaded {len(downloaded_paths)} papers")
     return downloaded_paths
+
+def find_existing_pdfs(directory: str) -> List[str]:
+    """
+    Find all existing PDF files in the specified directory.
+    
+    Args:
+        directory: Directory to search for PDFs
+        
+    Returns:
+        List of paths to PDF files
+    """
+    os.makedirs(directory, exist_ok=True)
+    pdf_files = []
+    
+    for filename in os.listdir(directory):
+        if filename.lower().endswith('.pdf'):
+            file_path = os.path.join(directory, filename)
+            pdf_files.append(file_path)
+            
+    logger.info(f"Found {len(pdf_files)} existing PDF files in {directory}")
+    return pdf_files
 
 def extract_document_with_pymupdf_direct(file_path: str) -> List[Dict[str, Any]]:
     """
@@ -275,27 +295,53 @@ def analyze_papers_token_counts(paper_paths: List[str], model_name: str = "gpt-4
 
 def main():
     """
-    Main function to download papers and analyze token counts.
+    Main function to analyze token counts in PDF papers.
     """
     parser = argparse.ArgumentParser(description="Estimate tokens per page in PDF papers")
-    parser.add_argument("--num-papers", type=int, default=10,
-                       help="Number of papers to analyze (default: 10)")
-    parser.add_argument("--output-dir", type=str, default=None,
-                       help="Directory to save papers (default: temporary directory)")
+    parser.add_argument("--num-papers", type=int, default=0,
+                       help="Number of additional papers to download (default: 0)")
+    parser.add_argument("--output-dir", type=str, default=DEFAULT_PAPERS_DIR,
+                       help=f"Directory to save papers and read existing ones (default: {DEFAULT_PAPERS_DIR})")
     parser.add_argument("--model", type=str, default="gpt-4o",
                        help="Model to use for token counting (default: gpt-4o)")
+    parser.add_argument("--download-only", action="store_true",
+                       help="Only download papers without analyzing them")
+    parser.add_argument("--analyze-existing-only", action="store_true",
+                       help="Only analyze existing papers without downloading new ones")
     
     args = parser.parse_args()
     
-    # Download random papers
-    paper_paths = download_random_papers(args.num_papers, args.output_dir)
+    # Create the output directory if it doesn't exist
+    os.makedirs(args.output_dir, exist_ok=True)
     
-    if not paper_paths:
-        logger.error("Failed to download any papers. Exiting.")
+    # Get existing PDFs
+    existing_pdfs = find_existing_pdfs(args.output_dir)
+    
+    # Download papers if requested
+    downloaded_papers = []
+    if not args.analyze_existing_only and args.num_papers > 0:
+        downloaded_papers = download_random_papers(args.num_papers, args.output_dir)
+    
+    # If download-only mode, exit after downloading
+    if args.download_only:
+        logger.info("Download-only mode, exiting without analysis")
+        return
+    
+    # Combine existing and newly downloaded papers for analysis
+    papers_to_analyze = existing_pdfs
+    if not args.analyze_existing_only:
+        # Add only the newly downloaded papers that aren't already in the list
+        for paper in downloaded_papers:
+            if paper not in papers_to_analyze:
+                papers_to_analyze.append(paper)
+    
+    if not papers_to_analyze:
+        logger.error("No papers found to analyze. Please specify --num-papers to download new papers or make sure the output directory contains PDF files.")
         return
     
     # Analyze token counts
-    results = analyze_papers_token_counts(paper_paths, args.model)
+    logger.info(f"Analyzing token counts in {len(papers_to_analyze)} papers")
+    results = analyze_papers_token_counts(papers_to_analyze, args.model)
     
     # Print summary
     print("\n--- Token Count Summary ---")

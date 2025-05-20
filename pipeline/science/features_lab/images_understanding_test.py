@@ -169,7 +169,7 @@ Start the response with "##Image Analysis:"
 
 def process_image_with_llama(image_url, prompt_text, stream=False):
     """
-    Process an image with Llama-3.2-90B-Vision-Instruct model.
+    Process an image with Llama-4-Maverick-17B-128E-Instruct model.
 
     Args:
         image_url (str): URL of the image to process
@@ -190,7 +190,7 @@ def process_image_with_llama(image_url, prompt_text, stream=False):
 
     try:
         response = client.chat.completions.create(
-            model="Llama-3.2-90B-Vision-Instruct",
+            model="Llama-4-Maverick-17B-128E-Instruct",
             messages=[
                 {
                     "role": "user",
@@ -215,6 +215,7 @@ def process_image_with_llama(image_url, prompt_text, stream=False):
         else:
             return f"API response without expected structure: {response}"
     except Exception as e:
+        logger.exception(f"Error occurred in process_image_with_llama: {str(e)}")
         return f"Error: {e}"
 
 
@@ -284,19 +285,28 @@ def process_folder_images(folder_path):
                         else:
                             logger.info("\n\n")
                             analysis_text = ""
-                            for chunk in analysis:
-                                if hasattr(chunk, "choices") and chunk.choices:
-                                    # Extract the actual text content from the ChatCompletionChunk
-                                    delta = chunk.choices[0].delta
-                                    if hasattr(delta, "content") and delta.content:
-                                        chunk_text = delta.content
-                                        analysis_text += chunk_text
-                                        # Use sys.stdout directly for real-time streaming output
-                                        sys.stdout.write(chunk_text)
-                                        sys.stdout.flush()
-                                else:
-                                    # Skip empty or malformed chunks
-                                    continue
+                            try:
+                                for chunk in analysis:
+                                    # Check for different possible response structures
+                                    if hasattr(chunk, "choices") and chunk.choices:
+                                        delta = chunk.choices[0].delta
+                                        if hasattr(delta, "content") and delta.content:
+                                            chunk_text = delta.content
+                                            analysis_text += chunk_text
+                                            # Use sys.stdout directly for real-time streaming output
+                                            sys.stdout.write(chunk_text)
+                                            sys.stdout.flush()
+                                    elif isinstance(chunk, dict) and "choices" in chunk:
+                                        # Alternative format
+                                        delta = chunk["choices"][0].get("delta", {})
+                                        chunk_text = delta.get("content", "")
+                                        if chunk_text:
+                                            analysis_text += chunk_text
+                                            sys.stdout.write(chunk_text)
+                                            sys.stdout.flush()
+                            except Exception as e:
+                                logger.warning(f"Error processing streaming response: {str(e)}")
+                                
                             logger.info("\n\n")
                             # Update context with analysis text
                             contexts[image_name][i] = f"{context}\nImage Analysis: {analysis_text}"

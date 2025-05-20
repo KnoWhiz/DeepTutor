@@ -404,6 +404,12 @@ Start the response with "##Image Analysis:"
     )
 
     try:
+        # Try another model for image understanding
+        result = process_image_with_llama(image_url, system_prompt, stream)
+        return result
+
+    except Exception as e:
+        logger.exception(f"Error occurred in analyze_image with Llama: {str(e)}")
         # Create messages for the vision model
         messages = [
             {
@@ -443,13 +449,6 @@ Start the response with "##Image Analysis:"
         
         # Handle non-streaming response
         result = response.choices[0].message.content
-        return result
-
-    except Exception as e:
-        logger.exception(f"Error occurred in analyze_image with Azure OpenAI: {str(e)}")
-
-        # Try another model for image understanding
-        result = process_image_with_llama(image_url, system_prompt, stream)
         return result
 
 

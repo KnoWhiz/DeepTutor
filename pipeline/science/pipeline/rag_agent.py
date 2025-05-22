@@ -131,6 +131,8 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
         total_tokens += count_tokens(chunk.page_content)
         context_chunks.append(chunk.page_content)
         context_scores.append(score)
+
+        # Logic for configing the context for model input
         context_dict[map_index_to_symbol[symbol_index]] = {"content": chunk.page_content, "score": float(score)}
         symbol_index += 1
     

@@ -105,6 +105,7 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
     context_chunks = []
     context_scores = []
     context_dict = {}
+    pages_context_dict = {}
     map_symbol_to_index = config["map_symbol_to_index"]
     # Reverse the key and value of the map_symbol_to_index
     map_index_to_symbol = {v: k for k, v in map_symbol_to_index.items()}
@@ -135,6 +136,9 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
         # Logic for configing the context for model input
         context_dict[map_index_to_symbol[symbol_index]] = {"content": chunk.page_content, "score": float(score)}
         symbol_index += 1
+
+        # Logic for configing the context for model input. For pages_context_dict, the key is file index, and the value is the corresponding list of pages where the chunks are from.
+        # e.g. we can have {<file_index_0>: {<page_number_1>: <page_content_1>, <page_number_2>: <page_content_2>}...}
     
     # Format context as a JSON dictionary instead of a string
     formatted_context = context_dict

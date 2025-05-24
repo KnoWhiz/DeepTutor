@@ -125,6 +125,8 @@ def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_s
     Args:
         md_document: Markdown document
         output_dir: Directory where embeddings will be saved
+        chunk_size: Size of each chunk for regular embeddings
+        chunk_overlap: Overlap between chunks for regular embeddings
 
     Returns:
         None
@@ -134,6 +136,10 @@ def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_s
     config = load_config()
     para = config['llm']
     embeddings = get_embedding_models('default', para)
+    
+    page_based_embedding_folder = os.path.join(output_dir, 'page_based_index')
+    page_based_faiss_path = os.path.join(page_based_embedding_folder, "index.faiss")
+    page_based_pkl_path = os.path.join(page_based_embedding_folder, "index.pkl")
 
     logger.info("Creating markdown embeddings ...")
     if md_document:
@@ -157,6 +163,52 @@ def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_s
         db_markdown = FAISS.from_documents(markdown_texts, embeddings)
         db_markdown.save_local(output_dir)
         logger.info(f"Saved {len(markdown_texts)} markdown chunks to {output_dir}")
+        
+        # Create page-based embeddings for markdown
+        if os.path.exists(page_based_faiss_path) and os.path.exists(page_based_pkl_path):
+            logger.info("Markdown page-based embedding already exists. We can load existing embeddings...")
+        else:
+            logger.info("Creating markdown page-based embeddings...")
+            # Use 10 times the chunk size as "page size" for markdown
+            page_size = chunk_size * 10
+            page_documents = []
+            
+            # Split the markdown document into "pages" of 10x chunk_size
+            for page_num, start_pos in enumerate(range(0, len(md_document), page_size)):
+                end_pos = min(start_pos + page_size, len(md_document))
+                page_text = md_document[start_pos:end_pos]
+                
+                # Clean up the text
+                clean_text = page_text.strip()
+                if clean_text:
+                    # Remove any endoftext tokens
+                    clean_text = clean_text.replace('<|endoftext|>', '')
+                    # Normalize spaces
+                    clean_text = " ".join(clean_text.split())
+                    
+                    page_documents.append(Document(
+                        page_content=clean_text,
+                        metadata={
+                            "page": page_num,
+                            "source": f"markdown_page_{page_num + 1}",
+                            "page_type": "markdown_page",
+                            "page_size": page_size,
+                            "start_char": start_pos,
+                            "end_char": end_pos,
+                            "total_chars": len(md_document)
+                        }
+                    ))
+            
+            if page_documents:
+                # Create FAISS database from page documents
+                page_db = FAISS.from_documents(page_documents, embeddings)
+                # Create directory if it doesn't exist
+                os.makedirs(page_based_embedding_folder, exist_ok=True)
+                # Save the page-based embeddings
+                page_db.save_local(page_based_embedding_folder)
+                logger.info(f"Saved {len(page_documents)} markdown page-based documents to {page_based_embedding_folder}")
+            else:
+                logger.warning("No markdown page content found to create page-based embeddings")
     else:
         logger.info("No markdown content available to create markdown embeddings")
 

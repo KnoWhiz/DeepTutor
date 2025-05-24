@@ -118,7 +118,7 @@ def get_embedding_models(embedding_type, para):
 
 
 # Create markdown embeddings
-def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_size: int = 2000, chunk_overlap: int = 50):
+def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_size: int = 3000, chunk_overlap: int = 300):
     """
     Create markdown embeddings from a markdown document and save them to the specified directory.
 

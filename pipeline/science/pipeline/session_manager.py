@@ -52,6 +52,7 @@ class ChatSession:
     new_message_id: str = str(ObjectId()) # new message from user
     question: Optional[Question] = None # Question object
     formatted_context: Optional[Dict] = None # Formatted context for the question
+    page_formatted_context: Optional[Dict] = None # Page-level formatted context for broader coverage
     accumulated_cost: float = 0.0 # Total accumulated cost for the current session
 
     def initialize(self) -> None:
@@ -147,6 +148,7 @@ class ChatSession:
             "new_message_id": self.new_message_id,
             "question": self.question,
             "formatted_context": self.formatted_context,
+            "page_formatted_context": self.page_formatted_context,
             "accumulated_cost": self.accumulated_cost
         }
 
@@ -174,6 +176,7 @@ class ChatSession:
             new_message_id=data["new_message_id"],
             question=data["question"],
             formatted_context=data["formatted_context"],
+            page_formatted_context=data.get("page_formatted_context", None),
             accumulated_cost=accumulated_cost
         )
         session.is_initialized = True

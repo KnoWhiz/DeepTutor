@@ -1,0 +1,184 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# DeepTutor AI Integration Guide
+
+## AI Service Architecture
+
+### Multi-Provider AI Support
+DeepTutor supports multiple AI providers for redundancy and performance optimization:
+
+#### Primary AI Providers
+- **OpenAI**: Primary LLM provider with GPT models
+- **Azure OpenAI**: Enterprise-grade OpenAI deployment
+- **SambaNova**: High-performance AI acceleration platform
+
+#### Configuration Pattern
+```python
+# Environment variable pattern
+AZURE_OPENAI_API_KEY="xxx"
+AZURE_OPENAI_ENDPOINT="xxx"
+SAMBANOVA_API_KEY="xxx"
+SAMBANOVA_API_ENDPOINT="xxx"
+```
+
+### Document Processing Pipeline
+
+#### PDF Processing Flow
+1. **File Upload**: Through [ui.py](mdc:frontend/ui.py) file upload components
+2. **Processing**: Via `state_process_pdf_file()` in [state.py](mdc:frontend/state.py)
+3. **Text Extraction**: Using PyMuPDF, unstructured, or marker-pdf
+4. **Chunking**: Text splitting for optimal embedding generation
+5. **Embedding**: Vector generation for similarity search
+6. **Storage**: Vector database persistence
+
+#### Document Libraries
+- **PyMuPDF**: Primary PDF text extraction
+- **unstructured**: Advanced document structure analysis
+- **marker-pdf**: Enhanced PDF processing with layout awareness
+- **pypdf/PyPDF2**: Fallback PDF processing
+
+### Vector Database Integration
+
+#### Supported Vector Stores
+- **ChromaDB**: Default local vector database
+- **Qdrant**: Scalable vector search engine
+- **FAISS**: Facebook AI similarity search
+
+#### Embedding Strategy
+```python
+# Consistent embedding model usage
+from sentence_transformers import SentenceTransformer
+
+# Use consistent models across vector stores
+embedding_model = "all-MiniLM-L6-v2"  # Example model
+```
+
+#### Vector Operations Pattern
+1. **Generate Embeddings**: Convert text chunks to vectors
+2. **Store Vectors**: Persist in selected vector database
+3. **Similarity Search**: Query for relevant document sections
+4. **Context Assembly**: Combine relevant chunks for LLM input
+
+### Graph Database Integration
+
+#### Neo4j Knowledge Graphs
+- **Purpose**: Entity relationship mapping and knowledge extraction
+- **Configuration**: Via `neo4j://` connection strings
+- **Use Cases**: 
+  - Document relationship analysis
+  - Entity extraction and linking
+  - Concept mapping
+
+#### GraphRAG Integration
+```python
+# Environment configuration
+GRAPHRAG_API_KEY="xxx"
+GRAPHRAG_LLM_MODEL="xxx"
+GRAPHRAG_API_BASE="xxx"
+GRAPHRAG_API_VERSION="xxx"
+```
+
+### Chat Interface Integration
+
+#### Chat Session Management
+Chat context is managed through [state.py](mdc:frontend/state.py):
+- **History Persistence**: Maintain conversation context
+- **Context Window**: Manage token limits across providers
+- **Memory Management**: Efficient context handling
+
+#### Q&A Pipeline
+1. **User Question**: Received through chat interface
+2. **Vector Search**: Find relevant document sections
+3. **Context Assembly**: Combine search results with chat history
+4. **LLM Query**: Send context to AI provider
+5. **Response Generation**: Stream or batch response
+6. **State Update**: Update chat history and session state
+
+### Error Handling and Fallbacks
+
+#### API Resilience
+```python
+# Implement fallback chains
+try:
+    response = azure_openai_client.chat.completions.create(...)
+except Exception as e:
+    logger.warning(f"Azure OpenAI failed: {e}")
+    try:
+        response = openai_client.chat.completions.create(...)
+    except Exception as e:
+        logger.error(f"All AI providers failed: {e}")
+        # Provide user-friendly error message
+```
+
+#### Rate Limiting
+- Implement exponential backoff for API calls
+- Monitor usage quotas across providers
+- Queue requests during high load
+
+### Performance Optimization
+
+#### Caching Strategies
+- **Embedding Cache**: Cache document embeddings
+- **Response Cache**: Cache common Q&A pairs
+- **Session Cache**: Maintain conversation context efficiently
+
+#### Async Processing
+- Use async/await for API calls where possible
+- Implement background processing for large documents
+- Stream responses for better user experience
+
+#### Memory Management
+- Clear unused embeddings from memory
+- Implement pagination for large document sets
+- Use efficient data structures for vector operations
+
+### Security Considerations
+
+#### API Key Management
+- Never commit API keys to version control
+- Use environment variables exclusively
+- Rotate keys regularly
+- Monitor API usage for anomalies
+
+#### Data Privacy
+- Implement data retention policies
+- Secure document storage and processing
+- User data isolation in multi-tenant scenarios
+- Compliance with privacy regulations
+
+### Integration Testing
+
+#### AI Service Testing
+- Mock AI provider responses for unit tests
+- Test fallback mechanisms
+- Validate response formatting and parsing
+- Performance benchmarking across providers
+
+#### Vector Database Testing
+- Test embedding generation consistency
+- Validate similarity search accuracy
+- Performance testing with large document sets
+- Cross-database compatibility testing
+
+### Monitoring and Observability
+
+#### Logging Patterns
+Use the logging configuration from [pipeline/science/pipeline/logging_config.py](mdc:pipeline/science/pipeline/logging_config.py):
+```python
+import logging
+logger = logging.getLogger(__name__)
+
+# Log AI service interactions
+logger.info(f"AI request: {prompt[:100]}...")
+logger.debug(f"AI response: {response}")
+```
+
+#### Metrics Tracking
+- API response times
+- Token usage and costs
+- Document processing speeds
+- User interaction patterns
+- Error rates by provider

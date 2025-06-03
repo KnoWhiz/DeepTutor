@@ -1,0 +1,261 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# DeepTutor Deployment & Environment Guide
+
+## Environment Configuration
+
+### Environment Types
+DeepTutor supports three deployment environments controlled by the `ENVIRONMENT` variable:
+
+#### Local Development
+```bash
+ENVIRONMENT=local
+```
+- **Purpose**: Local development and testing
+- **Features**: 
+  - Skip authentication with `SKIP_AUTH=True`
+  - Local file storage
+  - Development logging level
+  - Hot reloading with Streamlit
+
+#### Staging Environment  
+```bash
+ENVIRONMENT=staging
+```
+- **Purpose**: Pre-production testing and validation
+- **Features**:
+  - Full authentication enabled
+  - AWS services integration
+  - Production-like configuration
+  - Performance monitoring
+
+#### Production Environment
+```bash
+ENVIRONMENT=production
+```
+- **Purpose**: Live production deployment
+- **Features**:
+  - Enhanced security measures
+  - Full AWS integration
+  - Performance optimization
+  - Comprehensive logging and monitoring
+
+### Environment Variables
+
+#### Required Configuration
+Create a `.env` file with these essential variables:
+
+```bash
+# AI Service APIs
+AZURE_OPENAI_API_KEY="xxx"
+AZURE_OPENAI_ENDPOINT="xxx"
+SAMBANOVA_API_KEY="xxx"
+SAMBANOVA_API_ENDPOINT="xxx"
+
+# Graph RAG Configuration
+GRAPHRAG_API_KEY="xxx"
+GRAPHRAG_LLM_MODEL="xxx"
+GRAPHRAG_API_BASE="xxx"
+GRAPHRAG_API_VERSION="xxx"
+
+# AWS Authentication
+USER_POOL_ID="xxx"
+CLIENT_ID="xxx"
+
+# Storage Configuration
+AZURE_STORAGE_CONNECTION_STRING="xxx"
+AZURE_STORAGE_CONTAINER_NAME="xxx"
+
+# Application Settings
+ENVIRONMENT="local"  # or "staging" or "production"
+WEBHOOK_URL="xxx"
+FILE_PATH_PREFIX="/path/to/storage"
+
+# Optional: Document Processing
+MARKER_API_KEY="xxx"
+MARKER_API_ENDPOINT="xxx"
+```
+
+## AWS Integration
+
+### AWS Amplify Deployment
+The [amplify/](mdc:amplify/) directory contains AWS Amplify configuration for cloud deployment:
+
+#### Amplify Features
+- **Hosting**: Static site hosting with CDN
+- **Authentication**: AWS Cognito integration
+- **API Gateway**: Backend API routing
+- **Lambda Functions**: Serverless processing
+- **S3 Storage**: Document and file storage
+
+#### Deployment Process
+1. Configure AWS credentials
+2. Initialize Amplify project
+3. Deploy backend resources
+4. Deploy frontend application
+5. Configure custom domain (optional)
+
+### AWS Cognito Authentication
+Authentication is handled through AWS Cognito as configured in [auth.py](mdc:frontend/auth.py):
+
+#### Cognito Configuration
+- **User Pool**: Manages user registration and authentication
+- **App Client**: Frontend application integration
+- **Identity Pool**: Federated identity management
+
+#### Authentication Flow
+1. User accesses the application
+2. Redirect to Cognito hosted UI (if not authenticated)
+3. User login/registration through Cognito
+4. JWT token returned to application
+5. Session state updated with authentication status
+
+### Azure Blob Storage
+File storage is managed through Azure Blob Storage:
+
+#### Storage Configuration
+```python
+# Connection pattern
+AZURE_STORAGE_CONNECTION_STRING="DefaultEndpointsProtocol=https;..."
+AZURE_STORAGE_CONTAINER_NAME="deeptutor-documents"
+```
+
+#### File Management
+- **Upload**: PDF files uploaded to designated containers
+- **Processing**: Files processed and embeddings generated
+- **Cleanup**: Implement file retention policies
+- **Security**: Container-level access controls
+
+## Local Development Setup
+
+### Prerequisites
+- Python 3.12
+- Node.js (for frontend assets)
+- Conda or virtual environment
+
+### Installation Steps
+```bash
+# Create environment
+conda create --name deeptutor python=3.12
+conda activate deeptutor
+
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Install AutoGen extensions
+pip install -U "autogen-agentchat" "autogen-ext[openai]"
+pip install -U "autogenstudio"
+
+# Install Node dependencies (if needed)
+npm install
+```
+
+### Running Locally
+```bash
+# Start Streamlit application
+python -m streamlit run tutor.py
+
+# Alternative: Direct execution
+streamlit run tutor.py
+```
+
+## Production Deployment
+
+### Containerization
+Consider Docker deployment for production:
+
+```dockerfile
+# Example Dockerfile structure
+FROM python:3.12-slim
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+COPY . .
+EXPOSE 8501
+
+CMD ["streamlit", "run", "tutor.py", "--server.port=8501", "--server.address=0.0.0.0"]
+```
+
+### Load Balancing
+- Use Application Load Balancer (ALB) for traffic distribution
+- Configure health checks for Streamlit application
+- Implement session persistence for user state
+
+### Monitoring and Logging
+
+#### Application Monitoring
+- CloudWatch integration for AWS deployments
+- Custom metrics for AI service usage
+- Performance monitoring for document processing
+- User analytics and engagement tracking
+
+#### Log Management
+- Centralized logging with CloudWatch Logs
+- Structured logging format
+- Log retention policies
+- Error alerting and notification
+
+### Security Considerations
+
+#### Network Security
+- VPC configuration for AWS resources
+- Security groups and NACLs
+- WAF integration for web application protection
+- SSL/TLS termination at load balancer
+
+#### Data Security
+- Encryption at rest for stored documents
+- Encryption in transit for API communications
+- API key rotation policies
+- User data isolation
+
+### Scaling Considerations
+
+#### Horizontal Scaling
+- Auto Scaling Groups for EC2 instances
+- Container orchestration with ECS/EKS
+- Database connection pooling
+- Stateless application design
+
+#### Performance Optimization
+- CDN integration for static assets
+- Caching strategies for AI responses
+- Database query optimization
+- Asynchronous processing for heavy operations
+
+## CI/CD Pipeline
+
+### GitHub Actions Integration
+Implement automated deployment pipeline:
+
+```yaml
+# .github/workflows/deploy.yml example
+name: Deploy to Production
+on:
+  push:
+    branches: [main]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Deploy to Amplify
+        # Add deployment steps
+```
+
+### Testing Strategy
+- Unit tests for core functions
+- Integration tests for AI services
+- End-to-end tests for user workflows
+- Performance testing for document processing
+
+### Quality Gates
+- Code quality checks with linting
+- Security scanning for dependencies
+- Performance benchmarks
+- Automated testing requirements

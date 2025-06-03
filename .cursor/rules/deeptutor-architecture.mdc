@@ -1,0 +1,55 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# DeepTutor Architecture Guide
+
+## Project Overview
+DeepTutor is an AI-powered tutoring platform that enables intelligent document analysis and Q&A capabilities. The platform integrates multiple AI services, vector databases, and provides both local and cloud deployment options.
+
+## Core Architecture
+
+### Main Entry Point
+The application starts from [tutor.py](mdc:tutor.py), which serves as the Streamlit application entry point and orchestrates the entire user interface.
+
+### Directory Structure
+- **[frontend/](mdc:frontend/)** - Contains all UI components and Streamlit interface logic
+  - [ui.py](mdc:frontend/ui.py) - Main UI component definitions
+  - [state.py](mdc:frontend/state.py) - Session state management
+  - [auth.py](mdc:frontend/auth.py) - Authentication components
+  - [utils.py](mdc:frontend/utils.py) - UI utility functions
+- **[pipeline/](mdc:pipeline/)** - Data processing and AI pipeline components
+- **[api_service/](mdc:api_service/)** - Backend API services
+- **[amplify/](mdc:amplify/)** - AWS Amplify deployment configuration
+
+### Key Technologies
+- **Frontend**: Streamlit with custom CSS styling
+- **AI Services**: OpenAI, Azure OpenAI, SambaNova APIs
+- **Vector Databases**: ChromaDB, Qdrant, FAISS for document embeddings
+- **Graph Database**: Neo4j for knowledge graphs
+- **Document Processing**: PyMuPDF, unstructured, marker-pdf
+- **Authentication**: AWS Cognito integration
+- **Storage**: Azure Blob Storage for file management
+
+## Development Patterns
+
+### Session State Management
+All application state is managed through Streamlit's session state in [state.py](mdc:frontend/state.py). Key state variables include:
+- `uploaded_file` - Current PDF file(s)
+- `chat_session` - Chat history and context
+- `mode` - Application mode (Basic/Lite)
+- `isAuth` - Authentication status
+
+### File Processing Pipeline
+1. Files uploaded through [ui.py](mdc:frontend/ui.py) components
+2. Processed in [state.py](mdc:frontend/state.py) via `state_process_pdf_file()`
+3. Embeddings generated and stored in vector databases
+4. Chat interface provides AI-powered Q&A capabilities
+
+### Configuration Management
+Environment variables are managed through `.env` file with keys for:
+- AI service APIs (OpenAI, Azure, SambaNova)
+- Database connections (Neo4j, vector stores)
+- AWS services (Cognito, S3)
+- Application settings (environment, webhooks)

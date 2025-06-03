@@ -312,7 +312,7 @@ async def embeddings_agent(
         # Save the markdown embeddings to the specified folder
         create_markdown_embeddings_start_time = time.time()
         yield "\n\n**📝 Creating markdown embeddings ...**"
-        create_markdown_embeddings(doc_processor.get_md_document(), markdown_embedding_folder, chunk_size=2000, chunk_overlap=50)
+        create_markdown_embeddings(doc_processor.get_md_document(), markdown_embedding_folder, chunk_size=config['embedding']['chunk_size'], chunk_overlap=config['embedding']['chunk_overlap'])
         time_tracking['vectorrag_create_markdown_embeddings'] = time.time() - create_markdown_embeddings_start_time
         logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 

@@ -1,0 +1,85 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# DeepTutor Development Standards
+
+## Code Quality Requirements
+
+### Python Code Standards
+- **Type Hints**: Use strict typing throughout the codebase
+  - No `any` type usage
+  - No non-null assertion operators
+  - No casting to unknown types
+- **String Conventions**: 
+  - Use double quotes (`"`) for all strings
+  - Use string templates or `.join()` instead of concatenation
+- **Error Handling**: Implement comprehensive error checking and validation
+- **Documentation**: Include clear inline comments and docstrings for all functions
+
+### Streamlit-Specific Patterns
+- **Session State**: Always use [state.py](mdc:frontend/state.py) for state management
+- **Component Organization**: UI components should be defined in [ui.py](mdc:frontend/ui.py)
+- **Callbacks**: Use `on_change` callbacks for reactive UI updates
+- **Page Configuration**: Set page config through [ui.py](mdc:frontend/ui.py) `setup_page_config()`
+
+### File and Resource Management
+- **File Paths**: Use `os.path.join()` for cross-platform compatibility
+- **Environment Variables**: All configuration through `.env` file
+- **Logging**: Use the logging configuration from [pipeline/science/pipeline/logging_config.py](mdc:pipeline/science/pipeline/logging_config.py)
+- **File Size Limits**: Enforce 50MB limit for PDF uploads
+- **Page Limits**: Enforce 200-page limit for document processing
+
+## AI Integration Guidelines
+
+### API Service Integration
+- **Multi-provider Support**: Design for OpenAI, Azure OpenAI, and SambaNova compatibility
+- **Fallback Handling**: Implement graceful degradation when services are unavailable
+- **Rate Limiting**: Respect API rate limits and implement backoff strategies
+- **API Key Security**: Never hardcode API keys, use environment variables
+
+### Vector Database Operations
+- **Embedding Generation**: Use consistent embedding models across the application
+- **Chunk Size**: Maintain optimal chunk sizes for document processing
+- **Similarity Search**: Implement efficient similarity search with proper scoring
+- **Database Selection**: Support multiple vector databases (ChromaDB, Qdrant, FAISS)
+
+## Security and Privacy
+
+### Authentication
+- **AWS Cognito**: Use Cognito for user authentication via [auth.py](mdc:frontend/auth.py)
+- **Session Management**: Secure session state handling
+- **Skip Auth**: Development mode available via `SKIP_AUTH` flag
+
+### Data Protection
+- **File Storage**: Secure file handling in designated directories
+- **API Keys**: Rotate and secure all API credentials
+- **User Data**: Implement proper data retention policies
+- **Logging**: Avoid logging sensitive information
+
+## Performance Guidelines
+
+### File Processing
+- **Streaming**: Use streaming for large file operations
+- **Parallel Processing**: Implement concurrent processing where possible
+- **Memory Management**: Efficient memory usage for document processing
+- **Caching**: Cache embeddings and processed documents appropriately
+
+### UI Responsiveness
+- **Progress Indicators**: Show progress for long-running operations
+- **Async Operations**: Use Streamlit's async capabilities
+- **State Persistence**: Maintain UI state across interactions
+- **Error Recovery**: Graceful error handling with user feedback
+
+## Testing and Deployment
+
+### Environment Management
+- **Development**: Local Streamlit server with `ENVIRONMENT=local`
+- **Staging**: Staging environment with `ENVIRONMENT=staging`
+- **Production**: Production deployment with `ENVIRONMENT=production`
+
+### Dependencies
+- **Requirements**: Keep [requirements.txt](mdc:requirements.txt) updated and pinned
+- **Node Dependencies**: Maintain [package.json](mdc:package.json) for frontend assets
+- **Python Version**: Target Python 3.12 for consistency

@@ -1,0 +1,162 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# DeepTutor UI Component Patterns
+
+## Streamlit Component Architecture
+
+### Core UI Structure
+The main UI flow is orchestrated in [tutor.py](mdc:tutor.py) and implemented through components in [ui.py](mdc:frontend/ui.py):
+
+```python
+# Standard UI Flow
+show_auth_top()          # Authentication status
+show_header()            # App header and branding
+show_mode_option()       # Basic/Lite mode selection
+show_file_upload()       # PDF file uploader
+show_language_option()   # Language preferences
+show_page_option()       # Page navigation
+show_chat_interface()    # AI chat component
+show_pdf_viewer()        # Document viewer
+show_footer()            # Footer links
+```
+
+### Component Organization Principles
+
+#### Separation of Concerns
+- **[ui.py](mdc:frontend/ui.py)**: Pure UI component definitions
+- **[state.py](mdc:frontend/state.py)**: Session state management and business logic
+- **[auth.py](mdc:frontend/auth.py)**: Authentication-specific components
+- **[utils.py](mdc:frontend/utils.py)**: Reusable UI utilities
+
+#### State-Driven Components
+All UI components should react to session state changes:
+```python
+# Example pattern from state management
+if 'uploaded_file' not in st.session_state:
+    st.session_state['uploaded_file'] = None
+
+# Components check state before rendering
+if st.session_state.uploaded_file is not None:
+    show_pdf_viewer(st.session_state.uploaded_file)
+```
+
+### Layout Patterns
+
+#### Two-Column Layout
+For document analysis pages, use the standard two-column layout:
+```python
+outer_columns = st.columns([1, 1])
+
+with outer_columns[0]:
+    show_pdf_viewer(file_path)
+    
+with outer_columns[1]:
+    show_chat_interface(doc, document, file_path, embedding_folder)
+```
+
+#### Sidebar Configuration
+Mode and file upload controls are placed in the sidebar:
+- Mode selection (Basic/Lite)
+- File upload widget
+- Language preferences
+- Page navigation options
+
+#### Responsive Design
+- Use Streamlit's native responsive capabilities
+- Implement mobile-friendly layouts where possible
+- Consider different screen sizes in component design
+
+### File Upload Patterns
+
+#### Single File Mode (Basic)
+```python
+uploaded_file = st.file_uploader(
+    "Choose a PDF file",
+    type="pdf",
+    key="file_uploader"
+)
+```
+
+#### Multiple File Mode (Lite)
+```python
+uploaded_files = st.file_uploader(
+    "Choose PDF files",
+    type="pdf",
+    accept_multiple_files=True,
+    key="file_uploader_multiple"
+)
+```
+
+#### File Validation
+- 50MB size limit enforcement
+- PDF format validation
+- 200-page limit for documents
+
+### State Management Integration
+
+#### Session State Variables
+Key state variables used across components:
+- `uploaded_file` / `uploaded_files` - Current file(s)
+- `mode` - Application mode (Basic/Lite)
+- `language` - Selected language
+- `page` - Current page view
+- `chat_session` - Chat history and context
+- `isAuth` - Authentication status
+
+#### State Change Handlers
+Use callback functions for reactive updates:
+```python
+show_file_upload(on_change=handle_file_change)
+```
+
+### Error Handling Patterns
+
+#### User-Friendly Messages
+- Use `st.error()` for critical errors
+- Use `st.warning()` for validation issues
+- Use `st.info()` for guidance messages
+- Use `st.success()` for confirmation feedback
+
+#### Graceful Degradation
+- Show loading states during processing
+- Provide fallback content when services are unavailable
+- Maintain UI stability during errors
+
+### Authentication Integration
+
+#### Auth-Gated Components
+Wrap authenticated sections properly:
+```python
+if st.session_state['isAuth']:
+    # Show authenticated UI components
+    show_header()
+    show_file_upload()
+    # ... other components
+```
+
+#### Development Mode
+Support authentication skip for development:
+```python
+if not SKIP_AUTH:
+    show_auth()
+```
+
+### Performance Considerations
+
+#### Lazy Loading
+- Load heavy components only when needed
+- Use conditional rendering based on state
+- Implement progressive enhancement
+
+#### State Optimization
+- Minimize session state updates
+- Use efficient data structures
+- Cache computed values where appropriate
+
+#### Component Reusability
+- Design components for reuse across different contexts
+- Parameterize components for flexibility
+- Maintain consistent component interfaces

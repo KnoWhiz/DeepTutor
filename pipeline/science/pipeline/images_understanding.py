@@ -404,6 +404,12 @@ Start the response with "##Image Analysis:"
     )
 
     try:
+        # Try another model for image understanding
+        result = process_image_with_llama(image_url, system_prompt, stream)
+        return result
+
+    except Exception as e:
+        logger.exception(f"Error occurred in analyze_image with Llama: {str(e)}")
         # Create messages for the vision model
         messages = [
             {
@@ -443,13 +449,6 @@ Start the response with "##Image Analysis:"
         
         # Handle non-streaming response
         result = response.choices[0].message.content
-        return result
-
-    except Exception as e:
-        logger.exception(f"Error occurred in analyze_image with Azure OpenAI: {str(e)}")
-
-        # Try another model for image understanding
-        result = process_image_with_llama(image_url, system_prompt, stream)
         return result
 
 
@@ -527,7 +526,7 @@ def process_folder_images(folder_path):
 
 def process_image_with_llama(image_url, prompt_text, stream=False):
     """
-    Process an image with Llama-3.2-90B-Vision-Instruct model.
+    Process an image with Llama-4-Maverick-17B-128E-Instruct model.
 
     Args:
         image_url (str): URL of the image to process
@@ -548,7 +547,7 @@ def process_image_with_llama(image_url, prompt_text, stream=False):
 
     try:
         response = client.chat.completions.create(
-            model="Llama-3.2-90B-Vision-Instruct",
+            model="Llama-4-Maverick-17B-128E-Instruct",
             messages=[
                 {
                     "role": "user",
@@ -573,7 +572,9 @@ def process_image_with_llama(image_url, prompt_text, stream=False):
         else:
             return f"API response without expected structure: {response}"
     except Exception as e:
+        logger.exception(f"Error occurred in process_image_with_llama: {str(e)}")
         return f"Error: {e}"
+
 
 # Function to convert image URL to base64
 def get_image_base64(image_url):

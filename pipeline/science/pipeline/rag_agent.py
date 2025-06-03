@@ -1,5 +1,6 @@
 import os
 import re
+import fitz
 from langchain_community.vectorstores import FAISS
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.prompts import ChatPromptTemplate
@@ -40,6 +41,58 @@ from pipeline.science.pipeline.images_understanding import (
 
 import logging
 logger = logging.getLogger("tutorpipeline.science.rag_agent")
+
+
+def get_page_content_from_file(file_path_list, file_index, page_number):
+    """
+    Get the content of a specific page from a specific file.
+    
+    Args:
+        file_path_list (list): List of file paths
+        file_index (int): Index of the file in file_path_list (0-based)
+        page_number (int): Page number to extract (0-based)
+        
+    Returns:
+        str: The text content of the specified page, or empty string if not found
+        
+    Raises:
+        IndexError: If file_index is out of range
+        ValueError: If page_number is invalid
+        FileNotFoundError: If the file doesn't exist
+        Exception: For other PDF processing errors
+    """
+    try:
+        # Validate file_index
+        if file_index < 0 or file_index >= len(file_path_list):
+            raise IndexError(f"File index {file_index} is out of range. Available files: 0-{len(file_path_list)-1}")
+        
+        file_path = file_path_list[file_index]
+        
+        # Check if file exists
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"File not found: {file_path}")
+        
+        # Open the PDF file
+        doc = fitz.open(file_path)
+        
+        # Validate page_number
+        if page_number < 0 or page_number >= len(doc):
+            doc.close()
+            raise ValueError(f"Page number {page_number} is out of range. Available pages: 0-{len(doc)-1}")
+        
+        # Extract page content
+        page = doc[page_number]
+        page_content = page.get_text()
+        
+        # Close the document
+        doc.close()
+        
+        logger.info(f"Successfully extracted content from file {file_index} ({os.path.basename(file_path)}), page {page_number}")
+        return page_content
+        
+    except Exception as e:
+        logger.exception(f"Error extracting page content from file {file_index}, page {page_number}: {str(e)}")
+        raise
 
 
 async def get_rag_context(chat_session: ChatSession, file_path_list, question: Question, chat_history, embedding_folder_list, deep_thinking = True, stream=False, context=""):
@@ -105,6 +158,7 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
     context_chunks = []
     context_scores = []
     context_dict = {}
+    pages_context_dict = {}
     map_symbol_to_index = config["map_symbol_to_index"]
     # Reverse the key and value of the map_symbol_to_index
     map_index_to_symbol = {v: k for k, v in map_symbol_to_index.items()}
@@ -131,8 +185,13 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
         total_tokens += count_tokens(chunk.page_content)
         context_chunks.append(chunk.page_content)
         context_scores.append(score)
+
+        # Logic for configing the context for model input
         context_dict[map_index_to_symbol[symbol_index]] = {"content": chunk.page_content, "score": float(score)}
         symbol_index += 1
+
+        # Logic for configing the context for model input. For pages_context_dict, the key is file index, and the value is the corresponding list of pages where the chunks are from.
+        # e.g. we can have {<file_index_0>: {<page_number_1>: <page_content_1>, <page_number_2>: <page_content_2>}...}
     
     # Format context as a JSON dictionary instead of a string
     formatted_context = context_dict

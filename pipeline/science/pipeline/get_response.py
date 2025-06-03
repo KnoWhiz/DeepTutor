@@ -84,8 +84,9 @@ async def get_multiple_files_summary(file_path_list, embedding_folder_list, chat
                 if hasattr(page_doc, 'page_content') and page_doc.page_content:
                     file_content += page_doc.page_content.strip() + "\n"
             
-            # Calculate token limit per file - maximum 3000 tokens per file but adjust for file count
-            token_limit = min(3000, 10000 // len(file_path_list))
+            # # Calculate token limit per file - maximum 3000 tokens per file but adjust for file count
+            # token_limit = min(3000, 10000 // len(file_path_list))
+            token_limit = int(config["basic_token_limit"] * 0.1 // len(file_path_list))
             
             # Get total tokens in the content
             try:

@@ -8,8 +8,8 @@
         "anthropic_key_dir": ".env"
     },
     "embedding": {
-        "chunk_size": 5000,
-        "chunk_overlap": 500
+        "chunk_size": 3000,
+        "chunk_overlap": 300
     },
     "retriever": {
         "search_type": "similarity",

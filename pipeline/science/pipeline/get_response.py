@@ -49,6 +49,40 @@ import logging
 logger = logging.getLogger("tutorpipeline.science.get_response")
 
 
+def get_page_content_strings(chat_session: ChatSession) -> str:
+    """
+    Extract page content strings from page_formatted_context and format them for the prompt.
+    
+    Args:
+        chat_session: ChatSession object containing page_formatted_context
+        
+    Returns:
+        Formatted string with related pages content
+    """
+    if not chat_session.page_formatted_context:
+        logger.info("No page_formatted_context available in chat_session")
+        return ""
+    
+    page_contents = []
+    for page_symbol, page_data in chat_session.page_formatted_context.items():
+        if isinstance(page_data, dict) and "content" in page_data:
+            page_contents.append(page_data["content"])
+    
+    if not page_contents:
+        logger.info("No page_contents available in chat_session")
+        return ""
+    
+    # Join all page contents into a single string
+    related_pages_content = "\n\n".join(page_contents)
+    
+    return f"""
+Related pages are:
+```
+{related_pages_content}
+```
+"""
+
+
 async def get_multiple_files_summary(file_path_list, embedding_folder_list, chat_session=None, stream=False):
     """
     Generate a summary for multiple files by combining previews of each file.
@@ -195,41 +229,6 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
     
     # Handle Lite mode first
     if chat_session.mode == ChatMode.LITE:
-        # lite_prompt = """
-        # You are an expert tutor specializing in precise, professional explanations of complex document content.
-        # CONTEXT INFORMATION:
-        # - Previous conversation: {chat_history}
-        # - Reference content from document: {context}
-        # USER QUESTION:
-        # {input}
-        # RESPONSE GUIDELINES:
-        # 1. Provide concise, accurate answers directly addressing the question
-        # 2. Use clear, precise language with appropriate technical terminology
-        # 3. Format key concepts and important points in **bold**
-        # 4. Maintain a professional, academic tone throughout the response
-        # 5. Break down complex information into structured, logical segments
-        # 6. When explaining technical concepts, include relevant examples or applications
-        # 7. Clearly state limitations of explanations when uncertainty exists
-        # 8. Use bullet points or numbered lists for sequential explanations
-        # 9. Cite specific parts of the document when directly referencing content
-        # Your goal is to deliver accurate, clear, and professionally structured responses that enhance comprehension of complex topics.
-        # """
-        # actual_embedding_folder_list = [os.path.join(embedding_folder, 'lite_embedding') for embedding_folder in embedding_folder_list]
-        # db = load_embeddings(actual_embedding_folder_list, 'lite')
-        # logger.info(f"Type of db: {type(db)}")
-        # answer = await get_db_rag_response(
-        #     prompt_string=lite_prompt,
-        #     user_input=user_input + "\n\n" + question.special_context,
-        #     chat_history=chat_history,
-        #     chat_session=chat_session,
-        #     db=db,
-        #     stream=stream
-        # )   # If stream is True, the answer is a generator; otherwise, it's a string
-        # if stream is True:
-        #     return answer
-        # else:
-        #     return answer
-
         config = load_config()
         token_limit = config["inference_token_limit"]
         map_symbol_to_index = config["map_symbol_to_index"]
@@ -247,10 +246,16 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                                             context="")
         # formatted_context_string = str(formatted_context)
         formatted_context_string = chat_session.formatted_context
+        
+        # Get page content strings
+        page_content_string = get_page_content_strings(chat_session)
+        logger.info(f"page_content_string: {page_content_string}")
+        
         prompt = f"""
         You are a deep thinking tutor helping a student reading a paper.
         Reference context chunks with relevance scores from the paper: 
         {formatted_context_string}
+        {page_content_string}
         The student's query is: {user_input_string}
         For formulas, use LaTeX format with $...$ or 
         $$
@@ -277,9 +282,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         1. Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like {example_keys}, etc>]" at the end of the sentence after the period mark. If there are more than one context chunk keys, use the format "[<chunk_key_1>][<chunk_key_2>] ..." to cite all the context chunk keys.
         2. Use markdown syntax for formatting the response to make it more clear and readable.
         """
-        # prompt = ChatPromptTemplate.from_template(prompt)
         llm = get_llm('advanced', config['llm'])
-        # chain = prompt | llm | StrOutputParser()
         answer = llm.stream(prompt)
         def process_stream():
             yield "<response>\n\n"
@@ -312,11 +315,17 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
     # Handle Basic mode
     if not deep_thinking:
         logger.info("not deep thinking ...")
+        
+        # Get page content strings for basic mode
+        page_content_string = get_page_content_strings(chat_session)
+        logger.info(f"page_content_string: {page_content_string}")
+        
         basic_prompt = """
             You are a patient and honest professor helping a student reading a paper.
             Use the given context to answer the question.
             If you don't know the answer, say you don't know.
             Reference context from the paper: ```{context}```
+            """ + page_content_string + """
             If the concept can be better explained by formulas, use LaTeX syntax in markdown
             For inline formulas, use single dollar sign: $a/b = c/d$
             For block formulas, use double dollar sign:
@@ -373,10 +382,15 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         # formatted_context_string = str(formatted_context)
         formatted_context_string = chat_session.formatted_context
 
+        # Get page content strings for deep thinking mode
+        page_content_string = get_page_content_strings(chat_session)
+        logger.info(f"page_content_string: {page_content_string}")
+
         prompt = f"""
         You are a deep thinking tutor helping a student reading a paper.
         Reference context chunks with relevance scores from the paper: 
         {formatted_context_string}
+        {page_content_string}
         This is a detailed plan for constructing the answer: {str(question.answer_planning)}
         The student's query is: {user_input_string}
         For formulas, use LaTeX format with $...$ or 
@@ -401,6 +415,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 prompt = f"""
                 You are a deep thinking tutor helping a student reading a paper.
                 Reference context from the paper: {formatted_context_string}
+                {page_content_string}
                 This is a detailed plan for constructing the answer: {str(question.answer_planning)}
                 The student's query is: {user_input_string}
                 For formulas, use LaTeX format with $...$ or 
@@ -442,6 +457,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 prompt = f"""
                 You are a deep thinking tutor helping a student reading a paper.
                 Reference context from the paper: {formatted_context_string}
+                {page_content_string}
                 This is a detailed plan for constructing the answer: {str(question.answer_planning)}
                 The student's query is: {user_input_string}
                 For formulas, use LaTeX format with $...$ or 

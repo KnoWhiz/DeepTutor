@@ -211,4 +211,67 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
 
     chat_session.formatted_context = formatted_context
 
+    # Create page_formatted_context using page-based index embeddings
+    try:
+        # Load page-based embeddings based on the current mode
+        if chat_session.mode == ChatMode.BASIC or chat_session.mode == ChatMode.ADVANCED:
+            logger.info(f"Loading page-based embeddings for {chat_session.mode} mode")
+            page_embedding_folder_list = [os.path.join(embedding_folder, 'markdown', 'page_based_index') for embedding_folder in embedding_folder_list]
+            page_db = load_embeddings(page_embedding_folder_list, 'default')
+        else:  # ChatMode.LITE
+            logger.info(f"Loading page-based embeddings for {chat_session.mode} mode")
+            page_embedding_folder_list = [os.path.join(embedding_folder, 'lite_embedding', 'page_based_index') for embedding_folder in embedding_folder_list]
+            page_db = load_embeddings(page_embedding_folder_list, 'lite')
+        
+        logger.info(f"Successfully loaded page-based embeddings from: {page_embedding_folder_list}")
+        
+        # For each chunk in formatted_context, find the corresponding page-level chunk
+        page_chunks_dict = {}  # To store unique page chunks with their original scores
+        seen_page_contents = set()  # To track duplicates
+        
+        for symbol, chunk_data in formatted_context.items():
+            chunk_content = chunk_data["content"]
+            
+            # Search for the most similar page chunk for this specific chunk content
+            page_chunks_with_scores = page_db.similarity_search_with_score(chunk_content, k=1)
+            
+            if page_chunks_with_scores:
+                page_chunk, page_score = page_chunks_with_scores[0]
+                page_content = page_chunk.page_content
+                
+                # Only add if we haven't seen this page content before
+                if page_content not in seen_page_contents and len(page_content) > filter_min_length:
+                    seen_page_contents.add(page_content)
+                    # Use the original chunk's symbol but store page content and score
+                    page_chunks_dict[symbol] = {
+                        "content": page_content,
+                        "score": float(page_score),
+                        "original_chunk_symbol": symbol
+                    }
+        
+        # Create page_formatted_context with unique page chunks
+        page_formatted_context = {}
+        page_symbol_index = 0
+        
+        for symbol, page_data in page_chunks_dict.items():
+            if page_symbol_index < len(map_index_to_symbol):
+                page_formatted_context[map_index_to_symbol[page_symbol_index]] = {
+                    "content": page_data["content"],
+                    "score": page_data["score"]
+                }
+                page_symbol_index += 1
+        
+        logger.info(f"Created page_formatted_context with {len(page_formatted_context)} unique pages")
+        logger.info(f"Page formatted context tokens: {count_tokens(str(page_formatted_context))}")
+        
+        for page_symbol, page_data in page_formatted_context.items():
+            logger.info(f"Page context symbol: {page_symbol}, content length: {len(page_data['content'])}, score: {page_data['score']}")
+        
+        chat_session.page_formatted_context = page_formatted_context
+        
+    except Exception as e:
+        logger.exception(f"Failed to create page_formatted_context: {str(e)}")
+        # Fallback to empty page context if page-based embeddings fail
+        chat_session.page_formatted_context = {}
+
     return formatted_context

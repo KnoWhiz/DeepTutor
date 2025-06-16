@@ -95,22 +95,22 @@ You can use Boolean operators: AND, OR, NOT
 You can use quotes for exact phrases: "machine learning"
 
 Respond ONLY with a JSON object containing:
-{{
+{
     "search_query": "optimized search query using arXiv syntax",
     "max_results": 10,
     "sort_by": "relevance or submittedDate",
     "explanation": "brief explanation of your search strategy"
-}}
+}
 
 Examples:
 - User: "Find papers about machine learning in healthcare"
-  Response: {{"search_query": "all:\"machine learning\" AND all:healthcare", "max_results": 10, "sort_by": "relevance", "explanation": "Searching for papers mentioning both machine learning and healthcare in any field"}}
+  Response: {"search_query": "all:\"machine learning\" AND all:healthcare", "max_results": 10, "sort_by": "relevance", "explanation": "Searching for papers mentioning both machine learning and healthcare in any field"}
 
 - User: "Latest papers by Geoffrey Hinton on deep learning"
-  Response: {{"search_query": "au:hinton AND all:\"deep learning\"", "max_results": 10, "sort_by": "submittedDate", "explanation": "Searching for recent papers by Hinton related to deep learning"}}
+  Response: {"search_query": "au:hinton AND all:\"deep learning\"", "max_results": 10, "sort_by": "submittedDate", "explanation": "Searching for recent papers by Hinton related to deep learning"}
 
 - User: "Computer vision papers from 2024"
-  Response: {{"search_query": "cat:cs.CV", "max_results": 10, "sort_by": "submittedDate", "explanation": "Searching computer vision category papers, sorted by submission date to get recent ones"}}
+  Response: {"search_query": "cat:cs.CV", "max_results": 10, "sort_by": "submittedDate", "explanation": "Searching computer vision category papers, sorted by submission date to get recent ones"}
 """
         
         return ChatPromptTemplate.from_messages([

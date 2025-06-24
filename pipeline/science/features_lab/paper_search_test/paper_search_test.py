@@ -2,99 +2,6 @@ import streamlit as st
 import arxiv
 from typing import List, Dict
 import time
-import re
-from langchain_openai import AzureChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-from dotenv import load_dotenv
-import os
-
-# Load environment variables
-load_dotenv()
-
-def refine_query_with_llm(user_query: str) -> str:
-    """
-    Use GPT-4 to refine a user's natural language query into an optimized arXiv search query.
-    
-    Args:
-        user_query: The user's natural language search query
-        
-    Returns:
-        A refined query optimized for arXiv API search
-    """
-    try:
-        # Initialize the GPT-4 model
-        llm = AzureChatOpenAI(
-            api_key=os.getenv("AZURE_OPENAI_API_KEY_BACKUP"),
-            azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP"),
-            openai_api_version='2024-06-01',
-            azure_deployment='gpt-4o',
-            temperature=0.3,
-            streaming=False,
-        )
-        
-        # Create a prompt template for query refinement
-        prompt_template = """You are an expert at optimizing search queries for the arXiv API. 
-The arXiv API supports the following search prefixes:
-- ti: Title search
-- au: Author search  
-- abs: Abstract search
-- cat: Subject Category search
-- all: Search all fields
-- AND/OR/NOT: Boolean operators
-- Quotes for exact phrases (use ONLY for multi-word phrases within a single field)
-
-IMPORTANT GUIDELINES:
-1. Create queries that are BROAD ENOUGH to return results - avoid being too restrictive
-2. Prefer OR over AND when searching for related terms
-3. Use 'all:' or 'abs:' for general topic searches instead of restricting to titles
-4. NEVER wrap entire boolean expressions in quotes - quotes are ONLY for exact phrases
-5. For author names, be flexible (e.g., use last name only or partial names)
-6. Account for potential misspellings or variations in terminology
-7. If multiple concepts are mentioned, consider which are ESSENTIAL vs optional
-8. DO NOT use quotes around the entire query or around OR/AND expressions
-
-Examples of GOOD refinements:
-- User: "machine learning transformers" → all:machine learning OR all:transformer
-- User: "papers by John Smith on quantum" → au:Smith AND all:quantum
-- User: "neural networks for NLP" → all:"neural networks" AND (all:NLP OR all:"natural language")
-- User: "time multiplexing trapped ion quantum network by B You" → (all:"time multiplexing" OR all:"trapped ion" OR all:"quantum network") AND au:You
-- User: "deep learning computer vision" → all:"deep learning" OR all:"computer vision"
-
-Examples of BAD refinements (DO NOT DO THIS):
-- "all:machine learning OR all:transformer" (quotes around entire query)
-- ti:"quantum" AND ti:"computing" AND ti:"algorithms" (too restrictive)
-
-Transform the following user query into an optimized arXiv search query that balances precision with recall.
-Return ONLY the query string without any quotes around the entire expression.
-
-User query: {query}
-
-Optimized arXiv query:"""
-        
-        prompt = ChatPromptTemplate.from_template(prompt_template)
-        parser = StrOutputParser()
-        
-        # Create the chain
-        chain = prompt | llm | parser
-        
-        # Get the refined query
-        refined_query = chain.invoke({"query": user_query})
-        refined_query = refined_query.strip()
-        
-        # Clean up the refined query - remove any surrounding quotes
-        if refined_query.startswith('"') and refined_query.endswith('"'):
-            refined_query = refined_query[1:-1]
-        
-        # Log the refinement for debugging
-        if refined_query != user_query:
-            st.info(f"🔍 Refined search query: `{refined_query}`")
-        
-        return refined_query
-        
-    except Exception as e:
-        st.warning(f"Query refinement failed, using original query. Error: {str(e)}")
-        return user_query
 
 def search_arxiv_papers(query: str, max_results: int = 10) -> List[Dict[str, str]]:
     """
@@ -207,36 +114,11 @@ def main():
         # Display assistant response
         with st.chat_message("assistant"):
             with st.spinner("Searching arXiv for relevant papers..."):
-                # Refine the query using LLM
-                refined_query = refine_query_with_llm(prompt)
-                
-                # Search for papers using the refined query
-                papers = search_arxiv_papers(refined_query)
-                
-                # If no results, try a simpler fallback search
-                if not papers and refined_query != prompt:
-                    st.warning("No results found with refined query. Trying a broader search...")
-                    # Try the original query
-                    papers = search_arxiv_papers(prompt)
-                    
-                    # If still no results, try an even simpler all-fields search
-                    if not papers:
-                        # Extract key terms and search in all fields
-                        # Remove common words and create a simple OR query
-                        # Extract meaningful words (alphanumeric, longer than 2 chars)
-                        words = re.findall(r'\b\w{3,}\b', prompt.lower())
-                        # Remove common words
-                        stop_words = {'the', 'for', 'and', 'with', 'from', 'about', 'paper', 'papers', 'article', 'articles'}
-                        keywords = [w for w in words if w not in stop_words]
-                        
-                        if keywords:
-                            # Create a simple OR query with the main keywords
-                            simple_query = " OR ".join([f"all:{keyword}" for keyword in keywords[:5]])  # Limit to 5 keywords
-                            st.info(f"Trying broader search: `{simple_query}`")
-                            papers = search_arxiv_papers(simple_query)
+                # Search for papers
+                papers = search_arxiv_papers(prompt)
                 
                 if papers:
-                    response_text = f"I found {len(papers)} papers related to your search. Here are the results:"
+                    response_text = f"I found {len(papers)} papers related to '{prompt}'. Here are the results:"
                     st.markdown(response_text)
                     
                     # Display the results
@@ -248,7 +130,7 @@ def main():
                         "content": f"{response_text}\n\n*[Papers displayed above]*"
                     })
                 else:
-                    error_message = f"I couldn't find any papers for your query. Please try a different search query or use more general terms."
+                    error_message = f"I couldn't find any papers for '{prompt}'. Please try a different search query."
                     st.markdown(error_message)
                     st.session_state.messages.append({
                         "role": "assistant",

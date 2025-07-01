@@ -1,6 +1,11 @@
 #https://docs.anthropic.com/en/docs/build-with-claude/citations
 
 import anthropic
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file (override any existing ones)
+load_dotenv(override=True)
 
 client = anthropic.Anthropic()
 

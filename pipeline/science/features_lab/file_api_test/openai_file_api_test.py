@@ -69,8 +69,10 @@ class AzureOpenAIPDFChatbot:
         load_dotenv()
         
         # Validate required environment variables
-        self.api_key = os.getenv("AZURE_OPENAI_API_KEY")
-        self.endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+        # self.api_key = os.getenv("AZURE_OPENAI_API_KEY")
+        # self.endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+        self.api_key = os.getenv("AZURE_OPENAI_API_KEY_BACKUP")
+        self.endpoint = os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP")
         
         if not self.api_key or not self.endpoint:
             logger.error("Missing required environment variables:")
@@ -221,20 +223,23 @@ class AzureOpenAIPDFChatbot:
             
             # Create assistant with file search tool
             assistant = self.client.beta.assistants.create(
-                name="PDF Document Analyst",
-                instructions="""You are a helpful assistant that analyzes PDF documents and provides detailed answers with source citations.
+                name="PDF Papers Researcher and Professor",
+                instructions="""
+                You are a professional deep thinking researcher reading papers. Analyze the papers context content and provide detailed answers with source citations.
+                
+                If the information is not provided in the paper, say you cannot find the answer in the paper but will try to answer based on your knowledge. For formulas, use LaTeX format with $...$ or \n$$...\n$$.
 
 When answering questions:
 1. Base your responses on the content from the uploaded PDF files
 2. Provide specific citations for each claim or fact you mention
-3. Use the format [Source: filename, page X] for citations when possible
+3. Use the format [<file_index>:<page_number>†<file_name>] for citations when possible
 4. If you cannot find relevant information in the documents, clearly state this
 5. Be thorough and accurate in your analysis
 6. Break down complex topics into clear, understandable explanations
 
 Always prioritize accuracy and provide evidence-based responses.""",
                 tools=[{"type": "file_search"}],
-                model="gpt-4o",  # Use the latest model with file search capabilities
+                model="gpt-4.1",  # Use GPT-4.1 model to match api_handler.py configuration
                 tool_resources={
                     "file_search": {
                         "vector_store_ids": [self.vector_store_id]

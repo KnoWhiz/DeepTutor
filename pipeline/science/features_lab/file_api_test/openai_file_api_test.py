@@ -241,7 +241,8 @@ When answering questions:
 
 Always prioritize accuracy and provide evidence-based responses.""",
                 tools=[{"type": "file_search"}],
-                model="gpt-4.1",  # Use GPT-4.1 model to match api_handler.py configuration
+                # model="gpt-4.1",  # Use GPT-4.1 model to match api_handler.py configuration
+                model="gpt-4o",  # Use GPT-4o model (latest available for Assistants API)
                 tool_resources={
                     "file_search": {
                         "vector_store_ids": [self.vector_store_id]

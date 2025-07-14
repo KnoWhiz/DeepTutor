@@ -11,6 +11,7 @@ Features:
 - Create an assistant with file search capabilities
 - Interactive terminal chat interface
 - Source citations for each response
+- Streaming response support
 - Proper error handling and logging
 
 Requirements:
@@ -53,11 +54,17 @@ class AzureOpenAIPDFChatbot:
     - PDF file uploads to Azure OpenAI
     - Assistant creation with file search capabilities
     - Interactive chat sessions with source citations
+    - Streaming and non-streaming response modes
     - Proper cleanup of resources
     """
     
-    def __init__(self):
-        """Initialize the chatbot with Azure OpenAI configuration."""
+    def __init__(self, streaming: bool = False):
+        """
+        Initialize the chatbot with Azure OpenAI configuration.
+        
+        Args:
+            streaming: Whether to use streaming responses (default: False)
+        """
         # Load environment variables
         load_dotenv()
         
@@ -85,10 +92,14 @@ class AzureOpenAIPDFChatbot:
             sys.exit(1)
         
         # Initialize instance variables
+        self.streaming = streaming
         self.assistant_id: Optional[str] = None
         self.thread_id: Optional[str] = None
         self.uploaded_files: List[str] = []
         self.vector_store_id: Optional[str] = None
+        
+        # Log streaming mode
+        logger.info(f"Streaming mode: {'enabled' if streaming else 'disabled'}")
     
     def upload_pdf_files(self, file_paths: List[str]) -> List[str]:
         """
@@ -288,6 +299,7 @@ Always prioritize accuracy and provide evidence-based responses.""",
     def send_message_and_get_response(self, user_message: str) -> str:
         """
         Send a message to the assistant and get the response with citations.
+        Supports both streaming and non-streaming modes.
         
         Args:
             user_message: The user's question or message
@@ -306,6 +318,86 @@ Always prioritize accuracy and provide evidence-based responses.""",
                 content=user_message
             )
             
+            if self.streaming:
+                return self._handle_streaming_response()
+            else:
+                return self._handle_non_streaming_response()
+                
+        except Exception as e:
+            logger.error(f"Failed to process message: {e}")
+            return f"Sorry, I encountered an error: {str(e)}"
+    
+    def _handle_streaming_response(self) -> str:
+        """
+        Handle streaming response from the assistant.
+        
+        Returns:
+            Complete response text
+        """
+        try:
+            logger.info("Creating streaming run...")
+            
+            # Create streaming run
+            with self.client.beta.threads.runs.stream(
+                thread_id=self.thread_id,
+                assistant_id=self.assistant_id
+            ) as stream:
+                response_text = ""
+                current_message = ""
+                
+                for event in stream:
+                    # Handle different event types
+                    if event.event == "thread.message.delta":
+                        # Get the delta content
+                        if hasattr(event.data, 'delta') and hasattr(event.data.delta, 'content'):
+                            for content_item in event.data.delta.content:
+                                if hasattr(content_item, 'text') and hasattr(content_item.text, 'value'):
+                                    # Stream the text to console
+                                    chunk = content_item.text.value
+                                    print(chunk, end="", flush=True)
+                                    current_message += chunk
+                    
+                    elif event.event == "thread.message.completed":
+                        # Message is complete, process annotations
+                        if hasattr(event.data, 'content'):
+                            full_content = ""
+                            all_annotations = []
+                            
+                            for content_item in event.data.content:
+                                if hasattr(content_item, 'text'):
+                                    full_content += content_item.text.value
+                                    if hasattr(content_item.text, 'annotations'):
+                                        all_annotations.extend(content_item.text.annotations)
+                            
+                            # Process annotations
+                            response_text = self.process_message_annotations(full_content, all_annotations)
+                            
+                            # If the processed text is different from what we streamed, show the corrected version
+                            if response_text != current_message:
+                                print(f"\n\n[Processed with citations: {response_text}]")
+                    
+                    elif event.event == "thread.run.completed":
+                        logger.info("Streaming run completed")
+                        break
+                    
+                    elif event.event == "thread.run.failed":
+                        logger.error(f"Streaming run failed: {event.data.last_error}")
+                        return "Sorry, I encountered an error processing your question."
+                
+                return response_text if response_text else current_message
+                
+        except Exception as e:
+            logger.error(f"Failed to handle streaming response: {e}")
+            return f"Sorry, I encountered an error with streaming: {str(e)}"
+    
+    def _handle_non_streaming_response(self) -> str:
+        """
+        Handle non-streaming response from the assistant (original behavior).
+        
+        Returns:
+            Complete response text with citations
+        """
+        try:
             # Create and execute run
             run = self.client.beta.threads.runs.create(
                 thread_id=self.thread_id,
@@ -363,15 +455,22 @@ Always prioritize accuracy and provide evidence-based responses.""",
             return response_content
             
         except Exception as e:
-            logger.error(f"Failed to process message: {e}")
+            logger.error(f"Failed to handle non-streaming response: {e}")
             return f"Sorry, I encountered an error: {str(e)}"
+    
+    def toggle_streaming(self):
+        """Toggle streaming mode on/off."""
+        self.streaming = not self.streaming
+        logger.info(f"Streaming mode: {'enabled' if self.streaming else 'disabled'}")
+        return self.streaming
     
     def start_chat_session(self):
         """
         Start an interactive chat session in the terminal.
         """
+        streaming_indicator = "📡 STREAMING" if self.streaming else "💬 STANDARD"
         print("\n" + "="*80)
-        print("🤖 Azure OpenAI PDF Chatbot")
+        print(f"🤖 Azure OpenAI PDF Chatbot ({streaming_indicator})")
         print("="*80)
         print("Ask me anything about the uploaded PDF documents!")
         print("Type 'quit', 'exit', or 'bye' to end the session.")
@@ -391,8 +490,21 @@ Always prioritize accuracy and provide evidence-based responses.""",
                 elif user_input.lower() == 'help':
                     print("\n📋 Available Commands:")
                     print("  - Ask any question about the PDF content")
+                    print("  - 'streaming' - Toggle streaming mode on/off")
+                    print("  - 'status' - Show current streaming mode")
                     print("  - 'quit', 'exit', 'bye' - End the session")
                     print("  - 'help' - Show this help message")
+                    continue
+                
+                elif user_input.lower() == 'streaming':
+                    is_streaming = self.toggle_streaming()
+                    mode = "enabled" if is_streaming else "disabled"
+                    print(f"\n🔄 Streaming mode {mode}")
+                    continue
+                
+                elif user_input.lower() == 'status':
+                    mode = "enabled" if self.streaming else "disabled"
+                    print(f"\n📊 Current mode: Streaming {mode}")
                     continue
                 
                 elif not user_input:
@@ -400,9 +512,15 @@ Always prioritize accuracy and provide evidence-based responses.""",
                     continue
                 
                 # Get response from assistant
-                print("\n🤖 Assistant: ", end="", flush=True)
-                response = self.send_message_and_get_response(user_input)
-                print(response)
+                if self.streaming:
+                    print("\n🤖 Assistant: ", end="", flush=True)
+                    response = self.send_message_and_get_response(user_input)
+                    # Response is already printed via streaming, just add newline
+                    print()
+                else:
+                    print("\n🤖 Assistant: ", end="", flush=True)
+                    response = self.send_message_and_get_response(user_input)
+                    print(response)
                 
             except KeyboardInterrupt:
                 print("\n\n👋 Session interrupted. Goodbye!")
@@ -492,9 +610,11 @@ def main():
     """
     # Example PDF file path (you can modify this or make it configurable)
     default_pdf_path = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/tmp/tutor_pipeline/input_files/Multiplexed_single_photon_source_arXiv__resubmit_.pdf"
-    
+
+    default_pdf_path_2 = "/Users/bingran_you/Downloads/2504.07923v1.pdf"
+
     # You can add more PDF files here
-    pdf_files = [default_pdf_path]
+    pdf_files = [default_pdf_path, default_pdf_path_2]
     
     # Validate that at least one PDF file exists
     existing_files = [f for f in pdf_files if os.path.exists(f)]
@@ -511,8 +631,20 @@ def main():
     for f in existing_files:
         print(f"  - {Path(f).name}")
     
+    # Ask user for streaming preference
+    while True:
+        streaming_choice = input("\n🔄 Enable streaming responses? (y/n) [default: n]: ").strip().lower()
+        if streaming_choice in ['', 'n', 'no']:
+            streaming = False
+            break
+        elif streaming_choice in ['y', 'yes']:
+            streaming = True
+            break
+        else:
+            print("Please enter 'y' for yes or 'n' for no.")
+    
     # Create and run the chatbot
-    chatbot = AzureOpenAIPDFChatbot()
+    chatbot = AzureOpenAIPDFChatbot(streaming=streaming)
     chatbot.run(existing_files)
 
 

@@ -135,7 +135,7 @@ def get_response(query: str, chat_history: str, embedding_folder: str) -> str:
         api_version=os.getenv("GRAPHRAG_API_VERSION"),
         model=os.getenv("GRAPHRAG_LLM_MODEL"),
         api_type=OpenaiApiType.AzureOpenAI,
-        max_retries=20,
+        max_retries=15,
     )
     token_encoder = tiktoken.encoding_for_model(os.getenv("GRAPHRAG_LLM_MODEL"))
 

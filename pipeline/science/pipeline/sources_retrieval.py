@@ -208,7 +208,7 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
     The scores are normalized to 0-1 range
     The metadata includes the page number, chunk index, and block bounding box coordinates
     The sources are refined by checking if they can be found in the document
-    Only get first 20 sources
+    Only get first 15 sources
     Show them in the order they are found in the document
     Preserve image filenames but filter them based on context relevance using LLM
     """
@@ -483,7 +483,7 @@ def refine_sources_simple(sources_with_scores, file_path_list):
 def refine_sources_complex(sources_with_scores, file_path_list, markdown_dir_list, user_input, image_url_mapping_merged, source_pages, source_file_index, image_url_mapping_merged_reverse):
     """
     Refine sources by checking if they can be found in the document
-    Only get first 20 sources
+    Only get first 15 sources
     Show them in the order they are found in the document
     Preserve image filenames but filter them based on context relevance using LLM
     Source_pages: a dictionary that maps each source to the page number it is found in. For images, it is mapping from the image URL to the page number.
@@ -662,8 +662,8 @@ def refine_sources_complex(sources_with_scores, file_path_list, markdown_dir_lis
     num_sources_to_keep = max(1, len(sorted_sources) // 2)  # Keep at least 1 source
     sorted_sources = dict(list(sorted_sources.items())[:num_sources_to_keep])
 
-    # Further limit to top 20 if needed
-    sorted_sources = dict(list(sorted_sources.items())[:20])
+    # Further limit to top 15 if needed
+    sorted_sources = dict(list(sorted_sources.items())[:15])
 
     # TEST
     logger.info("TEST: sorted sources after refine:")

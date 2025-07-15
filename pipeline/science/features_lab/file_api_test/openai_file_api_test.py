@@ -377,9 +377,9 @@ Always prioritize accuracy and provide evidence-based responses.""",
                             # Process annotations
                             response_text = self.process_message_annotations(full_content, all_annotations)
                             
-                            # If the processed text is different from what we streamed, show the corrected version
-                            if response_text != current_message:
-                                print(f"\n\n[Processed with citations: {response_text}]")
+                            # # If the processed text is different from what we streamed, show the corrected version
+                            # if response_text != current_message:
+                            #     print(f"\n\n[Processed with citations: {response_text}]")
                     
                     elif event.event == "thread.run.completed":
                         logger.info("Streaming run completed")

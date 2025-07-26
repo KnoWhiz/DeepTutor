@@ -4,6 +4,9 @@ import re
 import fitz
 # import pprint
 import json
+import asyncio
+import concurrent.futures
+from typing import List, Dict, Tuple, Any
 
 from difflib import SequenceMatcher
 
@@ -201,6 +204,203 @@ def locate_chunk_in_pdf(chunk: str, pdf_path: str, similarity_threshold: float =
     }
 
 
+async def locate_chunk_in_pdf_async(chunk: str, pdf_path: str, similarity_threshold: float = 0.8, remove_linebreaks: bool = False) -> dict:
+    """
+    Async version of locate_chunk_in_pdf for concurrent processing.
+    """
+    loop = asyncio.get_event_loop()
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        result = await loop.run_in_executor(
+            executor, 
+            locate_chunk_in_pdf, 
+            chunk, pdf_path, similarity_threshold, remove_linebreaks
+        )
+    return result
+
+
+async def process_pdf_file_async(file_path: str) -> Tuple[Any, Any]:
+    """
+    Async version of process_pdf_file for concurrent processing.
+    """
+    loop = asyncio.get_event_loop()
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        result = await loop.run_in_executor(
+            executor, 
+            process_pdf_file, 
+            file_path
+        )
+    return result
+
+
+async def robust_search_for_async(page: Any, source: str) -> List[Any]:
+    """
+    Async version of robust_search_for for concurrent processing.
+    """
+    loop = asyncio.get_event_loop()
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        result = await loop.run_in_executor(
+            executor, 
+            robust_search_for, 
+            page, source
+        )
+    return result
+
+
+async def evaluate_image_relevance_async(
+    image_url: str, 
+    score: float, 
+    user_input: str, 
+    image_url_mapping_merged_reverse: Dict[str, str],
+    llm: Any,
+    error_parser: Any,
+    chain: Any,
+    idx: int
+) -> Tuple[str, float, str, str] | None:
+    """
+    Async version of image relevance evaluation for concurrent processing.
+    """
+    if image_url not in image_url_mapping_merged_reverse:
+        logger.warning(f"Image URL {image_url} not found in image_url_mapping_merged_reverse")
+        return None
+    
+    logger.info(f"TEST: No. {idx} evaluating image with image_url: {image_url}")
+    
+    # Get all context descriptions for this image
+    descriptions = image_url_mapping_merged_reverse[image_url]
+    descriptions_text = "\n".join([f"- {desc}" for desc in descriptions])
+    
+    try:
+        # Run LLM evaluation in thread pool to avoid blocking
+        loop = asyncio.get_event_loop()
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            result = await loop.run_in_executor(
+                executor,
+                lambda: chain.invoke({
+                    "question": user_input,
+                    "descriptions": descriptions_text
+                })
+            )
+        
+        if result["is_relevant"]:
+            # Combine vector similarity score with LLM relevance score
+            combined_score = (score + result["relevance_score"]) / 2
+            return (image_url, combined_score, result["actual_figure_number"], result["explanation"])
+    except Exception as e:
+        logger.exception(f"Error evaluating image {image_url}: {e}")
+    
+    return None
+
+
+async def search_source_in_docs_async(
+    docs: List[Any], 
+    source: str, 
+    score: float
+) -> Dict[str, float]:
+    """
+    Async function to search for a source across multiple document pages concurrently.
+    """
+    search_tasks = []
+    
+    # Create tasks for searching across all pages of all documents
+    for doc in docs:
+        for page in doc:
+            task = robust_search_for_async(page, source)
+            search_tasks.append(task)
+    
+    # Execute all searches concurrently
+    search_results = await asyncio.gather(*search_tasks, return_exceptions=True)
+    
+    # Check if any search found the source
+    for result in search_results:
+        if not isinstance(result, Exception) and result:
+            return {source: score}
+    
+    return {}
+
+
+async def process_text_sources_concurrently(
+    text_sources: Dict[str, float], 
+    file_path_list: List[str]
+) -> Dict[str, float]:
+    """
+    Process text sources concurrently for improved performance.
+    """
+    # First, load all documents concurrently
+    doc_tasks = [process_pdf_file_async(file_path) for file_path in file_path_list]
+    doc_results = await asyncio.gather(*doc_tasks, return_exceptions=True)
+    
+    # Extract successful document loads
+    docs = []
+    for result in doc_results:
+        if not isinstance(result, Exception):
+            _, doc = result
+            docs.append(doc)
+        else:
+            logger.exception(f"Error loading document: {result}")
+    
+    # Now search for all sources concurrently
+    search_tasks = []
+    for source, score in text_sources.items():
+        task = search_source_in_docs_async(docs, source, score)
+        search_tasks.append(task)
+    
+    # Execute all source searches concurrently
+    search_results = await asyncio.gather(*search_tasks, return_exceptions=True)
+    
+    # Combine results
+    refined_sources = {}
+    for result in search_results:
+        if not isinstance(result, Exception) and result:
+            refined_sources.update(result)
+    
+    return refined_sources
+
+
+async def process_image_sources_concurrently(
+    image_sources: Dict[str, float],
+    user_input: str,
+    image_url_mapping_merged_reverse: Dict[str, str],
+    llm: Any,
+    error_parser: Any,
+    chain: Any
+) -> Dict[str, float]:
+    """
+    Process image sources concurrently for improved performance.
+    """
+    # Create tasks for all image evaluations
+    evaluation_tasks = []
+    for idx, (image_url, score) in enumerate(image_sources.items()):
+        task = evaluate_image_relevance_async(
+            image_url, score, user_input, image_url_mapping_merged_reverse,
+            llm, error_parser, chain, idx
+        )
+        evaluation_tasks.append(task)
+    
+    # Execute all evaluations concurrently
+    evaluation_results = await asyncio.gather(*evaluation_tasks, return_exceptions=True)
+    
+    # Process results
+    image_scores = []
+    for result in evaluation_results:
+        if not isinstance(result, Exception) and result is not None:
+            image_scores.append(result)
+    
+    # Sort images by relevance score
+    image_scores.sort(key=lambda x: x[1], reverse=True)
+    
+    # Filter images with high relevance score (score > 0.5)
+    filtered_images = {img_url: score for img_url, score, fig_num, expl in image_scores if score > 0.5}
+    
+    if filtered_images:
+        # Get the highest score
+        highest_score = max(filtered_images.values())
+        # Keep images with scores within 10% of the highest score
+        score_threshold = highest_score * 0.9
+        filtered_images = {img_url: score for img_url, score in filtered_images.items() if score >= score_threshold}
+    
+    return filtered_images
+
+
 def get_response_source(chat_session: ChatSession, file_path_list, user_input, answer, chat_history, embedding_folder_list):
     """
     Get the sources for the response
@@ -269,46 +469,6 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
     # Create a reverse mapping based on image_url_mapping_merged
     image_url_mapping_merged_reverse = {v: k for k, v in image_url_mapping_merged.items()}
 
-    # Load / generate embeddings for each file and merge them
-    # # db_list = []
-    # faiss_path_0 = os.path.join(embedding_folder_list[0], "index.faiss")
-    # pkl_path_0 = os.path.join(embedding_folder_list[0], "index.pkl")
-    # if os.path.exists(faiss_path_0) and os.path.exists(pkl_path_0):
-    #     db_merged = load_embeddings([embedding_folder_list[0]], 'default')
-    #     # db_list.append(db_merged)
-    # else:
-    #     _document, _doc = process_pdf_file(file_path_list[0])
-    #     embeddings_agent(mode, _document, _doc, file_path_list[0], embedding_folder_list[0])
-    #     db_merged = load_embeddings([embedding_folder_list[0]], 'default')
-    #     # db_list.append(db_merged)
-    # file_index = 0
-    # for file_path, embedding_folder in zip(file_path_list[1:], embedding_folder_list[1:]):
-    #     file_index += 1
-    #     # Define the default filenames used by FAISS when saving
-    #     faiss_path = os.path.join(embedding_folder, "index.faiss")
-    #     pkl_path = os.path.join(embedding_folder, "index.pkl")
-    #     # Check if all necessary files exist to load the embeddings
-    #     if os.path.exists(faiss_path) and os.path.exists(pkl_path):
-    #         # Load existing embeddings
-    #         logger.info(f"Loading existing embeddings for {embedding_folder}...")
-    #         db = load_embeddings([embedding_folder], 'default')
-    #         # For each document chunk in db, add "file_index" to the metadata
-    #         logger.info(f"Adding file_index to metadata for {embedding_folder}...")
-    #         for doc in db.get_collection().find():
-    #             doc['metadata']['file_index'] = file_index
-    #         db_merged = db_merged.merge_from(db)
-    #         # db_list.append(db)
-    #     else:
-    #         logger.info(f"No existing embeddings found for {embedding_folder}, creating new ones...")
-    #         _document, _doc = process_pdf_file(file_path)
-    #         embeddings_agent(mode, _document, _doc, file_path, embedding_folder)
-    #         db = load_embeddings([embedding_folder], 'default')
-    #         # For each document chunk in db, add "file_index" to the metadata
-    #         for doc in db.get_collection().find():
-    #             doc['metadata']['file_index'] = file_index
-    #         db_merged = db_merged.merge_from(db)
-    #         # db_list.append(db)
-
     db_merged = load_embeddings(embedding_folder_list, 'default')
 
     # Get relevant chunks for both question and answer with scores
@@ -328,11 +488,6 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
         sources_chunks.append(chunk[0])
 
     logger.info(f"TEST: sources_chunks: {sources_chunks}")
-
-    # sources_chunks_text = [chunk.page_content for chunk in sources_chunks]
-
-    # # logger.info(f"TEST: sources_chunks: {sources_chunks}")
-    # logger.info(f"TEST: sources_chunks_text: {sources_chunks_text}")
 
     # Get source pages dictionary, which maps each source to the page number it is found in. the page number is in the metadata of the document chunks
     source_pages = {}
@@ -394,8 +549,6 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
     source_file_index = {image_url_mapping_merged.get(source, source): file_index
                          for source, file_index in source_file_index.items()}
 
-    # # TEST
-    # logger.info(f"TEST: sources before refine: sources_with_scores - {sources_with_scores}")
     logger.info(f"TEST: length of sources before refine: {len(sources_with_scores)}")
 
     # Refine and limit sources while preserving scores
@@ -412,33 +565,7 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
             refined_source_pages[source] = page + 1
             refined_source_index[source] = source_file_index[source]
 
-    # # TEST
-    # logger.info(f"TEST: sources after refine: sources_with_scores - {sources_with_scores}")
     logger.info(f"TEST: length of sources after refine: {len(sources_with_scores)}")
-
-
-    # # TEST
-    # logger.info("TEST: refined source index:")
-    # for source, index in refined_source_index.items():
-    #     logger.info(f"{source}: {index}")
-    # logger.info(f"TEST: length of refined source index: {len(refined_source_index)}")
-
-    # # TEST
-    # logger.info(f"TEST: sources after refine: sources_with_scores - {sources_with_scores}")
-    # logger.info(f"TEST: length of sources after refine: {len(sources_with_scores)}")
-
-
-    # # TEST
-    # logger.info("TEST: refined source index:")
-    # for source, index in refined_source_index.items():
-    #     logger.info(f"{source}: {index}")
-    # logger.info(f"TEST: length of refined source index: {len(refined_source_index)}")
-
-    # # TEST
-    # logger.info("TEST: refined source pages:")
-    # for source, page in refined_source_pages.items():
-    #     logger.info(f"{source}: {page}")
-    # logger.info(f"TEST: length of refined source pages: {len(refined_source_pages)}")
 
     # Memory cleanup
     db = None
@@ -446,10 +573,10 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
     return sources_with_scores, source_pages, refined_source_pages, refined_source_index
 
 
-def refine_sources_simple(sources_with_scores, file_path_list):
+async def refine_sources_simple_async(sources_with_scores: Dict[str, float], file_path_list: List[str]) -> Dict[str, float]:
     """
-    Simplified version of refine_sources_complex that only checks if text chunks can be found in the document.
-    Returns a dictionary of refined sources with their scores.
+    Async simplified version of refine_sources_complex that only checks if text chunks can be found in the document.
+    Uses concurrent processing for improved performance.
     
     Args:
         sources_with_scores: A dictionary mapping text chunks to their relevance scores
@@ -458,66 +585,75 @@ def refine_sources_simple(sources_with_scores, file_path_list):
     Returns:
         Dictionary of refined sources that were found in the original documents
     """
-    refined_sources = {}
-    
-    # Process text sources
-    _docs = []
-    for file_path in file_path_list:
-        try:
-            _, _doc = process_pdf_file(file_path)
-            _docs.append(_doc)
-        except Exception as e:
-            logger.exception(f"Error opening document {file_path}: {e}")
-    
-    # Check each source against the document pages
-    for _doc in _docs:
-        for page in _doc:
-            for source, score in sources_with_scores.items():
-                text_instances = robust_search_for(page, source)
-                if text_instances:
-                    refined_sources[source] = score
-    
-    return refined_sources
+    return await process_text_sources_concurrently(sources_with_scores, file_path_list)
 
 
-def refine_sources_complex(sources_with_scores, file_path_list, markdown_dir_list, user_input, image_url_mapping_merged, source_pages, source_file_index, image_url_mapping_merged_reverse):
+def refine_sources_simple(sources_with_scores, file_path_list):
     """
-    Refine sources by checking if they can be found in the document
-    Only get first 20 sources
-    Show them in the order they are found in the document
-    Preserve image filenames but filter them based on context relevance using LLM
-    Source_pages: a dictionary that maps each source to the page number it is found in. For images, it is mapping from the image URL to the page number.
-    Source_file_index: a dictionary that maps each source to the file index it is found in. For images, it is mapping from the image URL to the file index.
-    Sources_with_scores: a dictionary that maps each source to the score it has. For images, it is mapping from the image URL to the score.
+    Synchronous wrapper for the async concurrent version of refine_sources_simple.
+    """
+    try:
+        # Try to get existing event loop
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # If loop is running, we need to use a thread pool
+            import concurrent.futures
+            
+            def run_async():
+                # Create new event loop in thread
+                new_loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(new_loop)
+                try:
+                    return new_loop.run_until_complete(
+                        refine_sources_simple_async(sources_with_scores, file_path_list)
+                    )
+                finally:
+                    new_loop.close()
+            
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(run_async)
+                return future.result()
+        else:
+            # No loop running, we can run directly
+            return loop.run_until_complete(
+                refine_sources_simple_async(sources_with_scores, file_path_list)
+            )
+    except RuntimeError:
+        # No event loop exists, create one
+        return asyncio.run(
+            refine_sources_simple_async(sources_with_scores, file_path_list)
+        )
+
+
+async def refine_sources_complex_async(sources_with_scores, file_path_list, markdown_dir_list, user_input, image_url_mapping_merged, source_pages, source_file_index, image_url_mapping_merged_reverse):
+    """
+    Async version of refine_sources_complex with concurrent processing for improved performance.
     """
     config = load_config()
-    refined_sources = {}
+    
+    # Separate image sources from text sources
     image_sources = {}
     text_sources = {}
-
-    # First separate image sources from text sources. The image sources are the ones mapping from image URL to image score. If the source is an http image URL, add it to image_sources. Otherwise, add it to text_sources.
     for source, score in sources_with_scores.items():
         if source.startswith('https://knowhiztutorrag.blob'):
             image_sources[source] = score
         else:
             text_sources[source] = score
 
-    # TEST
-    logger.info("TEST: image sources before refine:")
     logger.info(f"TEST: length of image sources before refine: {len(image_sources)}")
-    logger.info(f"TEST: text sources before refine: {text_sources}")
     logger.info(f"TEST: length of text sources before refine: {len(text_sources)}")
 
-    # Filter image sources based on LLM evaluation
-    filtered_images = {}
+    # Process both image and text sources concurrently
+    tasks = []
+    
+    # Task 1: Process image sources if they exist
     if image_sources:
         # Initialize LLM for relevance evaluation
-        config = load_config()
         para = config['llm']
         llm = get_llm('basic', para)
         parser = JsonOutputParser()
         error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
-
+        
         # Create prompt for image relevance evaluation
         system_prompt = """
         You are an expert at evaluating the relevance between a user's question and image descriptions.
@@ -557,103 +693,37 @@ def refine_sources_complex(sources_with_scores, file_path_list, markdown_dir_lis
         ])
 
         chain = prompt | llm | error_parser
+        
+        image_task = process_image_sources_concurrently(
+            image_sources, user_input, image_url_mapping_merged_reverse,
+            llm, error_parser, chain
+        )
+        tasks.append(image_task)
+    else:
+        # Add empty result for images if no image sources
+        async def empty_images():
+            return {}
+        tasks.append(empty_images())
 
-        # Evaluate each image
-        image_scores = []
-        for idx, (image_url, score) in enumerate(image_sources.items()):
-            if image_url in image_url_mapping_merged_reverse:
-                # TEST
-                logger.info(f"TEST: No. {idx} evaluting image with image_url: {image_url}")
+    # Task 2: Process text sources
+    if text_sources:
+        text_task = process_text_sources_concurrently(text_sources, file_path_list)
+        tasks.append(text_task)
+    else:
+        # Add empty result for text if no text sources
+        async def empty_text():
+            return {}
+        tasks.append(empty_text())
 
-                # Get all context descriptions for this image
-                descriptions = image_url_mapping_merged_reverse[image_url]
-                descriptions_text = "\n".join([f"- {desc}" for desc in descriptions])
-
-                # Evaluate relevance using LLM
-                try:
-                    result = chain.invoke({
-                        "question": user_input,
-                        "descriptions": descriptions_text
-                    })
-
-                    # Store both the actual figure number and score
-                    if result["is_relevant"]:
-                        # Combine vector similarity score with LLM relevance score
-                        combined_score = (score + result["relevance_score"]) / 2
-                        image_scores.append((
-                            image_url,
-                            combined_score,
-                            result["actual_figure_number"],
-                            result["explanation"]
-                        ))
-                        # # TEST
-                        # logger.info(f"image_scores for {image_url}: {image_scores}")
-                        # logger.info(f"result for {image_url}: {result}")
-
-                except Exception as e:
-                    logger.exception(f"Error evaluating image {image_url}: {e}")
-                    continue
-            else:
-                logger.warning(f"Image URL {image_url} not found in image_url_mapping_merged_reverse")
-                logger.info(f"TEST: image_url_mapping_merged_reverse: {image_url_mapping_merged_reverse}")
-
-        # Sort images by relevance score
-        image_scores.sort(key=lambda x: x[1], reverse=True)
-
-        # Filter images with high relevance score (score > 0.2)
-        filtered_images = {img_url: score for img_url, score, fig_num, expl in image_scores if score > 0.5}
-
-        # if filtered_images:
-        #     # If asking about a specific figure, prioritize exact figure number match
-        #     import re
-        #     figure_pattern = re.compile(r'fig(?:ure)?\.?\s*(\d+)', re.IGNORECASE)
-        #     user_figure_match = figure_pattern.search(user_input)
-
-        #     if user_figure_match:
-        #         user_figure_num = user_figure_match.group(1)
-        #         # Look for exact figure number match first
-        #         exact_matches = {
-        #             img_url: score for img_url, score, fig_num, expl in image_scores
-        #             if re.search(rf'(?:figure|fig)\.?\s*{user_figure_num}\b', fig_num, re.IGNORECASE)
-        #         }
-        #         if exact_matches:
-        #             # Take the highest scored exact match
-        #             highest_match = max(exact_matches.items(), key=lambda x: x[1])
-        #             filtered_images = {highest_match[0]: highest_match[1]}
-        #         else:
-        #             # If no exact match found, include images with scores close to the highest score
-        #             if filtered_images:
-        #                 # Get the highest score
-        #                 highest_score = max(filtered_images.values())
-        #                 # Keep images with scores within 10% of the highest score
-        #                 score_threshold = highest_score * 0.9
-        #                 filtered_images = {img: score for img, score in filtered_images.items() if score >= score_threshold}
-        #     else:
-        # If no specific figure was asked for, include images with scores close to the highest score
-        if filtered_images:
-            # Get the highest score
-            highest_score = max(filtered_images.values())
-            # Keep images with scores within 10% of the highest score
-            score_threshold = highest_score * 0.9
-            filtered_images = {img_url: score for img_url, score in filtered_images.items() if score >= score_threshold}
-
-    # Process text sources as before
-    _docs = []
-    for file_path in file_path_list:
-        try:
-            _, _doc = process_pdf_file(file_path)
-            _docs.append(_doc)
-        except Exception as e:
-            logger.exception(f"Error opening document {file_path}: {e}")
-    for _doc in _docs:
-        for page in _doc:
-            for source, score in text_sources.items():
-                text_instances = robust_search_for(page, source)
-                if text_instances:
-                    refined_sources[source] = score
-
+    # Execute both tasks concurrently
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    
+    # Extract results
+    filtered_images = results[0] if not isinstance(results[0], Exception) else {}
+    refined_text_sources = results[1] if not isinstance(results[1], Exception) else {}
+    
     # Combine filtered image sources with refined text sources
-    final_sources = {**filtered_images, **refined_sources}
+    final_sources = {**filtered_images, **refined_text_sources}
 
     # Sort by score
     sorted_sources = dict(sorted(final_sources.items(), key=lambda x: x[1], reverse=True))
@@ -665,13 +735,62 @@ def refine_sources_complex(sources_with_scores, file_path_list, markdown_dir_lis
     # Further limit to top 20 if needed
     sorted_sources = dict(list(sorted_sources.items())[:20])
 
-    # TEST
-    logger.info("TEST: sorted sources after refine:")
+    logger.info("TEST: sorted sources after concurrent refine:")
     for source, score in sorted_sources.items():
         logger.info(f"{source}: {score}")
-    logger.info(f"TEST: length of sorted sources after refine: {len(sorted_sources)}")
+    logger.info(f"TEST: length of sorted sources after concurrent refine: {len(sorted_sources)}")
 
     return sorted_sources
+
+
+def refine_sources_complex(sources_with_scores, file_path_list, markdown_dir_list, user_input, image_url_mapping_merged, source_pages, source_file_index, image_url_mapping_merged_reverse):
+    """
+    Synchronous wrapper for the async concurrent version.
+    """
+    try:
+        # Try to get existing event loop
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # If loop is running, we need to use a thread pool
+            import threading
+            import concurrent.futures
+            
+            def run_async():
+                # Create new event loop in thread
+                new_loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(new_loop)
+                try:
+                    return new_loop.run_until_complete(
+                        refine_sources_complex_async(
+                            sources_with_scores, file_path_list, markdown_dir_list, 
+                            user_input, image_url_mapping_merged, source_pages, 
+                            source_file_index, image_url_mapping_merged_reverse
+                        )
+                    )
+                finally:
+                    new_loop.close()
+            
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(run_async)
+                return future.result()
+        else:
+            # No loop running, we can run directly
+            return loop.run_until_complete(
+                refine_sources_complex_async(
+                    sources_with_scores, file_path_list, markdown_dir_list, 
+                    user_input, image_url_mapping_merged, source_pages, 
+                    source_file_index, image_url_mapping_merged_reverse
+                )
+            )
+    except RuntimeError:
+        # No event loop exists, create one
+        return asyncio.run(
+            refine_sources_complex_async(
+                sources_with_scores, file_path_list, markdown_dir_list, 
+                user_input, image_url_mapping_merged, source_pages, 
+                source_file_index, image_url_mapping_merged_reverse
+            )
+        )
 
 
 def cosine_similarity(vec1, vec2):

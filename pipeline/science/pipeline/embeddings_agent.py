@@ -71,7 +71,8 @@ async def embeddings_agent(
         yield "\n\n**🗂️ Loading VectorRAG embeddings ...**"
     elif _mode == ChatMode.LITE:
         logger.info("Mode: ChatMode.LITE. Generating LiteRAG embeddings...")
-        yield f"\n\n**🔍 Loading LiteRAG embeddings for file: {os.path.basename(file_path)} ...**"
+        # yield f"\n\n**🔍 Loading LiteRAG embeddings for file: {os.path.basename(file_path)} ...**"
+        yield "\n\n**🔍 Loading LiteRAG embeddings for files...**"
         lite_embedding_start_time = time.time()
         await generate_LiteRAG_embedding(_doc, file_path, embedding_folder)
         time_tracking['lite_embedding_total'] = time.time() - lite_embedding_start_time

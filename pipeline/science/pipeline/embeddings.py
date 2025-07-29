@@ -3,11 +3,13 @@ import time
 from pathlib import Path
 from dotenv import load_dotenv
 from langchain_community.vectorstores import FAISS
+from langchain_community.document_loaders import PyMuPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 
 from pipeline.science.pipeline.config import load_config
 from pipeline.science.pipeline.api_handler import ApiHandler
+# from pipeline.science.pipeline.doc_processor import extract_document_from_file
 # from pipeline.science.pipeline.utils import create_searchable_chunks
 
 import logging
@@ -18,6 +20,13 @@ load_dotenv()
 # Control whether to use Marker API or not. Only for local environment we skip Marker API.
 SKIP_MARKER_API = True if os.getenv("ENVIRONMENT") == "local" else False
 logger.info(f"SKIP_MARKER_API: {SKIP_MARKER_API}")
+
+# Custom function to extract document objects from uploaded file
+def extract_document_from_file(file_path):
+    # Load the document
+    loader = PyMuPDFLoader(file_path)
+    document = loader.load()
+    return document
 
 # Define create_searchable_chunks here to avoid circular import
 def create_searchable_chunks(doc, chunk_size: int) -> list:
@@ -215,54 +224,31 @@ def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_s
 
 async def generate_LiteRAG_embedding(_doc, file_path, embedding_folder):
     """
-    Generate LiteRAG embeddings for the document
+    Generate LiteRAG embeddings for the document using page-level chunks.
+    Each page becomes one chunk in the embedding.
     """
     config = load_config()
     para = config['llm']
-    # file_id = generate_file_id(file_path)
     lite_embedding_folder = os.path.join(embedding_folder, 'lite_embedding')
-    page_based_embedding_folder = os.path.join(lite_embedding_folder, 'page_based_index')
     
     # Check if all necessary files exist to load the embeddings
     faiss_path = os.path.join(lite_embedding_folder, "index.faiss")
     pkl_path = os.path.join(lite_embedding_folder, "index.pkl")
-    page_based_faiss_path = os.path.join(page_based_embedding_folder, "index.faiss")
-    page_based_pkl_path = os.path.join(page_based_embedding_folder, "index.pkl")
     
     embeddings = get_embedding_models('lite', para)
     
     if os.path.exists(faiss_path) and os.path.exists(pkl_path):
-        # Try to load existing txt file in graphrag_embedding folder
         logger.info("LiteRAG embedding already exists. We can load existing embeddings...")
     else:
-        # # If embeddings don't exist, create them from raw text
-        # text_splitter = RecursiveCharacterTextSplitter(
-        #     chunk_size=1000,
-        #     chunk_overlap=200,
-        #     separators=["\n\n", "\n", " ", ""]
-        # )
-        # raw_text = "\n\n".join([page.get_text() for page in _doc])
-        # chunks = text_splitter.create_documents([raw_text])
-        average_page_length = 3000
-        chunk_size = int(average_page_length // 3)
-        logger.info(f"Average page length: {average_page_length}")
-        # yield f"\n\n**Average page length: {int(average_page_length)}**"
-        logger.info(f"Chunk size: {chunk_size}")
-        # yield f"\n\n**Chunk size: {int(chunk_size)}**"
-        texts = create_searchable_chunks(_doc, chunk_size)
-        db = FAISS.from_documents(texts, embeddings)
-        db.save_local(lite_embedding_folder)
-
-    # Create page-based embeddings
-    if os.path.exists(page_based_faiss_path) and os.path.exists(page_based_pkl_path):
-        logger.info("Page-based embedding already exists. We can load existing embeddings...")
-    else:
-        logger.info("Creating page-based embeddings...")
+        logger.info("Creating LiteRAG embeddings using page-level chunks...")
+        
+        # Extract document using the doc_processor function
+        document = extract_document_from_file(file_path)
+        
         # Create page-based documents (one document per page)
         page_documents = []
-        for page_num in range(len(_doc)):
-            page = _doc[page_num]
-            page_text = page.get_text()
+        for page_num, page_doc in enumerate(document):
+            page_text = page_doc.page_content
             
             # Clean up the text
             clean_text = page_text.strip()
@@ -278,20 +264,21 @@ async def generate_LiteRAG_embedding(_doc, file_path, embedding_folder):
                         "page": page_num,
                         "source": f"page_{page_num + 1}",
                         "page_type": "full_page",
-                        "total_pages": len(_doc)
+                        "total_pages": len(document),
+                        "file_path": file_path
                     }
                 ))
         
         if page_documents:
             # Create FAISS database from page documents
-            page_db = FAISS.from_documents(page_documents, embeddings)
+            db = FAISS.from_documents(page_documents, embeddings)
             # Create directory if it doesn't exist
-            os.makedirs(page_based_embedding_folder, exist_ok=True)
-            # Save the page-based embeddings
-            page_db.save_local(page_based_embedding_folder)
-            logger.info(f"Saved {len(page_documents)} page-based documents to {page_based_embedding_folder}")
+            os.makedirs(lite_embedding_folder, exist_ok=True)
+            # Save the embeddings
+            db.save_local(lite_embedding_folder)
+            logger.info(f"Saved {len(page_documents)} page-level chunks to {lite_embedding_folder}")
         else:
-            logger.warning("No page content found to create page-based embeddings")
+            logger.warning("No page content found to create LiteRAG embeddings")
 
 
 def load_embeddings(embedding_folder_list: list[str | Path], embedding_type: str = 'default'):

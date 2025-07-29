@@ -62,6 +62,7 @@ class ApiHandler:
                 api_key=api_key,
                 model_name=deployment_name,
                 temperature=temperature,
+                max_tokens=20000,
                 model_kwargs={"stream_options": {"include_usage": True}} if stream else {}
             )
         elif host == 'azure':
@@ -72,6 +73,7 @@ class ApiHandler:
                 azure_deployment=deployment_name,
                 temperature=temperature,
                 streaming=stream,
+                max_tokens=20000,
                 model_kwargs={"stream_options": {"include_usage": True}} if stream else {}
             )
         elif host == 'sambanova':
@@ -79,7 +81,7 @@ class ApiHandler:
                 model=deployment_name,
                 api_key=self.sambanova_api_key,
                 base_url="https://api.sambanova.ai/v1",
-                max_tokens=1024,
+                max_tokens=3000,
                 temperature=temperature,
                 top_p=0.1,
                 streaming=stream,
@@ -128,9 +130,9 @@ class ApiHandler:
 
         if self.para['llm_source'] == 'azure' or self.para['llm_source'] == 'openai':
             models = {
-                'basic': {'instance': llm_basic, 'context_window': 1047576},
-                'advanced': {'instance': llm_advance, 'context_window': 1047576},
-                'creative': {'instance': llm_creative, 'context_window': 1047576},
+                'basic': {'instance': llm_basic, 'context_window': 128000},
+                'advanced': {'instance': llm_advance, 'context_window': 128000},
+                'creative': {'instance': llm_creative, 'context_window': 128000},
                 'backup': {'instance': llm_llama, 'context_window': 128000},
             }
         elif self.para['llm_source'] == 'sambanova':
@@ -138,7 +140,7 @@ class ApiHandler:
                 'basic': {'instance': llm_llama, 'context_window': 128000},
                 'advanced': {'instance': llm_llama, 'context_window': 128000},
                 'creative': {'instance': llm_llama, 'context_window': 128000},
-                'backup': {'instance': llm_basic, 'context_window': 1047576},
+                'backup': {'instance': llm_basic, 'context_window': 128000},
             }
         # elif self.para['llm_source'] == 'deepseek':
         #     models = {

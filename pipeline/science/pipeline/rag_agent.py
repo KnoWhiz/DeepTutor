@@ -131,7 +131,7 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
     # Get relevant chunks for question with scores
     # First retrieve more candidates than needed to ensure we have enough after filtering
     filter_min_length = 50
-    fetch_k = max(config['retriever']['k'] * 2, 20)  # Fetch 3x more to ensure enough pass the filter
+    fetch_k = min(config['retriever']['k'] * 2, 15)  # Fetch 3x more to ensure enough pass the filter
 
     all_chunks_with_scores = db.similarity_search_with_score(rag_user_input_string, k=fetch_k)
 
@@ -220,7 +220,7 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
             page_db = load_embeddings(page_embedding_folder_list, 'default')
         else:  # ChatMode.LITE
             logger.info(f"Loading page-based embeddings for {chat_session.mode} mode")
-            page_embedding_folder_list = [os.path.join(embedding_folder, 'lite_embedding', 'page_based_index') for embedding_folder in embedding_folder_list]
+            page_embedding_folder_list = [os.path.join(embedding_folder, 'lite_embedding') for embedding_folder in embedding_folder_list]
             page_db = load_embeddings(page_embedding_folder_list, 'lite')
         
         logger.info(f"Successfully loaded page-based embeddings from: {page_embedding_folder_list}")

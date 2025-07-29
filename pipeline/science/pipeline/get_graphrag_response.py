@@ -68,7 +68,7 @@ async def get_GraphRAG_global_response(question: Question, chat_history, file_pa
         api_version=api_version,
         model=llm_model,
         api_type=OpenaiApiType.AzureOpenAI,
-        max_retries=20,
+        max_retries=15,
     )
     token_encoder = tiktoken.encoding_for_model(llm_model)
 

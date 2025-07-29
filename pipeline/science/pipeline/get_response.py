@@ -671,7 +671,7 @@ async def get_query_helper(chat_session: ChatSession, user_input, context_chat_h
             # Get the images understanding from the image url about the question
             question.special_context = """
             Here is the context and visual understanding of the corresponding image:
-            """ + analyze_image(question.image_url, f"The user's question is: {question.text}", f"The user's question is: {question.text}")
+            """ + analyze_image(question.image_url, f"The user's question is: {question.text}", f"The user's question is: {question.text}", stream=False)
 
         logger.info(f"TEST: question.special_context: {question.special_context}")
     elif question_type == "local":

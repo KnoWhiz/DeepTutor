@@ -203,14 +203,40 @@ def locate_chunk_in_pdf(chunk: str, pdf_path: str, similarity_threshold: float =
 
 def get_response_source(chat_session: ChatSession, file_path_list, user_input, answer, chat_history, embedding_folder_list):
     """
-    Get the sources for the response
-    Return a dictionary of sources with scores and metadata
-    The scores are normalized to 0-1 range
-    The metadata includes the page number, chunk index, and block bounding box coordinates
-    The sources are refined by checking if they can be found in the document
-    Only get first 15 sources
-    Show them in the order they are found in the document
-    Preserve image filenames but filter them based on context relevance using LLM
+    Retrieves and processes source references for AI-generated responses in a tutoring system.
+    
+    This function performs semantic similarity search across embedded document chunks to identify
+    relevant source content that supports the generated response. It handles both textual content
+    and image references, providing normalized relevance scores and metadata for source attribution.
+    
+    Args:
+        chat_session (ChatSession): Active chat session containing conversation context and settings
+        file_path_list (List[str]): Paths to the uploaded document files being referenced
+        user_input (str): The original user query that prompted the response
+        answer (str): The AI-generated response content to find sources for
+        chat_history (List): Historical conversation context for improved source matching
+        embedding_folder_list (List[str]): Paths to directories containing pre-computed embeddings
+    
+    Returns:
+        Tuple[Dict, Dict, Dict, Dict]: A 4-tuple containing:
+            - sources_with_scores: Dictionary mapping source content to normalized relevance scores (0-1)
+            - source_pages: Dictionary mapping source content to original page numbers in documents
+            - refined_source_pages: Dictionary mapping validated sources to 1-indexed page numbers
+            - refined_source_index: Dictionary mapping sources to their corresponding file indices
+    
+    Processing Pipeline:
+        1. Loads image context mappings and URL references from embedding metadata
+        2. Performs similarity search on chat context and response content
+        3. Extracts and normalizes relevance scores across all retrieved chunks
+        4. Maps image descriptions to URLs while preserving source attribution
+        5. Validates sources against original documents and filters results
+        6. Returns structured source data for citation and reference display
+    
+    Note:
+        - Relevance scores are inverted distance metrics (lower distance = higher relevance)
+        - Image sources are mapped from descriptions to actual URLs when available
+        - Source validation ensures cited content can be located in original documents
+        - Page numbers are converted to 1-indexed format for user display
     """
     mode = chat_session.mode
     config = load_config()

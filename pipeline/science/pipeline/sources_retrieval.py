@@ -201,7 +201,7 @@ def locate_chunk_in_pdf(chunk: str, pdf_path: str, similarity_threshold: float =
     }
 
 
-def get_response_source(chat_session: ChatSession, file_path_list, user_input, answer, chat_history, embedding_folder_list):
+def get_response_source_complex(chat_session: ChatSession, file_path_list, user_input, answer, chat_history, embedding_folder_list):
     """
     Retrieves and processes source references for AI-generated responses in a tutoring system.
     
@@ -429,4 +429,81 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
     # Memory cleanup
     db = None
 
+    return sources_with_scores, source_pages, refined_source_pages, refined_source_index
+
+
+def get_response_source(chat_session: ChatSession, file_path_list, user_input, answer, chat_history, embedding_folder_list):
+    """
+    Simplified version that retrieves source references directly from chat_session.formatted_context.
+    
+    This function extracts source information from the pre-computed formatted_context stored in the
+    chat session, which contains chunks ordered by source_index and page_number with their metadata.
+    
+    Args:
+        chat_session (ChatSession): Active chat session containing formatted_context
+        file_path_list (List[str]): Paths to the uploaded document files being referenced
+        user_input (str): The original user query that prompted the response
+        answer (str): The AI-generated response content to find sources for
+        chat_history (List): Historical conversation context (unused in simplified version)
+        embedding_folder_list (List[str]): Paths to directories containing embeddings (unused in simplified version)
+    
+    Returns:
+        Tuple[Dict, Dict, Dict, Dict]: A 4-tuple containing:
+            - sources_with_scores: Dictionary mapping source content to relevance scores (0-1)
+            - source_pages: Dictionary mapping source content to 0-indexed page numbers
+            - refined_source_pages: Dictionary mapping sources to 1-indexed page numbers
+            - refined_source_index: Dictionary mapping sources to their corresponding file indices
+    
+    Context Format Expected:
+        chat_session.formatted_context = {
+            "[<1>]": {
+                "content": "relevant text chunk", 
+                "score": 0.85,
+                "page_num": 5,      # 1-indexed page number (page 5)
+                "source_index": 1   # 1-indexed file position (first file)
+            },
+            "[<2>]": {
+                "content": "another chunk", 
+                "score": 0.72,
+                "page_num": 12,     # 1-indexed page number (page 12)  
+                "source_index": 2   # 1-indexed file position (second file)
+            },
+            ...
+        }
+    """
+    logger.info("Using simplified get_response_source with formatted_context")
+    
+    # Initialize result dictionaries
+    sources_with_scores = {}
+    source_pages = {}
+    refined_source_pages = {}
+    refined_source_index = {}
+    
+    # Extract information directly from formatted_context
+    if hasattr(chat_session, 'formatted_context') and chat_session.formatted_context:
+        for symbol, context_data in chat_session.formatted_context.items():
+            content = context_data["content"]
+            score = context_data["score"] 
+            page_num = context_data["page_num"]  # 1-indexed from context
+            source_index = context_data["source_index"]  # 1-indexed from context
+            
+            # Store the content as key with its score
+            sources_with_scores[content] = float(score)
+            
+            # Store 0-indexed page number for source_pages and refined_source_pages (converting from 1-indexed)
+            source_pages[content] = page_num - 1
+            refined_source_pages[content] = page_num - 1
+            
+            # Store 0-indexed file index for refined_source_index (converting from 1-indexed)
+            # This matches the original behavior where refined_source_index uses the raw file_index
+            refined_source_index[content] = source_index - 1
+            
+        logger.info(f"Extracted {len(sources_with_scores)} sources from formatted_context")
+        logger.info(f"Sources with scores: {len(sources_with_scores)} items")
+        logger.info(f"Refined source pages: {len(refined_source_pages)} items")
+        logger.info(f"Refined source index: {len(refined_source_index)} items")
+        
+    else:
+        logger.warning("No formatted_context found in chat_session, returning empty results")
+    
     return sources_with_scores, source_pages, refined_source_pages, refined_source_index

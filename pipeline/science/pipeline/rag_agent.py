@@ -147,13 +147,13 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
     
     Context Format:
         {
-            "A": {
+            "[<1>]": {
                 "content": "relevant text chunk", 
                 "score": 0.85,
                 "page_num": 5,      # 1-indexed page number (page 5)
                 "source_index": 1   # 1-indexed file position (first file)
             },
-            "B": {
+            "[<2>]": {
                 "content": "another chunk", 
                 "score": 0.72,
                 "page_num": 12,     # 1-indexed page number (page 12)  

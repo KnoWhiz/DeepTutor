@@ -490,9 +490,9 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
             # Store the content as key with its score
             sources_with_scores[content] = float(score)
             
-            # Store 0-indexed page number for source_pages and refined_source_pages (converting from 1-indexed)
-            source_pages[content] = page_num - 1
-            refined_source_pages[content] = page_num - 1
+            # Store 0-indexed page number for source_pages and refined_source_pages (no need to convert from 1-indexed)
+            source_pages[content] = page_num
+            refined_source_pages[content] = page_num
             
             # Store 0-indexed file index for refined_source_index (converting from 1-indexed)
             # This matches the original behavior where refined_source_index uses the raw file_index

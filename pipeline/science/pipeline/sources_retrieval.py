@@ -446,232 +446,232 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
     return sources_with_scores, source_pages, refined_source_pages, refined_source_index
 
 
-def refine_sources_simple(sources_with_scores, file_path_list):
-    """
-    Simplified version of refine_sources_complex that only checks if text chunks can be found in the document.
-    Returns a dictionary of refined sources with their scores.
+# def refine_sources_simple(sources_with_scores, file_path_list):
+#     """
+#     Simplified version of refine_sources_complex that only checks if text chunks can be found in the document.
+#     Returns a dictionary of refined sources with their scores.
     
-    Args:
-        sources_with_scores: A dictionary mapping text chunks to their relevance scores
-        file_path_list: List of PDF file paths to search in
+#     Args:
+#         sources_with_scores: A dictionary mapping text chunks to their relevance scores
+#         file_path_list: List of PDF file paths to search in
         
-    Returns:
-        Dictionary of refined sources that were found in the original documents
-    """
-    refined_sources = {}
+#     Returns:
+#         Dictionary of refined sources that were found in the original documents
+#     """
+#     refined_sources = {}
     
-    # Process text sources
-    _docs = []
-    for file_path in file_path_list:
-        try:
-            _, _doc = process_pdf_file(file_path)
-            _docs.append(_doc)
-        except Exception as e:
-            logger.exception(f"Error opening document {file_path}: {e}")
+#     # Process text sources
+#     _docs = []
+#     for file_path in file_path_list:
+#         try:
+#             _, _doc = process_pdf_file(file_path)
+#             _docs.append(_doc)
+#         except Exception as e:
+#             logger.exception(f"Error opening document {file_path}: {e}")
     
-    # Check each source against the document pages
-    for _doc in _docs:
-        for page in _doc:
-            for source, score in sources_with_scores.items():
-                text_instances = robust_search_for(page, source)
-                if text_instances:
-                    refined_sources[source] = score
+#     # Check each source against the document pages
+#     for _doc in _docs:
+#         for page in _doc:
+#             for source, score in sources_with_scores.items():
+#                 text_instances = robust_search_for(page, source)
+#                 if text_instances:
+#                     refined_sources[source] = score
     
-    return refined_sources
+#     return refined_sources
 
 
-def refine_sources_complex(sources_with_scores, file_path_list, markdown_dir_list, user_input, image_url_mapping_merged, source_pages, source_file_index, image_url_mapping_merged_reverse):
-    """
-    Refine sources by checking if they can be found in the document
-    Only get first 15 sources
-    Show them in the order they are found in the document
-    Preserve image filenames but filter them based on context relevance using LLM
-    Source_pages: a dictionary that maps each source to the page number it is found in. For images, it is mapping from the image URL to the page number.
-    Source_file_index: a dictionary that maps each source to the file index it is found in. For images, it is mapping from the image URL to the file index.
-    Sources_with_scores: a dictionary that maps each source to the score it has. For images, it is mapping from the image URL to the score.
-    """
-    config = load_config()
-    refined_sources = {}
-    image_sources = {}
-    text_sources = {}
+# def refine_sources_complex(sources_with_scores, file_path_list, markdown_dir_list, user_input, image_url_mapping_merged, source_pages, source_file_index, image_url_mapping_merged_reverse):
+#     """
+#     Refine sources by checking if they can be found in the document
+#     Only get first 15 sources
+#     Show them in the order they are found in the document
+#     Preserve image filenames but filter them based on context relevance using LLM
+#     Source_pages: a dictionary that maps each source to the page number it is found in. For images, it is mapping from the image URL to the page number.
+#     Source_file_index: a dictionary that maps each source to the file index it is found in. For images, it is mapping from the image URL to the file index.
+#     Sources_with_scores: a dictionary that maps each source to the score it has. For images, it is mapping from the image URL to the score.
+#     """
+#     config = load_config()
+#     refined_sources = {}
+#     image_sources = {}
+#     text_sources = {}
 
-    # First separate image sources from text sources. The image sources are the ones mapping from image URL to image score. If the source is an http image URL, add it to image_sources. Otherwise, add it to text_sources.
-    for source, score in sources_with_scores.items():
-        if source.startswith('https://knowhiztutorrag.blob'):
-            image_sources[source] = score
-        else:
-            text_sources[source] = score
+#     # First separate image sources from text sources. The image sources are the ones mapping from image URL to image score. If the source is an http image URL, add it to image_sources. Otherwise, add it to text_sources.
+#     for source, score in sources_with_scores.items():
+#         if source.startswith('https://knowhiztutorrag.blob'):
+#             image_sources[source] = score
+#         else:
+#             text_sources[source] = score
 
-    # TEST
-    logger.info("TEST: image sources before refine:")
-    logger.info(f"TEST: length of image sources before refine: {len(image_sources)}")
-    logger.info(f"TEST: text sources before refine: {text_sources}")
-    logger.info(f"TEST: length of text sources before refine: {len(text_sources)}")
+#     # TEST
+#     logger.info("TEST: image sources before refine:")
+#     logger.info(f"TEST: length of image sources before refine: {len(image_sources)}")
+#     logger.info(f"TEST: text sources before refine: {text_sources}")
+#     logger.info(f"TEST: length of text sources before refine: {len(text_sources)}")
 
-    # Filter image sources based on LLM evaluation
-    filtered_images = {}
-    if image_sources:
-        # Initialize LLM for relevance evaluation
-        config = load_config()
-        para = config['llm']
-        llm = get_llm('basic', para)
-        parser = JsonOutputParser()
-        error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
+#     # Filter image sources based on LLM evaluation
+#     filtered_images = {}
+#     if image_sources:
+#         # Initialize LLM for relevance evaluation
+#         config = load_config()
+#         para = config['llm']
+#         llm = get_llm('basic', para)
+#         parser = JsonOutputParser()
+#         error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
 
-        # Create prompt for image relevance evaluation
-        system_prompt = """
-        You are an expert at evaluating the relevance between a user's question and image descriptions.
-        Given a user's question and descriptions of an image, determine if the image is relevant and provide a relevance score.
+#         # Create prompt for image relevance evaluation
+#         system_prompt = """
+#         You are an expert at evaluating the relevance between a user's question and image descriptions.
+#         Given a user's question and descriptions of an image, determine if the image is relevant and provide a relevance score.
 
-        First, analyze the image descriptions to identify the actual figure number in the document (e.g., "Figure 1", "Fig. 2", etc.).
-        Then evaluate the relevance considering both the actual figure number and the content.
+#         First, analyze the image descriptions to identify the actual figure number in the document (e.g., "Figure 1", "Fig. 2", etc.).
+#         Then evaluate the relevance considering both the actual figure number and the content.
 
-        Organize your response in the following JSON format:
-        ```json
-        {{
-            "actual_figure_number": "<extracted figure number from descriptions, e.g. 'Figure 1', 'Fig. 2', etc.>",
-            "is_relevant": <Boolean, True/False>,
-            "relevance_score": <float between 0 and 1>,
-            "explanation": "<brief explanation including actual figure number and why this image is or isn't relevant>"
-        }}
-        ```
+#         Organize your response in the following JSON format:
+#         ```json
+#         {{
+#             "actual_figure_number": "<extracted figure number from descriptions, e.g. 'Figure 1', 'Fig. 2', etc.>",
+#             "is_relevant": <Boolean, True/False>,
+#             "relevance_score": <float between 0 and 1>,
+#             "explanation": "<brief explanation including actual figure number and why this image is or isn't relevant>"
+#         }}
+#         ```
 
-        Pay special attention to:
-        1. If the user asks about a specific figure number (e.g., "Figure 1"), prioritize matching the ACTUAL figure number from descriptions, NOT the filename
-        2. The semantic meaning and context of both the question and image descriptions
-        3. Whether the image would help answer the user's question
-        4. Look for figure number mentions in the descriptions like "Figure X", "Fig. X", "Figure-X", etc.
-        """
+#         Pay special attention to:
+#         1. If the user asks about a specific figure number (e.g., "Figure 1"), prioritize matching the ACTUAL figure number from descriptions, NOT the filename
+#         2. The semantic meaning and context of both the question and image descriptions
+#         3. Whether the image would help answer the user's question
+#         4. Look for figure number mentions in the descriptions like "Figure X", "Fig. X", "Figure-X", etc.
+#         """
 
-        human_prompt = """
-        User's question: {question}
-        Image descriptions:
-        {descriptions}
+#         human_prompt = """
+#         User's question: {question}
+#         Image descriptions:
+#         {descriptions}
 
-        Note: The image filename may not reflect the actual figure number in the document. Please extract the actual figure number from the descriptions.
-        """
+#         Note: The image filename may not reflect the actual figure number in the document. Please extract the actual figure number from the descriptions.
+#         """
 
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", system_prompt),
-            ("human", human_prompt),
-        ])
+#         prompt = ChatPromptTemplate.from_messages([
+#             ("system", system_prompt),
+#             ("human", human_prompt),
+#         ])
 
-        chain = prompt | llm | error_parser
+#         chain = prompt | llm | error_parser
 
-        # Evaluate each image
-        image_scores = []
-        for idx, (image_url, score) in enumerate(image_sources.items()):
-            if image_url in image_url_mapping_merged_reverse:
-                # TEST
-                logger.info(f"TEST: No. {idx} evaluting image with image_url: {image_url}")
+#         # Evaluate each image
+#         image_scores = []
+#         for idx, (image_url, score) in enumerate(image_sources.items()):
+#             if image_url in image_url_mapping_merged_reverse:
+#                 # TEST
+#                 logger.info(f"TEST: No. {idx} evaluting image with image_url: {image_url}")
 
-                # Get all context descriptions for this image
-                descriptions = image_url_mapping_merged_reverse[image_url]
-                descriptions_text = "\n".join([f"- {desc}" for desc in descriptions])
+#                 # Get all context descriptions for this image
+#                 descriptions = image_url_mapping_merged_reverse[image_url]
+#                 descriptions_text = "\n".join([f"- {desc}" for desc in descriptions])
 
-                # Evaluate relevance using LLM
-                try:
-                    result = chain.invoke({
-                        "question": user_input,
-                        "descriptions": descriptions_text
-                    })
+#                 # Evaluate relevance using LLM
+#                 try:
+#                     result = chain.invoke({
+#                         "question": user_input,
+#                         "descriptions": descriptions_text
+#                     })
 
-                    # Store both the actual figure number and score
-                    if result["is_relevant"]:
-                        # Combine vector similarity score with LLM relevance score
-                        combined_score = (score + result["relevance_score"]) / 2
-                        image_scores.append((
-                            image_url,
-                            combined_score,
-                            result["actual_figure_number"],
-                            result["explanation"]
-                        ))
-                        # # TEST
-                        # logger.info(f"image_scores for {image_url}: {image_scores}")
-                        # logger.info(f"result for {image_url}: {result}")
+#                     # Store both the actual figure number and score
+#                     if result["is_relevant"]:
+#                         # Combine vector similarity score with LLM relevance score
+#                         combined_score = (score + result["relevance_score"]) / 2
+#                         image_scores.append((
+#                             image_url,
+#                             combined_score,
+#                             result["actual_figure_number"],
+#                             result["explanation"]
+#                         ))
+#                         # # TEST
+#                         # logger.info(f"image_scores for {image_url}: {image_scores}")
+#                         # logger.info(f"result for {image_url}: {result}")
 
-                except Exception as e:
-                    logger.exception(f"Error evaluating image {image_url}: {e}")
-                    continue
-            else:
-                logger.warning(f"Image URL {image_url} not found in image_url_mapping_merged_reverse")
-                logger.info(f"TEST: image_url_mapping_merged_reverse: {image_url_mapping_merged_reverse}")
+#                 except Exception as e:
+#                     logger.exception(f"Error evaluating image {image_url}: {e}")
+#                     continue
+#             else:
+#                 logger.warning(f"Image URL {image_url} not found in image_url_mapping_merged_reverse")
+#                 logger.info(f"TEST: image_url_mapping_merged_reverse: {image_url_mapping_merged_reverse}")
 
-        # Sort images by relevance score
-        image_scores.sort(key=lambda x: x[1], reverse=True)
+#         # Sort images by relevance score
+#         image_scores.sort(key=lambda x: x[1], reverse=True)
 
-        # Filter images with high relevance score (score > 0.2)
-        filtered_images = {img_url: score for img_url, score, fig_num, expl in image_scores if score > 0.5}
+#         # Filter images with high relevance score (score > 0.2)
+#         filtered_images = {img_url: score for img_url, score, fig_num, expl in image_scores if score > 0.5}
 
-        # if filtered_images:
-        #     # If asking about a specific figure, prioritize exact figure number match
-        #     import re
-        #     figure_pattern = re.compile(r'fig(?:ure)?\.?\s*(\d+)', re.IGNORECASE)
-        #     user_figure_match = figure_pattern.search(user_input)
+#         # if filtered_images:
+#         #     # If asking about a specific figure, prioritize exact figure number match
+#         #     import re
+#         #     figure_pattern = re.compile(r'fig(?:ure)?\.?\s*(\d+)', re.IGNORECASE)
+#         #     user_figure_match = figure_pattern.search(user_input)
 
-        #     if user_figure_match:
-        #         user_figure_num = user_figure_match.group(1)
-        #         # Look for exact figure number match first
-        #         exact_matches = {
-        #             img_url: score for img_url, score, fig_num, expl in image_scores
-        #             if re.search(rf'(?:figure|fig)\.?\s*{user_figure_num}\b', fig_num, re.IGNORECASE)
-        #         }
-        #         if exact_matches:
-        #             # Take the highest scored exact match
-        #             highest_match = max(exact_matches.items(), key=lambda x: x[1])
-        #             filtered_images = {highest_match[0]: highest_match[1]}
-        #         else:
-        #             # If no exact match found, include images with scores close to the highest score
-        #             if filtered_images:
-        #                 # Get the highest score
-        #                 highest_score = max(filtered_images.values())
-        #                 # Keep images with scores within 10% of the highest score
-        #                 score_threshold = highest_score * 0.9
-        #                 filtered_images = {img: score for img, score in filtered_images.items() if score >= score_threshold}
-        #     else:
-        # If no specific figure was asked for, include images with scores close to the highest score
-        if filtered_images:
-            # Get the highest score
-            highest_score = max(filtered_images.values())
-            # Keep images with scores within 10% of the highest score
-            score_threshold = highest_score * 0.9
-            filtered_images = {img_url: score for img_url, score in filtered_images.items() if score >= score_threshold}
+#         #     if user_figure_match:
+#         #         user_figure_num = user_figure_match.group(1)
+#         #         # Look for exact figure number match first
+#         #         exact_matches = {
+#         #             img_url: score for img_url, score, fig_num, expl in image_scores
+#         #             if re.search(rf'(?:figure|fig)\.?\s*{user_figure_num}\b', fig_num, re.IGNORECASE)
+#         #         }
+#         #         if exact_matches:
+#         #             # Take the highest scored exact match
+#         #             highest_match = max(exact_matches.items(), key=lambda x: x[1])
+#         #             filtered_images = {highest_match[0]: highest_match[1]}
+#         #         else:
+#         #             # If no exact match found, include images with scores close to the highest score
+#         #             if filtered_images:
+#         #                 # Get the highest score
+#         #                 highest_score = max(filtered_images.values())
+#         #                 # Keep images with scores within 10% of the highest score
+#         #                 score_threshold = highest_score * 0.9
+#         #                 filtered_images = {img: score for img, score in filtered_images.items() if score >= score_threshold}
+#         #     else:
+#         # If no specific figure was asked for, include images with scores close to the highest score
+#         if filtered_images:
+#             # Get the highest score
+#             highest_score = max(filtered_images.values())
+#             # Keep images with scores within 10% of the highest score
+#             score_threshold = highest_score * 0.9
+#             filtered_images = {img_url: score for img_url, score in filtered_images.items() if score >= score_threshold}
 
-    # Process text sources as before
-    _docs = []
-    for file_path in file_path_list:
-        try:
-            _, _doc = process_pdf_file(file_path)
-            _docs.append(_doc)
-        except Exception as e:
-            logger.exception(f"Error opening document {file_path}: {e}")
-    for _doc in _docs:
-        for page in _doc:
-            for source, score in text_sources.items():
-                text_instances = robust_search_for(page, source)
-                if text_instances:
-                    refined_sources[source] = score
+#     # Process text sources as before
+#     _docs = []
+#     for file_path in file_path_list:
+#         try:
+#             _, _doc = process_pdf_file(file_path)
+#             _docs.append(_doc)
+#         except Exception as e:
+#             logger.exception(f"Error opening document {file_path}: {e}")
+#     for _doc in _docs:
+#         for page in _doc:
+#             for source, score in text_sources.items():
+#                 text_instances = robust_search_for(page, source)
+#                 if text_instances:
+#                     refined_sources[source] = score
 
-    # Combine filtered image sources with refined text sources
-    final_sources = {**filtered_images, **refined_sources}
+#     # Combine filtered image sources with refined text sources
+#     final_sources = {**filtered_images, **refined_sources}
 
-    # Sort by score
-    sorted_sources = dict(sorted(final_sources.items(), key=lambda x: x[1], reverse=True))
+#     # Sort by score
+#     sorted_sources = dict(sorted(final_sources.items(), key=lambda x: x[1], reverse=True))
 
-    # Keep only the top 50% of sources by score
-    num_sources_to_keep = max(1, len(sorted_sources) // 2)  # Keep at least 1 source
-    sorted_sources = dict(list(sorted_sources.items())[:num_sources_to_keep])
+#     # Keep only the top 50% of sources by score
+#     num_sources_to_keep = max(1, len(sorted_sources) // 2)  # Keep at least 1 source
+#     sorted_sources = dict(list(sorted_sources.items())[:num_sources_to_keep])
 
-    # Further limit to top 15 if needed
-    sorted_sources = dict(list(sorted_sources.items())[:15])
+#     # Further limit to top 15 if needed
+#     sorted_sources = dict(list(sorted_sources.items())[:15])
 
-    # TEST
-    logger.info("TEST: sorted sources after refine:")
-    for source, score in sorted_sources.items():
-        logger.info(f"{source}: {score}")
-    logger.info(f"TEST: length of sorted sources after refine: {len(sorted_sources)}")
+#     # TEST
+#     logger.info("TEST: sorted sources after refine:")
+#     for source, score in sorted_sources.items():
+#         logger.info(f"{source}: {score}")
+#     logger.info(f"TEST: length of sorted sources after refine: {len(sorted_sources)}")
 
-    return sorted_sources
+#     return sorted_sources
 
 
 def cosine_similarity(vec1, vec2):

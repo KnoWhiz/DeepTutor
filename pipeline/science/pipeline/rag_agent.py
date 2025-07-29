@@ -96,10 +96,79 @@ def get_page_content_from_file(file_path_list, file_index, page_number):
 
 
 async def get_rag_context(chat_session: ChatSession, file_path_list, question: Question, chat_history, embedding_folder_list, deep_thinking = True, stream=False, context=""):
+    """
+    Retrieves and processes relevant document context for RAG (Retrieval-Augmented Generation) operations.
+    
+    This function performs semantic similarity search across embedded document chunks to identify
+    the most relevant content for answering user questions. It supports multiple chat modes
+    (Basic, Advanced, Lite) with different embedding strategies and provides both chunk-level
+    and page-level context formatting for optimal AI response generation.
+    
+    Args:
+        chat_session (ChatSession): Active chat session containing mode settings and context state
+        file_path_list (List[str]): Paths to uploaded document files being queried
+        question (Question): Structured question object containing text, language, and metadata
+        chat_history (List): Historical conversation context for improved retrieval
+        embedding_folder_list (List[str]): Paths to directories containing pre-computed embeddings
+        deep_thinking (bool, optional): Enable enhanced reasoning capabilities. Defaults to True
+        stream (bool, optional): Enable streaming response mode. Defaults to False
+        context (str, optional): Additional context to append to user input. Defaults to ""
+    
+    Returns:
+        Dict[str, Dict]: Formatted context dictionary mapping symbols to content chunks with scores
+        
+    Processing Pipeline:
+        1. Mode Detection & Embedding Loading:
+           - Basic/Advanced: Loads markdown embeddings for rich document understanding
+           - Lite: Loads lightweight embeddings for faster processing
+           
+        2. Query Enhancement:
+           - Combines user question with additional context and special planning information
+           - Truncates chat history based on mode-specific token limits
+           
+        3. Semantic Retrieval:
+           - Performs similarity search with configurable fetch size (2x target for filtering)
+           - Filters chunks by minimum length (50 characters) to ensure content quality
+           - Deduplicates results to avoid redundant information
+           
+        4. Token Budget Management:
+           - Accumulates chunks until token limit reached (varies by mode)
+           - Prioritizes highest scoring (most relevant) chunks first
+           - Maps chunks to symbolic references (A, B, C, etc.) for model consumption
+           
+        5. Dual Context Creation:
+           - Chunk-level context: Fine-grained relevant text segments
+           - Page-level context: Broader document context for comprehensive understanding
+           - Both contexts use similarity scoring for relevance ranking
+           
+        6. Session State Update:
+           - Stores formatted_context in chat session for response generation
+           - Stores page_formatted_context for enhanced document understanding
+    
+    Context Format:
+        {
+            "A": {"content": "relevant text chunk", "score": 0.85},
+            "B": {"content": "another chunk", "score": 0.72},
+            ...
+        }
+    
+    Error Handling:
+        - Graceful fallback from markdown to default embeddings if loading fails
+        - Empty page context fallback if page-based embedding creation fails
+        - Comprehensive logging for debugging retrieval quality issues
+        
+    Performance Considerations:
+        - Configurable token limits prevent context overflow
+        - Deduplication reduces redundant processing
+        - Mode-specific optimizations balance quality vs. speed
+    """
     config = load_config()
-    # Add the context to the user input to improve the retrieval quality
+    
+    # === STEP 1: Query Enhancement ===
+    # Combine user question with additional context to improve retrieval quality
     user_input = question.text + "\n\n" + context
 
+    # === STEP 2: Mode-Specific Embedding Loading ===
     # Handle Basic mode and Advanced mode
     if chat_session.mode == ChatMode.BASIC or chat_session.mode == ChatMode.ADVANCED:
         logger.info(f"Current mode is {chat_session.mode}")
@@ -110,15 +179,16 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
         except Exception as e:
             logger.exception(f"Failed to load markdown embeddings for deep thinking mode: {str(e)}")
             db = load_embeddings(embedding_folder_list, 'default')
-    # elif chat_session.mode == ChatMode.LITE:
-    # Handle Lite mode in other cases
+    # === STEP 2b: Lite Mode Handling ===
+    # Handle Lite mode in other cases - uses lightweight embeddings
     else:
         logger.info(f"Current mode is {chat_session.mode}")
         actual_embedding_folder_list = [os.path.join(embedding_folder, 'lite_embedding') for embedding_folder in embedding_folder_list]
         logger.info(f"actual_embedding_folder_list in get_rag_context: {actual_embedding_folder_list}")
         db = load_embeddings(actual_embedding_folder_list, 'lite')
 
-    # Load config for deep thinking mode
+    # === STEP 3: Token Budget Configuration ===
+    # Configure token limits based on chat mode for optimal context size
     config = load_config()
     if chat_session.mode == ChatMode.LITE:
         token_limit = config["basic_token_limit"]
@@ -128,8 +198,9 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
     user_input_string = str(user_input + "\n\n" + question.special_context)
     rag_user_input_string = str(user_input + "\n\n" + question.special_context + "\n\n" + str(question.answer_planning))
     logger.info(f"rag_user_input_string: {rag_user_input_string}")
-    # Get relevant chunks for question with scores
-    # First retrieve more candidates than needed to ensure we have enough after filtering
+    # === STEP 4: Semantic Similarity Search ===
+    # Retrieve document chunks most similar to the enhanced user query
+    # Fetch 2x more candidates than needed to ensure sufficient quality chunks after filtering
     filter_min_length = 50
     fetch_k = min(config['retriever']['k'] * 2, 15)  # Fetch 3x more to ensure enough pass the filter
 
@@ -137,7 +208,8 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
 
     logger.info(f"TEST: all_chunks_with_scores: {all_chunks_with_scores}")
 
-    # Filter chunks by length > 50
+    # === STEP 5: Quality Filtering ===
+    # Remove short chunks that don't provide meaningful context
     filtered_chunks_with_scores = [
         (chunk, score) for chunk, score in all_chunks_with_scores 
         if len(chunk.page_content) > filter_min_length
@@ -151,49 +223,52 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
 
     question_chunks_with_scores = filtered_chunks_with_scores
 
-    # The total list of sources chunks
-    sources_chunks = []
-    # From the highest score to the lowest score, until the total tokens exceed 3000
-    total_tokens = 0
-    context_chunks = []
-    context_scores = []
-    context_dict = {}
-    pages_context_dict = {}
+    # === STEP 6: Context Building & Token Management ===
+    # Initialize data structures for context accumulation
+    sources_chunks = []  # Source chunks for further processing
+    total_tokens = 0     # Running token count to stay within limits
+    context_chunks = []  # Selected chunk contents
+    context_scores = []  # Corresponding similarity scores
+    context_dict = {}    # Symbolic mapping for model consumption
+    pages_context_dict = {}  # Page-level context mapping
+    
+    # Configure symbolic references (A, B, C, etc.) for chunk identification
     map_symbol_to_index = config["map_symbol_to_index"]
-    # Reverse the key and value of the map_symbol_to_index
     map_index_to_symbol = {v: k for k, v in map_symbol_to_index.items()}
-    # Get the first 3 keys from map_symbol_to_index for examples in the prompt
     first_keys = list(map_symbol_to_index.keys())[:3]
     example_keys = ", or ".join(first_keys)
 
-    # Track seen content to avoid duplicates
+    # Deduplication tracking to avoid redundant context
     seen_contents = set()
 
+    # === STEP 7: Context Accumulation Loop ===
+    # Process chunks in order of relevance until token budget exhausted
     symbol_index = 0
     for chunk, score in question_chunks_with_scores:
-        # Skip if content already seen
+        # Skip duplicate content to avoid redundancy
         if chunk.page_content in seen_contents:
             continue
 
+        # Stop if adding this chunk would exceed token budget
         if total_tokens + count_tokens(chunk.page_content) > token_limit:
             break
 
-        # Add content to seen set
+        # Mark content as seen and add to context
         seen_contents.add(chunk.page_content)
-        
         sources_chunks.append(chunk)
         total_tokens += count_tokens(chunk.page_content)
         context_chunks.append(chunk.page_content)
         context_scores.append(score)
 
-        # Logic for configing the context for model input
-        context_dict[map_index_to_symbol[symbol_index]] = {"content": chunk.page_content, "score": float(score)}
+        # Map chunk to symbolic reference for model consumption
+        context_dict[map_index_to_symbol[symbol_index]] = {
+            "content": chunk.page_content, 
+            "score": float(score)
+        }
         symbol_index += 1
-
-        # Logic for configing the context for model input. For pages_context_dict, the key is file index, and the value is the corresponding list of pages where the chunks are from.
-        # e.g. we can have {<file_index_0>: {<page_number_1>: <page_content_1>, <page_number_2>: <page_content_2>}...}
     
-    # Format context as a JSON dictionary instead of a string
+    # === STEP 8: Context Formatting ===
+    # Create final formatted context for model consumption
     formatted_context = context_dict
     
     logger.info(f"For {chat_session.mode} model, user_input_string: {user_input_string}")
@@ -209,9 +284,11 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
     logger.info(f"For {chat_session.mode} model, context tokens: {count_tokens(str(formatted_context))}")
     logger.info("before deep_inference_agent ...")
 
+    # Store chunk-level context in session for response generation
     chat_session.formatted_context = formatted_context
 
-    # Create page_formatted_context using page-based index embeddings
+    # === STEP 9: Page-Level Context Creation ===
+    # Create broader page-level context for enhanced document understanding
     try:
         # Load page-based embeddings based on the current mode
         if chat_session.mode == ChatMode.BASIC or chat_session.mode == ChatMode.ADVANCED:
@@ -225,9 +302,10 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
         
         logger.info(f"Successfully loaded page-based embeddings from: {page_embedding_folder_list}")
         
-        # For each chunk in formatted_context, find the corresponding page-level chunk
-        page_chunks_dict = {}  # To store unique page chunks with their original scores
-        seen_page_contents = set()  # To track duplicates
+        # === STEP 9b: Page-Level Retrieval ===
+        # For each selected chunk, find corresponding page-level content
+        page_chunks_dict = {}     # Store unique page chunks with scores
+        seen_page_contents = set()  # Deduplicate page content
         
         for symbol, chunk_data in formatted_context.items():
             chunk_content = chunk_data["content"]
@@ -249,7 +327,8 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
                         "original_chunk_symbol": symbol
                     }
         
-        # Create page_formatted_context with unique page chunks
+        # === STEP 9c: Page Context Formatting ===
+        # Create symbolic mapping for page-level chunks
         page_formatted_context = {}
         page_symbol_index = 0
         

@@ -207,6 +207,7 @@ def robust_search_for(page, text, chunk_size=512):
 
 
 # Generate a unique course ID for the uploaded file
+# YZ_NOTE_0728: the id is not truly unique, as it is strictly based on the file content. Recommend using a random number generator as assistance
 def generate_file_id(file_path):
     # logger.info(f"Generating course ID for file: {file_path}")
     with open(file_path, 'rb') as file:

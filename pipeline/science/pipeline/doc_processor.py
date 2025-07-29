@@ -76,6 +76,7 @@ def save_file_txt_locally(file_path, filename, embedding_folder, chat_session: C
     os.makedirs(markdown_dir, exist_ok=True)
 
     # Generate a shorter filename using hash, and it should be unique and consistent for the same file
+    # YZ_NOTE_0728: doubtful of this approach, as there are chances of accidental collision. But hash should be alright
     base_name = os.path.splitext(filename)[0]
     hashed_name = hashlib.md5(file_bytes).hexdigest()[:8]  # Use first 8 chars of hash
     output_file_path = os.path.join(GraphRAG_embedding_input_folder, f"{hashed_name}.txt")

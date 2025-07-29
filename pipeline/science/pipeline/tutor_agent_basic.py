@@ -126,6 +126,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     # Compute hashed ID and prepare embedding folder
     yield "<thinking>"
     hashing_start_time = time.time()
+    # YZ_NOTE_0728: why are the file_id_list and embedding_folder_list re-generated here?
     file_id_list = [generate_file_id(file_path) for file_path in file_path_list]
     embedding_folder_list = [os.path.join(embedded_content_path, file_id) for file_id in file_id_list]
     logger.info(f"Embedding folder: {embedding_folder_list}")

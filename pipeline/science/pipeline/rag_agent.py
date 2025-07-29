@@ -147,8 +147,18 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
     
     Context Format:
         {
-            "A": {"content": "relevant text chunk", "score": 0.85},
-            "B": {"content": "another chunk", "score": 0.72},
+            "A": {
+                "content": "relevant text chunk", 
+                "score": 0.85,
+                "page_num": 5,
+                "source_index": 0
+            },
+            "B": {
+                "content": "another chunk", 
+                "score": 0.72,
+                "page_num": 12,
+                "source_index": 1
+            },
             ...
         }
     
@@ -261,9 +271,15 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
         context_scores.append(score)
 
         # Map chunk to symbolic reference for model consumption
+        # Extract metadata with safe defaults for missing keys
+        page_num = chunk.metadata.get('page', 1)  # Default to page 1 if not found
+        source_index = chunk.metadata.get('file_index', 0)  # Default to first file if not found
+        
         context_dict[map_index_to_symbol[symbol_index]] = {
             "content": chunk.page_content, 
-            "score": float(score)
+            "score": float(score),
+            "page_num": page_num,
+            "source_index": source_index
         }
         symbol_index += 1
     
@@ -282,6 +298,11 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
         logger.info(f"For {chat_session.mode} model, context chunk tokens: {count_tokens(chunk)}")
         logger.info(f"For {chat_session.mode} model, context chunk score: {score}")
     logger.info(f"For {chat_session.mode} model, context tokens: {count_tokens(str(formatted_context))}")
+    
+    # Log formatted context with metadata
+    for symbol, context_data in formatted_context.items():
+        logger.info(f"Context {symbol}: tokens={count_tokens(context_data['content'])}, score={context_data['score']:.3f}, page={context_data['page_num']}, source={context_data['source_index']}")
+    
     logger.info("before deep_inference_agent ...")
 
     # Store chunk-level context in session for response generation
@@ -320,10 +341,16 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
                 # Only add if we haven't seen this page content before
                 if page_content not in seen_page_contents and len(page_content) > filter_min_length:
                     seen_page_contents.add(page_content)
-                    # Use the original chunk's symbol but store page content and score
+                    # Extract metadata from page chunk with safe defaults
+                    page_num = page_chunk.metadata.get('page', 1)
+                    source_index = page_chunk.metadata.get('file_index', 0)
+                    
+                    # Use the original chunk's symbol but store page content and metadata
                     page_chunks_dict[symbol] = {
                         "content": page_content,
                         "score": float(page_score),
+                        "page_num": page_num,
+                        "source_index": source_index,
                         "original_chunk_symbol": symbol
                     }
         
@@ -336,7 +363,9 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
             if page_symbol_index < len(map_index_to_symbol):
                 page_formatted_context[map_index_to_symbol[page_symbol_index]] = {
                     "content": page_data["content"],
-                    "score": page_data["score"]
+                    "score": page_data["score"],
+                    "page_num": page_data["page_num"],
+                    "source_index": page_data["source_index"]
                 }
                 page_symbol_index += 1
         
@@ -344,7 +373,7 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
         logger.info(f"Page formatted context tokens: {count_tokens(str(page_formatted_context))}")
         
         for page_symbol, page_data in page_formatted_context.items():
-            logger.info(f"Page context symbol: {page_symbol}, content length: {len(page_data['content'])}, score: {page_data['score']}")
+            logger.info(f"Page context symbol: {page_symbol}, content length: {len(page_data['content'])}, score: {page_data['score']}, page: {page_data['page_num']}, source: {page_data['source_index']}")
         
         chat_session.page_formatted_context = page_formatted_context
         

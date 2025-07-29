@@ -292,8 +292,18 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
         symbol_index += 1
     
     # === STEP 8: Context Formatting ===
-    # Create final formatted context for model consumption
-    formatted_context = context_dict
+    # Sort context items by source_index first, then by page_number
+    sorted_context_items = sorted(
+        context_dict.items(),
+        key=lambda x: (x[1]["source_index"], x[1]["page_num"])
+    )
+    
+    # Reassign symbols to maintain alphabetical ordering (A, B, C, etc.)
+    formatted_context = {}
+    for new_index, (old_symbol, context_data) in enumerate(sorted_context_items):
+        if new_index < len(map_index_to_symbol):
+            new_symbol = map_index_to_symbol[new_index]
+            formatted_context[new_symbol] = context_data
     
     logger.info(f"For {chat_session.mode} model, user_input_string: {user_input_string}")
     logger.info(f"For {chat_session.mode} model, user_input_string tokens: {count_tokens(user_input_string)}")
@@ -366,11 +376,15 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
                     }
         
         # === STEP 9c: Page Context Formatting ===
-        # Create symbolic mapping for page-level chunks
-        page_formatted_context = {}
-        page_symbol_index = 0
+        # Sort page chunks by source_index first, then by page_number
+        sorted_page_items = sorted(
+            page_chunks_dict.items(),
+            key=lambda x: (x[1]["source_index"], x[1]["page_num"])
+        )
         
-        for symbol, page_data in page_chunks_dict.items():
+        # Create symbolic mapping for page-level chunks with proper ordering
+        page_formatted_context = {}
+        for page_symbol_index, (original_symbol, page_data) in enumerate(sorted_page_items):
             if page_symbol_index < len(map_index_to_symbol):
                 page_formatted_context[map_index_to_symbol[page_symbol_index]] = {
                     "content": page_data["content"],
@@ -378,7 +392,6 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
                     "page_num": page_data["page_num"],
                     "source_index": page_data["source_index"]
                 }
-                page_symbol_index += 1
         
         logger.info(f"Created page_formatted_context with {len(page_formatted_context)} unique pages")
         logger.info(f"Page formatted context tokens: {count_tokens(str(page_formatted_context))}")

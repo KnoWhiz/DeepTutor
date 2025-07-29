@@ -150,17 +150,22 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
             "A": {
                 "content": "relevant text chunk", 
                 "score": 0.85,
-                "page_num": 5,
-                "source_index": 0
+                "page_num": 5,      # 1-indexed page number (page 5)
+                "source_index": 1   # 1-indexed file position (first file)
             },
             "B": {
                 "content": "another chunk", 
                 "score": 0.72,
-                "page_num": 12,
-                "source_index": 1
+                "page_num": 12,     # 1-indexed page number (page 12)  
+                "source_index": 2   # 1-indexed file position (second file)
             },
             ...
         }
+        
+    Indexing Convention:
+        - page_num: 1-indexed page numbers for user-friendly display (page 1, 2, 3, ...)
+        - source_index: 1-indexed file positions for user-friendly display (file 1, 2, 3, ...)
+        - Internal metadata uses 0-indexed values, but output context uses 1-indexed for clarity
     
     Error Handling:
         - Graceful fallback from markdown to default embeddings if loading fails
@@ -272,14 +277,17 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
 
         # Map chunk to symbolic reference for model consumption
         # Extract metadata with safe defaults for missing keys
-        page_num = chunk.metadata.get('page', 1)  # Default to page 1 if not found
-        source_index = chunk.metadata.get('file_index', 0)  # Default to first file if not found
+        # NOTE: Both page_num and source_index are converted to 1-indexed for user-friendly display
+        # - page_num: 1-indexed page number (chunk.metadata['page'] is 0-indexed internally)
+        # - source_index: 1-indexed file position (chunk.metadata['file_index'] is 0-indexed internally)
+        page_num = chunk.metadata.get('page', 0) + 1  # Convert 0-indexed to 1-indexed, default to page 1
+        source_index = chunk.metadata.get('file_index', 0) + 1  # Convert 0-indexed to 1-indexed, default to file 1
         
         context_dict[map_index_to_symbol[symbol_index]] = {
             "content": chunk.page_content, 
             "score": float(score),
-            "page_num": page_num,
-            "source_index": source_index
+            "page_num": page_num,  # 1-indexed page number
+            "source_index": source_index  # 1-indexed file position
         }
         symbol_index += 1
     
@@ -342,15 +350,18 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
                 if page_content not in seen_page_contents and len(page_content) > filter_min_length:
                     seen_page_contents.add(page_content)
                     # Extract metadata from page chunk with safe defaults
-                    page_num = page_chunk.metadata.get('page', 1)
-                    source_index = page_chunk.metadata.get('file_index', 0)
+                    # NOTE: Converting both values to 1-indexed for consistency with chunk-level context
+                    # - page_num: 1-indexed page number (metadata['page'] is 0-indexed internally)
+                    # - source_index: 1-indexed file position (metadata['file_index'] is 0-indexed internally)
+                    page_num = page_chunk.metadata.get('page', 0) + 1  # Convert to 1-indexed
+                    source_index = page_chunk.metadata.get('file_index', 0) + 1  # Convert to 1-indexed
                     
                     # Use the original chunk's symbol but store page content and metadata
                     page_chunks_dict[symbol] = {
                         "content": page_content,
                         "score": float(page_score),
-                        "page_num": page_num,
-                        "source_index": source_index,
+                        "page_num": page_num,  # 1-indexed page number
+                        "source_index": source_index,  # 1-indexed file position
                         "original_chunk_symbol": symbol
                     }
         

@@ -57,7 +57,7 @@ def save_file_txt_locally(file_path, filename, embedding_folder, chat_session: C
     """
     Save the file (e.g., PDF) loaded as text into the GraphRAG_embedding_input_folder.
     If a corresponding markdown file exists, use its content instead of extracting from PDF.
-    Always overwrite existing text file with markdown content when markdown file is available.
+    For GraphRAG processing, saves each page as a separate file to enable per-page chunking.
     """
     markdown_dir = os.path.join(embedding_folder, "markdown")
     # Generate file_id using hashlib instead of the undefined generate_file_id function
@@ -78,45 +78,57 @@ def save_file_txt_locally(file_path, filename, embedding_folder, chat_session: C
     # Generate a shorter filename using hash, and it should be unique and consistent for the same file
     base_name = os.path.splitext(filename)[0]
     hashed_name = hashlib.md5(file_bytes).hexdigest()[:8]  # Use first 8 chars of hash
-    output_file_path = os.path.join(GraphRAG_embedding_input_folder, f"{hashed_name}.txt")
 
     try:
         # Check if markdown file exists - always use it if available
         if os.path.exists(md_path):
             logger.info(f"Found markdown file: {md_path}")
-            # Check if we're overwriting an existing file before we write to it
-            is_overwriting = os.path.exists(output_file_path)
             
             # Use markdown content instead of extracting from PDF
             with open(md_path, "r", encoding="utf-8") as md_file:
                 markdown_content = md_file.read()
             
-            # Always write the markdown content to the output text file, overwriting if it exists
-            with open(output_file_path, "w", encoding="utf-8") as f:
-                f.write(markdown_content)
+            # Split markdown content into pages and save each page as a separate file
+            # This enables per-page chunking for GraphRAG
+            pages = markdown_content.split('\n\n---\n\n')  # Split by page separator
+            if len(pages) == 1:
+                # If no page separators found, try splitting by other common page markers
+                pages = markdown_content.split('\n\n# Page ')
+                if len(pages) == 1:
+                    # If still no page markers, treat entire content as one page
+                    pages = [markdown_content]
+            
+            logger.info(f"Saving {len(pages)} pages as separate files for GraphRAG processing")
+            
+            for page_num, page_content in enumerate(pages, 1):
+                if page_content.strip():  # Only save non-empty pages
+                    page_filename = f"{hashed_name}_page_{page_num:03d}.txt"
+                    page_file_path = os.path.join(GraphRAG_embedding_input_folder, page_filename)
+                    
+                    with open(page_file_path, "w", encoding="utf-8") as f:
+                        f.write(page_content.strip())
+                    
+                    logger.info(f"Saved page {page_num} to: {page_filename}")
                 
-            if is_overwriting:
-                logger.info(f"Markdown content saved to: {output_file_path} (overwritten)")
-            else:
-                logger.info(f"Markdown content saved to: {output_file_path}")
-                
-        # Only extract from PDF if markdown file doesn't exist and txt file doesn't exist
-        elif not os.path.exists(output_file_path):
+        # Only extract from PDF if markdown file doesn't exist
+        else:
             # Extract text from the PDF using the provided utility function
             document = extract_document_from_file(file_path)
 
-            # Write the extracted text into a .txt file
-            with open(output_file_path, "w", encoding="utf-8") as f:
-                for doc in document:
-                    # Each doc is expected to have a `page_content` attribute if it's a Document object
-                    if hasattr(doc, 'page_content') and doc.page_content:
-                        # Write the text, followed by a newline for clarity
-                        f.write(doc.page_content.strip() + "\n")
-            logger.info(f"PDF text content saved to: {output_file_path}")
-        else:
-            logger.info(f"File already exists: {output_file_path} (no markdown file available to overwrite it)")
+            logger.info(f"Saving {len(document)} pages as separate files for GraphRAG processing")
+            
+            # Save each page as a separate file
+            for page_num, doc in enumerate(document, 1):
+                if hasattr(doc, 'page_content') and doc.page_content.strip():
+                    page_filename = f"{hashed_name}_page_{page_num:03d}.txt"
+                    page_file_path = os.path.join(GraphRAG_embedding_input_folder, page_filename)
+                    
+                    with open(page_file_path, "w", encoding="utf-8") as f:
+                        f.write(doc.page_content.strip())
+                    
+                    logger.info(f"Saved page {page_num} to: {page_filename}")
 
-        # Create a mapping file to track original filenames
+        # Create a mapping file to track original filenames and page structure
         mapping_file = os.path.join(GraphRAG_embedding_folder, "filename_mapping.json")
         try:
             if os.path.exists(mapping_file):
@@ -124,11 +136,20 @@ def save_file_txt_locally(file_path, filename, embedding_folder, chat_session: C
                     mapping = json.load(f)
             else:
                 mapping = {}
-            mapping[hashed_name] = base_name
+            
+            # Store mapping with page information
+            mapping[hashed_name] = {
+                "original_name": base_name,
+                "total_pages": len([f for f in os.listdir(GraphRAG_embedding_input_folder) 
+                                  if f.startswith(f"{hashed_name}_page_")]),
+                "chunking_strategy": "per_page"
+            }
+            
             with open(mapping_file, 'w') as f:
                 json.dump(mapping, f, indent=2)
         except Exception as e:
             logger.exception(f"Error saving filename mapping: {e}")
+            
     except OSError as e:
         logger.exception(f"Error saving file: {e}")
         raise

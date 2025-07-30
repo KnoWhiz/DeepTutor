@@ -53,11 +53,11 @@ input:
   file_type: text # or csv
   base_dir: "input"
   file_encoding: utf-8
-  file_pattern: ".*\\.txt$"
+  file_pattern: ".*_page_\\d+\\.txt$"  # Match per-page files
 
 chunks:
-  size: 1200
-  overlap: 100
+  size: 0  # Disable fixed chunking since each file is already a page
+  overlap: 0  # No overlap needed for per-page chunks
   group_by_columns: [id]
 
 ### Storage settings ###

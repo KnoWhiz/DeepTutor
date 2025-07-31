@@ -178,17 +178,23 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     for file_path in file_path_list:
         try:
             # Extract document from the file
+            logger.info(f"Extracting document from {file_path}")
             document = extract_document_from_file(file_path)
+            logger.info(f"Extracted document from {file_path}")
             # Extract text from the document
+            logger.info(f"Extracting text from document")
             file_content = ""
             for doc in document:
                 if hasattr(doc, 'page_content') and doc.page_content:
                     file_content += doc.page_content.strip() + "\n"
+            logger.info(f"Extracted text from document")
             # Take only the words_per_file words from this file
             file_words = file_content.split()
+            logger.info(f"Split text into {len(file_words)} words")
             if len(file_words) > words_per_file:
                 file_words = file_words[:words_per_file]
             file_excerpt = " ".join(file_words)
+            logger.info(f"Joined {len(file_words)} words into {file_excerpt}")
             pdf_content += f"\n\n--- Related content ---\n{file_excerpt}\n"
             logger.info(f"Added {len(file_words)} words from {file_path}")
         except Exception as e:

@@ -168,9 +168,9 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     pdf_content = ""
     
     # Calculate word budget per file
-    total_word_budget = config["basic_token_limit"] / 5
+    total_word_budget = int(config["basic_token_limit"] / 20)
     files_count = len(file_path_list)
-    words_per_file = total_word_budget // files_count if files_count > 0 else total_word_budget
+    words_per_file = int(total_word_budget // files_count if files_count > 0 else total_word_budget)
     
     logger.info(f"Loading PDF content with {words_per_file} words per file from {files_count} files")
     yield "\n\n**📚 Loading PDF content with distributed word budget...**\n\n"

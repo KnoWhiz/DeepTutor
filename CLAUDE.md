@@ -92,7 +92,7 @@ Required environment variables in `.env`:
 
 ### File Processing
 - 50MB file size limit enforced
-- 200-page document limit
+- 800-page document limit
 - Support for multiple file upload in Lite mode
 - Files stored in `tmp/tutor_pipeline/input_files/`
 

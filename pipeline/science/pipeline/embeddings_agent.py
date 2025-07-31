@@ -59,6 +59,7 @@ def calculate_page_length(_doc, file_path):
     
     page_stats = []
     cumulative_chars = 0
+    total_chars = 0
     
     for page_num, page_doc in enumerate(document):
         page_text = page_doc.page_content
@@ -67,18 +68,21 @@ def calculate_page_length(_doc, file_path):
         clean_text = page_text.strip()
         if clean_text:
             clean_text = clean_text.replace("-\n", "")
-            clean_text = " ".join(clean_text.split())
+            clean_text = "".join(clean_text.split())
         
         char_count = len(clean_text)
+        total_chars += char_count
         page_stats.append({
             "page_num": page_num,
             "char_count": char_count,
             "start_char": cumulative_chars,
             "end_char": cumulative_chars + char_count,
-            "content_preview": clean_text[:100] + "..." if len(clean_text) > 100 else clean_text
+            "content_preview": clean_text[:100] + "..." if len(clean_text) > 100 else clean_text,
+            "char_proportion": 0.0
         })
         cumulative_chars += char_count
-    
+    for i in range(len(page_stats)):
+        page_stats[i]['char_proportion'] = page_stats[i]['char_count'] / total_chars
     return page_stats
 
 

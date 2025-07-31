@@ -29,7 +29,7 @@ alwaysApply: false
 - **Environment Variables**: All configuration through `.env` file
 - **Logging**: Use the logging configuration from [pipeline/science/pipeline/logging_config.py](mdc:pipeline/science/pipeline/logging_config.py)
 - **File Size Limits**: Enforce 50MB limit for PDF uploads
-- **Page Limits**: Enforce 200-page limit for document processing
+- **Page Limits**: Enforce 800-page limit for document processing
 
 ## AI Integration Guidelines
 

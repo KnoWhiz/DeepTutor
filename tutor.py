@@ -113,8 +113,8 @@ if st.session_state['isAuth']:
             embedding_folder = embedding_folder_list[0]
             
             # Check if first document exceeds page limit
-            if len(document) > 200:
-                st.error("File contains more than 200 pages. Please upload a shorter document.")
+            if len(document) > 800:
+                st.error("File contains more than 800 pages. Please upload a shorter document.")
                 st.stop()
             
             # Initialize state with the main embedding folder
@@ -177,8 +177,8 @@ if st.session_state['isAuth']:
                 embedded_content_path = os.path.join(path_prefix, 'embedded_content')
                 embedding_folder = os.path.join(embedded_content_path, generate_file_id(file_path))
 
-                if len(document) > 200:
-                    st.error("File contains more than 200 pages. Please upload a shorter document.")
+                if len(document) > 800:
+                    st.error("File contains more than 800 pages. Please upload a shorter document.")
                     st.stop()
 
                 # Initialize state

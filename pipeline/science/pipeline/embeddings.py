@@ -108,6 +108,168 @@ def create_searchable_chunks(doc, chunk_size: int) -> list:
     return chunks
 
 
+def create_char_to_page_map(page_stats, md_length):
+    """
+    Create a simple mapping from character position ranges to page numbers.
+    More robust than exact matching.
+    
+    Args:
+        page_stats: List of page statistics
+        md_length: Length of markdown document
+    
+    Returns:
+        dict: Mapping of position ranges to page numbers
+    """
+    char_map = {}
+    
+    if not page_stats:
+        # Fallback: assume single page
+        char_map[(0, md_length)] = 0
+        return char_map
+    
+    # Create ranges for each page
+    for i, page_stat in enumerate(page_stats):
+        start_char = page_stat["start_char"]
+        end_char = page_stat["end_char"]
+        page_num = page_stat["page_num"]
+        
+        # Ensure ranges are within markdown bounds
+        start_char = max(0, min(start_char, md_length))
+        end_char = max(start_char, min(end_char, md_length))
+        
+        char_map[(start_char, end_char)] = page_num
+    
+    # Fill gaps with nearest page
+    char_map = fill_gaps_in_char_map(char_map, md_length)
+    
+    return char_map
+
+
+def fill_gaps_in_char_map(char_map, md_length):
+    """
+    Fill gaps in character position mapping with nearest page.
+    
+    Args:
+        char_map: Dictionary mapping (start, end) ranges to page numbers
+        md_length: Length of markdown document
+    
+    Returns:
+        dict: Complete mapping with no gaps
+    """
+    if not char_map:
+        return char_map
+    
+    # Sort ranges by start position
+    sorted_ranges = sorted(char_map.keys())
+    filled_map = {}
+    
+    # Fill from 0 to first range
+    if sorted_ranges[0][0] > 0:
+        filled_map[(0, sorted_ranges[0][0])] = sorted_ranges[0][1]  # Use first page
+    
+    # Fill gaps between ranges
+    for i in range(len(sorted_ranges)):
+        current_range = sorted_ranges[i]
+        filled_map[current_range] = char_map[current_range]
+        
+        # Fill gap to next range
+        if i < len(sorted_ranges) - 1:
+            next_range = sorted_ranges[i + 1]
+            if current_range[1] < next_range[0]:
+                # Gap exists, use current page
+                filled_map[(current_range[1], next_range[0])] = char_map[current_range]
+    
+    # Fill from last range to end
+    last_range = sorted_ranges[-1]
+    if last_range[1] < md_length:
+        filled_map[(last_range[1], md_length)] = char_map[last_range]
+    
+    return filled_map
+
+
+def find_chunk_position_graceful(md_document, chunk, clean_chunk, chunk_index, chunk_size):
+    """
+    Find chunk position in markdown with multiple fallback strategies.
+    
+    Args:
+        md_document: Full markdown document
+        chunk: Original chunk text
+        clean_chunk: Cleaned chunk text
+        chunk_index: Index of chunk
+        chunk_size: Size of chunks
+    
+    Returns:
+        int: Character position in markdown document
+    """
+    # Strategy 1: Try exact match with original chunk
+    position = md_document.find(chunk)
+    if position != -1:
+        return position
+    
+    # Strategy 2: Try exact match with cleaned chunk
+    position = md_document.find(clean_chunk)
+    if position != -1:
+        return position
+    
+    # Strategy 3: Try partial match (first 50 chars)
+    if len(clean_chunk) > 50:
+        partial_chunk = clean_chunk[:50]
+        position = md_document.find(partial_chunk)
+        if position != -1:
+            return position
+    
+    # Strategy 4: Estimate based on chunk index and size
+    estimated_position = chunk_index * chunk_size
+    return max(0, min(estimated_position, len(md_document) - 1))
+
+
+def map_position_to_page_graceful(char_position, char_to_page_map, md_length):
+    """
+    Map character position to page number with graceful fallback.
+    
+    Args:
+        char_position: Character position in markdown
+        char_to_page_map: Mapping of position ranges to page numbers
+        md_length: Length of markdown document
+    
+    Returns:
+        int: 0-indexed page number, or -1 if invalid
+    """
+    if char_position < 0 or char_position >= md_length:
+        return -1
+    
+    # Find the range that contains this position
+    for (start, end), page_num in char_to_page_map.items():
+        if start <= char_position < end:
+            return page_num
+    
+    # Fallback: return first page
+    return 0 if char_to_page_map else -1
+
+
+def map_position_to_page(char_position, page_stats):
+    """
+    Map character position in markdown to original page number.
+    
+    Args:
+        char_position: Character position in markdown document
+        page_stats: List of page statistics from raw PDF scan
+    
+    Returns:
+        int: 0-indexed page number
+    """
+    if not page_stats or char_position < 0:
+        return 0
+    
+    # Find the page that contains this character position
+    for page_stat in page_stats:
+        if page_stat["start_char"] <= char_position < page_stat["end_char"]:
+            return page_stat["page_num"]  # Already 0-indexed
+    
+    # If position is beyond all pages, return last page
+    return page_stats[-1]["page_num"] if page_stats else 0
+
+
 def get_embedding_models(embedding_type, para):
     para = para
     api = ApiHandler(para)
@@ -127,7 +289,7 @@ def get_embedding_models(embedding_type, para):
 
 
 # Create markdown embeddings
-def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_size: int = 3000, chunk_overlap: int = 300):
+def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_size: int = 3000, chunk_overlap: int = 300, page_stats=None):
     """
     Create markdown embeddings from a markdown document and save them to the specified directory.
 
@@ -136,6 +298,7 @@ def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_s
         output_dir: Directory where embeddings will be saved
         chunk_size: Size of each chunk for regular embeddings
         chunk_overlap: Overlap between chunks for regular embeddings
+        page_stats: List of page statistics for accurate page attribution (BASIC mode only)
 
     Returns:
         None
@@ -155,15 +318,70 @@ def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_s
         # Create markdown directory if it doesn't exist
         os.makedirs(output_dir, exist_ok=True)
 
-        # Split markdown content into chunks
+        # Split markdown content into chunks with page attribution
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
         )
-        markdown_texts = [
-            Document(page_content=chunk.replace('<|endoftext|>', ''), metadata={"source": "markdown"})
-            for chunk in text_splitter.split_text(md_document)
-        ]
+        chunks = text_splitter.split_text(md_document)
+        
+        # Create documents with accurate page attribution
+        markdown_texts = []
+        
+        if page_stats:
+            # SIMPLE APPROACH: Use character position ranges for robust page attribution
+            logger.info("Using character position ranges for robust page attribution...")
+            
+            # Create a simple mapping: character position -> page number
+            char_to_page_map = create_char_to_page_map(page_stats, len(md_document))
+            
+            # Split entire markdown into chunks
+            chunks = text_splitter.split_text(md_document)
+            
+            for chunk_index, chunk in enumerate(chunks):
+                clean_chunk = chunk.replace('<|endoftext|>', '')
+                
+                # Find chunk position in markdown (graceful fallback)
+                chunk_position = find_chunk_position_graceful(md_document, chunk, clean_chunk, chunk_index, chunk_size)
+                
+                # Map position to page number (graceful fallback)
+                page_num = map_position_to_page_graceful(chunk_position, char_to_page_map, len(md_document))
+                
+                # Only add chunk if we have valid content and page attribution
+                if clean_chunk.strip() and page_num >= 0:
+                    markdown_texts.append(Document(
+                        page_content=clean_chunk,
+                        metadata={
+                            "source": "markdown",
+                            "page": page_num,  # 0-indexed page number
+                            "chunk_index": chunk_index,
+                            "char_position": chunk_position,
+                            "attribution_method": "char_position_mapping"
+                        }
+                    ))
+                else:
+                    logger.warning(f"Skipping chunk {chunk_index} due to invalid content or page attribution")
+        else:
+            # Fallback to old method when no page statistics available
+            logger.info("Using fallback chunking method (no page statistics)...")
+            for chunk_index, chunk in enumerate(chunks):
+                clean_chunk = chunk.replace('<|endoftext|>', '')
+                
+                # Fallback estimation method
+                chunk_position = md_document.find(clean_chunk)
+                estimated_page = max(1, (chunk_position // (chunk_size * 2)) + 1) if chunk_position != -1 else 1
+                page_num = estimated_page - 1  # Convert to 0-indexed
+                
+                markdown_texts.append(Document(
+                    page_content=clean_chunk,
+                    metadata={
+                        "source": "markdown",
+                        "page": page_num,  # 0-indexed for consistency
+                        "chunk_index": chunk_index,
+                        "char_position": chunk_position if chunk_position != -1 else (chunk_index * chunk_size)
+                    }
+                ))
+
 
         for text in markdown_texts:
             logger.info(f"markdown text after text splitter: {text}")
@@ -178,35 +396,74 @@ def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_s
             logger.info("Markdown page-based embedding already exists. We can load existing embeddings...")
         else:
             logger.info("Creating markdown page-based embeddings...")
-            # Use 10 times the chunk size as "page size" for markdown
-            page_size = chunk_size * 10
             page_documents = []
             
-            # Split the markdown document into "pages" of 10x chunk_size
-            for page_num, start_pos in enumerate(range(0, len(md_document), page_size)):
-                end_pos = min(start_pos + page_size, len(md_document))
-                page_text = md_document[start_pos:end_pos]
-                
-                # Clean up the text
-                clean_text = page_text.strip()
-                if clean_text:
-                    # Remove any endoftext tokens
-                    clean_text = clean_text.replace('<|endoftext|>', '')
-                    # Normalize spaces
-                    clean_text = " ".join(clean_text.split())
+            if page_stats:
+                # Use actual page boundaries from PDF statistics with graceful handling
+                logger.info("Using page statistics for accurate page-based embeddings...")
+                for page_stat in page_stats:
+                    start_pos = page_stat["start_char"]
+                    end_pos = page_stat["end_char"]
                     
-                    page_documents.append(Document(
-                        page_content=clean_text,
-                        metadata={
-                            "page": page_num,
-                            "source": f"markdown_page_{page_num + 1}",
-                            "page_type": "markdown_page",
-                            "page_size": page_size,
-                            "start_char": start_pos,
-                            "end_char": end_pos,
-                            "total_chars": len(md_document)
-                        }
-                    ))
+                    # Graceful bounds checking
+                    if start_pos >= len(md_document):
+                        logger.warning(f"Page {page_stat['page_num']} start position {start_pos} exceeds markdown length {len(md_document)}")
+                        continue
+                    
+                    end_pos = min(end_pos, len(md_document))
+                    page_text = md_document[start_pos:end_pos]
+                    
+                    # Clean up the text
+                    clean_text = page_text.strip()
+                    if clean_text:
+                        clean_text = clean_text.replace('<|endoftext|>', '')
+                        clean_text = " ".join(clean_text.split())
+                        
+                        # Only add if we have meaningful content
+                        if len(clean_text) > 10:  # Minimum content threshold
+                            page_documents.append(Document(
+                                page_content=clean_text,
+                                metadata={
+                                    "page": page_stat["page_num"],  # 0-indexed
+                                    "source": f"markdown_page_{page_stat['page_num'] + 1}",
+                                    "page_type": "markdown_page_accurate",
+                                    "start_char": start_pos,
+                                    "end_char": end_pos,
+                                    "total_chars": len(md_document),
+                                    "original_char_count": page_stat["char_count"]
+                                }
+                            ))
+                        else:
+                            logger.warning(f"Page {page_stat['page_num']} has insufficient content ({len(clean_text)} chars), skipping")
+                    else:
+                        logger.warning(f"Page {page_stat['page_num']} has no content after cleaning")
+            else:
+                # Fallback to old method: Use 10 times the chunk size as "page size"
+                logger.info("Using fallback method for page-based embeddings...")
+                page_size = chunk_size * 10
+                
+                for page_num, start_pos in enumerate(range(0, len(md_document), page_size)):
+                    end_pos = min(start_pos + page_size, len(md_document))
+                    page_text = md_document[start_pos:end_pos]
+                    
+                    # Clean up the text
+                    clean_text = page_text.strip()
+                    if clean_text:
+                        clean_text = clean_text.replace('<|endoftext|>', '')
+                        clean_text = " ".join(clean_text.split())
+                        
+                        page_documents.append(Document(
+                            page_content=clean_text,
+                            metadata={
+                                "page": page_num,
+                                "source": f"markdown_page_{page_num + 1}",
+                                "page_type": "markdown_page",
+                                "page_size": page_size,
+                                "start_char": start_pos,
+                                "end_char": end_pos,
+                                "total_chars": len(md_document)
+                            }
+                        ))
             
             if page_documents:
                 # Create FAISS database from page documents

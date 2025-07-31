@@ -201,16 +201,42 @@ def locate_chunk_in_pdf(chunk: str, pdf_path: str, similarity_threshold: float =
     }
 
 
-def get_response_source(chat_session: ChatSession, file_path_list, user_input, answer, chat_history, embedding_folder_list):
+def get_response_source_complex(chat_session: ChatSession, file_path_list, user_input, answer, chat_history, embedding_folder_list):
     """
-    Get the sources for the response
-    Return a dictionary of sources with scores and metadata
-    The scores are normalized to 0-1 range
-    The metadata includes the page number, chunk index, and block bounding box coordinates
-    The sources are refined by checking if they can be found in the document
-    Only get first 15 sources
-    Show them in the order they are found in the document
-    Preserve image filenames but filter them based on context relevance using LLM
+    Retrieves and processes source references for AI-generated responses in a tutoring system.
+    
+    This function performs semantic similarity search across embedded document chunks to identify
+    relevant source content that supports the generated response. It handles both textual content
+    and image references, providing normalized relevance scores and metadata for source attribution.
+    
+    Args:
+        chat_session (ChatSession): Active chat session containing conversation context and settings
+        file_path_list (List[str]): Paths to the uploaded document files being referenced
+        user_input (str): The original user query that prompted the response
+        answer (str): The AI-generated response content to find sources for
+        chat_history (List): Historical conversation context for improved source matching
+        embedding_folder_list (List[str]): Paths to directories containing pre-computed embeddings
+    
+    Returns:
+        Tuple[Dict, Dict, Dict, Dict]: A 4-tuple containing:
+            - sources_with_scores: Dictionary mapping source content to normalized relevance scores (0-1)
+            - source_pages: Dictionary mapping source content to original page numbers in documents
+            - refined_source_pages: Dictionary mapping validated sources to 1-indexed page numbers
+            - refined_source_index: Dictionary mapping sources to their corresponding file indices
+    
+    Processing Pipeline:
+        1. Loads image context mappings and URL references from embedding metadata
+        2. Performs similarity search on chat context and response content
+        3. Extracts and normalizes relevance scores across all retrieved chunks
+        4. Maps image descriptions to URLs while preserving source attribution
+        5. Validates sources against original documents and filters results
+        6. Returns structured source data for citation and reference display
+    
+    Note:
+        - Relevance scores are inverted distance metrics (lower distance = higher relevance)
+        - Image sources are mapped from descriptions to actual URLs when available
+        - Source validation ensures cited content can be located in original documents
+        - Page numbers are converted to 1-indexed format for user display
     """
     mode = chat_session.mode
     config = load_config()
@@ -268,46 +294,6 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
 
     # Create a reverse mapping based on image_url_mapping_merged
     image_url_mapping_merged_reverse = {v: k for k, v in image_url_mapping_merged.items()}
-
-    # Load / generate embeddings for each file and merge them
-    # # db_list = []
-    # faiss_path_0 = os.path.join(embedding_folder_list[0], "index.faiss")
-    # pkl_path_0 = os.path.join(embedding_folder_list[0], "index.pkl")
-    # if os.path.exists(faiss_path_0) and os.path.exists(pkl_path_0):
-    #     db_merged = load_embeddings([embedding_folder_list[0]], 'default')
-    #     # db_list.append(db_merged)
-    # else:
-    #     _document, _doc = process_pdf_file(file_path_list[0])
-    #     embeddings_agent(mode, _document, _doc, file_path_list[0], embedding_folder_list[0])
-    #     db_merged = load_embeddings([embedding_folder_list[0]], 'default')
-    #     # db_list.append(db_merged)
-    # file_index = 0
-    # for file_path, embedding_folder in zip(file_path_list[1:], embedding_folder_list[1:]):
-    #     file_index += 1
-    #     # Define the default filenames used by FAISS when saving
-    #     faiss_path = os.path.join(embedding_folder, "index.faiss")
-    #     pkl_path = os.path.join(embedding_folder, "index.pkl")
-    #     # Check if all necessary files exist to load the embeddings
-    #     if os.path.exists(faiss_path) and os.path.exists(pkl_path):
-    #         # Load existing embeddings
-    #         logger.info(f"Loading existing embeddings for {embedding_folder}...")
-    #         db = load_embeddings([embedding_folder], 'default')
-    #         # For each document chunk in db, add "file_index" to the metadata
-    #         logger.info(f"Adding file_index to metadata for {embedding_folder}...")
-    #         for doc in db.get_collection().find():
-    #             doc['metadata']['file_index'] = file_index
-    #         db_merged = db_merged.merge_from(db)
-    #         # db_list.append(db)
-    #     else:
-    #         logger.info(f"No existing embeddings found for {embedding_folder}, creating new ones...")
-    #         _document, _doc = process_pdf_file(file_path)
-    #         embeddings_agent(mode, _document, _doc, file_path, embedding_folder)
-    #         db = load_embeddings([embedding_folder], 'default')
-    #         # For each document chunk in db, add "file_index" to the metadata
-    #         for doc in db.get_collection().find():
-    #             doc['metadata']['file_index'] = file_index
-    #         db_merged = db_merged.merge_from(db)
-    #         # db_list.append(db)
 
     db_merged = load_embeddings(embedding_folder_list, 'default')
 
@@ -446,271 +432,78 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
     return sources_with_scores, source_pages, refined_source_pages, refined_source_index
 
 
-def refine_sources_simple(sources_with_scores, file_path_list):
+def get_response_source(chat_session: ChatSession, file_path_list, user_input, answer, chat_history, embedding_folder_list):
     """
-    Simplified version of refine_sources_complex that only checks if text chunks can be found in the document.
-    Returns a dictionary of refined sources with their scores.
+    Simplified version that retrieves source references directly from chat_session.formatted_context.
+    
+    This function extracts source information from the pre-computed formatted_context stored in the
+    chat session, which contains chunks ordered by source_index and page_number with their metadata.
     
     Args:
-        sources_with_scores: A dictionary mapping text chunks to their relevance scores
-        file_path_list: List of PDF file paths to search in
-        
+        chat_session (ChatSession): Active chat session containing formatted_context
+        file_path_list (List[str]): Paths to the uploaded document files being referenced
+        user_input (str): The original user query that prompted the response
+        answer (str): The AI-generated response content to find sources for
+        chat_history (List): Historical conversation context (unused in simplified version)
+        embedding_folder_list (List[str]): Paths to directories containing embeddings (unused in simplified version)
+    
     Returns:
-        Dictionary of refined sources that were found in the original documents
-    """
-    refined_sources = {}
+        Tuple[Dict, Dict, Dict, Dict]: A 4-tuple containing:
+            - sources_with_scores: Dictionary mapping source content to relevance scores (0-1)
+            - source_pages: Dictionary mapping source content to 0-indexed page numbers
+            - refined_source_pages: Dictionary mapping sources to 1-indexed page numbers
+            - refined_source_index: Dictionary mapping sources to their corresponding file indices
     
-    # Process text sources
-    _docs = []
-    for file_path in file_path_list:
-        try:
-            _, _doc = process_pdf_file(file_path)
-            _docs.append(_doc)
-        except Exception as e:
-            logger.exception(f"Error opening document {file_path}: {e}")
-    
-    # Check each source against the document pages
-    for _doc in _docs:
-        for page in _doc:
-            for source, score in sources_with_scores.items():
-                text_instances = robust_search_for(page, source)
-                if text_instances:
-                    refined_sources[source] = score
-    
-    return refined_sources
-
-
-def refine_sources_complex(sources_with_scores, file_path_list, markdown_dir_list, user_input, image_url_mapping_merged, source_pages, source_file_index, image_url_mapping_merged_reverse):
+    Context Format Expected:
+        chat_session.formatted_context = {
+            "[<1>]": {
+                "content": "relevant text chunk", 
+                "score": 0.85,
+                "page_num": 5,      # 1-indexed page number (page 5)
+                "source_index": 1   # 1-indexed file position (first file)
+            },
+            "[<2>]": {
+                "content": "another chunk", 
+                "score": 0.72,
+                "page_num": 12,     # 1-indexed page number (page 12)  
+                "source_index": 2   # 1-indexed file position (second file)
+            },
+            ...
+        }
     """
-    Refine sources by checking if they can be found in the document
-    Only get first 15 sources
-    Show them in the order they are found in the document
-    Preserve image filenames but filter them based on context relevance using LLM
-    Source_pages: a dictionary that maps each source to the page number it is found in. For images, it is mapping from the image URL to the page number.
-    Source_file_index: a dictionary that maps each source to the file index it is found in. For images, it is mapping from the image URL to the file index.
-    Sources_with_scores: a dictionary that maps each source to the score it has. For images, it is mapping from the image URL to the score.
-    """
-    config = load_config()
-    refined_sources = {}
-    image_sources = {}
-    text_sources = {}
-
-    # First separate image sources from text sources. The image sources are the ones mapping from image URL to image score. If the source is an http image URL, add it to image_sources. Otherwise, add it to text_sources.
-    for source, score in sources_with_scores.items():
-        if source.startswith('https://knowhiztutorrag.blob'):
-            image_sources[source] = score
-        else:
-            text_sources[source] = score
-
-    # TEST
-    logger.info("TEST: image sources before refine:")
-    logger.info(f"TEST: length of image sources before refine: {len(image_sources)}")
-    logger.info(f"TEST: text sources before refine: {text_sources}")
-    logger.info(f"TEST: length of text sources before refine: {len(text_sources)}")
-
-    # Filter image sources based on LLM evaluation
-    filtered_images = {}
-    if image_sources:
-        # Initialize LLM for relevance evaluation
-        config = load_config()
-        para = config['llm']
-        llm = get_llm('basic', para)
-        parser = JsonOutputParser()
-        error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
-
-        # Create prompt for image relevance evaluation
-        system_prompt = """
-        You are an expert at evaluating the relevance between a user's question and image descriptions.
-        Given a user's question and descriptions of an image, determine if the image is relevant and provide a relevance score.
-
-        First, analyze the image descriptions to identify the actual figure number in the document (e.g., "Figure 1", "Fig. 2", etc.).
-        Then evaluate the relevance considering both the actual figure number and the content.
-
-        Organize your response in the following JSON format:
-        ```json
-        {{
-            "actual_figure_number": "<extracted figure number from descriptions, e.g. 'Figure 1', 'Fig. 2', etc.>",
-            "is_relevant": <Boolean, True/False>,
-            "relevance_score": <float between 0 and 1>,
-            "explanation": "<brief explanation including actual figure number and why this image is or isn't relevant>"
-        }}
-        ```
-
-        Pay special attention to:
-        1. If the user asks about a specific figure number (e.g., "Figure 1"), prioritize matching the ACTUAL figure number from descriptions, NOT the filename
-        2. The semantic meaning and context of both the question and image descriptions
-        3. Whether the image would help answer the user's question
-        4. Look for figure number mentions in the descriptions like "Figure X", "Fig. X", "Figure-X", etc.
-        """
-
-        human_prompt = """
-        User's question: {question}
-        Image descriptions:
-        {descriptions}
-
-        Note: The image filename may not reflect the actual figure number in the document. Please extract the actual figure number from the descriptions.
-        """
-
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", system_prompt),
-            ("human", human_prompt),
-        ])
-
-        chain = prompt | llm | error_parser
-
-        # Evaluate each image
-        image_scores = []
-        for idx, (image_url, score) in enumerate(image_sources.items()):
-            if image_url in image_url_mapping_merged_reverse:
-                # TEST
-                logger.info(f"TEST: No. {idx} evaluting image with image_url: {image_url}")
-
-                # Get all context descriptions for this image
-                descriptions = image_url_mapping_merged_reverse[image_url]
-                descriptions_text = "\n".join([f"- {desc}" for desc in descriptions])
-
-                # Evaluate relevance using LLM
-                try:
-                    result = chain.invoke({
-                        "question": user_input,
-                        "descriptions": descriptions_text
-                    })
-
-                    # Store both the actual figure number and score
-                    if result["is_relevant"]:
-                        # Combine vector similarity score with LLM relevance score
-                        combined_score = (score + result["relevance_score"]) / 2
-                        image_scores.append((
-                            image_url,
-                            combined_score,
-                            result["actual_figure_number"],
-                            result["explanation"]
-                        ))
-                        # # TEST
-                        # logger.info(f"image_scores for {image_url}: {image_scores}")
-                        # logger.info(f"result for {image_url}: {result}")
-
-                except Exception as e:
-                    logger.exception(f"Error evaluating image {image_url}: {e}")
-                    continue
-            else:
-                logger.warning(f"Image URL {image_url} not found in image_url_mapping_merged_reverse")
-                logger.info(f"TEST: image_url_mapping_merged_reverse: {image_url_mapping_merged_reverse}")
-
-        # Sort images by relevance score
-        image_scores.sort(key=lambda x: x[1], reverse=True)
-
-        # Filter images with high relevance score (score > 0.2)
-        filtered_images = {img_url: score for img_url, score, fig_num, expl in image_scores if score > 0.5}
-
-        # if filtered_images:
-        #     # If asking about a specific figure, prioritize exact figure number match
-        #     import re
-        #     figure_pattern = re.compile(r'fig(?:ure)?\.?\s*(\d+)', re.IGNORECASE)
-        #     user_figure_match = figure_pattern.search(user_input)
-
-        #     if user_figure_match:
-        #         user_figure_num = user_figure_match.group(1)
-        #         # Look for exact figure number match first
-        #         exact_matches = {
-        #             img_url: score for img_url, score, fig_num, expl in image_scores
-        #             if re.search(rf'(?:figure|fig)\.?\s*{user_figure_num}\b', fig_num, re.IGNORECASE)
-        #         }
-        #         if exact_matches:
-        #             # Take the highest scored exact match
-        #             highest_match = max(exact_matches.items(), key=lambda x: x[1])
-        #             filtered_images = {highest_match[0]: highest_match[1]}
-        #         else:
-        #             # If no exact match found, include images with scores close to the highest score
-        #             if filtered_images:
-        #                 # Get the highest score
-        #                 highest_score = max(filtered_images.values())
-        #                 # Keep images with scores within 10% of the highest score
-        #                 score_threshold = highest_score * 0.9
-        #                 filtered_images = {img: score for img, score in filtered_images.items() if score >= score_threshold}
-        #     else:
-        # If no specific figure was asked for, include images with scores close to the highest score
-        if filtered_images:
-            # Get the highest score
-            highest_score = max(filtered_images.values())
-            # Keep images with scores within 10% of the highest score
-            score_threshold = highest_score * 0.9
-            filtered_images = {img_url: score for img_url, score in filtered_images.items() if score >= score_threshold}
-
-    # Process text sources as before
-    _docs = []
-    for file_path in file_path_list:
-        try:
-            _, _doc = process_pdf_file(file_path)
-            _docs.append(_doc)
-        except Exception as e:
-            logger.exception(f"Error opening document {file_path}: {e}")
-    for _doc in _docs:
-        for page in _doc:
-            for source, score in text_sources.items():
-                text_instances = robust_search_for(page, source)
-                if text_instances:
-                    refined_sources[source] = score
-
-    # Combine filtered image sources with refined text sources
-    final_sources = {**filtered_images, **refined_sources}
-
-    # Sort by score
-    sorted_sources = dict(sorted(final_sources.items(), key=lambda x: x[1], reverse=True))
-
-    # Keep only the top 50% of sources by score
-    num_sources_to_keep = max(1, len(sorted_sources) // 2)  # Keep at least 1 source
-    sorted_sources = dict(list(sorted_sources.items())[:num_sources_to_keep])
-
-    # Further limit to top 15 if needed
-    sorted_sources = dict(list(sorted_sources.items())[:15])
-
-    # TEST
-    logger.info("TEST: sorted sources after refine:")
-    for source, score in sorted_sources.items():
-        logger.info(f"{source}: {score}")
-    logger.info(f"TEST: length of sorted sources after refine: {len(sorted_sources)}")
-
-    return sorted_sources
-
-
-def cosine_similarity(vec1, vec2):
-    """Calculate cosine similarity between two vectors"""
-    dot_product = sum(a * b for a, b in zip(vec1, vec2))
-    norm1 = sum(a * a for a in vec1) ** 0.5
-    norm2 = sum(b * b for b in vec2) ** 0.5
-    return dot_product / (norm1 * norm2) if norm1 * norm2 != 0 else 0
-
-
-class PageAwareTextSplitter(RecursiveCharacterTextSplitter):
-    """Custom text splitter that respects page boundaries"""
-
-    def split_document(self, document):
-        """Split document while respecting page boundaries"""
-        final_chunks = []
-
-        for doc in document:
-            # Get the page number from the metadata
-            page_num = doc.metadata.get("page", 0)
-            text = doc.page_content
-
-            # Use parent class's splitting logic first
-            chunks = super().split_text(text)
-
-            # Create new document for each chunk with original metadata
-            for i, chunk in enumerate(chunks):
-                metadata = doc.metadata.copy()
-                # Update metadata to indicate chunk position
-                metadata["chunk_index"] = i
-                final_chunks.append(Document(
-                    page_content=chunk,
-                    metadata=metadata
-                ))
-
-        # Sort chunks by page number and then by chunk index
-        final_chunks.sort(key=lambda x: (
-            x.metadata.get("page", 0),
-            x.metadata.get("chunk_index", 0)
-        ))
-
-        return final_chunks
+    logger.info("Using simplified get_response_source with formatted_context")
+    
+    # Initialize result dictionaries
+    sources_with_scores = {}
+    source_pages = {}
+    refined_source_pages = {}
+    refined_source_index = {}
+    
+    # Extract information directly from formatted_context
+    if hasattr(chat_session, 'formatted_context') and chat_session.formatted_context:
+        for symbol, context_data in chat_session.formatted_context.items():
+            content = context_data["content"]
+            score = context_data["score"] 
+            page_num = context_data["page_num"]  # 1-indexed from context
+            source_index = context_data["source_index"]  # 1-indexed from context
+            
+            # Store the content as key with its score
+            sources_with_scores[content] = float(score)
+            
+            # Store 0-indexed page number for source_pages and refined_source_pages (no need to convert from 1-indexed)
+            source_pages[content] = page_num
+            refined_source_pages[content] = page_num
+            
+            # Store 0-indexed file index for refined_source_index (converting from 1-indexed)
+            # This matches the original behavior where refined_source_index uses the raw file_index
+            refined_source_index[content] = source_index - 1
+            
+        logger.info(f"Extracted {len(sources_with_scores)} sources from formatted_context")
+        logger.info(f"Sources with scores: {len(sources_with_scores)} items")
+        logger.info(f"Refined source pages: {len(refined_source_pages)} items")
+        logger.info(f"Refined source index: {len(refined_source_index)} items")
+        
+    else:
+        logger.warning("No formatted_context found in chat_session, returning empty results")
+    
+    return sources_with_scores, source_pages, refined_source_pages, refined_source_index

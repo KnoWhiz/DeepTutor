@@ -38,3 +38,4 @@ streamlit_nested_layout==0.1.4
 openai==1.65.1
 opencv-python-headless==4.8.1.78
 unstructured==0.17.2
+anthropic==0.42.0

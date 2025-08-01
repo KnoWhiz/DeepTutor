@@ -156,8 +156,11 @@ def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_s
     page_based_embedding_folder = os.path.join(output_dir, 'page_based_index')
     page_based_faiss_path = os.path.join(page_based_embedding_folder, "index.faiss")
     page_based_pkl_path = os.path.join(page_based_embedding_folder, "index.pkl")
+    logger.info(f"MMARK: create_markdown_embeddings")
 
     logger.info("Creating markdown embeddings ...")
+
+    logger.info(f"page_stats: {page_stats}")
     if md_document:
         # Create markdown directory if it doesn't exist
         os.makedirs(output_dir, exist_ok=True)
@@ -277,6 +280,9 @@ def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_s
                     overflow_size = int(chunk_size_actual * 0.1)
                     start_pos = max(0, estimated_start - overflow_size)
                     end_pos = min(len(md_document), estimated_end + overflow_size)
+                    logger.info(f"=== EMBEDDINGS DEBUG: start_pos = {start_pos}, end_pos = {end_pos} ===")
+                    logger.info(f"=== EMBEDDINGS DEBUG: char_proportion = {char_proportion} ===")
+                    logger.info(f"=== EMBEDDINGS DEBUG: cum_prop = {cum_prop} ===")
                     
                     # Graceful bounds checking
                     if start_pos >= len(md_document):
@@ -291,14 +297,14 @@ def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_s
                     if clean_text:
                         clean_text = clean_text.replace('<|endoftext|>', '')
                         clean_text = " ".join(clean_text.split())
-                        
+                        logger.info(f"=== EMBEDDINGS DEBUG: clean_text = {clean_text} and page_stat['page_num'] = {page_stat['page_num']} ===")
                         # Only add if we have meaningful content
                         if len(clean_text) > 10:  # Minimum content threshold
                             page_documents.append(Document(
                                 page_content=clean_text,
                                 metadata={
-                                    "page": page_stat["page_num"] + 1,  # Add 1 to index (0-indexed to 1-indexed)
-                                    "source": f"page_{page_stat['page_num'] + 1}",
+                                    "page": page_stat["page_num"],  # Add 1 to index (0-indexed to 1-indexed)
+                                    "source": f"page_{page_stat['page_num']}",
                                     "page_type": "full_page",
                                     "total_pages": len(page_stats),
                                     "file_path": str(output_dir),  # Add file path like LiteRAG
@@ -335,8 +341,8 @@ def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_s
                         page_documents.append(Document(
                             page_content=clean_text,
                             metadata={
-                                "page": page_num + 1,  # Add 1 to index
-                                "source": f"markdown_page_{page_num + 1}",
+                                "page": page_num,  
+                                "source": f"markdown_page_{page_num}",
                                 "page_type": "markdown_page",
                                 "page_size": page_size,
                                 "start_char": start_pos,

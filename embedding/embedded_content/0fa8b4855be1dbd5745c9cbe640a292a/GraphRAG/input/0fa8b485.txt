@@ -1,0 +1,244 @@
+![](_page_0_Picture_0.jpeg)
+
+# **Success Throughout Gacha Game Satisfaction by using D&M Model from Students in Batam**
+
+### **Tony Wibowo ,Junaidi**
+
+Sistem Informasi, Fakultas Ilmu Komputer, Universitas Internasional Batam, Indonesia
+
+### **Abstract**
+
+Gacha games, a prominent subgenre in the realm of online and mobile gaming, have gained widespread popularity for their distinctive monetization approach involving random in-game purchases and the acquisition of virtual items or characters through virtual loot boxes. Despite the ongoing debates and controversies surrounding ethical implications and parallels to gambling, Gacha games have demonstrated significant success and consistently engaged a diverse player base. This research aims to unravel the mysteries of this success and assess its correlation with user satisfaction. The study adopts the DeLone and McLean Information Systems Success Model, tailored for qualitative data analysis. Titled "Success Throughout Gacha Game Satisfaction by using D&M Model from Students in Batam," this research delves into the perceptions and experiences of students in Batam, Indonesia, regarding various Gacha games, including AzurLane, Fate/GO, Honkai Impact, Arknights, Blue Archive, Genshin Impact, Honkai: Star Rail, and other notable titles.
+
+### **Introduction**
+
+The term "gacha" denotes a gaming mechanic prevalent in online and mobile games, wherein players acquire virtual items, characters, or rewards through a randomized process often tied to in-game purchases. This system involves players using virtual or real currency to access virtual loot boxes, capsules, or similar containers, with the contents being generated randomly. The term is derived from the Japanese "gachapon," referring to vending machine capsules containing toys. Gacha games constitute a notable subgenre, recognized for their chance-based monetization model and the collection of virtual items.
+
+However, knowing the word "gacha" has been controversial in most cases. Many players have been avoiding the game with in-game chances due to the risk of spending their money for the dopamine they get from obtaining a rare item. Here is the list of reasons why gacha games have been avoided. Randomized Monetization Model, the core mechanic of gacha games involves a randomized system for obtaining in-game items or characters. This randomness can lead to frustration and dissatisfaction among players who may spend money without guarantee of receiving
+
+### Volume 4 No 1 (2024)
+
+desired rewards. Addictive Nature, the excitement and unpredictability of the gacha system can contribute to addictive behaviors, with players compelled to make repeated purchases in the hope of obtaining rare or desired virtual items. This has raised concerns about the potential for excessive spending and its impact on vulnerable individuals. Youth Appeal and Regulation, gacha games often attract a younger audience due to their colorful graphics, engaging characters, and accessible gameplay. This has led to concerns about the potential for children to engage in ingame purchases without proper understanding, prompting calls for stricter regulations. Comparisons to Gambling, the randomized nature of gacha draws parallels to gambling, where players invest money with uncertain outcomes. Critics argue that this resemblance raises ethical concerns, especially considering that some players may develop addictive patterns similar to gambling addiction. Loot Box Controversy, gacha draws are akin to loot boxes, which have faced scrutiny worldwide. Some countries and jurisdictions have implemented or considered regulations to address the potential harm associated with these chance-based microtransactions. Exclusivity and Power Disparities, gacha games often introduce rare or powerful characters/items that are difficult to obtain without significant investment. This creates a disparity between players who spend money and those who do not, leading to concerns about fairness and a "pay-to-win" dynamic. Incomplete Information, Some gacha games may not provide clear information about the odds of obtaining specific items or characters, contributing to a lack of transparency. This lack of clarity can lead to players feeling misled or exploited. Regulatory Responses, governments and regulatory bodies in various countries have responded to concerns about gacha mechanics by considering or implementing regulations to protect consumers, particularly minors, from potential harm associated with these chance-based transactions.
+
+While gacha games continue to be popular, the controversy surrounding them has prompted discussions about responsible game design, ethical considerations, and the need for industry regulations to address the potential negative impacts on players. Even then, gacha games have witnessed remarkable success and continue to captivate a large and diverse player base. The list of gacha games is as follows ; AzurLane, Fate/GO, Honkai Impact, Arknights, Blue Archive, Genshin Impact, Honkai: Star Rail, and many more.
+
+To unravel the mysteries of this success and to assess its link to user satisfaction, this research employs the DeLone and McLean Information Systems Success Model, adapted for qualitative data analysis. With the title of "Success Throughout Gacha Game Satisfaction by using D&M Model from Students in Batam". By employing the DeLone and McLean Information Systems Success Model, this research aims to contribute valuable insights into the success and satisfaction dynamics within the Gacha gaming industry, particularly from the perspective of students in Batam, Indonesia.
+
+# **Methodology**
+
+In this research, will be using quantitative for knowing the factor of making success from gacha game from player satisfaction with the method of DeLong and McLean Information System Success Model
+
+![](_page_2_Figure_3.jpeg)
+
+Image 2. The Research model modified by researcher
+
+H10: Perceived ease of use can't affect Satisfaction to user for success of gacha game
+
+H1a: Perceived ease of use affect Satisfaction to user for success gacha game
+
+H20: Perceived enjoyment can't affect Satisfaction to user for success gacha game
+
+H2a: Perceived enjoyment affect Satisfaction to user for success gacha game
+
+H30: Perceived system quality can't affect Satisfaction to user for success gacha game
+
+H3a: Perceived system quality affect Satisfaction to user for success gacha game H40: Satisfaction can't affect Continuance to user for success gacha game H4a: Satisfaction affect Continuance to user for success gacha game
+
+| No | Research  | Indicator                          | Source  |
+|----|-----------|------------------------------------|---------|
+|    | Variable  |                                    |         |
+| 1  | Perceived | 1.<br>I enjoy playing gacha game   | (Matute |
+|    | enjoyment | purely for my own    Saya          | Vallejo |
+|    |           | menikmati bermain video            | and     |
+|    |           | game ini untuk kepentingan         | Melero  |
+|    |           | diri sendiri.                      | Polo    |
+|    |           | 2.<br>I play gacha game for purely | 2019)   |
+|    |           | for fun    Saya memainkan          |         |
+|    |           | game online ini untuk              |         |
+|    |           | kesenangan secara murni.           |         |
+
+|   |                   | 3. | I feel excitement when playing   |           |
+|---|-------------------|----|----------------------------------|-----------|
+|   |                   |    | Gacha game   <br>Saya            |           |
+|   |                   |    | merasakan kesenangan saat        |           |
+|   |                   |    | bermain game online ini.         |           |
+| 2 | Perceived<br>ease | 1. | Gacha game is easier to play     | (Albaom   |
+|   | of use            |    | Game online ini mudah            | et al.    |
+|   |                   |    | dimainkan.                       | 2022)     |
+|   |                   | 2. | Learning Gacha game is easier    |           |
+|   |                   |    | for me    Belajar bermain        |           |
+|   |                   |    | game online ini mudah bagi       |           |
+|   |                   |    | saya.                            |           |
+|   |                   | 3. | Easier for me to gain skill      |           |
+|   |                   |    | when playing Gacha game.         |           |
+|   |                   |    | Mudah bagi saya untuk            |           |
+|   |                   |    | menjadi terampil dalam           |           |
+|   |                   |    | memainkan game online ini.       |           |
+|   |                   |    |                                  |           |
+| 3 | Perceived         | 1. | Gacha game graphics is           | (Prakarsa |
+|   | System Quality    |    | interesting or aesthetic and     | 2020)     |
+|   |                   |    | gives high quality    Grafik     |           |
+|   |                   |    | game online ini menarik atau     |           |
+|   |                   |    | estetis dan memberikan grafik    |           |
+|   |                   |    | berkualitas tinggi.              |           |
+|   |                   | 2. | Gacha game always give           |           |
+|   |                   |    | update to add feature, story,    |           |
+|   |                   |    | and/or character as well as      |           |
+|   |                   |    | facility for user to create      |           |
+|   |                   |    | strategy with flexible character |           |
+|   |                   |    | and item.    Game ini sering     |           |
+|   |                   |    | memberikan update untuk          |           |
+|   |                   |    | memperkaya fitur, cerita,        |           |
+|   |                   |    | dan/atau karakter serta          |           |
+
+|   |                   |    | bagi pemain untuk membuat        |           |
+|---|-------------------|----|----------------------------------|-----------|
+|   |                   |    | strategi bermain yang fleksibel  |           |
+|   |                   |    | dengan karakter dan item.        |           |
+|   |                   | 3. | Gacha game gives great           |           |
+|   |                   |    | method to communicate and        |           |
+|   |                   |    | interact with others    Game     |           |
+|   |                   |    | online ini menyediakan           |           |
+|   |                   |    | metode yang tepat untuk          |           |
+|   | berkomunikasi dan |    |                                  |           |
+|   |                   |    | berinteraksi dengan orang        |           |
+|   |                   |    | lain.                            |           |
+|   |                   | 4. | Gacha game has stable system     |           |
+|   |                   |    | to respond my command            |           |
+|   |                   |    | (click, movement)    Game        |           |
+|   |                   |    | online ini stabil untuk          |           |
+|   |                   |    | digunakan dengan sistem yang     |           |
+|   |                   |    | cepat merespon perintah saya     |           |
+|   |                   |    | (misalnya, klik, gerakan).       |           |
+| 4 | Satisfaction      | 1. | overall I'm satisfied with gacha | (Rahardja |
+|   |                   |    | game.    Secara keseluruhan,     | ,         |
+|   |                   |    | saya puas dengan game online     | Hariguna, |
+|   |                   |    | ini.                             | and Aini  |
+|   |                   | 2. | overall, Gacha game van fulfill  | 2019)     |
+|   |                   |    | what I need    Secara            |           |
+|   |                   |    | keseluruhan, game online ini     |           |
+|   |                   |    | memenuhi kebutuhan saya.         |           |
+|   |                   | 3. | in Overall, gacha game service   |           |
+|   |                   |    | works well with my behaviour     |           |
+|   |                   |    | when playing   Secara            |           |
+|   |                   |    | keseluruhan, layanan game        |           |
+|   |                   |    | online ini bekerja dengan baik   |           |
+
+|   |             |                            | dalam menangani perilaku      |           |
+|---|-------------|----------------------------|-------------------------------|-----------|
+|   |             | bermain game saya.         |                               |           |
+| 5 | Continuance | 1.                         | I will return to Gacha game   | (Hoe-Lian |
+|   | Intention   |                            | when I want to    Saya akan   | GOH Ee    |
+|   |             |                            | menggunakan kembali game      | peng LIM  |
+|   |             |                            | online ini ketika saya ingin  |           |
+|   |             | bermain game online nanti. |                               |           |
+|   |             | 2.                         | Compare to other game genre,  |           |
+|   |             | I prefer gacha game        |                               |           |
+|   |             |                            | Dibandingkan game online      |           |
+|   |             |                            | lainnya, saya lebih menyukai  |           |
+|   |             |                            | game online ini.              |           |
+|   |             | 3.                         | I will recommend gacha game   |           |
+|   |             |                            | to others    Saya akan        |           |
+|   |             |                            | merekomendasikan game         |           |
+|   |             |                            | online ini kepada orang lain. |           |
+
+# **Collecting Data Method**
+
+### **Research Population**
+
+With this research, The students of Batam are chosen as the population. The sample will be the students who have played Genshin Impact and to this research using Purposive Sampling Method, with this method, can gather data specific to this research to understand their satisfaction with game success.
+
+### **Collecting Data Method**
+
+This research is going to be using a Qualitative method. The issue within research can be answered by comparing results that have been created or modified. Here are the research method that will be used for this research :
+
+### **Survey**
+
+For the Survey, this research will be using google form in order to distribute questionnaire to respondent in link form
+# **Analysis Data Method**
+
+## **Outliner**
+
+Is a condition of a data that's different with other data in order to have different attribute with structural data and if happens to be outliner then the survey must be erased from the data by knowing conversion to (z-table) and if calculation succeeded within the score ≤ -3 between ≥ 3, then this survey must be erased because it becomes "outliner"
+
+## **Validity**
+
+Is a test that's used to measure and know if the data is valid or not. The way to test is by correlation with each point and factor as they called Bivariate Pearson. Then for knowing data that's valid, if the coefficient correlation result must be > 0.05 then it's confirmed valid.
+
+## **Reliability**
+
+Is a test for measuring how reliable the data is or not. This test is using the alpha cronbach formula, for reliability percentage. With an alpha cronbach score > 0.5 to 0.7, can be confirmed that the data is reliable or moderate reliability. And if the score is above 0.7 to 0.9, it can be called as high reliability.
+
+#### **Regression Test**
+
+Is a part of SPSS Statistic analysis in order to determine the significance of each variable, whether independent and dependent has significance to each other or individual, and connecting the model to the phenomena.
+
+#### **Results**
+
+Within the result that has been collected from the questionnaire by 300 respondents, then next step the data sample will be tested with an outliner and deciding if the data must be erased from the questionnaire. From the outlier test, all samples are passed and able to proceed to the next test. Before into next discussion analysis, here are the characteristic table from researcher's questionnaire
+
+Table 2. Survey question and responds
+
+Volume 4 No 1 (2024)
+
+| Item                             | Option               | Frequency | Percentag<br>e |  |
+|----------------------------------|----------------------|-----------|----------------|--|
+| My gender is                     | Male                 | 238       | 79.3%          |  |
+|                                  | Female               | 62        | 20.7%          |  |
+| My age is                        | 10~15                | 3         | 1%             |  |
+|                                  | 16~20                | 154       | 51.3%          |  |
+|                                  | 21~25                | 137       | 45.7%          |  |
+|                                  | 26~30                | 6         | 2%             |  |
+| Have played<br>gacha games       | Yes                  | 262       | 87.3%          |  |
+|                                  | No                   | 38        | 12.7%          |  |
+| Average<br>spending for<br>gacha | <100.000             | 5         | 1.7%           |  |
+|                                  | 100.000 to 500.000   | 1         | 0.3%           |  |
+|                                  | 500.000 to 1.000.000 | 2         | 0.7%           |  |
+|                                  | >1.000.000           | 1         | 0.3%           |  |
+|                                  | <6\$                 | 183       | 61%            |  |
+|                                  | 6\$ to 30\$          | 55        | 18.3%          |  |
+|                                  | 30\$ to 70\$         | 24        | 8%             |  |
+|                                  | >70\$                | 29        | 9.7%           |  |
+| Type of<br>spending gacha        | Purchase Content     | 64        | 21.3%          |  |
+| game                             | Cosmetic/Season      | 38        | 12.7%          |  |
+|                                  | In-game Currency     | 66        | 22%            |  |
+
+Volume 4 No 1 (2024)
+
+| Subscription       | 31 | 10.3% |
+|--------------------|----|-------|
+| Tournament/Betting | 16 | 5.3%  |
+| Multipurpose       | 85 | 28.3% |
+
+|       |            | Unstandardized Coefficients |            | Standardized<br>Coefficients |         |      | <b>Collinearity Statistics</b> |       |
+|-------|------------|-----------------------------|------------|------------------------------|---------|------|--------------------------------|-------|
+| Model |            | в                           | Std. Error | Beta                         |         | Sig. | Tolerance                      | VIF   |
+|       | (Constant) | .007                        | .187       |                              | .039    | .969 |                                |       |
+|       | PE.        | .476                        | .057       | .463                         | 8.293   | .000 | .433                           | 2.308 |
+|       | PEOU       | $-025$                      | .061       | $-022$                       | $-.410$ | .682 | .452                           | 2.212 |
+|       | <b>PSQ</b> | .477                        | .075       | .387                         | 6.392   | .000 | .370                           | 2.704 |
+
+## Image 3. Coefficient in SPSS Output
+
+With this result, we can conclude that PEOU has more significance to Satisfaction with (0.682) other than PE and PSQ where both are (0) means it has no significance towards Satisfaction. Even the unstandardized coefficient is pretty lower compared to others, it can have a variety of meanings. In a gacha game, the summoning system is a crucial element where players spend in-game currency to acquire new characters or items.
+
+Suppose the game design prioritizes ease of use in this process. Intuitive Interface, the summoning interface is designed with clarity, simplicity, and intuitive controls. Players can easily navigate to the summoning section without unnecessary complexity. Clear Information, the game provides clear and concise information about the available characters, their rates, and the potential rewards. This transparency helps players make informed decisions before engaging in the gacha mechanic. One-Tap Summoning, the summoning process is streamlined with a one-tap option, allowing players to quickly and effortlessly initiate the gacha pull. This eliminates unnecessary steps and reduces the time required to engage in the exciting aspect of the game. Visual Feedback, the game incorporates engaging animations and visual effects during the summoning process. These elements not only make the experience more enjoyable but also provide immediate feedback, heightening the anticipation and excitement for the player. Inventory Management, gacha game includes an efficient inventory management system. Players can easily review and organize their acquired characters and items, preventing frustration and ensuring a smooth gaming experience. Quick Results Display, upon completing a summon, the game promptly displays the results in a visually appealing manner. Whether the outcome is a rare character or a common item, the quick presentation maintains the player's engagement and satisfaction. In-Game Tutorials, for new players, the game offers indepth tutorials or guidance on the summoning process. This helps players, especially those unfamiliar with gacha mechanics, to quickly grasp the concept and enjoy the game without confusion.
+
+By focusing on these elements of ease of use in the summoning system, players are more likely to have a positive and satisfying experience. The streamlined process, coupled with clear information and engaging visuals, contributes to the overall enjoyment of the gacha game and enhances player satisfaction.
+
+### **Conclusion**
+
+In conclusion, the Purpose of this research is to understand how Gacha games can be successful from the perspective of a player's satisfaction. We can see that having gacha aspect to a video game doesn't necessarily mean it's bad. There are multiple things to consider.
+
+Gacha games offer several benefits that contribute to their widespread popularity Entertainment and Engagement, gacha games provide immersive and entertaining experiences, keeping players engaged with compelling storylines, characters, and gameplay mechanics. Collectible Aspect, the randomized acquisition of virtual items or characters adds a collectible aspect to the games, encouraging players to build diverse and unique collections. Monetization Model, the gacha system's in-game purchases create a revenue stream for game developers, enabling them to offer free-to-play games while still generating income from players who choose to make optional purchases. Community Building, gacha games often foster a sense of community among players who share a common interest in collecting and discussing their in-game achievements and experiences. Regular Updates and Events, developers frequently release new content, characters, and events, keeping the game fresh and encouraging players to continue their engagement over time. Strategic Gameplay, many gacha games require strategic thinking, team building, and planning, adding a layer of complexity that appeals to players who enjoy tactical challenges. The player is able to plan and build up problem solving. Whether it's about how worth the item is or the difficulty of the game is manageable. Global Appeal, gacha games often feature diverse themes, art styles, and genres, catering to a broad audience with varied interests and preferences. Continuous Development, Successful gacha games receive ongoing support and updates, showcasing a commitment to the player community and ensuring the longevity of the gaming experience. Accessible Entry Point, the free-to-play nature of many gacha games provides an accessible entry point for players, allowing them to enjoy the basic gameplay without an upfront cost. Innovation in Monetization, gacha games have pushed boundaries in terms of innovative monetization strategies, introducing new approaches that have influenced the broader gaming industry.
+
+While these benefits contribute to the appeal of gacha games, it's important to acknowledge that concerns exist, particularly related to the potential for excessive spending, addictive gameplay, and ethical considerations surrounding the randomized nature of in-game purchases.
+
+# **Bibliography**
+
+- SULYATI, A. (2021). Faktor Yang Mempengaruhi Kepuasan Pengguna Pada Video Conference Dalam Pembelajaran Online Menggunakan Model Delone & ....<http://repository.unj.ac.id/13262/%0A> [http://repository.unj.ac.id/13262/7/DAFTAR PUSTAKA.pdf](http://repository.unj.ac.id/13262/7/DAFTAR)
+- Matute-Vallejo, J., & Melero-Polo, I. (2019). Understanding online business simulation games: the role of flow experience, perceived enjoyment and personal innovativeness. Australasian Journal of Educational Technology, 35(3), 71– 85.<https://doi.org/10.14742/ajet.3862>
+- Albaom, M. A., Sidi, F., Jabar, M. A., Abdullah, R., Ishak, I., Yunikawati, N. A., Priambodo, M. P., Nusari, M. S., & Ali, D. A. (2022). The Moderating Role of Personal Innovativeness in Tourists' Intention to Use Web 3.0 Based on Updated Information Systems Success Model. Sustainability, 14(21), 13935.<https://doi.org/10.3390/su142113935>
+- Prakarsa, G. (2020). Integration of Mobile Perceived Compatibility, Mobile Perceived Financial Resources, and Mobile Perceived System Quality with TAM in Virtual Hotel Operator Applications in Indonesia. International Journal of Global Operations Research, 1(2), 62–70.<https://doi.org/10.47194/ijgor.v1i2.36>
+- Rahardja, U., Hariguna, T., & Aini, Q. (2019). Understanding the impact of determinants in game learning acceptance: An empirical study. International Journal of Education and Practice, 7(3), 136–145. <https://doi.org/10.18488/journal.61.2019.73.136.145>
+- Hoe-Lian GOH Ee-peng LIM, D. (2020). Understanding continuance intention toward crowdsourcing Understanding continuance intention toward crowdsourcing games: A longitudinal investigation games: A longitudinal investigation Xiaohui WANG Part of the Numerical Analysis and Scientific Computing Commons Citation Citation. International Journal of Human-Computer Interaction, 36(12), 1168–1177. <https://doi.org/10.1080/10447318.2020.1724010>

@@ -1,0 +1,42 @@
+Here is the refined summary with duplicated section titles removed:
+
+---
+
+### 👋 Welcome to DeepTutor!
+
+I'm your AI tutor 🤖 ready to help you understand this document.
+
+### 💡 Key Takeaway
+🌟 **Incorporating** **event-driven prompts** and **character-specific fine-tuning** into anime chatbots like HonkaiChat leads to **more engaging, natural, and contextually grounded conversations** while **reducing hallucinations** compared to static, reactive systems.
+
+### 📚 Document Overview
+- **Event-driven prompts** enable chatbots to reference dynamic, character-specific events, making conversations feel more natural and engaging.
+- **Fine-tuning on character data** and using curated scenarios helps the model mimic unique personalities and reduce irrelevant hallucinations.
+- **Evaluation with GPT-4** shows that event-based systems improve conversational quality compared to static, context-reactive approaches.
+- **Future work** aims to enhance personality diversity and automate event integration for even more lifelike role-playing agents.
+
+### 🔧 Event-Driven Dialogue Framework
+- The framework enhances chatbot conversations by embedding dynamic **events** and character-specific experiences, making interactions feel more lifelike and engaging.
+- By fine-tuning models with **event-based prompts** and rich character data, the system reduces **hallucinations** and improves conversational **naturalness** compared to static, reactive bots.
+- Evaluations using **GPT-4** show that event-driven approaches lead to more **contextual** and emotionally aligned responses, especially in fantasy role-playing settings like Honkai: Star Rail.
+
+### 📊 Data Collection and Augmentation
+- The process involved extracting in-game dialogues and lore from the **Honkai: Star Rail Wiki** and generating synthetic conversations, resulting in a rich dataset of over **5,000 samples**.
+- Techniques like **character name masking** and **dialogue synthesis** were used to diversify scenarios and ensure the chatbot responds naturally to a wide range of events.
+
+### 🤖 Model Training and Fine-Tuning
+- The process involves pre-training a large language model (like **LLaMA 3.1-8B**) on broad game and character data to give it foundational knowledge.
+- The model is then adapted to specific characters by training on curated dialogues and **event-driven scenarios**, making responses more engaging and lifelike.
+- Using **metrics** like memorization, personality, and hallucination rates, the team showed that fine-tuned, event-driven models create more natural and context-aware conversations.
+
+### 📊 Evaluation and Results
+- **Event-driven prompts** led to more **engaging** and **natural conversations**, with models showing improved alignment to character personality and context.
+- The approach **reduced hallucinations** and encouraged **contextual emotional responses**, as measured by multi-dimensional GPT-4 ratings across $N = 200$ test samples.
+
+### 🔍 Analysis and Future Directions
+- **Event-driven prompts** reduce generic hallucinations and enable more **contextual, emotionally aligned responses**, making chatbots feel more "alive."
+- Future work will focus on **improving character-specific personality** and **streamlining event pipelines** to achieve richer, more authentic conversations.
+
+---
+### 💬 Ask Me Anything!
+Feel free to ask me any questions about the document! I'm here to help! ✨

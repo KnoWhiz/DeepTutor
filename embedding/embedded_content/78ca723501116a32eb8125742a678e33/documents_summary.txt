@@ -1,0 +1,43 @@
+Here is your refined summary with duplicated section titles removed:
+
+---
+
+### 👋 Welcome to DeepTutor!
+
+I'm your AI tutor 🤖 ready to help you understand this document.
+
+### 💡 Key Takeaway
+🎮 **The most significant finding is that **borrowing** (41.87%) and **contextualization** (26.79%) are the dominant translation strategies used in *Honkai: Star Rail*'s English-to-Indonesian subtitles, with **borrowing** preserving in-game terminology to maintain authenticity and player familiarity.**
+
+### 📚 Document Overview
+- **Borrowing** was the most used translation strategy (41.87%), preserving original game terms like character and place names.
+- **Contextualization** (26.79%) added details or clarified meaning, helping Indonesian players understand in-game situations.
+- Only **10 out of 13** Oers' strategies appeared, with **Renaming, Re-creation,** and **Compensation** unused in subtitles.
+- The study highlights that **localization** in *Honkai: Star Rail* mainly keeps special terms intact while adapting context for Indonesian gamers.
+
+### 🔎 Translation Strategies Overview
+- **Translation strategies** like **borrowing** (41.87%) and **contextualization** (26.79%) are most used to adapt video game subtitles for local audiences.
+- **Oers' framework** covers 13 strategies, but only 10 appeared in *Honkai: Star Rail*, showing that not all methods fit every context.
+- Choosing the right **translation strategy** helps keep the game's **original meaning** and makes the story clear and engaging for players.
+
+### 🔬 Methodology
+- Uses a **qualitative descriptive approach** to analyze subtitle translations in *Honkai: Star Rail*.
+- Researchers applied **Oers' 13 translation strategies** to subtitle data, organizing findings by text box using tools like **Discord** and **Microsoft Excel**.
+
+### 📊 Key Findings (Results)
+- **Borrowing** was the most used strategy, making up **41.87%** of all subtitle translations to keep original game terms and names.
+- **Contextualization** was also common (**26.79%**), helping players understand the story by adding clear context in the target language.
+- Only **10 out of 13** of Oers' translation strategies appeared, showing a strong focus on preserving **game-specific terms** and making subtitles easy to follow.
+
+### 💭 Discussion
+- **Localization** is essential for adapting video game content to the **target culture**, ensuring players enjoy a seamless and engaging experience.
+- The study found that strategies like **borrowing** ($41.87\%$) and **contextualization** ($26.79\%$) were most used, highlighting the need to balance **originality** and **cultural relevance** in translation.
+
+### 🎯 Conclusion
+- **Borrowing** (41.87%) and **contextualization** (26.79%) were the most used strategies, helping preserve original terms and clarify game context.
+- These approaches ensure **familiarity** and **immersion** for Indonesian players by keeping key names and enhancing understanding of the game's world.
+- The study suggests adding **faithful** and **communicative translation** strategies for better localization between noncognate languages.
+
+---
+### 💬 Ask Me Anything!
+Feel free to ask me any questions about the document! I'm here to help! ✨

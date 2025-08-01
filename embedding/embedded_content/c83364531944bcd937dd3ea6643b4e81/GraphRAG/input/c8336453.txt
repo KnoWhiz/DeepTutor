@@ -1,0 +1,395 @@
+# **Analisis Sentimen Berbasis Aspek Terhadap Ulasan Pengguna pada** *Game Honkai: Star Rail* **Menggunakan** *Naïve Bayes Classifier*
+
+*Aspect-Based Sentiment Analysis of User Reviews on the Game Honkai: Star Rail Using Naïve Bayes Classifier*
+
+#### **<sup>1</sup>Hisyam Agus Setiawan, <sup>2</sup>Herman Yuliansyah\***
+
+1,2Program Studi Informatika, Fakultas Teknologi Industri, Universitas Ahmad Dahlan 1,2Jl. Ringroad Selatan, Kragilan, Tamanan, Kec. Banguntapan, Kabupaten Bantul, Daerah Istimewa Yogyakarta 55191 \*e-mail: *[herman.yuliansyah@tif.uad.ac.id](mailto:herman.yuliansyah@tif.uad.ac.id)*
+
+(*received***:** 26 June 2024, *revised***:** 1 July 2024, *accepted***:** 24 Juny 2024)
+
+#### **Abstrak**
+
+*Game* adalah bentuk hiburan yang sering digunakan untuk menyegarkan pikiran dari kepenatan akibat aktivitas dan rutinitas sehari-hari. Honkai: Star Rail adalah turn-based *RPG* populer dari *Hoyoverse* yang tersedia di *Google Play Store*. Beberapa penelitian telah mengusulkan analisis sentimen dengan metode klasifikasi *Naïve Bayes*. Namun, tidak banyak yang mengidentifikasi ulasan suatu *game* hingga mengidentifikasi pada aspeknya. Dalam analisis sentimen berbasis aspek, teks dianalisis untuk mengidentifikasi berbagai atribut atau komponen, kemudian ditentukan sentimen yang relevan (positif, negatif, atau netral) untuk masing-masing atribut tersebut. Penelitian ini bertujuan untuk menganalisis sentimen berbasis aspek menggunakan metode *Naïve Bayes Classifier*, serta mengategorikan sentimen menjadi positif dan negatif, dan mengklasifikasikan ulasan ke dalam aspekaspek tertentu. Hasil yang diperoleh setelah iterasi sebanyak *5-fold* didapatkan rerata akurasi terbaik sebesar 79%, Hasil evaluasi menunjukkan bahwa perlu dilakukan tuning pada model menggunakan *Grid Search Hyperparameter Tuning*. Optimasi parameter *smoothing* dengan alpha = 0.1 terbukti efektif dalam meningkatkan kinerja model dengan rerata tertimbang akurasi tertinggi sebesar 93%. Hasil evaluasi menunjukkan bahwa dengan optimalisasi *Grid Search Hyperparameter Tuning* memberikan performa yang lebih baik pada model algoritma *Naive Bayes* dalam klasifikasi multilabel.
+
+**Kata kunci:** analisis sentimen berbasis aspek, *complement naive bayes, stratifieed k-fold cross validation, game, grid search*
+
+#### *Abstract*
+
+*Game is a form of entertainment that is often used to refresh the mind from the fatigue of daily activities and routines. Honkai: Star Rail is a popular turn-based game from Hoyoverse available on Google Play Store. Several studies have proposed Sentiment Analysis with Naïve Bayes classification method. However, not many have identified the reviews of a game to the extent of identifying on its aspects. In aspect-based sentiment analysis, text is analyzed to identify various attributes or components, then the relevant sentiment (positive, negative, or neutral) for each of these attributes is determined. This research aims to analyze aspect-based sentiment using the Naïve Bayes Classifier method, as well as categorize sentiment into positive and negative, and classify reviews into certain aspects. The results obtained after 5-fold iteration obtained the best average accuracy of 79%, The evaluation results show that it is necessary to tune the model using Grid Search Hyperparameter Tuning. Optimization of smoothing parameters with alpha = 0.1 proved effective in improving model performance with the highest weighted average accuracy of 93%. The evaluation results show that Grid Search Hyperparameter Tuning optimization gives better performance to the Naive Bayes algorithm model in multi-label classification.*
+
+*Keywords: aspect-based sentiment analysis, complement naive bayes, stratified k-fold cross validation, game, grid search*
+
+#### **1 Pendahuluan**
+
+*Game* (gim) merupakan suatu bentuk hiburan yang seringkali dijadikan sebagai penyegar pikiran dari rasa penat yang disebabkan oleh aktivitas dan rutinitas kita [1]. *Mobile game* merupakan sektor dengan tren tertinggi dari saat ini, sehingga membuat para pengembang *game* berlomba-lomba menciptakan game terbaiknya, seperti pengembang *game Honkai: Star Rail*. *Honkai: Star Rail* merupakan *turn-base*d *Role-Play Game* (RPG) besutan *developer* Hoyoverse yang ada pada *platform Google Play Store* dengan menyajikan *Gameplay* dan *Visual* menarik serta memiliki jumlah unduhan lebih dari 1,5 juta pengguna pada perilisannya. Jumlah unduhan dari *game Honkai: Star Rail* pada *platform Play Store* hingga penelitian ini dibuat, mencapai lebih dari 10 juta dengan rerata rating 4.4/5.0 dari 368 ribu ulasan [2].
+
+Ulasan yang dilontarkan para pemain terhadap *game Honkai: Star Rail* juga cukup tinggi. Pengguna *game* memberi tanggapan positif, negatif, maupun netral. Semakin banyak ulasan, semakin bervariasi pengguna beropini, mulai dari *gameplay*, fitur, performa, sampai *bug/error*. Diperlukan suatu teknik untuk mengolah ulasan dan mengetahui sentimen dari pemain *game* dengan analisis sentimen. Penelitian terhadap ulasan juga perlu di ekstrak aspeknya terlebih dahulu supaya mengetahui informasi mengenai opini yang didapatkan melalui ulasan dapat diketahui dengan jelas.
+
+Analisis sentimen bertujuan untuk mengetahui ulasan pengguna dan model analisis sentimen dapat dibangun dengan pendekatan *lexicon* dan *machine learning*. *Valance Aware Dictionary for Sentiment Reasoning* (VADER) adalah pendekatan *lexicon* yang paling umum digunakan [3]. Namun, metode VADER ini memerlukan metode translasi Bahasa Inggris seperti *Deep Translator* [4] dan baru terbatas untuk menganalisa sentimen dengan *single-label*. Oleh karena itu, diperlukan analisis yang lebih mendalam terkait ulasan pengguna dengan *multi-label classification* menggunakan analisis sentimen berbasis aspek. Analisis sentimen berbasis aspek telah menjadi metode yang populer dalam memahami opini pengguna tentang produk digital [5]. Penelitian analisis sentimen telah banyak diuji, namun penelitian yang secara khusus menargetkan ulasan *game mobile* masih terbatas. *Scope* penelitian ini berfokus pada pengembangan model klasifikasi yang dapat mengkategorikan ulasan pengguna dengan mengidentifikasi aspek-aspek yang telah dirumuskan.
+
+Penerapan analisis sentimen berbasis aspek telah dilakukan dengan beberapa metode penelitian, diantaranya *Naïve Bayes Classifier (NBC)* [6], *Support Vector Machine* (SVM) [7], dan *k-Nearest Neighbor* (k-NN) [8]. Muhammad Riza Alifi dkk. mengkaji proses pengambilan keputusan dalam investasi saham menggunakan analisis sentimen berbasis aspek guna mengekstrak informasi terkait dengan masing-masing aspek, menilai sentimennya dan untuk meningkatkan pemahaman sentimen dalam konteks berita saham. Hasil akhir menunjukkan nilai rerata metrik evaluasi dengan kombinasi *hyperparameter* yang akurasinya mencapai 90% [9]. Putri Rizki Amalia dkk. melakukan analisis sentimen dengan mengklasifikasikan aspek pada ulasan restoran berbahasa Indonesia yang bertujuan untuk meningkatkan kualitas pelayanan restoran berdasarkan aspek makanan, pelayanan, harga dan tempat dengan mengkombinasikan model *Convolutional Neural Network* (CNN) dan *Contextual Word Embedding*. Pengujian pada aspek menghasilkan nilai terbaik pada model ELMo-CNN *micro average precision* sebesar 0.88 dan BERT-CNN dengan presisi sebesar 0.89 pada klasifikasi sentimen [10].
+
+NBC merupakan metode klasifikasi yang berbasis pada Teorema *Bayes* dengan asumsi independensi antar fitur [11]. NBC mempunyai beberapa kelebihan, antara lain efisiensi komputasi, kemudahan implementasi, dan kemampuan untuk bekerja dengan baik pada dataset kecil hingga besar sehingga sangat efektif dalam menangani data teks dan sering digunakan dalam penelitian seperti analisis sentimen dan *spam filtering*. NBC dapat berfungsi sebagai klasifikasi teks, deteksi anomali, dan prediksi kategori, dengan performa yang seringkali kompetitif meskipun asumsi independensinya sederhana [12].
+
+Tujuan utama dari penelitian ini adalah mengusulkan model analisis sentimen berbasis aspek pada ulasan pemain *game Honkai: Star Rail* di *Google Play Store* untuk mengidentifikasi aspek terhadap ulasan. Hasil analisis sentimen berupa klasifikasi sentimen yang meliputi positif dan negatif dengan empat aspek diantaranya *Gameplay*, *Visual*, *Performance*, dan *Feature* disertai dengan skor total (rerata). Penelitian ini memberikan dua kontribusi utama: pertama, mengembangkan analisis
+
+sentimen berbasis aspek menggunakan metode NBC. Kedua, memberikan hasil analisis yang mengkategorikan sentimen menjadi positif dan negatif, serta mengklasifikasikan ulasan kedalam aspek-aspek yang telah ditentukan.
+
+Batasan pada penelitian ini yaitu menggunakan dataset dari *scrapping data* pada *Google Play Store* berjumlah 1000 data dengan mendefinisikan 4 aspek label yaitu *Gameplay*, *Visual*, *Performance*, dan *Feature*. Pelabelan data dilakukan secara manual oleh 4 sukarelawan responden dengan meringkas beberapa kategori seperti alur cerita, teknis bermain, grafik, penyimpanan, dan fitur yang ada di dalam *game*.
+
+# **2 Tinjauan Literatur**
+
+Whita Parasati dkk. menganalisis ulasan pelanggan menggunakan algoritma *Naïve Bayes* untuk meningkatkan pelayanan dan produk restoran. Penelitian ini menghasilkan visualisasi dasbor untuk membantu pemilik restoran dalam pengambilan keputusan strategis terkait kepuasan pelanggan [13]. M. Hidayat dkk. menggunakan metode IndoBERT untuk mengklasifikasi sentimen berdasarkan aspek *gameplay*, performa, dan *player* dari ulasan pengguna *game Honkai Impact 3rd*. Hasilnya menunjukkan bahwa model IndoBERT efektif dalam klasifikasi dengan akurasi yang baik, meskipun mengalami *overfitting* akibat ketidakseimbangan dataset, yang menyebabkan fluktuasi dan perubahan ukuran batch memengaruhi akurasi dan rata-rata makro [14].
+
+Hartati Penta Angelina Sormin dkk. melakukan analisis sentimen masyarakat terhadap layanan UB Press menggunakan klasifikasi NBC dan fitur berbasis leksikon dengan tujuan untuk memperoleh informasi sentimen berdasarkan aspek yang telah teridentifikasi dan meningkatkan kualitas layanan. Proses pengolahan data mencakup translasi, pelabelan leksikon, pra-pemrosesan, pembagian data latih dan uji, pembobotan TF-IDF, model klasifikasi, dan pengujian. Hasilnya menunjukkan perlunya perbaikan layanan pada beberapa platform [15]. Muhammad Afif Raihan dkk. melakukan klasifikasi produk Telkomsel melalui *platform Twitter* dengan fokus pada aspek sinyal dan layanan dengan melibatkan dua tahapan yaitu penggunaan *Synthetic Minority Over-sampling Technique* (SMOTE) untuk pengambilan sampel dan penerapan *Support Vector Machine* (SVM) dengan fitur *FastText Word Embedding* untuk klasifikasi. Hasil analisis sentimen berbasis aspek menunjukkan bahwa model SVM memberikan hasil terbaik dan meningkatkan akurasi secara signifikan [16]. Selain itu, Dimas Samodra dkk. juga melakukan analisis sentimen menggunakan model klasifikasi IndoBERT terkait kinerja hotel-hotel di Bali berdasarkan data dari situs *web TripAdvisor*. Hasil klasifikasi IndoBERT membantu pemerintah lokal dalam mengevaluasi kinerja hotel sesuai dengan kriteria yang telah ditentukan [17].
+
+| Tabel 1. Kajian pustaka                           |                  |                      |                                                             |                                                       |                                                                |      |  |
+|---------------------------------------------------|------------------|----------------------|-------------------------------------------------------------|-------------------------------------------------------|----------------------------------------------------------------|------|--|
+| Nama Penulis,<br>Tahun                            | Jumlah<br>Data   | Kelas<br>Sentimen    | Kelas<br>Aspek                                              | Metode                                                | Hasil                                                          | Ref  |  |
+| Whita Parasati<br>dkk., 2020                      | 2.152            | Positif &<br>negatif | Makanan,<br>layanan,<br>dan<br>atmosfer                     | Naïve<br>Bayes                                        | Akurasi aspek<br>makanan 88%,<br>layanan 76%,<br>atmosfir 84%. | [13] |  |
+| M. Hidayat dkk.,<br>2017                          | 1500             | Positif &<br>negatif | Gameplay,<br>performa,<br>& makro                           | IndoBERT                                              | Akurasi<br>Gameplay 82%,<br>Performance<br>75%, Player86%      | [14] |  |
+| Hartati<br>Penta<br>Angelina Sormin<br>dkk., 2017 | 557              | Positif &<br>negatif | Toko,<br>Buku,<br>Harga,<br>Pelayanan,<br>dan<br>Pengiriman | Naive<br>Bayes<br>dan<br>Lexicon<br>Based<br>Features | Akurasi rata-rata<br>87%                                       | [15] |  |
+| Muhammad Afif<br>Rayhan<br>dkk.,                  | 16.978<br>tweets | Positif &<br>negatif | Signal &<br>Service                                         | SVM dan<br>FastText<br>Feature                        | F1-Score:<br>95,93%; 94,53%                                    | [16] |  |
+
+*http://sistemasi.ftik.unisi.ac.id*
+
+| 2022                                     |       |                      |                                                      | Expansion |                                                        |                                       |      |
+|------------------------------------------|-------|----------------------|------------------------------------------------------|-----------|--------------------------------------------------------|---------------------------------------|------|
+| Dimas Samodra<br>Bimaputra dkk.,<br>2023 | 3.419 | Positif &<br>negatif | Safety,<br>Cleanliness<br>,<br>Comfort,<br>& service | IndoBERT  | Akurasi<br>cleanliness<br>99%,<br>99%,<br>95%,<br>100% | aspek<br>comfort<br>service<br>safety | [17] |
+
+Beberapa penelitian yang dilakukan pada Tabel 1 menunjukkan bahwa analisis sentimen berbasis aspek efektif untuk digunakan dengan meninjau akurasi yang didapat sudah diatas dari 50%. Namun, penelitian tentang analisis sentimen berbasis aspek pada ulasan *game* cukup rendah sehingga menjadikan penelitian ini penting untuk membantu pengembang *game* memahami opini pengguna secara lebih mendalam dan memperbaiki aspek-aspek yang kurang memuaskan serta memberikan kontribusi pada literatur analisis sentimen berbasis aspek, khususnya dalam konteks *game mobile*.
+
+# **3 Metode Penelitian**
+
+Secara umum, penelitian ini memiliki 8 tahapan yaitu *collecting data*set, *manual labelling data*, *pre-processing*, *split data train/test* dengan *Stratified K-Fold*, pembobotan teks dengan TF-IDF, klasifikasi sentimen dan aspek menggunakan *Complement Naive Bayes* (CNB), *confusion matrix*, dan *grid search hyperparameter tunning*. Sistematika penelitian ditunjukkan pada Gambar 1.
+
+![](_page_3_Figure_6.jpeg)
+
+**Gambar 1. Alur penelitian**
+
+# **3.1 Pengumpulan Data**
+
+Data penelitian ini adalah ulasan pengguna *game* "*Honkai: Star Rail*" dari *Google Play Store*. Data dikumpulkan pada tanggal 22 Juli 2023 menggunakan *library* "*google\_play\_scraper*" pada *Python*. Sebanyak 1000 data ulasan diambil setelah pembaruan versi dari 1.0 ke 1.1 yang memperkenalkan perubahan signifikan seperti penambahan *Trailblaze Power*, fitur pertemanan, dan peta baru. Pembaruan ini mempengaruhi sentimen ulasan, menjadikan data lebih relevan untuk penelitian. Ulasan terperinci dapat dilihat pada Tabel 2.
+
+|    | Tabel 2. Hasil pengumpulan data                                                                                                                                                                    |  |  |  |  |  |  |
+|----|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--|--|--|--|--|--|
+| No | Ulasan                                                                                                                                                                                             |  |  |  |  |  |  |
+| 1  | Gamenya menarik hanya saja menjadi sedikit membosankan sebab tidak adanya fitur skip<br>dialog. Untuk dialog sub quest menurutku gak<br>terlalu penting dan sangat diperlukan fitur<br>skip dialog |  |  |  |  |  |  |
+
+1000 Game nya bagus tapi kalo bisa ( multiplayer) / buat main bareng biar lebih seru dan
+
+perbanyak misi sampingan supaya bisa naik level
+
+#### *3.2 Labelling Dataset*
+
+Seusai data terkumpul, langkah selanjutnya yang dilakukan pada *text mining* yaitu pelabelan data. Proses pelabelan data dilakukan secara manual oleh empat orang mahasiswa Informatika Universitas Ahmad Dahlan dan satu orang pengguna *game Honkai: Star Rail* dengan aspek yang didasarkan pada *usability*. Nielsen mengungkapkan bahwa "*usability* mencakup semua lingkup aplikasi yang berinteraksi secara langsung dengan penggunanya" [18]. Namun, pada penelitian ini hanya menggunakan aspek *Gameplay*, *Visual*, *Performance*, dan *Feature* sesuai dengan Tabel 3. Karena merujuk pada penelitian sebelumnya, aspek *Gameplay* dan *Storyline* dianggap sebagai aspek yang memiliki kesamaan interpretasi [19]. Pelabelan ulasan menggunakan label 1 menunjukkan ulasan yang mengandung aspek tersebut positif dan -1 menunjukkan ulasan yang mengandung aspek tersebut negatif. Contoh pelabelan data dapat dilihat pada Tabel 3.
+
+|      | Tabel 3. Contoh pelabelan dataset                                                                                                                                                                                                   |          |        |             |         |  |  |  |
+|------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|--------|-------------|---------|--|--|--|
+| No   | Ulasan                                                                                                                                                                                                                              | Gameplay | Visual | Performance | Feature |  |  |  |
+| 1    | Gamenya<br>menarik<br>hanya<br>saja<br>menjadi<br>sedikit<br>membosankan<br>sebab<br>tidak<br>adanya<br>fitur<br>skip<br>dialog. Untuk dialog sub quest<br>menurutku gak terlalu penting dan<br>sangat diperlukan fitur skip dialog | 1        | -1     | -1          | -1      |  |  |  |
+|      |                                                                                                                                                                                                                                     |          |        |             |         |  |  |  |
+| 1000 | Game nya<br>bagus tapi kalo bisa (<br>multiplayer) / buat main bareng<br>biar lebih seru dan perbanyak misi<br>sampingan supaya bisa naik level                                                                                     | 1        | 1      | 1           | -1      |  |  |  |
+
+Berdasarkan identifikasi aspek yang telah dilakukan, *review* pada Tabel 3 nomor 1 terdapat 3 aspek yang bernilai negatif yaitu *Visual*, *Performance*, *Feature*, dan positif pada *Gameplay* karena berdasarkan kalimat "Gamenya menarik hanya saja menjadi sedikit membosankan sebab tidak adanya fitur skip dialog. Untuk dialog sub quest menurutku gak terlalu penting dan sangat diperlukan fitur skip dialog" menunjukkan untuk mekanisme *game*-nya menunjukkan sentimen positif. Namun, performa yang ditunjukkan begitu membosankan, fitur yang diinginkan pengguna tidak ada, dan pada kalimat kedua visualisasi dialog tidak perlu ditampilkan.
+
+# *3.3 Pre-Processing*
+
+*Pre-Processing* merupakan tahap pembersihan data dari data yang tidak perlu dengan tujuan mendapatkan data yang bersih agar hasil yang didapat lebih akurat. Tahap ini terbagi atas: *3.3.1 Punctuation Removal*
+
+# *Punctuation removal* merupakan tahapan membersihkan simbol dan karakter yang tidak diperlukan dalam analisa data seperti: menghapus angka (1-9), kata berbasis web (www, https), simbol ([-\_<>\*#\$@()\"/%&;:<>{}`+=~|.!?,']), karakter yang dianggap *delimiter*, dan spasi ganda. Hasil dari *punctuation removal* berupa teks yang dinormalisasikan dengan menghilangkan karakterkarakter tidak perlu yang dapat dilihat perbedaannya pada Tabel 4.
+
+|    | Tabel 4. Hasil punctuation removal       |                                                |  |  |  |  |  |  |
+|----|------------------------------------------|------------------------------------------------|--|--|--|--|--|--|
+| No | Ulasan                                   | Punctuation Removal                            |  |  |  |  |  |  |
+| 1  | Gamenya menarik hanya saja menjadi       | Gamenya<br>menarik<br>hanya<br>saja<br>menjadi |  |  |  |  |  |  |
+|    | sedikit<br>membosankan<br>sebab<br>tidak | sedikit membosankan sebab tidak adanya         |  |  |  |  |  |  |
+
+|  |  | adanya fitur skip dialog. Untuk dialog  |  |
+|--|--|-----------------------------------------|--|
+|  |  | sub quest menurutku gak terlalu penting |  |
+|  |  | dan sangat diperlukan fitur skip dialog |  |
+
+fitur skip dialog Untuk dialog sub quest menurutku gak terlalu penting dan sangat diperlukan fitur skip dialog
+
+| 1000 | Game  | nya  | bagus | tapi<br>kalo<br>bisa<br>(            | Game nya bagus tapi kalo bisa multiplayer          |
+|------|-------|------|-------|--------------------------------------|----------------------------------------------------|
+|      |       |      |       | multiplayer) / buat main bareng biar | buat main bareng biar lebih seru dan               |
+|      | lebih | seru | dan   | perbanyak<br>misi                    | perbanyak misi sampingan supaya bisa naik<br>level |
+|      |       |      |       | sampingan supaya bisa naik level     |                                                    |
+
+Berdasarkan Tabel 4, perbedaan yang dihasilkan dari proses *punctuation removal* adalah menghilangkan tanda baca seperti "()", "/", kemudian angka "1", "2", "3", dan seterusnya sehingga membuat data menjadi bersih dari karakter-karakter yang tidak diperlukan dalam *text mining*. Meskipun tidak terlihat jelas perbedaannya, namun proses ini adalah tahapan paling penting agar saat pembobotan teks dapat diidentifikasi kata-per-kata nya.
+
+# *3.3.2 Case Folding*
+
+...
+
+*Case folding* yaitu proses penyeragaman setiap huruf dalam teks menjadi huruf kecil. Hasil dari *case folding* berupa teks yang dinormalisasikan dengan mengonversi teks berhuruf besar menjadi huruf kecil, seperti yang ada pada Tabel 5.
+
+| Tabel 5. Hasil case folding |  |
+|-----------------------------|--|
+|-----------------------------|--|
+
+| No | Punctuation Removal                                                                                                                                                                                              | Case Folding                                                                                                                                                                                                     |
+|----|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1  | Gamenya<br>menarik<br>hanya<br>saja<br>menjadi<br>sedikit membosankan sebab tidak adanya<br>fitur skip dialog Untuk dialog sub quest<br>menurutku gak terlalu penting dan sangat<br>diperlukan fitur skip dialog | gamenya<br>menarik<br>hanya<br>saja<br>menjadi<br>sedikit membosankan sebab tidak adanya<br>fitur skip dialog untuk dialog sub quest<br>menurutku gak terlalu penting dan sangat<br>diperlukan fitur skip dialog |
+|    |                                                                                                                                                                                                                  |                                                                                                                                                                                                                  |
+|    |                                                                                                                                                                                                                  |                                                                                                                                                                                                                  |
+
+Setelah pembersihan karakter, tahap berikutnya yaitu *lowercasing*/*case folding*. Perbedaan yang dihasilkan juga tidak begitu signifikan karena hanya menyamaratakan huruf besar menjadi kecil seperti yang terlihat pada Tabel 5. Namun, teknik ini penting dilakukan untuk menghindari dari kata yang tidak terdeteksi pada tahap klasifikasi teks.
+
+#### *3.3.3 Word Normalization*
+
+*Word normalization* merupakan tahap yang digunakan mengkonversi variasi kata seperti *slang words*, kata yang disingkat, kesalahan ketik, dan kata yang tidak formal menjadi kata formal yang benar dan sesuai kaidah pengejaan bahasa. Contoh: "yg" menjadi "yang", manjiw!" menjadi "keren", "lag" menjadi "patah-patah", dan lainnya. Tahap Normalisasi kata ini dikalukan secara manual dengan membuat kamus konversi kata sebanyak 350 kata yang dinormalisasikan. Hasil dari *word normalization* berupa teks yang dinormalisasikan dengan mengonversi kata yang tidak formal menjadi formal seperti yang ada pada Tabel 6.
+
+| No | Case Folding                                                                                                                                                                                                     | Word Normalization                                                                                                                                                                                                 |  |  |
+|----|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--|--|
+| 1  | gamenya<br>menarik<br>hanya<br>saja<br>menjadi<br>sedikit membosankan sebab tidak adanya<br>fitur skip dialog untuk dialog sub quest<br>menurutku gak terlalu penting dan sangat<br>diperlukan fitur skip dialog | gamenya<br>menarik<br>hanya<br>saja<br>menjadi<br>sedikit membosankan sebab tidak adanya<br>fitur skip dialog untuk dialog sub quest<br>menurutku tidak terlalu penting dan sangat<br>diperlukan fitur skip dialog |  |  |
+|    |                                                                                                                                                                                                                  |                                                                                                                                                                                                                    |  |  |
+|    |                                                                                                                                                                                                                  |                                                                                                                                                                                                                    |  |  |
+
+**Tabel 6. Hasil** *word normalization*
+
+Berdasarkan Tabel 6 didapatkan hasil berupa normalisasi kata dari yang tidak formal menjadi formal yang bertujuan untuk mempermudah proses stemming dan menjadi bersih dari kata-kata yang tidak formal. Tahap *word normalization* ini menjadi penentu dalam hasil *wordcloud* agar katakata yang muncul bukan kata-kata yang tidak formal dan salah.
+
+#### *3.3.4 Meaningless Removal*
+
+*Meaningless removal* yaitu tahap penghapusan kata-kata umum yang tidak memiliki arti meskipun sudah melalui tahap normalisasi kata untuk meningkatkan kualitas data teks dan menjadikan data teks bersih dari elemen-elemen yang tidak relevan untuk analisis data. Tahap *meaningless removal* ini dilakukan sama halnya dengan normalisasi kata, yakni membuat kamus manual untuk menghilangkan kata-kata yang tidak memiliki arti, seperti: "bjirr", "wkwkwkwk", "hmmmm", dan lainnya. Hasil dari *meaningless removal* berupa teks yang dinormalisasikan dengan menghilangkan kata-kata yang tidak relevan pada data teks seperti yang ada pada Tabel 7.
+
+**Tabel 7. Hasil** *meaningless removal*
+
+| No | Word Normalization                                                                                                                                                                                                 | Meaningless Removal                                                                                                                                                                                                |  |  |
+|----|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--|--|
+| 1  | gamenya<br>menarik<br>hanya<br>saja<br>menjadi<br>sedikit membosankan sebab tidak adanya<br>fitur skip dialog untuk dialog sub quest<br>menurutku tidak terlalu penting dan sangat<br>diperlukan fitur skip dialog | gamenya<br>menarik<br>hanya<br>saja<br>menjadi<br>sedikit membosankan sebab tidak adanya<br>fitur skip dialog untuk dialog sub quest<br>menurutku tidak terlalu penting dan sangat<br>diperlukan fitur skip dialog |  |  |
+|    |                                                                                                                                                                                                                    |                                                                                                                                                                                                                    |  |  |
+|    |                                                                                                                                                                                                                    |                                                                                                                                                                                                                    |  |  |
+
+Berdasarkan Tabel 7, hasil yang didapat berupa penghapusan teks seperti "yang" dan "nya" bertujuan untuk menjadikan teks lebih bersih dan meminimalisir kata slang yang muncul pada *wordcloud* yang meskipun sudah dinormalisasikan pada tahap sebelumnya. Tahap *meaningless*  *removal* ini menjadi penentu dalam hasil *wordcloud* agar kata-kata yang muncul bukan kata-kata yang tidak tidak baik atau tidak mempunyai arti penting.
+
+# *3.3.5 Tokenizing*
+
+*Tokenizing* merupakan proses pengubahan rangkaian teks menjadi bagian-bagian yang lebih kecil, atau sederhananya memisahkan satu kalimat menjadi unit-unit kecil yang biasanya menjadi frasa atau kata-kata, seperti: Beli sepatu bersama teman menjadi beli, sepatu, bersama, teman. Hasil dari *tokenizing* adalah pecahan dari suatu kalimat atau biasa disebut dengan "token". Hasil dari *tokenizing* berupa teks yang dinormalisasikan dengan memisahkan teks menjadi kata seperti yang ada pada Tabel 8.
+
+|      | Tabel 8. Hasil tokenizing                                                                                                                                                                                          |                                                                                                                                                                                                                                                                                                                            |  |  |  |  |  |  |
+|------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--|--|--|--|--|--|
+| No   | Word Normalization                                                                                                                                                                                                 | Tokenizing                                                                                                                                                                                                                                                                                                                 |  |  |  |  |  |  |
+| 1    | gamenya<br>menarik<br>hanya<br>saja<br>menjadi<br>sedikit membosankan sebab tidak adanya<br>fitur skip dialog untuk dialog sub quest<br>menurutku tidak terlalu penting dan sangat<br>diperlukan fitur skip dialog | ['gamenya',<br>'menarik',<br>'hanya',<br>'saja',<br>'menjadi', 'sedikit', 'membosankan', 'sebab',<br>'tidak',<br>'adanya',<br>'fitur',<br>'skip',<br>'dialog',<br>'Untuk', 'dialog', 'sub', 'quest', 'menurutku',<br>'gak',<br>'terlalu',<br>'penting',<br>'dan',<br>'sangat',<br>'diperlukan', 'fitur', 'skip', 'dialog'] |  |  |  |  |  |  |
+|      |                                                                                                                                                                                                                    |                                                                                                                                                                                                                                                                                                                            |  |  |  |  |  |  |
+| 1000 | permainan bagus tapi kalau bisa multiplayer<br>buat main bareng agar lebih seru dan<br>perbanyak misi sampingan supaya bisa naik<br>level                                                                          | [permainan,<br>'nya',<br>'bagus',<br>'tapi',<br>'kalo',<br>'bisa', 'multiplayer', 'buat', 'main', 'bareng',<br>'biar', 'lebih', 'seru', 'dan', 'perbanyak', 'misi',<br>'sampingan', 'supaya', 'bisa', 'naik', 'level']                                                                                                     |  |  |  |  |  |  |
+
+Berdasarkan Tabel 8 didapatkan hasil berupa pemisahan teks menjadi frasa yang bertujuan untuk mempermudah analisis teks, karena data telah dipisahkan dan siap untuk dilakukan pembobotan kata oleh fitur ekstraksi TF-IDF. Melalui tahap *Tokenizing* ini menjadi penentu tingkatan akurasi pada *text mining*.
+
+#### *3.3.6 Stopwords Removal*
+
+*Stopwords Removal* merupakan proses penghapusan kata-kata yang dianggap tidak memiliki arti penting yang sering muncul dalam teks seperti: "di", "ke", "dari", "atau", "yang", "dan", "akan", "ini". Hasil dari *stopwords removal* berupa teks yang dinormalisasikan dengan menghilangkan kata-kata yang tidak memiliki makna penting untuk analisis data seperti yang ada pada Tabel 9.
+
+|      | Tabel 9. Hasil stopwords removal                                                                                                                                                                                                                                                                                           |                                                                                                                                                                               |  |  |  |  |  |  |
+|------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--|--|--|--|--|--|
+| No   | Tokenizing                                                                                                                                                                                                                                                                                                                 | Stopwords Removal                                                                                                                                                             |  |  |  |  |  |  |
+| 1    | ['gamenya',<br>'menarik',<br>'hanya',<br>'saja',<br>'menjadi', 'sedikit', 'membosankan', 'sebab',<br>'tidak',<br>'adanya',<br>'fitur',<br>'skip',<br>'dialog',<br>'Untuk', 'dialog', 'sub', 'quest', 'menurutku',<br>'gak',<br>'terlalu',<br>'penting',<br>'dan',<br>'sangat',<br>'diperlukan', 'fitur', 'skip', 'dialog'] | ['gamenya',<br>'menarik',<br>'membosankan',<br>'fitur', 'skip', 'dialog', 'Untuk', 'dialog', 'sub',<br>'quest',<br>'menurutku',<br>'gak',<br>'fitur',<br>'skip',<br>'dialog'] |  |  |  |  |  |  |
+|      |                                                                                                                                                                                                                                                                                                                            |                                                                                                                                                                               |  |  |  |  |  |  |
+| 1000 | [permainan, 'nya', 'bagus', 'tapi', 'kalo', 'bisa',<br>'multiplayer', 'buat', 'main', 'bareng', 'biar',                                                                                                                                                                                                                    | [permainan,<br>'bagus',<br>'kalo',<br>'multiplayer',<br>'main', 'bareng', 'biar', 'seru', 'perbanyak',                                                                        |  |  |  |  |  |  |
+
+*http://sistemasi.ftik.unisi.ac.id*
+
+'misi', 'sampingan', 'level']
+
+'lebih', 'seru', 'dan', 'perbanyak', 'misi',
+'sampingan', 'supaya', 'bisa', 'naik', 'level']
+
+Pada Tabel 9, hasil yang didapat cukup kontras dimana kata-kata tersebut banyak berkurang dibandingkan pada tahapan sebelumnya. Penggunaan *stopwords removal* sangat dibutuhkan dalam teks mining yang dapat membantu meningkatkan relevansi hasil analisis yang mempengaruhi akurasi pada tahapan berikutnya.
+
+#### *3.3.7 Stemming*
+
+*Stemming* yaitu proses mengubah struktur kata dengan menghapus kata imbuhan, awalan, sapaan, akhiran, ataupun kombinasi sehingga kata tersebut kembali ke kata dasar. Contoh: "memainkan" menjadi "main", "ditemukan" menjadi "temu", "meneruskan" menjadi "terus", dan lainnya. Pustaka *Sastrawi* adalah pustaka *Natural Language Program* (NLP) yang dibuat secara khusus untuk Bahasa Indonesia digunakan dalam pembersihan data. Penggunaan algoritma *Swifter* pada pustaka *Sastrawi* digunakan untuk mempercepat proses *Stemming* dengan menjalankan tugas secara paralel. Algoritma *Swifter* berguna pada dataset besar maupun menengah sehingga dapat meningkatkan efisiensi pemrosesan *text mining* dengan memotong durasi yang diperlukan untuk *stemming*. Hasil dari *stemming* berupa teks yang dinormalisasikan dengan mengubah kata ke bentuk dasarnya seperti yang terlihat pada Tabel 10.
+
+| No   | Stopwords Removal                                                                                                                                                             | Stemming                                                                                                                                     |
+|------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|
+| 1    | ['gamenya',<br>'menarik',<br>'membosankan',<br>'fitur', 'skip', 'dialog', 'Untuk', 'dialog', 'sub',<br>'quest',<br>'menurutku',<br>'gak',<br>'fitur',<br>'skip',<br>'dialog'] | ['gamenya', 'tarik', 'bosan', 'fitur', 'skip',<br>'dialog', 'untuk', 'dialog', 'sub', 'quest', 'turut',<br>'gak', 'fitur', 'skip', 'dialog'] |
+|      |                                                                                                                                                                               |                                                                                                                                              |
+| 1000 | ['permainan', 'bagus', 'kalo', 'multiplayer',<br>'main', 'bareng', 'biar', 'seru', 'perbanyak',<br>'misi', 'sampingan', 'level']                                              | ['main', 'bagus', 'kalo', 'multiplayer', 'main',<br>'bareng',<br>'biar',<br>'seru',<br>'banyak',<br>'misi',<br>'samping', 'level']           |
+
+Berdasarkan Tabel 10, pada tahap *stemming* terjadi perubahan yang cukup besar yang dimana kata-kata tersebut banyak yang berubah menjadi kata dasar nya, seperti "keluhan" menjadi "keluh", "kesulitan" menjadi "sulit", dan "perbanyak" menjadi "banyak". Tujuan tahap *stemming* adalah untuk mengurangi variasi kata yang mempunyai makna dasar yang sama.
+
+#### **3.4 Pembagian Data Dengan** *Stratified K-Fold*
+
+Algoritma *Stratified K-Fold* yang merupakan teknik pembagian data dengan menjaga distribusi label tetap seimbang di setiap *Fold*. Klasifikasi multi-label melakukan distribusi label yang seringkali tidak merata sehingga setiap *instance* dapat mempunyai lebih dari satu label. *Stratified K-Fold* memastikan bahwa proporsi masing-masing label di setiap *fold* mendekati proporsi label asli pada keseluruhan data. Pembagian data menggunakan K = 5 untuk mendapatkan rasio data latih dan uji sebesar 80:20, dengan setiap *fold* memiliki distribusi label serupa dengan dataset asli. Pelatihan dan pengujian dilakukan pada k-1 *fold*, diuji pada *fold* yang tersisa, dan diulang lima kali. Evaluasi dari setiap *fold* kemudian digabung untuk memberikan gambaran performa yang komprehensif. Pembagian data dilakukan setelah tahap *pre-processing* untuk memastikan bahwa model yang dilatih dan diuji menggunakan data yang telah dibersihkan dan distandarisasi. *Pre-processing* dilakukan terlebih dahulu agar kemungkinan terjadinya kebocoran data dapat dihindari dan model akan menerima masukan yang konsisten dan representatif dari data sebenarnya. Jumlah pembagian adalah 800 data latih dan 200 data uji.
+
+### **3.5 Feature Extraction TF-IDF**
+
+*Term Frequency-Inverse Document Frequency* (TF-IDF) merupakan metode pembobotan kata yang digunakan untuk menilai kepentingan suatu kata yang mempunyai *accuracy* dan *recall* yang cukup tinggi. Fitur ekstraksi TF-IDF bekerja apabila terdapat sebuah kata yang sering muncul dalam sebuah dokumen, maka nilai kontribusi dari kata tersebut akan semakin besar, sebaliknya jika kata tersebut jarang muncul dalam beberapa dokumen, maka nilai kontribusinya relatif kecil. *Term Frequency* penting dalam mengidentifikasi dan mengukur kontribusi kata-kata dalam sebuah dokumen. Semakin besar munculnya suatu term dalam dokumen maka semakin berbobot kata tersebut atau memberikan nilai kesesuaian yang semakin besar. (, ) menggambarkan frekuensi kemunculan *term* k dalam dokumen j. Rumus TF dapat dijelaskan dengan Persamaan 1.
+
+$$
+TF(t_k, d_j) = f(t_k, d_j) \tag{1}
+$$
+
+Keterangan:
+
+(, ) : *Term Frequency* dari *term* dalam dokumen . : *Term* (kata atau frasa) ke-k. : Dokumen ke-j. (, ) : Frekuensi kemunculan term dalam dokumen .
+
+Tahap selanjutnya setelah mengukur bobot sebuah kata dengan *term frequency* yaitu menghitung seberapa penting sebuah kata dalam seluruh kumpulan dokumen dengan *Inverse Document Frequency* (IDF). Total dokumen dalam dataset (D) dibagi dengan jumlah dokumen yang mengandung term (). IDF dapat dihitung menggunakan Persamaan 2.
+
+$$
+IDF(t_k) = \log \frac{D}{df(t)}
+$$
+\n<sup>(2)</sup>
+
+Keterangan:
+
+( ) *: Inverse Document Frequency* untuk *term* . : Total jumlah dokumen dalam dataset. () : Jumlah dokumen yang mengandung term f. : Logaritma
+
+Persamaan 3 adalah rumus untuk TF-IDF:
+
+$$
+TFIDF(t_k, d_j) = TF(t_k, d_j) * IDF(t_k)
+$$
+\n(3)
+
+### **3.6 Klasifikasi** *Naive Bayes*
+
+Setelah melalui tahap pembobotan dengan TF-IDF, langkah berikutnya adalah mengimplementasikan algoritma CNB yang merupakan variasi dari *Multinomial Naive Bayes* dan dirancang untuk menangani dataset yang tidak seimbang. Data tidak seimbang terjadi ketika jumlah suatu kelas jauh lebih banyak dibandingkan dengan kelas lainnya, sehingga dapat mempengaruhi perhitungan probabilitas kelas yang lain. Metode CNB beroperasi dengan menghitung probabilitas kata-kata yang muncul di luar kelasnya. Setelah itu, probabilitas setiap kelas dihitung dan dipilih nilai probabilitas yang terendah. Nilai probabilitas ini dipilih karena bukan berasal dari kelas yang bersangkutan. Dengan demikian, hal ini menunjukkan bahwa kelas tersebut memiliki probabilitas tertinggi. Rumus CNB dapat didefinisikan oleh Persamaan 4.
+
+$$
+CNBC(d) = argmax_{c\in C} [log P + \sum_{1 < k < n_d} log P(x_k | c')]
+$$
+\n<sup>(4)</sup>
+
+Dengan (|¬) mewakili probabilitas kata ke-k yang diketahui dalam kelas selain .
+
+(7)
+
+## *3.7 Confusion Matrix*
+
+*Confusion matrix* merupakan tahap terakhir dari *text mining*, dimana model dievaluasi dengan menggunakan *confusion matix* untuk memperoleh nilai *accuracy*, *precision*, *recall*, *f1-score* dari data latih dan data uji dengan masing-masing keempat aspek diantaranya *Gameplay*, *Visual*, *Performance*, dan *Feature*. *Classification report* menyediakan metrik evaluasi yang lebih mendetail dengan menghitung menggunakan data label dan data prediksi untuk setiap label. Setelah melakukan evaluasi performa model klasifikasi multi-label dengan *confusion matrix* dan *classification report*, dilanjutkan dengan mencetak hasil dari tahapan klasifikasi pada tiap-tiap *fold* dengan menunjukkan hasil berdasarkan iterasi tiap-tiap *fold* (k=5), kemudian memanggil fungsi *Stratified K-Fold* untuk menampilkan hasilnya.Untuk menghitung metode evaluasi yang telah disebutkan, diperlukan nilai *True Positive* (TP), *True Negative* (TN), *False Positive* (FP), dan *False Negative* (FN) dari *confusion matrix* untuk setiap label, seperti pada Persamaan 5-8.
+
+$$
+accuracy = \frac{TP + TN}{TP + FP + TN + FN} \tag{5}
+$$
+
+$$
+precision = \frac{TP}{TP + FP}
+$$
+ (6)
+
+$$
+\overline{\text{TP}}
+$$
+
+$$
+F1 \, Score = \frac{2 \times (recall \times precision)}{(recall \times precision)} \tag{8}
+$$
+
+Keterangan:
+
+=
+
+*True Positive* (TP) : Jumlah prediksi benar untuk kasus positif (prediksi positif yang benar). *True Negative* (TN): Jumlah prediksi benar untuk kasus negatif (prediksi negatif yang benar). *False Positive* (FP): Jumlah prediksi salah untuk kasus positif (prediksi positif yang salah). *False Negative* (FN): Jumlah prediksi salah untuk kasus negatif (prediksi negatif yang salah).
+
+#### *3.8 Grid Search Hyperparameter Tuning*
+
+*Grid Search Hyperparameter Tuning* merupakan salah satu algoritma yang digunakan untuk menemukan kombinasi parameter optimal dalam suatu model [20]. Proses *tuning* bertujuan untuk meningkatkan kinerja model dengan menguji semua kemungkinan kombinasi parameter kemudian memilih yang memberikan hasil terbaik berdasarkan matriks evaluasi yang ditentukan [21]. *Grid Search Cross Validation* (CV) digunakan untuk melakukan *hyperparameter tuning* dengan menguji semua kombinasi *hyperparameter* yang ada dalam ruang parameter yang sudah ditentukan dan memilih kombinasi yang memberikan nilai *F1-Score* tertinggi. *F1-Score* yang digunakan adalah *F1- Score weighted* untuk menangani ketidakseimbangan kelas. *Hyperparameter* yang akan di-*tuning* adalah "*alpha*" yaitu parameter *smoothing* dengan nilai-nilai pendekatan [0.1, 0.2, 0.4, 0.6, 0.8, 1.0]. Pemilihan rentang nilai yang cukup kecil (0.1) sampai lebih besar (1.0) guna memungkinkan eksplorasi yang cukup luas untuk menemukan nilai optimal yang menyeimbangkan antara *underfitting* dan *overfitting*.
+
+### **4 Hasil dan Pembahasan**
+
+Tujuan penelitian ini adalah untuk menganalisis sentimen berbasis aspek dengan menggunakan metode NBC, mengategorikan sentimen menjadi positif dan negatif. Penelitian ini juga mengklasifikasikan ulasan ke dalam aspek-aspek tertentu. Penelitian ini memperoleh beberapa hasil diantaranya pelabelan manual dataset, model klasifikasi dengan *Stratified K-Fold*, *wordcloud*, dan *Grid Search Hyperparameter Tuning.* 
+
+### **4.1 Hasil Pelabelan Manual Dataset**
+
+Sebanyak 1000 dataset telah dilabeli secara manual untuk memastikan kualitas dan akurasi data. Pelabelan otomatis dianggap kurang relevan pada dataset *multi-label* karena tidak mampu menangkap konteks dan suasana yang kompleks, terutama dalam bahasa alami yang kaya variasi dan makna implisit. Pelabelan manual memungkingkan untuk menerapkan intuisi manusia yang penting guna memastikan bahwa sentimen dan aspek dapat teridentifikasi dengan benar [22]. Hasil distribusi data pelabelan manual sentimen dengan empat aspek dapat dilihat pada Tabel 11:
+
+| Tabel 11.<br>Distribusi<br>sentimen dan aspek |         |        |  |  |
+|-----------------------------------------------|---------|--------|--|--|
+| Sentimen                                      |         |        |  |  |
+| Positif                                       | Negatif | Jumlah |  |  |
+| 663                                           | 337     | 1000   |  |  |
+| 466                                           | 534     | 1000   |  |  |
+| 216                                           | 784     | 1000   |  |  |
+| 218                                           | 782     | 1000   |  |  |
+|                                               |         |        |  |  |
+
+Berdasarkan Tabel 11, aspek pada sentimen negatif dan positif setara dimana *Gameplay* dan *Visual* memberikan jumlah sentimen positif terbanyak, sedangkan *Performance* dan *Feature* memiliki nilai sentimen negatif terbanyak. Label yang digunakan pada klasifikasi sentimen hanya terdiri dari positif dan negatif, serta untuk pengklasifikasian aspek ada 4. Pendistribusian data sentimen dilakukan secara terpisah untuk memastikan jumlah dari sentimen sesuai dengan jumlah dataset yang tersedia. Pelabelan aspek dilakukan dengan mengidentifikasi tiap-tiap kalimat pada suatu ulasan utuh yang kemudian di pisah dan dikategorikan menjadi aspek-aspek tertentu.
+
+### **4.2 Hasil Model Klasifikasi Dengan** *Stratified K-Fold Cross Validation*
+
+Sebelum proses pelatihan model dilakukan, dataset harus dipecah terlebih dahulu dengan *Stratified K-Fold Cross Validation*. Pemilihan algoritma *Stratified K-Fold* digunakan karena data teridentifikasi tidak seimbang dimana beberapa kelas lebih jarang muncul muncul daripada kelas lainnya, dan memastikan bahwa setiap setiap fold mempunyai distribusi kelas yang serupa dengan distribusi kelas dataset asli [23]. Perulangan dilakukan dengan menggunakan label *Gameplay* untuk stratifikasi yang memastikan distribusi label *Gameplay* tetap seimbang dalam setiap *fold*. Pemilihan stratifikasi pada label *Gameplay* dikarenakan rerata penilaiannya menunjukkan kualitas yang konsisten dan signifikan dibandingkan aspek lainnya, yang membuat aspek tersebut dijadikan sebagai representatif untuk stratifikasi. Pembagian data latih dan uji dilakukan sebanyak 5-*fold* yang ekuivalen dengan proporsi pembagian standar 80:20.
+
+![](0__page_11_Figure_6.jpeg)
+
+**Gambar 2. Visualisasi** *confusion matrix*
+
+Berdasarkan Gambar 2, rerata akurasi tertinggi terdapat pada aspek *Feature* sebesar 0,791 (79,1%), sedangkan akurasi terendah diperoleh pada aspek *Visual* yaitu sebesar 0,694 (69,4%). Ratarata akurasi yang didapatkan pada keempat aspek yaitu sebesar 0,745 atau 74,5% presisi 0,731 (73,1%), *recall* 0,745 (74,5%), dan *f1-Score* 0,734 (73,4%). Nilai yang diperoleh sudah cukup baik, namun terhitung cukup rendah mengingat data yang diuji tidak seimbang dan beberapa data yang belum dibersihkan secara penuh pada tahap *pre-processing*.
+
+## *4.3 Wordcloud*
+
+Hasil dari proses analisis sentimen selanjutnya akan divisualisasikan menggunakan *wordcloud*. *Wordcloud* adalah salah satu bentuk visualisasi kata-kata yang sering muncul pada data teks [24]. Visualisasi data teks dioperasikan sesuai dengan masing-masing aspek dan sentimennya. Semakin besar ukuran teks pada *wordcloud*, maka semakin sering kata tersebut muncul pada dataset. Hasil wordcloud dapat dilihat pada Gambar 3-6.
+
+![](0__page_12_Picture_5.jpeg)
+
+**Gambar 3.** *Wordcloud gameplay*
+
+![](0__page_12_Figure_7.jpeg)
+
+**Gambar 4.** *Wordcloud visual*
+
+![](0__page_12_Figure_9.jpeg)
+
+**Gambar 5.** *Wordcloud performance*
+
+![](0__page_12_Picture_11.jpeg)
+
+**Gambar 6.** *Wordcloud feature*
+
+Visualisasi *wordcloud* menunjukkan bahwa kata "*game*" dan "main" mendominasi, mengindikasikan bahwa ulasan berfokus pada topik *game* dan cara bermainnya. Namun, *wordcloud* mengidentifikasi bahwa data ulasan belum tersusun sesuai aspek atau sentimen karena ambiguitas konteks, seperti kata "karakter" yang dapat merujuk pada aspek "*Gameplay"* atau "*Visual*", menyebabkan algoritma kesulitan membedakan sentimen secara akurat.
+
+#### *4.4 Grid Search Hyperparameter Tuning*
+
+Tujuan dari *Grid Search* adalah untuk mengevaluasi dan mengoptimalkan model CNB pada empat aspek multi-label: *Gameplay*, *Visual*, *Performance*, dan *Feature*. Hasil evaluasi model ditampilkan dalam bentuk *confusion matrix* dan *classification report* untuk setiap label dengan matriks-matriks *accuracy*, *precision*, *recall*, dan *f1-score*.
+
+![](0__page_13_Figure_5.jpeg)
+
+![](0__page_13_Figure_6.jpeg)
+
+Berdasarkan Gambar 7, aspek *Performance* memiliki kinerja tertinggi dengan akurasi mencapai 0.9380 (93,8%), yang menunjukkan efektivitas model dalam mengklasifikasikan ulasan aspek performa. Disusul aspek *Feature* dengan akurasi keseluruhan 0.9270 (92,7%), Visual 0.9230 (92,3%), dan *Gameplay* sebesar 0.9110 (91,1%). Berdasarkan hasil evaluasi diatas, dapat disimpulkan bahwa model *Complement Naive Bayes* yang telah di-tuning mampu mengatasi masalah multi-label dengan baik pada dataset yang digunakan. Hasil menunjukkan bahwa pemilihan parameter *smoothing* "*alpha*" dengan hasil parameter terbaik pada estimator *alpha* adalah 0.1 sangat berkontribusi terhadap peningkatan performa model.
+
+### **5 Kesimpulan**
+
+Penelitian ini mengusulkan model analisis sentimen berbasis aspek menggunakan metode klasifikasi *Complement Naïve Bayes* dan *Stratified K-Fold* sebagai pembagian data latih dan uji, mengidentifikasi sentimen positif dan negatif dan mengevaluasi aspek *Gameplay*, *Visual*, *Performance*, dan *Feature*. Sejumlah 1000 data ulasan pengguna *Game "Honkai: Star Rail"* diambil dengan metode *Google Play Scrapper*, kemudian dibersihkan melalui *pre-processing*, dilanjutkan dengan membagi data latih dan uji dengan *Stratified K-Fold* dengan jumlah 5-*Fold*. Iterasi dilakukan melalui fitur ekstraksi TF-IDF dan model klasifikasi *Complement Naïve Bayes* sampai perulangan terpenuhi. Hasil yang diperoleh setelah iterasi sebanyak 5-*Fold* didapatkan rerata akurasi terbaik sebesar 79%, presisi 77%, *recall* 79%, dan *f1-score* 77%. Hasil yang menunjukkan performa model masih rendah perlu dilakukan tuning pada model menggunakan *Grid Search Hyperparameter Tunning* dengan parameter smoothing "alpha" = 0.1. Penerapan Grid Search berhasil meningkatkan performa model *Complement Naïve Bayes* dalam klasifikasi multi-label, dengan akurasi pada aspek *Gameplay* sebesar 92%, *Visual* 92%, *Performance* 93%, dan *Feature* 92%. Penelitian selanjutnya dapat mengusulkan model analisis sentimen berbasis aspek dengan kompleksitas baik menambah label sentimen, jumlah dataset, atau menginvestigasi penggunaan model yang lebih kompleks atau
+
+teknik balancing data untuk meningkatkan presisi pada label positif sehingga dapat memberikan hasil yang lebih optimal dari penelitian ini.
+
+## **Lampiran**
+
+Kode program dapat dilihat pada link berikut: *<https://github.com/jirae/absa-nb.git>*
+
+## **Ucapan Terima Kasih**
+
+Penulis menyampaikan terima kasih kepada Universitas Ahmad Dahlan, Indonesia, atas atas dukungannya terhadap penelitian ini melalui hibah No: PD-239/SP3/LPPM-UAD/VIII/2023.
+
+# **Referensi**
+
+- [1] Y. Firmansyah, R. Kurniawan, and Y. A. Wijaya, "Analisis Data Sentimen Pemain Game Role-Playing Game (RPG) Honkai Star Rail dengan Algoritma *Naive Bayes*," *J. Inform. dan Rekayasa Perangkat Lunak*, vol. 6, no. 1, pp. 127–135, 2024, doi: http://dx.doi.org/10.36499/jinrpl.v6i1.10243.
+- [2] Z. Fitra Ramadhan and A. Benny Mutiara, "Sentiment Analysis of Honkai: Star Rail Indonesian Language Reviews on Google Play Store Using Bidirectional Encoder Representations from Transformers Method," *Int. J. Eng. Sci. Inf. Technol.*, vol. 3, no. 3, pp. 1–6, 2023, doi: 10.52088/ijesty.v3i3.462.
+- [3] E. Elinda, H. Yuliansyah, and M. I. A. Latiffi, "Sentiment Analysis of the Sheikh Zayed Grand Mosque's Visitor Reviews on Google Maps Using the VADER Method," *Int. J. Adv. Data Inf. Syst.*, vol. 5, no. 1, pp. 71–84, Apr. 2024, doi: 10.59395/ijadis.v5i1.1320.
+- [4] H. Yuliansyah, S. A. Mulasari, S. Sulistyawati, F. A. Ghozali, and B. Sudarsono, "Sentiment Analysis of the Waste Problem based on YouTube comments using VADER and Deep Translator," *J. Media Inform. Budidarma*, vol. 8, no. 1, pp. 663–673, 2024, doi: 10.30865/mib.v8i1.6918.
+- [5] A. Saputra and F. Noor Hasan, "Analisis Sentimen Terhadap Aplikasi Coffee Meets Bagel Dengan Algoritma Naïve Bayes Classifier," *SIBATIK J. J. Ilm. Bid. Sos. Ekon. Budaya, Teknol. dan Pendidik.*, vol. 2, no. 2, pp. 465–474, 2023, doi: 10.54443/sibatik.v2i2.579.
+- [6] N. Hardi, Y. Alkahfi, P. Handayani, W. Gata, and M. R. Firdaus, "Analisis Sentimen Physical Distancing pada Twitter Menggunakan Text Mining dengan Algoritma Naive Bayes Classifier," *Sistemasi*, vol. 10, no. 1, p. 131, 2021, doi: 10.32520/stmsi.v10i1.1118.
+- [7] S. R. Yustihan, P. P. Adikara, and Indriati, "Analisis Sentimen berbasis Aspek terhadap Data Ulasan Rumah Makan menggunakan Metode Support Vector Machine (SVM)," *J. Pengemb. Teknol. Inf. dan Ilmu Komput.*, vol. 5, no. 3, pp. 1017–1023, 2021, [Online]. Available: http://j-ptiik.ub.ac.id
+- [8] D. Eka Ratnawati, "Analisis Sentimen berbasis Aspek terhadap Data Ulasan menggunakan Metode K-Nearest Neighbor (Studi Kasus: Aplikasi Olsera POS)," *J. Pengemb. Teknol. Inf. dan Ilmu Komput.*, vol. 7, no. 6, pp. 3041–3046, 2023, [Online]. Available: http://jptiik.ub.ac.id
+- [9] M. R. Alifi, D. C. U. Lieharyani, B. P. Sudimulya, and M. R. Maulidhan, "Implementation of IndoNLU Pre-Trained Model for Aspect-Based Sentiment Analysis of Indonesian Stock News," *J. Tek. Inform.*, vol. 16, no. 2, pp. 151–160, 2023, doi: 10.15408/jti.v16i2.33791.
+- [10] P. R. Amalia and E. Winarko, "Aspect-Based Sentiment Analysis on Indonesian Restaurant Review Using a Combination of Convolutional Neural Network and Contextualized Word Embedding," *IJCCS (Indonesian J. Comput. Cybern. Syst.*, vol. 15, no. 3, p. 285, 2021, doi: 10.22146/ijccs.67306.
+
+- [11] T. Hartati, R. T. Sohadi, E. Tohidi, and E. Wahyudin, "Penerapan Algoritma *Naive Bayes* pada Analisis Sentimen Ulasan Aplikasi *Whoosh* – Kereta Cepat Di *Google Play Store*," vol. 6, no. 1, pp. 244–249, 2024, doi: http://dx.doi.org/10.36499/jinrpl.v6i1.10307.
+- [12] M. R. Firdaus, N. Rahaningsih, and R. D. Dana, "Analisis Sentimen Aplikasi Shopee di Goole Play Store Menggunakan Klasifikasi Algoritma Naïve Bayes," vol. 6, no. 1, 2024, doi: http://dx.doi.org/10.36499/jinrpl.v6i1.10302.
+- [13] W. Parasati, F. Abdurrachman Bachtiar, and N. Y. Setiawan, "Analisis Sentimen Berbasis Aspek pada Ulasan Pelanggan Restoran Bakso President Malang dengan Metode Naïve Bayes Classifier," *J. Pengemb. Teknol. Inf. dan Ilmu Komput.*, vol. 4, no. 4, pp. 1090–1099, 2020, [Online]. Available: http://j-ptiik.ub.ac.id
+- [14] E. S. M. Hidayat, I. Indriati, "Analisis Sentimen berbasis Aspek terhadap Ulasan Game Honkai Impact 3rd menggunakan IndoBERT," *J. Pengemb. Teknol. Inf. dan Ilmu Komput.*, vol. 8, no. 2, 2024.
+- [15] H. P. A. Sormin, D. E. Ratnawati, and N. Y. Setiawan, "Analisis Sentimen Masyarakat Terhadap Layanan Ub Press dengan Menggunakan Metode *Naïve Baye*s dan Lexicon-Based Features," *J. Pengemb. Teknol. Inf. dan Ilmu Komput.*, vol. 1, no. 1, pp. 1–9, 2017, [Online]. Available: https://j-ptiik.ub.ac.id/index.php/j-ptiik/article/view/13639
+- [16] M. A. Raihan and E. B. Setiawan, "Aspect Based Sentiment Analysis *with FastText Feature Expansion and Support Vector Machine Method on Twitter*," *J. RESTI (Rekayasa Sist. dan Teknol. Informasi)*, vol. 6, no. 4, pp. 591–598, 2022, doi: 10.29207/resti.v6i4.4187.
+- [17] D. S. Bimaputra and E. Sutoyo, "*Aspect-Based Sentiment Analysis of Hotels in Bali on Tripadvisor Using BERT Algorithm,*" *Int. J. Adv. Data Inf. Syst.*, vol. 4, no. 2, pp. 29–40, 2023, doi: 10.25008/ijadis.v4i2.1284.
+- [18] H. Mustakim and S. Priyanta, "*Aspect-Based Sentiment Analysis of KAI Access Reviews Using NBC and SVM*," *IJCCS (Indonesian J. Comput. Cybern. Syst.*, vol. 16, no. 2, p. 113, 2022, doi: 10.22146/ijccs.68903.
+- [19] C. A. Bahri and L. H. Suadaa, "*Aspect-Based Sentiment Analysis in Bromo Tengger Semeru National Park Indonesia Based on Google Maps User Reviews,*" *IJCCS (Indonesian J. Comput. Cybern. Syst.*, vol. 17, no. 1, p. 79, 2023, doi: 10.22146/ijccs.77354.
+- [20] M. Fajri and A. Primajaya, "Komparasi Teknik *Hyperparameter Optimization* pada SVM untuk Permasalahan Klasifikasi dengan Menggunakan *Grid Search dan Random Search*," *J. Appl. Informatics Comput.*, vol. 7, no. 1, pp. 14–19, 2023, doi: 10.30871/jaic.v7i1.5004.
+- [21] G. H. Saputra, A. H. Wigena, and B. Sartono, "Penggunaan *Support Vector Regression* dalam Pemodelan Indeks Saham Syariah Indonesia Dengan Algoritme Grid Search," *Indones. J. Stat. Its Appl.*, vol. 3, no. 2, pp. 148–160, 2019, doi: 10.29244/ijsa.v3i2.172.
+- [22] B. Liu, *Sentiment Analysis: Mining Opinions, Sentiments, and Emotions, Second Edition*, no. May. Morgan and Claypool Publishers, 2020. doi: 10.1017/9781108639286.
+- [23] Y. Widyaningsih, G. P. Arum, and K. Prawira, "Aplikasi K-Fold Cross Validation Dalam Penentuan Model Regresi Binomial Negatif Terbaik," *BAREKENG J. Ilmu Mat. dan Terap.*, vol. 15, no. 2, pp. 315–322, 2021, doi: 10.30598/barekengvol15iss2pp315-322.
+- [24] A. Erfina and R. A. Lestari, "*Sentiment Analysis of Electric Vehicles using the Naïve Bayes Algorithm*," *Sistemasi*, vol. 12, no. 1, p. 178, 2023, doi: 10.32520/stmsi.v12i1.2417.

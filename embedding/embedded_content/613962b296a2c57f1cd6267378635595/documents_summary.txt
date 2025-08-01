@@ -1,0 +1,41 @@
+Here is the refined summary with duplicated section titles removed:
+
+---
+
+### 👋 Welcome to DeepTutor!
+
+I'm your AI tutor 🤖 ready to help you understand this document.
+
+### 💡 Key Takeaway
+🧠 **Using the pre-trained IndoBERT model, sentiment analysis of 6,000 Indonesian Honkai: Star Rail Google Play reviews achieved **81% accuracy**, with strong performance on **positive** (precision 63%) and **negative** (precision 89%) sentiments but struggled with **neutral** sentiment (precision 36%) due to class imbalance.
+
+### 📚 Document Overview
+- **BERT-based sentiment analysis** was applied to 6,000 Indonesian-language reviews of Honkai: Star Rail from the Google Play Store.
+- The **IndoBERT model** was fine-tuned with labeled data (positive, neutral, negative) using a 70:20:10 train-validation-test split.
+- The model achieved **81% accuracy**, with precision scores of 63% (positive), 36% (neutral), and 89% (negative) sentiment.
+- **Neutral sentiment** was challenging to classify, likely due to fewer neutral samples and ambiguous review content.
+
+### 📖 Introduction & Background
+- **Online games** like Honkai: Star Rail are hugely popular in Indonesia, with over **5 million downloads** and **130,000+ reviews** on Google Play Store.
+- The study uses **BERT** to analyze **Indonesian-language user reviews**, helping developers and users understand **positive, neutral, and negative sentiments**.
+
+### 🔬 BERT-Based Sentiment Analysis Methodology
+- **BERT-based sentiment analysis** uses a pre-trained **IndoBERT** model to classify Indonesian game reviews as positive, neutral, or negative, following steps like data collection, preprocessing, and fine-tuning.
+- The method achieved **81% accuracy**, showing strong performance for positive and negative sentiments but struggled with neutral reviews due to class imbalance.
+- **Key techniques** include data cleaning, tokenization, and transfer learning, enabling the model to understand complex language patterns in user feedback.
+
+### 📈 Model Training and Evaluation
+- **Model training** involves fine-tuning the pre-trained **BERT** model on labeled review data using key hyperparameters like **batch size** (32), **learning rate** ($3 \times 10^{-6}$), and **epochs** (5).
+- **Evaluation** uses a **confusion matrix** and metrics such as **accuracy** (81%) and **precision** to measure how well the model predicts positive, neutral, and negative sentiments.
+
+### 📊 Results and Discussion
+- The **BERT-based model** achieved an **accuracy of 81%**, showing strong performance in classifying **positive** and **negative** sentiments but struggled with **neutral** reviews (precision: 63% positive, 36% neutral, 89% negative).
+- The **imbalance in review categories**—with far fewer neutral reviews—contributed to the model's difficulty in accurately predicting **neutral sentiment**.
+
+### 🎯 Conclusion
+- **Sentiment analysis** using the **BERT** method achieved an **accuracy of 81%** in classifying Indonesian Honkai: Star Rail reviews.
+- The model performed well on **positive and negative sentiments**, but struggled with **neutral sentiment** due to fewer neutral samples in the dataset.
+
+---
+### 💬 Ask Me Anything!
+Feel free to ask me any questions about the document! I'm here to help! ✨

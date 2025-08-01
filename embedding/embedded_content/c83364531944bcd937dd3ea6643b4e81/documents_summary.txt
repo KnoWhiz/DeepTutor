@@ -1,0 +1,40 @@
+### 👋 Welcome to DeepTutor!
+
+I'm your AI tutor 🤖 ready to help you understand this document.
+
+### 💡 Key Takeaway
+🧠 **Optimizing the *Complement Naïve Bayes* classifier with *Grid Search* ($\alpha = 0.1$) for aspect-based sentiment analysis of Honkai: Star Rail user reviews increased multi-label classification accuracy from **79%** to **93%** across *Gameplay*, *Visual*, *Performance*, and *Feature* aspects.**
+
+### 📚 Document Overview
+- **Aspect-Based Sentiment Analysis** was applied to Honkai: Star Rail user reviews, identifying sentiments (positive/negative) for four aspects: *Gameplay*, *Visual*, *Performance*, and *Feature*.
+- **Complement Naïve Bayes Classifier** with **TF-IDF** feature extraction and **Stratified K-Fold Cross Validation** ($k=5$) achieved an initial average accuracy of 79%.
+- **Grid Search Hyperparameter Tuning** (optimizing smoothing parameter $\alpha = 0.1$) significantly improved model performance, reaching up to 93% weighted average accuracy.
+- The approach demonstrates that **multi-label aspect-based sentiment analysis** can provide detailed insights for game developers to enhance specific features based on user feedback.
+
+### 📖 Introduction and Research Objectives
+- This research introduces **aspect-based sentiment analysis** on user reviews of *Honkai: Star Rail* using the **Naïve Bayes Classifier** to identify sentiments (positive/negative) across four key aspects: *Gameplay*, *Visual*, *Performance*, and *Feature*.
+- The main goals are to **classify user sentiments** for each aspect and to **improve model accuracy** through techniques like **Stratified K-Fold** and **Grid Search Hyperparameter Tuning**, achieving up to **93% accuracy** after optimization.
+
+### 📊 Data Collection and Preprocessing
+- **Data collection** involves gathering 1,000 user reviews of *Honkai: Star Rail* from Google Play Store, followed by **manual labeling** for four key aspects: *Gameplay*, *Visual*, *Performance*, and *Feature*.
+- **Preprocessing** cleans and prepares the text through steps like **punctuation removal**, **case folding**, **word normalization**, **meaningless and stopwords removal**, **tokenizing**, and **stemming** to ensure high-quality input for analysis.
+- These steps help create a **clean, structured dataset** that boosts the accuracy of aspect-based sentiment analysis using the Naïve Bayes Classifier.
+
+### 📌 Aspect-Based Sentiment Classification (Naive Bayes, TF-IDF, Stratified K-Fold)
+- Uses **Naive Bayes** and **TF-IDF** to identify positive or negative opinions for specific aspects (like Gameplay, Visual, Performance, Feature) in user reviews.
+- **Stratified K-Fold** ensures balanced data splits for training and testing, while **Grid Search Hyperparameter Tuning** (with optimal $alpha = 0.1$) boosts model accuracy up to 93%.
+- This approach helps developers understand detailed user feedback and improve targeted features in games.
+
+### 📈 Model Evaluation and Hyperparameter Tuning
+- Uses metrics like **accuracy**, **precision**, **recall**, and **F1-score** to measure how well the model predicts sentiment for each aspect.
+- **Hyperparameter Tuning** (such as adjusting the $alpha$ value in Naïve Bayes) with **Grid Search** helps find the best settings to boost model performance, raising accuracy from 79% to 93%.
+- Combining both steps ensures the **Naïve Bayes Classifier** is both reliable and optimized for multi-label aspect-based sentiment analysis.
+
+### 📊 Results and Conclusions
+- **Model Complement Naïve Bayes** dengan **Grid Search Hyperparameter Tuning** ($\alpha = 0.1$) berhasil meningkatkan **akurasi multi-label** hingga **93%** pada aspek *Performance* dan di atas **91%** pada aspek lainnya.
+- **Analisis sentimen berbasis aspek** efektif mengidentifikasi **sentimen positif dan negatif** pada ulasan *Honkai: Star Rail*, dengan hasil terbaik setelah **pre-processing** dan **Stratified K-Fold** pembagian data.
+- **Optimasi parameter** sangat penting untuk **meningkatkan performa model** dalam klasifikasi aspek dan sentimen pada data ulasan pengguna.
+
+---
+### 💬 Ask Me Anything!
+Feel free to ask me any questions about the document! I'm here to help! ✨

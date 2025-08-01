@@ -1,0 +1,259 @@
+*Research Article*
+
+# **Subtitle Analysis Using Oers' Translation Strategies in** *Honkai: Star Rail* **Video Game**
+
+\*1Rayhan Izzati Basith, <sup>2</sup>Muhammad Alfi Al Ghifari
+
+<sup>1</sup>Syiah Kuala University, Indonesia <sup>2</sup>Universitas Terbuka, Indonesia
+
+\*Corresponding author: [rayhan.basith@usk.ac.id](mailto:rayhan.basith@usk.ac.id)
+
+**Submitted:** 15/09/2024 **Revised:** 15/10/2024 **Accepted:** 15/11/2024
+
+**How to cite this article**: Basith, R I., & Al Ghifari, M A. (2024). Subtitle Analysis Using Oers' Translation Strategies in Honkai: Star Rail Video Game. *IJELR: International Journal of Education, Language, and Religion, 6(2),* 147-158, doi: [https://10.35308/ijelr.v6i2.10357](https://10.0.137.236/ijelr.v6i2.10357)
+
+### **Abstract**
+
+Nowadays, video games interaction performed by the characters potentially offers the potential research analyzing several forms of languages, including in the field of translation. *Gacha Games*, one of the most popular game providers serves interesting plot and attractive storylines that involves many forms of communication. This study aims to identify the translation strategies from English to Indonesian of playable characters' responses in planet *Jarilo-VI* on a video game called *Honkai: Star Rail* version 2.2.0 by Gacha Games. In determining the translation of ten characters' reactions, the researcher applied a qualitative descriptive method by using Oers' selected translation strategies for video games. As this study belongs to analysis study, the subject involved in this study is based on the transcribed subtitle from the game rather than certain individual samples. The research results show that only ten of the thirteen strategies were found: Contextualisation (26.79%), Regional Expression (6.22%), Transcreation (2.39%), Description (5.50%), Core translation (0.72%), Omission (11.24%), Borrowing (41.87%), Calque (1.44%), Literal translation (3.35%), and Adaptation (0.48%). From 13 translation strategies, *borrowing* was popularly used in analyzing the subtitle. It can be implied that most of the subtitle used in video games tended to provide several meanings of special terms used in the game. *Borrowing*  strategies made the researcher unable to easily translate the special terms into the target language.
+
+## **Keywords**
+
+Honkai: Star Rail; subtitle analysis; translation strategy; video game
+
+## **Introduction**
+
+Innovation in making video games continues to develop every year until genres such as battle royale, auto battler, souls-like, or MOBA are born. This development is not only felt in the PC and console gaming sector; mobile devices have also given birth to new genres, such as Gacha. The term Gacha comes from the formation of words that imitate the sound of the rotating handle of a capsule toy machine in Japanese (Shibuya et al., 2016). The mechanism in Gacha is that they need help to choose the prize they want directly. Meanwhile, several prizes are in the form of sets, making enthusiasts tempted to buy Gacha coins to collect the entire set (Shibuya et al., 2016; Yamakami, 2012). Then, the Gacha mechanism is injected in the form of video games. A Gacha mechanic is a monetization model that emerged in video games, containing randomized virtual in-game rewards with various rarities. A Gacha game is a video game that is developed around the Gacha mechanic, even though it is not necessarily the game's core mechanic (Rentia & Karaseva, 2022; Toto, 2021). In the practice of Gacha games, concepts like this are what trigger addiction and make players spend more money than they calculated (Sztainert, 2018). The video games that use the Gacha mechanism has gained popularity for game lovers around the world, because most of the games are free to play and the games are designated to provide incentives for players in in-game buying activities and feasibility of applications, and there are other real-world uses for the Gacha game, including e-commerce probabilistic selling and automobile plate lottery (Yang, et al., 2016).
+
+Moreover, apart from the Gacha mechanism itself, there is another aspect the players find most interesting in the game, namely the story. It is based on the research results of Rentia and Karaseva (2022). When interviewees were asked about their interest in Gacha games, many answered that they were interested because of the game's main story, which follows the main character (a character considered the embodiment of the player) (Rentia & Karaseva, 2022). Therefore, if players need help understanding the language used in the story presented, then the Gacha game will not be able to attract the players' interest. To overcome this problem, developers carry out a process called localization. Localization is the process of changing a product to suit the target context and entering the product into the target market so that the foreignness of the product does not reduce interest in selling it (Mandiberg, 2009). However, the task of localization is different from translation in general. Although most processes involve a translation process in location, a particular process or device is required to enter the translation results into software (O'Hagan & Mangiron, 2004). Apart from that, there are also types of localization, which are divided into four categories, namely *no localization, letters and boxes, partial localization, and full localization* (Bernal-Merino, 2016; Chandler & Deming, 2011).
+
+Among several Gacha video games available now is Honkai: Star Rail. Honkai: Star Rail is a turn-based Gacha action role-playing game developed by MiHoyo (a game developer that develops *Genshin Impact*) that was released on 26 April 2023 (Ramadhan & Mutiara, 2023; Maharani, Suryati & Manalullaili; 2024). As of the time of this study, over 5 million people had downloaded the Honkai: Star Rail app from the Google Play Store, which has received 130 thousand reviews with an average rating of 4.4 out of 5.0. The Honkai: Star Rail application has a growing number of evaluations over time, which makes it challenging for developers to discover prior customer feedback on their apps. As a result, the author gathers user opinions about the Honkai: Star Rail app from reviews on the Google Play Store and then analyses them to create a record for developers, users, and prospective users of their applications (Ramadhan & Mutiara, 2023). With over 30 million downloads at launch and well over 11 million pre-registrations, the game is almost as popular as Genshin Impact just a week after its launch (Playerauctions Honkai STr Rail) Themed around outer space with a touch of fantasy, Honkai Star Rail is very popular among game fans, especially RPG games. Presenting a refreshing story and a sense of originality, it is a high attraction of Honkai Star Rail (Maharani, Suryati & Manalullaili, 2024).
+
+Therefore, in accommodating the purpose of this study, there are 13 translation strategies used in this study, namely: *Re-creation (of play on words):* This strategy is applied to texts that contain jokes. If this type of text is translated literally, it will lose the joke's funny element, which is due to differences in what is considered funny in the source culture and the target culture. Because humor is an essential element in games, translators need to replace joke elements with equivalent funny elements to maintain the entertaining aspect of the game (Mangiron & O'Hagan, 2006; Oers, 2014); *Regional expressions***:**  This strategy aims to bring the game closer to the players as if it comes from their region; the method is by presenting target cultural expressions in the target text (Mangiron & O'Hagan, 2006). Even though it has similarities to the adaptation strategy, this strategy can be used even if there is no cultural equivalent in the source text, and this strategy aims to provide a local touch so that the game feels like it was made in the target area (Mangiron & O'Hagan, 2006).
+
+The next strategy is *transcreation***:** This strategy liberates the translator to rewrite the translation of the target text, which is done because video game translators are given freedom in translation (Mangiron & O'Hagan, 2006). Using this strategy can even eliminate elements in the source text so that the target text looks like new text (Oers, 2014); *Compensation***,** in this strategy, new elements are introduced in one part of the target text to compensate for an aspect that cannot be translated into another (Mangiron & O'Hagan, 2006). This strategy is used when elements such as jokes or language in one source text cannot be applied to the target text, but other source texts that do not have these elements have the potential to be given those elements (Oers, 2014).
+
+*Description*: this strategy functions to translate source texts that do not have an equivalent, so they cannot be translated directly. The equivalent in the source text is expressed in one or several words and then translated in detail into the target text (Grit, 2004, as cited in Oers, 2014); *Core Translation*: is also known as a translation by more general words (Baker, 1992), is a translation that applies hyponyms to the core meaning in the source text so that the target text has a more general meaning (Grit, 2004, as cited in Oers, 2014). *Omission:* this strategy applies the deletion of irrelevant source text. Generally, this deletion is done to improve the source text, which is not good enough, the limited number of words that must be included in the target text, and a more concise equivalent is better conveyed in the target text (Grit, 2004, as cited in Oers, 2014)
+
+*Borrowing:* this strategy has many names, namely borrowing (Vinay & Darbelnet, 1995), transference (Newmark, 1988), and translation using a loan word (Baker, 1992). This strategy is used to fill in the equivalent gaps in the target text by inserting the source text into the target text without translating it (Vinay & Darbelnet, 1995). Generally, equivalents that cannot be translated use this technique. However, this strategy can also be used on words that can be translated but are commonly used in video game terminology (Oers, 2014); *Calque*: the *calque* strategy is similar to borrowing because both functions are to fill in equivalent gaps in the target text. However, the source text in this strategy is translated literally according to the grammar applied in the target language (Vinay & Darbelnet, 1995).
+
+*Literal Translation*: in this strategy, the source text is translated word for word, and the grammar is appropriately adjusted according to the grammar of the target text (Vinay & Darbelnet, 1995); *Adaptation:* This strategy replaces foreign concepts in the source language with concepts that are closer, appropriate, and understandable in the target language to form "situational equivalence" (Vinay & Darbelnet, 1995). This strategy may look the same as the transcreation strategy. However, it must be noted that adaptation only adapts certain aspects of the source language to be accepted in the target language and does not re-create the text as is applied in the transcreation strategy.
+
+Nevertheless, the phenomenon of Gacha games often gains attention in other fields of study, namely socio-behavioural aspects, and economy, but none of these studies analyse its language features. Especially for certain Gacha games, there are a lot of things that can be investigated from this game because it is a relatively new game and has not been used extensively as a study object (Nahendarani, Sulaiman, Sujatna, 2023). From the researcher's exploration, there were only top five studies related to this Honkai: Star Rail games listed in a research-search platform and most of the studies focused on several linguistics aspects. Therefore, this study was conducted under the following research questions: *What translation strategy is appropriate from English to Indonesian of playable characters' responses in planet Jarilo-VI on a video game called Honkai: Star Rail version 2.2.0 by Gacha Games?*
+
+## **Method**
+
+This research used a qualitative descriptive approach to describe an event comprehensively and journalistically (Doyle et al., 2020, as cited in Ayton, 2023). This research emphasized that the collected data were from words and sentences collected from the game subtitles of Honkai: Star Rail. According to Taylor, Bogdan, and DeVault (2015), the qualitative study refers to a research procedure which produce descriptive data in written words or utterances from observed objects. As this game does not have Indonesian language localization for the voiceover, subtitles were chosen that tell the story of this game, also known as diegetic text (Rentia & Karaseva, 2022; Shen, 2005; Oers, 2014). Because this game is continuously updated with new characters and stories, the researcher chose to analyze the characters on planet Jarilo-VI because it had been quite a long time since there were no additional stories or characters, and only analyzed the replies from playable character dialogue because it contains stories that are important for the game, while analyzing the main story is challenging to do because this game does not have a story archive or story repeat feature. Furthermore, in analyzing the subtitle text in this game, the researcher used Oers' preferred translation strategy for video games (2014) taken from Mangiron and O'Hagan (2006), Grit (2004), and Vinay and Darbelnet (1995).
+
+The obtained data were then analyzed using 13 translation strategies Oers (2014) preferred: *renaming, contextualization, re-creation, regional expressions, transcreation, compensation, description, core translation, omission, borrowing, calque, literal translation, and adaptation.* Then, the analysis was divided into per-text boxes because translation in semi-visual novel game models like this is done in a per-text box. The data found was then recorded in the discord chat application and then compiled using *Microsoft Excel* so that the research results could be sorted correctly.
+
+# **Results**
+
+The objectives of this study were to identify the analysis of translation strategies inspired by Oer's approach towards Honkai: Star Rail video games. The analysis covered 13 translation strategies obtained from the source language and target language from the game subtitle, the number of frequencies can be seen as follows:
+
+| No. | Translation Strategies | Number of Frequencies | Percentage |
+|-----|------------------------|-----------------------|------------|
+| 1   | Renaming               | 0                     | 0%         |
+| 2   | Contextualization      | 112                   | 26.79%     |
+| 3   | Re-creation            | 0                     | 0%         |
+| 4   | Regional               | 26                    | 6.22%      |
+| 5   | Transcreation          | 10                    | 2.39%      |
+| 6   | Compensation           | 0                     | 0%         |
+| 7   | Description            | 23                    | 5.50%      |
+| 8   | Core Translation       | 5                     | 0.72%      |
+| 9   | Omission               | 47                    | 11.24%     |
+| 10  | Borrowing              | 175                   | 41.87%     |
+| 11  | Calque                 | 6                     | 1.44%      |
+| 12  | Literal Translation    | 14                    | 3.35%      |
+| 13  | Adaptation             | 2                     | 0.48%      |
+|     | Total                  | 420                   | 100%       |
+
+*Table 1. The number of frequencies of translation strategies used in playable characters' responses*
+
+Table 1 shows that only ten translation strategies were applied to three-hundred-five playable character response text boxes. If sorted from largest, there are one hundred seventy-five text boxes that use borrowing, one hundred twelve text boxes use Contextualisation, forty-seven text boxes use Omission, twenty-six text boxes use Regional, twenty-three text boxes use Description, fourteen text boxes use literal, ten text boxes use Transcreation, six text boxes use Calque, three text boxes use Core translation, two text boxes use Adaptation. Meanwhile, Renaming of Key Terminology and Character names, Recreation of Play on Words, and Compensation strategies are not applied to any text box localization.
+
+## **The Result of Subtitle Analysis**
+
+## **1. Renaming of Key Terminology**
+
+This strategy was not found in the ten playable character responses because the translator preferred to translate equivalents such as names, locations, events, agencies, and abilities using a borrowing strategy. In the equivalent mentioned above, the translator prefers to maintain the characteristic elements in the source text because the equivalent is acceptable to the target language culture, maintains the nuances and meanings in the source text, and no better equivalent can be found other than the equivalent in the source.
+
+#### **2. Contextualization**
+
+This translation strategy is the second most common strategy found in this analysis. Generally, this strategy explains who the speaker refers to in the dialogue, although some describe an object or action in more detail. The following are examples in the game Honkai: Star Rail:
+
+**Source text** : "*Oh you're here too? Are you here on an expedition just like me?"* **Target text** : "*Oh kamu sudah datang ya? Apakah kamu juga datang untuk menjelajahi Snow Plains juga?*"
+
+In the example above, the source text does not provide information about the name of the place where the main character and Lynx are chatting. Meanwhile, "Snow Plains" is added as a description of their current location in the target text.
+
+The second example of applying the contextualization strategy to Gepard's response. In the example above, the source text does not contain information about which Guard is managed by a captain, but the target text adds that the captain manages the Silvermane Guard:
+
+| Source text | : "Above all else, the captain is charged with organizing the Guards. |
+|-------------|-----------------------------------------------------------------------|
+|             | Ensuring<br>that<br>everyone performs their job properly"             |
+| Target text | : "Selain itu, kapten juga bertanggung jawab untuk mengatur semua     |
+|             | Silvermane<br>Guard agar setiap anggota dapat menjalankan tugasnya    |
+|             | dengan benar"                                                         |
+
+#### **3. Re-creation of Play on Words**
+
+In the source text, there are no elements of comedy because the dialogue predominantly depicts the problems that occurred in Belobog in the past and present, as well as stories about the playable character's past. Because of this, the translator does not include funny elements in the target text so as not to change the current theme.
+
+#### **4. Regional Expressions**
+
+The application of this strategy to target texts uses many phatic categories. *Phatic* is a category or communicative element found in non-standard sentences with regional elements or regional dialects (Kridalaksana, 1994). The following are examples of using the regional expression strategy:
+
+**Source text** : "*You mean the thing you asked my opinion on before? Well… of course not."* **Target text** : "*Maksudmu masalah yang dulu kamu pernah minta pendapatku itu? Hmm…tentu tidak dong.*"
+
+The second example of applying the regional expression strategy to Natasha's response. In the example above, the word *any time* means whenever you can talk to Natasha, while in the target text, the word *silakan* is a regional expression for allowing the other person to do something or entertain guests. In this context, Natasha lets the main character talk to her immediately:
+
+| Source text | : "You want to talk with me? Any time" |
+|-------------|----------------------------------------|
+| Target text | : "Mau mengobrol denganku? Silahkan"   |
+
+In the example above, the word *any time* means whenever you can talk to Natasha, while in the target text, the word *silakan* is a regional expression for allowing the other person to do something or entertain guests. In this context, Natasha lets the main character talk to her immediately.
+
+#### **5. Transcreation**
+
+The translation of this game's dialogue still maintains elements of the source text. However, in some dialogues, it can be seen that the source text has foreign equivalents and needs to be more communicative. Therefore, the translator can reconstruct the target text while maintaining the same core or meaning in the source text. The following are examples of implementing a transcreation strategy:
+
+| Source text | : "Chatting at a time like this… But that's okay with me.<br>What would |
+|-------------|-------------------------------------------------------------------------|
+|             | you like to<br>chat about?"                                             |
+| Target text | : "Aku masih mau mengobrol… tapi aku tidak punya pendapat               |
+|             | apapun…<br>apa yang mau dibicarakan?"                                   |
+
+In the example above, the translator maintains the core meaning, namely, "What would you like to chat about?" but changes the non-core sentences in the source text to have a new meaning. The sentence *Aku masih mau mengobrol ... tapi aku tidak punya pendapat* explains that the character Serval wants to still chat but does not have a topic to discuss. Meanwhile, in the source text, the sentence explains that the time to talk is not right even though the character Serval agrees.
+
+#### **6. Compensation**
+
+This strategy was not applied because the source text did not contain other language or funny elements. Therefore, using this strategy from one text box to another in the target text is impossible.
+
+#### **7. Description**
+
+The description strategy in characters' responses only applies to equivalents that the target language cannot fully understand. The following is an example of implementing a description strategy:
+
+| Source text | : "I prefer working outside. Besides, there's a lot of people in the                            |
+|-------------|-------------------------------------------------------------------------------------------------|
+|             | Underworld who needs<br>help. I've shared these thoughts with Bronya,<br>and she's supportive." |
+| Target text | : "Aku lebih suka kerja di luar ruangan.<br>Selain itu, banyak orang yang                       |
+|             | aku kenal di Underworld yang membutuhkan bantuan. Aku memberi                                   |
+|             | tahu<br>Bronya ide ini dan dia sangat mendukung."                                               |
+
+In the example above, in the target language, the source text has meaning working somewhere outside. It creates confusion, so the translator translates it descriptively by describing the place out of a room.
+
+#### **8. Core**
+
+In the example below, the source text provides a more specific meaning: unfinished writing, something like *Tales*. In contrast, the meaning is made more general by referring to it as an object related to *Tales*  in the target text:
+
+| Source text | : "The first time we met was at the school library. At the time, I happened<br>to pick<br>up her unfinished writing, something like Tales,<br>and returned<br>it to her."                    |
+|-------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Target text | : "Kami pertama kali berkenalan di perpustakaan sekolah. Waktu itu,<br>aku<br>menemukan benda<br>yang berhubungan dengan "kisah-kisah"<br>miliknya yang<br>hilang dan kukembalikan padanya." |
+
+#### **9. Omission**
+
+This strategy is widely used to remove words that need not be included in the target text. It aims to ensure that the text is communicative, shorten sentences, and remove words that are less influential or important in the text. The following is an example of implementing an omission strategy:
+
+| Source text | : "Mr. Svarog said that it is super powerful. He<br>said that it will put a |
+|-------------|-----------------------------------------------------------------------------|
+|             | very heavy burden on whoever holds it"                                      |
+| Target text | : "Tuan Svarog bilang kalau kekuatannya sangat besar. Siapapun yang         |
+In the example above, "He said" in the second sentence was omitted in the target text because the translator felt the first sentence explained who said that.
+
+### **10. Borrowing**
+
+This translation strategy is the most common strategy found in this analysis. This strategy is used in character names, locations, agencies, powers, and events because the translator wants to maintain the nuance or depiction of the game's story. The following are examples of implementing a borrowing strategy:
+
+| Source text | : "Ah, you mean the match between me and Svarog?"         |
+|-------------|-----------------------------------------------------------|
+| Target text | : "Ah, maksudmu pertandinganku melawan Bos Svarog<br>ya?" |
+
+In the example above, the translator borrows a character's name from the source text without changing its meaning.
+
+| Source text | : "The Fragmentum<br>disaster caused many to lose their homes…"  |
+|-------------|------------------------------------------------------------------|
+| Target text | : "Fragmentum<br>membuat banyak orang kehilangan tempat tinggal" |
+
+In the example above, the translator borrows the name of some phenomenon from the source text without changing its meaning.
+
+#### **11. Calque**
+
+In character responses, the translator applied this strategy to a term that can be translated into the target text. The following is an example of implementing a calque strategy:
+
+| Source text | : "I know. Miss Topaz already told me! And, she gave me the source<br>code!" |
+|-------------|------------------------------------------------------------------------------|
+| Target text | : "Clara tahu. Kak Topaz sudah memberi tahu<br>Clara! Lagi pula, dia         |
+|             | menyerahkan "kode sumber"<br>pada Clara."                                    |
+
+In the example above, the application of calque occurs when the term *source code* is translated literally as *kode sumber* in the target text.
+
+## **12. Literal**
+
+In character response translation, translators mostly use communicative translation (Newmark, 1988) and faithful translation (Newmark, 1988). Literal translation is considered unable to produce an appropriate translation because Indonesian and English are not languages from the same family, in addition to the cultural differences between the two speakers. The following is an example of implementing a literal strategy:
+
+**Source text** : "*We meet again, player. Are you here for a chat?*" **Target text** : "*Pemain, kita bertemu lagi. Mau mengobrol*"
+
+In the example above, the first sentence is translated word for word, but its placement is adjusted for the target text.
+
+## **13. Adaptation**
+
+This strategy is uncommon in character response translations because translators focus more on emphasizing elements in the source text. The following is an example of implementing a literal strategy:
+
+**Source text** : "*One more famous member is: Pitch-Dark Hook the Great, Julian of a Thousand Faces, Little Timmy; and Luka Strongarm!*"
+
+#### **Target text** : "*Anggota The Moles yang terkenal saat ini adalah: Hook si Hebat dalam Kegelapan, Julian si Muka Seribu, Timmy si Kecil, dan Luka si Lengan Besi!*"
+
+The equivalent "Lengan Besi" is taken from the nickname of the character Gatotkaca, namely "wire muscles, iron bones." This nickname means someone with extraordinary physical and mental strength, just like Luka in the story depiction of this game.
+
+# **Discussion**
+
+From the results obtained and analyzed by the researcher above, it turned out that all of the attempts made to translate the video game led to the term called *localization*. Localization is the process of changing a product to suit the target context and entering the product into the target market so that the foreignness of the product does not reduce interest in selling it (Mandiberg, 2009). Apart from the Gacha element itself, there is another aspect the players find most interesting in the game, namely the story. It is based on the research results of Rentia and Karaseva (2022). When interviewees were asked about their interest in Gacha games, many answered that they were interested because of the game's main story, which follows the main character (a character considered the embodiment of the player) (Rentia & Karaseva, 2022). Therefore, if players cannot understand the language used in the story presented, then the Gacha game will not be able to attract the players' interest. The goal of game localization, a practical and user-focused kind of translation, is to give target users a gameplay experience that is comparable to the original game. (Fernández-Costales 2012; O'Hagan and Mangiron 2013; Bernal-Merino 2014).
+
+Although a game's graphics or captivating plot may draw players in, subpar localization will only serve to irritate and frustrate those same ardent gamers by reminding them repeatedly that the game is merely a poorly translated attempt to extract a little more cash. Players who are dissatisfied with the game frequently complain about it on online forums. Every aspect of a video game is influenced by culture and language, and without proper translation and localization, there is no ludic activity, no aesthetic experience, and no game to enjoy because the game becomes a frustrating experience—exactly the opposite of what it was intended to be (Bernal-Merino 2014).
+
+Based on the research findings, especially in the examples in the translation strategies called *Renaming the Key Terminology* and *Borrowing,* in this case, the specific names of characters, locations, events, agencies, and abilities remained unchanged. There was no sign of localization here, instead, this applied the *no localization* process, in which the translation process is not required because Honkai: Star Rail game is also targeted to the international market and it is a game that is sold to the target market without any localization of the game assets (Bernal-Merino, 2016, as cited in Al-Batineh & Alawneh, 2021). This method allows developers to sell more copies without funding the localization (O'Hagan & Mangiron, 2013). In Gacha games, this type of localization is generally used in games that are only released in the place where the game originates, and generally, the game can only be played in that area or specific location. Zhang (2014) addresses the procedures and strategies for controlling words in industrial practice and makes the case that terminology management may be very advantageous for the game localization sector.
+
+Meanwhile, some elements of translation occurred in this study, namely *Contextualization, Regional Expression, Transcreation, Description,* and *Omission* all were designated to adjust the situation and gaming experiences contextually and culturally. Now, if we see the example of *Contextualization* in the findings, it was indicated that sometimes explicit information that cannot be inferred from the original text alone is provided (Oers, 2014). Meanwhile, *Omission* was the antithesis of contextualization, which includes additional and more specialized information rather than omitting it completely or losing it in a more generalized translation. *Contextualization* is frequently employed because the gameplay requires additional explanation or because the visual context demands a more direct translation.
+
+Moreover, Galhardi (2014) believed that some elements of words in game subtitles are necessary to be re-created, regionally expressed, "transcreated" and described as culturally specific in order to fulfill the gamers' satisfaction to be more engaged and to be told amongst fans easily. However, in his study, he also highlighted that all of these attempts lead to the necessity for more research into the fascinating and expanding field of gaming fan translations. The examples provided in the *Regional Expression,* and *Transcreation* highlighted the necessity to adjust to the local target language, in this case, Honkai: Star Rail target language (Indonesian). This was done to gain the cultural aspect of Indonesian gamers. Edward (2014) emphasizes how crucial the culturalization or adaption process is to game localization in order to prevent any unfavorable reactions for publishers and developers and to provide games with more material that is relevant to the local community. Edwards (2014) explains the various degrees of game culturalization that can be used in-game translation after talking about the important role culture plays in game design. He then outlines the various kinds of culturalization difficulties, such as those involving history, religion, ethnicity, and geopolitics. She ends by saying that culturalization needs to be a crucial component of game translation since it may guarantee that as many cultures as possible can appreciate the efforts and imaginative vision of game producers.
+
+## **Conclusion**
+
+In response to the ten characters of Honkai: Star Rail on the planet Jarillo-VI, it can be seen that the translator maintains more of the equivalent of the source text and provides a deeper context so that readers of the target text better understand the depiction of the characters, nuances, world formation, and the problems faced on the planet Jarillo-VI. Of 13 translation strategies, the highest proportion of translation strategies used for the target language (Indonesian language) was *borrowing* (41.87%) followed by *contextualization* by 26.79%. It can be implied that the translator *borrowed* and kept using certain terms in the game to keep the originality of certain figures and places in the game. This probably was because in order to make the gamer and fans familiar with the terms and storyline in the game. Moreover, the *contextualization* approach was also kept to highlight the context of place in the game, so that the gamer could be familiar with the game details. Oers' (2014) The video game translation strategy needs additional theory because it only uses literal translation to cover the whole sentence translation, which is more suitable for applying to the same family languages. Therefore, researchers feel that two other common strategies used in this game, like faithful translation (Newmark, 1988) and communicative translation (Newmark, 1988), must be included and be suitable for translating noncognate languages like this game localization.
+
+## **References**
+
+- Al-Batineh, M., & Alawneh, R. (2021). Current trends in localizing video games into Arabic: Localization levels and gamers' preferences. *Perspectives, 30*(2), 323-342. <https://doi.org/10.1080/0907676X.2021.1926520>
+- Ayton, D. (2023). Qualitative descriptive research. In *Qualitative research: A practical guide for health and social care researchers and practitioners*. OER Collective. Retrieved from https://oercollective.caul.edu.au/qualitative-research/chapter/\_\_unknown\_\_-5/
+
+Baker, M. (1992). *In other words: A coursebook on translation*. Routledge.
+
+- Bernal-Merino, M. Á. (2016). Glocalization and co-creation: Trends in international game production. In Esser, A., Bernal-Merino, M. Á., & Smith, I. R. (Eds.), *Media Across Borders: Localising TV, Film and Video Games* (pp. 208–226). Routledge.
+- Chandler, H., & Deming, S. O. M. (2011). *The Game Localization Handbook* (illustrated, revised ed., pp. 8-10, 51). Jones & Bartlett Publishers.
+- Doyle, L., McCabe, C., Keogh, B., Brady, A., & McCann, M. (2020). An overview of the qualitative descriptive design within nursing research*. Journal of Research in Nursing*, 25(5), 443-455. <https://doi.org/10.1177/1744987119880234>
+
+- Edwards, K. (2014). Beyond localization: An overview of game culturalization. In C. Mangiron, P. Orero, & M. O'Hagan (Eds.), *Fun for all translation and accessibility practices in video games* (pp. 16–17). Bern: Peter Lang.
+- Galhardi, R. M. (2014). "Video games and fan translations: A case study of chrono trigger. In C. Mangiron, P. Orero, & M. O'Hagan (Eds.), *Fun for all translation and accessibility practices in video games* (pp. 175–195). Bern: Peter Lang.
+- Grit, D. (2004). De vertaling van realia. In T. Naaijkens & C. Koster (Eds.), *Denken over vertalen* (pp. 279–286). Nijmegen: Vantilt. (Original work published 1997)
+- HoYoverse. (2023). Honkai: Star Rail (Version 2.2.0) [Video game]. PC, iOS, Android.
+- Kridalaksana, H. (1994). *World classes in Indonesian language* (Ed. 2, pp. 116-120). Gramedia.
+- Maharani, M., Suryati., & Manalullaili. (2024). Visual communication design analysis of jing yuan character in honkai star rail game. *Jurnal Bisnis dan Komunikasi Digital, 1*(2), 1-13.
+- Mandiberg, S. (2009). Translation (is) not localization: Language in gaming. *Digital Arts and Culture 2009*. UC Irvine. Retrieved from<https://escholarship.org/uc/item/6jq2f8kw>
+- Mangiron, C., & O'Hagan, M. (2006). Video Games Localisation: Unleashing Imagination with Restricted Translation. *Journal of specialised translation*, (6), 10-21. Retrieved from https://www.academia.edu/78177270/Game\_Localisation\_unleashing\_imagination\_wit h\_restrictedtranslation
+- Nahendarani, S., Sulaiman, M. R., & Sujatna, E. T. (2023). Word formation of consumable items in Honkai: Star Rail game. *RETORIKA: Jurnal Ilmu Bahasa, 9*(2), 307-313.
+- Newmark, P. (1988). *A textbook of translation*. Prentice Hall.
+- Oers, A. V. (2014). Translation strategies and video game translation: A case study of beyond good and evil. In Mangiron, C., Orero, P., & O'Hagan, M. (Eds.), *Fun for All: Translation and Accessibility Practices in Video Games* (pp. 129–148). Peter Lang.
+- O'Hagan, M., & Mangiron, C. (2013). *Game Localization: Translating for the Global Digital Entertainment Industry*. John Benjamins Publishing Company.
+- O'Hagan, M., & Mangiron, C. (2004). Games localization: When Arigato gets lost in translation. Retrieved from: [https://www.researchgate.net/publication/281748958\\_Games\\_Localization\\_When\\_Arigato\\_gets](https://www.researchgate.net/publication/281748958_Games_Localization_When_Arigato_gets_lost_in_translation) [\\_lost\\_in\\_translation](https://www.researchgate.net/publication/281748958_Games_Localization_When_Arigato_gets_lost_in_translation)
+- Ramadhan, Z. F., & Mutiara, A. B. (2023). Sentiment analysis of Honkai: Stari Rail Indonesian language reviews on Google Play Store using bidirectional encoder representation from transformers method. *International Journal of Engineering, Science & Information Technology, 3*(3), 1-6.
+- Rentia, G.-G., & Karaseva, A. (2022). What Aspects of Gacha Games Keep the Players Engaged? (Dissertation). Retrieved from:<https://urn.kb.se/resolve?urn=urn:nbn:se:uu:diva-475987>
+- Shen, D. (2005). Diegesis. In D. Herman, M. Jahn, & M.-L. Ryan (Eds.), *Routledge Encyclopedia of Narrative Theory* (pp. 107–108). Routledge.
+- Shibuya, A., Teramoto, M., & Shoun, A. (2016). In-game purchases and event features of mobile social games in Japan. In R. Kowert & T. Quandt (Eds.), *The Video Game Debate: Unravelling the Physical, Social, and Psychological Effects of Digital Games* (Vol. 4). Springer. [https://doi.org/10.1007/978-3-319-43820-7\\_4](https://doi.org/10.1007/978-3-319-43820-7_4)
+- Sztainert, T. (2018). Loot boxes and gambling (GREO Brief). Gambling Research Exchange Ontario. Retrieved from https://www.greo.ca/Modules/EvidenceCentre/files/Sztainert%20(2018)%20Loot%20b
+
+oxes%20and%20gambling.pdf
+
+- Taylor, S. J., Bogdan, R., & DeVault, M. L. (2015). *Introduction to qualitative research methods: A guidebook and resource* (4th ed.). London, UK: John Wiley & Sons.
+- Toto, S. (2021). Gacha: Explaining Japan's top money-making social game mechanism. Retrieved from: <https://www.serkantoto.com/2012/02/21/gacha-social-games/>
+- Vinay, J.-P., & Darbelnet, J. (1995). *Comparative stylistics of French and English: A methodology for translation* (J. C. Sager & M.-J. Hamel, Trans. & Eds.). John Benjamins Publishing Company.
+- Yamakami, T. (2012). Revenue-Generation Pattern Analysis of Mobile Social Games in Japan. Retrieved from https://www.icact.org/upload/2012/0291/20120291\_finalpaper.pdf
+- Zhang, X. (2014). Terminology management in video games localisation. In C. Mangiron, P. Orero, & M. O'Hagan (Eds.), *Fun for all translation and accessibility practices in video games* (pp. 197– 216). Bern: Peter Lang.

@@ -251,7 +251,7 @@ async def embeddings_agent(
                 doc_processor.append_md_document(page_content)
                 texts.append(Document(
                     page_content=page_content,
-                    metadata={"source": f"page_{page_num + 1}", "page": page_num + 1}
+                    metadata={"source": f"page_{page_num + 1}", "page": page_num}
                 ))
 
             # Save to markdown_dir

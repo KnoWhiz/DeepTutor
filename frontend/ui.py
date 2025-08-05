@@ -189,16 +189,36 @@ def get_relevance_color(score):
     """Convert a relevance score to a shade of grey.
     
     Args:
-        score: Float between 0 and 1
+        score: Float between 0 and 1, or any other value (will be handled safely)
         
     Returns:
         Hex color code string for a shade of grey, where:
         - High relevance (1.0) = Dark grey (#404040)
         - Medium relevance (0.5) = Medium grey (#808080)
         - Low relevance (0.0) = Light grey (#C0C0C0)
+        - Invalid values = Medium grey (#808080)
     """
-    # Convert score to a grey value between 192 (C0) and 100 (40)
-    grey_value = int(192 - (score * 92))
+    try:
+        # Ensure score is numeric and within valid range
+        if isinstance(score, str):
+            # Try to convert string to float
+            numeric_score = float(score)
+        elif isinstance(score, (int, float)):
+            numeric_score = float(score)
+        else:
+            # Fallback for any unexpected type
+            numeric_score = 0.5
+            
+        # Clamp score to valid range [0, 1]
+        numeric_score = max(0.0, min(1.0, numeric_score))
+        
+        # Convert score to a grey value between 192 (C0) and 100 (40)
+        grey_value = int(192 - (numeric_score * 92))
+        
+    except (ValueError, TypeError):
+        # If any conversion fails, use medium grey
+        grey_value = 128  # Medium grey (#808080)
+        
     return f"#{grey_value:02x}{grey_value:02x}{grey_value:02x}"
 
 

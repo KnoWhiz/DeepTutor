@@ -721,8 +721,9 @@ def extract_answer_content(message_content):
                 # Convert value to float
                 sources[key] = float(value)
             except ValueError:
-                # If conversion fails, store as string
-                sources[key] = value
+                # If conversion fails, use default value of 0.0 and log the issue
+                logger.warning(f"Failed to parse source value '{value}' for key '{key[:50]}...', using default 0.0")
+                sources[key] = 0.0
 
     # Extract source pages (content between <source_page> tags)
     source_page_matches = re.finditer(r'<source_page>(.*?)</source_page>', message_content, re.DOTALL)
@@ -737,8 +738,9 @@ def extract_answer_content(message_content):
                 # Convert value to float
                 source_pages[key] = float(value)
             except ValueError:
-                # If conversion fails, store as string
-                source_pages[key] = value
+                # If conversion fails, use default value of 1.0 and log the issue
+                logger.warning(f"Failed to parse source_page value '{value}' for key '{key[:50]}...', using default 1.0")
+                source_pages[key] = 1.0
     
     # Extract source annotations (content between <source_annotations> tags)
     source_annotation_matches = re.finditer(r'<source_annotations>(.*?)</source_annotations>', message_content, re.DOTALL)
@@ -838,8 +840,9 @@ def extract_answer_content(message_content):
                 # Convert value to float
                 refined_source_pages[key] = float(value)
             except ValueError:
-                # If conversion fails, store as string
-                refined_source_pages[key] = value
+                # If conversion fails, use default value of 1.0 and log the issue
+                logger.warning(f"Failed to parse refined_source_page value '{value}' for key '{key[:50]}...', using default 1.0")
+                refined_source_pages[key] = 1.0
 
     # Extract refined source index (content between <refined_source_index> tags)
     refined_source_index_matches = re.finditer(r'<refined_source_index>(.*?)</refined_source_index>', message_content, re.DOTALL)
@@ -858,8 +861,9 @@ def extract_answer_content(message_content):
                     # Try converting to int if float conversion fails
                     refined_source_index[key] = int(value)
                 except ValueError:
-                    # If both conversions fail, store as string
-                    refined_source_index[key] = value
+                    # If both conversions fail, use default value of 0 and log the issue
+                    logger.warning(f"Failed to parse refined_source_index value '{value}' for key '{key[:50]}...', using default 0")
+                    refined_source_index[key] = 0
 
     return answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions, thinking
 

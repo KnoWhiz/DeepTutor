@@ -467,8 +467,21 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                         if sources and len(sources) > 0:
                             st.write("\n\n**📚 Sources:**")
 
-                            # Sort sources by page numbers
-                            sorted_sources = sorted(sources.items(), key=lambda x: refined_source_pages.get(x[0], 0))
+                            # Sort sources by page numbers (handling mixed data types)
+                            def get_sort_key(source_item):
+                                """
+                                Get sort key for source, handling mixed data types (float/str).
+                                Returns numeric values as-is, and strings as high values to sort them last.
+                                """
+                                page_value = refined_source_pages.get(source_item[0], 0)
+                                if isinstance(page_value, (int, float)):
+                                    return page_value
+                                else:
+                                    # For string values like 'T', '2N', assign a high numeric value 
+                                    # so they appear at the end of the sorted list
+                                    return float('inf')
+                            
+                            sorted_sources = sorted(sources.items(), key=get_sort_key)
                             cols = st.columns(len(sources))
                             for idx, (col, (source, score)) in enumerate(zip(cols, sorted_sources), 1):
                                 page_num = refined_source_pages.get(source)

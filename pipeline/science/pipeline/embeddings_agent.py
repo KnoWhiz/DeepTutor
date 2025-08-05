@@ -40,6 +40,52 @@ SKIP_MARKER_API = True if os.getenv("ENVIRONMENT") == "local" else False
 logger.info(f"SKIP_MARKER_API: {SKIP_MARKER_API}")
 
 
+def calculate_page_length(_doc, file_path):
+    """
+    Calculate character count per page for accurate page attribution.
+    Following the generate_LiteRAG_embedding approach but focusing on statistics.
+    
+    Args:
+        _doc: The fitz.Document object
+        file_path: Path to the PDF file
+    
+    Returns:
+        List of dicts with page statistics
+    """
+    from pipeline.science.pipeline.embeddings import extract_document_from_file
+    
+    # Extract document using the same method as LiteRAG
+    document = extract_document_from_file(file_path)
+    
+    page_stats = []
+    cumulative_chars = 0
+    total_chars = 0
+    
+    for page_num, page_doc in enumerate(document):
+        page_text = page_doc.page_content
+        
+        # Clean up the text (same as LiteRAG)
+        clean_text = page_text.strip()
+        if clean_text:
+            clean_text = clean_text.replace("-\n", "")
+            clean_text = "".join(clean_text.split())
+        
+        char_count = len(clean_text)
+        total_chars += char_count
+        page_stats.append({
+            "page_num": page_num,
+            "char_count": char_count,
+            "start_char": cumulative_chars,
+            "end_char": cumulative_chars + char_count,
+            "content_preview": clean_text[:100] + "..." if len(clean_text) > 100 else clean_text,
+            "char_proportion": 0.0
+        })
+        cumulative_chars += char_count
+    for i in range(len(page_stats)):
+        page_stats[i]['char_proportion'] = page_stats[i]['char_count'] / total_chars
+    return page_stats
+
+
 async def embeddings_agent(
     _mode: ChatMode,
     _document: list,
@@ -97,7 +143,6 @@ async def embeddings_agent(
     doc_processor = mdDocumentProcessor()
 
     # Define the default filenames used by FAISS when saving
-    # yield "\n\n**Initializing file paths ...**"
     logger.info("Initializing file paths ...")
     faiss_path = os.path.join(embedding_folder, "index.faiss")
     pkl_path = os.path.join(embedding_folder, "index.pkl")
@@ -106,6 +151,14 @@ async def embeddings_agent(
     markdown_embedding_folder = os.path.join(embedding_folder, "markdown")
     markdown_faiss_path = os.path.join(markdown_embedding_folder, "index.faiss")
     markdown_pkl_path = os.path.join(markdown_embedding_folder, "index.pkl")
+
+    # Calculate page statistics for BASIC mode (for accurate page attribution)
+    page_stats = None
+    if _mode == ChatMode.BASIC:
+        logger.info("BASIC mode: Calculating page statistics for accurate page attribution...")
+        yield "\n\n**📊 Calculating page statistics ...**"
+        page_stats = calculate_page_length(_doc, file_path)
+        logger.info(f"Calculated page statistics: {len(page_stats)} pages")
 
     # Check if all necessary files exist to load the embeddings
     if os.path.exists(faiss_path) and os.path.exists(pkl_path) and os.path.exists(document_summary_path) \
@@ -198,7 +251,7 @@ async def embeddings_agent(
                 doc_processor.append_md_document(page_content)
                 texts.append(Document(
                     page_content=page_content,
-                    metadata={"source": f"page_{page_num + 1}", "page": page_num + 1}
+                    metadata={"source": f"page_{page_num + 1}", "page": page_num}
                 ))
 
             # Save to markdown_dir
@@ -313,7 +366,13 @@ async def embeddings_agent(
         # Save the markdown embeddings to the specified folder
         create_markdown_embeddings_start_time = time.time()
         yield "\n\n**📝 Creating markdown embeddings ...**"
-        create_markdown_embeddings(doc_processor.get_md_document(), markdown_embedding_folder, chunk_size=config['embedding']['chunk_size'], chunk_overlap=config['embedding']['chunk_overlap'])
+        create_markdown_embeddings(
+            doc_processor.get_md_document(), 
+            markdown_embedding_folder, 
+            chunk_size=config['embedding']['chunk_size'], 
+            chunk_overlap=config['embedding']['chunk_overlap'],
+            page_stats=page_stats  # Pass page statistics for accurate page attribution
+        )
         time_tracking['vectorrag_create_markdown_embeddings'] = time.time() - create_markdown_embeddings_start_time
         logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 

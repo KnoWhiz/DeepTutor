@@ -108,6 +108,12 @@ def create_searchable_chunks(doc, chunk_size: int) -> list:
     return chunks
 
 
+
+
+
+
+
+
 def get_embedding_models(embedding_type, para):
     para = para
     api = ApiHandler(para)
@@ -127,7 +133,7 @@ def get_embedding_models(embedding_type, para):
 
 
 # Create markdown embeddings
-def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_size: int = 3000, chunk_overlap: int = 300):
+def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_size: int = 3000, chunk_overlap: int = 300, page_stats=None):
     """
     Create markdown embeddings from a markdown document and save them to the specified directory.
 
@@ -136,6 +142,7 @@ def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_s
         output_dir: Directory where embeddings will be saved
         chunk_size: Size of each chunk for regular embeddings
         chunk_overlap: Overlap between chunks for regular embeddings
+        page_stats: List of page statistics for accurate page attribution (BASIC mode only)
 
     Returns:
         None
@@ -149,75 +156,227 @@ def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_s
     page_based_embedding_folder = os.path.join(output_dir, 'page_based_index')
     page_based_faiss_path = os.path.join(page_based_embedding_folder, "index.faiss")
     page_based_pkl_path = os.path.join(page_based_embedding_folder, "index.pkl")
+    logger.info(f"MMARK: create_markdown_embeddings")
 
     logger.info("Creating markdown embeddings ...")
+
+    logger.info(f"page_stats: {page_stats}")
     if md_document:
         # Create markdown directory if it doesn't exist
         os.makedirs(output_dir, exist_ok=True)
 
-        # Split markdown content into chunks
+        # Split markdown content into chunks with page attribution
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
         )
-        markdown_texts = [
-            Document(page_content=chunk.replace('<|endoftext|>', ''), metadata={"source": "markdown"})
-            for chunk in text_splitter.split_text(md_document)
-        ]
-
-        for text in markdown_texts:
-            logger.info(f"markdown text after text splitter: {text}")
-
-        # Create and save markdown embeddings
-        db_markdown = FAISS.from_documents(markdown_texts, embeddings)
-        db_markdown.save_local(output_dir)
-        logger.info(f"Saved {len(markdown_texts)} markdown chunks to {output_dir}")
+        chunks = text_splitter.split_text(md_document)
         
-        # Create page-based embeddings for markdown
+        # Create documents with accurate page attribution
+        markdown_texts = []
+        
+        if page_stats:
+            # NEW APPROACH: Use page statistics for both main and page-based embeddings
+            logger.info("Using page statistics for unified embedding approach...")
+            
+            # Split entire markdown into chunks
+            chunks = text_splitter.split_text(md_document)
+            
+            for chunk_index, chunk in enumerate(chunks):
+                clean_chunk = chunk.replace('<|endoftext|>', '')
+                
+                if clean_chunk.strip():
+                    # Calculate chunk position using page statistics proportion
+                    chunk_size_actual = len(clean_chunk)
+                    chunk_position = chunk_index * chunk_size  # Estimate position
+                    
+                    # Find which page this chunk belongs to using proportion
+                    total_md_length = len(md_document)
+                    char_proportion = chunk_position / total_md_length if total_md_length > 0 else 0
+                    
+                    # Find the page that contains this proportion
+                    page_num = 0  # Default to first page
+                    for i, page_stat in enumerate(page_stats):
+                        page_start_proportion = page_stat["start_char"] / total_md_length if total_md_length > 0 else 0
+                        page_end_proportion = page_stat["end_char"] / total_md_length if total_md_length > 0 else 0
+                        
+                        if page_start_proportion <= char_proportion <= page_end_proportion:
+                            page_num = i  # 0-indexed page number
+                            break
+                    
+                    # Add 10% overflow for chunk boundaries
+                    overflow_size = int(chunk_size_actual * 0.1)
+                    start_pos = max(0, chunk_position - overflow_size)
+                    end_pos = min(len(md_document), chunk_position + chunk_size_actual + overflow_size)
+                    
+                    markdown_texts.append(Document(
+                        page_content=clean_chunk,
+                        metadata={
+                            "source": "markdown",
+                            "page": page_num,  # 0-indexed page number
+                            "chunk_index": chunk_index,
+                            "char_position": chunk_position,
+                            "start_char": start_pos,
+                            "end_char": end_pos,
+                            "attribution_method": "page_stat_proportion"
+                        }
+                    ))
+                else:
+                    logger.warning(f"Skipping chunk {chunk_index} due to empty content")
+        else:
+            # Fallback to old method when no page statistics available
+            logger.info("Using fallback chunking method (no page statistics)...")
+            for chunk_index, chunk in enumerate(chunks):
+                clean_chunk = chunk.replace('<|endoftext|>', '')
+                
+                # Fallback estimation method
+                chunk_position = md_document.find(clean_chunk)
+                estimated_page = max(1, (chunk_position // (chunk_size * 2)) + 1) if chunk_position != -1 else 1
+                page_num = estimated_page - 1  # Convert to 0-indexed
+                
+                markdown_texts.append(Document(
+                    page_content=clean_chunk,
+                    metadata={
+                        "source": "markdown",
+                        "page": page_num,  # 0-indexed for consistency
+                        "chunk_index": chunk_index,
+                        "char_position": chunk_position if chunk_position != -1 else (chunk_index * chunk_size)
+                    }
+                ))
+
+
+        # COMMENTED OUT: Original markdown embeddings generation
+        # for text in markdown_texts:
+        #     logger.info(f"markdown text after text splitter: {text}")
+        # 
+        # # Create and save markdown embeddings
+        # db_markdown = FAISS.from_documents(markdown_texts, embeddings)
+        # db_markdown.save_local(output_dir)
+        # logger.info(f"Saved {len(markdown_texts)} markdown chunks to {output_dir}")
+        
+        # Create unified page-based embeddings for markdown (will be saved to both locations)
         if os.path.exists(page_based_faiss_path) and os.path.exists(page_based_pkl_path):
             logger.info("Markdown page-based embedding already exists. We can load existing embeddings...")
         else:
-            logger.info("Creating markdown page-based embeddings...")
-            # Use 10 times the chunk size as "page size" for markdown
-            page_size = chunk_size * 10
+            logger.info("Creating unified page-based embeddings...")
             page_documents = []
             
-            # Split the markdown document into "pages" of 10x chunk_size
-            for page_num, start_pos in enumerate(range(0, len(md_document), page_size)):
-                end_pos = min(start_pos + page_size, len(md_document))
-                page_text = md_document[start_pos:end_pos]
+            if page_stats:
+                # Use char_proportion with cum_prop for refined page-based chunking
+                logger.info("Using char_proportion with cum_prop for page-based embeddings...")
+                cum_prop = 0.0  # Track cumulative proportion
                 
-                # Clean up the text
-                clean_text = page_text.strip()
-                if clean_text:
-                    # Remove any endoftext tokens
-                    clean_text = clean_text.replace('<|endoftext|>', '')
-                    # Normalize spaces
-                    clean_text = " ".join(clean_text.split())
+                for page_stat in page_stats:
+                    # Use char_proportion to estimate actual start/end positions
+                    char_proportion = page_stat['char_proportion']
+                    total_md_length = len(md_document)
                     
-                    page_documents.append(Document(
-                        page_content=clean_text,
-                        metadata={
-                            "page": page_num,
-                            "source": f"markdown_page_{page_num + 1}",
-                            "page_type": "markdown_page",
-                            "page_size": page_size,
-                            "start_char": start_pos,
-                            "end_char": end_pos,
-                            "total_chars": len(md_document)
-                        }
-                    ))
+                    # Estimate chunk boundaries using proportion
+                    estimated_start = int(cum_prop * total_md_length)
+                    estimated_end = int((cum_prop + char_proportion) * total_md_length)
+                    
+                    # Apply 10% overflow (front and back)
+                    chunk_size_actual = estimated_end - estimated_start
+                    overflow_size = int(chunk_size_actual * 0.1)
+                    start_pos = max(0, estimated_start - overflow_size)
+                    end_pos = min(len(md_document), estimated_end + overflow_size)
+                    logger.info(f"=== EMBEDDINGS DEBUG: start_pos = {start_pos}, end_pos = {end_pos} ===")
+                    logger.info(f"=== EMBEDDINGS DEBUG: char_proportion = {char_proportion} ===")
+                    logger.info(f"=== EMBEDDINGS DEBUG: cum_prop = {cum_prop} ===")
+                    
+                    # Graceful bounds checking
+                    if start_pos >= len(md_document):
+                        logger.warning(f"Page {page_stat['page_num']} start position {start_pos} exceeds markdown length {len(md_document)}")
+                        cum_prop += char_proportion  # Update cum_prop even if skipping
+                        continue
+                    
+                    page_text = md_document[start_pos:end_pos]
+                    
+                    # Clean up the text
+                    clean_text = page_text.strip()
+                    if clean_text:
+                        clean_text = clean_text.replace('<|endoftext|>', '')
+                        clean_text = " ".join(clean_text.split())
+                        logger.info(f"=== EMBEDDINGS DEBUG: clean_text = {clean_text} and page_stat['page_num'] = {page_stat['page_num']} ===")
+                        # Only add if we have meaningful content
+                        if len(clean_text) > 10:  # Minimum content threshold
+                            page_documents.append(Document(
+                                page_content=clean_text,
+                                metadata={
+                                    "page": page_stat["page_num"],  # Add 1 to index (0-indexed to 1-indexed)
+                                    "source": f"page_{page_stat['page_num']}",
+                                    "page_type": "full_page",
+                                    "total_pages": len(page_stats),
+                                    "file_path": str(output_dir),  # Add file path like LiteRAG
+                                    "start_char": start_pos,
+                                    "end_char": end_pos,
+                                    "total_chars": len(md_document),
+                                    "original_char_count": page_stat["char_count"],
+                                    "char_proportion": char_proportion,
+                                    "cum_prop": cum_prop
+                                }
+                            ))
+                        else:
+                            logger.warning(f"Page {page_stat['page_num']} has insufficient content ({len(clean_text)} chars), skipping")
+                    else:
+                        logger.warning(f"Page {page_stat['page_num']} has no content after cleaning")
+                    
+                    # Update cumulative proportion for next iteration
+                    cum_prop += char_proportion
+            else:
+                # Fallback to old method: Use 10 times the chunk size as "page size"
+                logger.info("Using fallback method for page-based embeddings...")
+                page_size = chunk_size * 10
+                
+                for page_num, start_pos in enumerate(range(0, len(md_document), page_size)):
+                    end_pos = min(start_pos + page_size, len(md_document))
+                    page_text = md_document[start_pos:end_pos]
+                    
+                    # Clean up the text
+                    clean_text = page_text.strip()
+                    if clean_text:
+                        clean_text = clean_text.replace('<|endoftext|>', '')
+                        clean_text = " ".join(clean_text.split())
+                        
+                        page_documents.append(Document(
+                            page_content=clean_text,
+                            metadata={
+                                "page": page_num,  
+                                "source": f"markdown_page_{page_num}",
+                                "page_type": "markdown_page",
+                                "page_size": page_size,
+                                "start_char": start_pos,
+                                "end_char": end_pos,
+                                "total_chars": len(md_document)
+                            }
+                        ))
             
             if page_documents:
                 # Create FAISS database from page documents
+                logger.info(f"=== EMBEDDINGS DEBUG: page_documents count = {len(page_documents)} ===")
+                
+                # Debug: Show detailed content of page_documents
+                for i, doc in enumerate(page_documents):
+                    logger.info(f"=== EMBEDDINGS DEBUG: Document {i+1}/{len(page_documents)} ===")
+                    logger.info(f"=== EMBEDDINGS DEBUG: Content preview = {doc.page_content[:200]}... ===")
+                    logger.info(f"=== EMBEDDINGS DEBUG: Metadata = {doc.metadata} ===")
+                
+                # Show sample of first 2 documents for quick overview
+                if len(page_documents) > 0:
+                    logger.info(f"=== EMBEDDINGS DEBUG: First document content = {page_documents[0].page_content[:300]}... ===")
+                    if len(page_documents) > 1:
+                        logger.info(f"=== EMBEDDINGS DEBUG: Second document content = {page_documents[1].page_content[:300]}... ===")
+                
                 page_db = FAISS.from_documents(page_documents, embeddings)
                 # Create directory if it doesn't exist
                 os.makedirs(page_based_embedding_folder, exist_ok=True)
-                # Save the page-based embeddings
+                # Save the page-based embeddings to BOTH locations (unified approach)
                 page_db.save_local(page_based_embedding_folder)
-                logger.info(f"Saved {len(page_documents)} markdown page-based documents to {page_based_embedding_folder}")
+                page_db.save_local(output_dir)  # Save to main output_dir as well
+                logger.info(f"=== EMBEDDINGS DEBUG: Saved {len(page_documents)} unified page-based documents ===")
+                logger.info(f"=== EMBEDDINGS DEBUG: Saved to {page_based_embedding_folder} and {output_dir} ===")
             else:
-                logger.warning("No markdown page content found to create page-based embeddings")
+                logger.warning("=== EMBEDDINGS DEBUG: No page_documents found - page_documents is empty ===")
     else:
         logger.info("No markdown content available to create markdown embeddings")
 

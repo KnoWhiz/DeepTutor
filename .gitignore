@@ -12,6 +12,7 @@ pipeline/__pycache__/api_handler.cpython-312.pyc
 /ragtest/cache
 /ragtest/output
 /embedded_content
+/embedding
 
 #amplify-do-not-edit-begin
 amplify/\#current-cloud-backend

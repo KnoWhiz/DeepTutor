@@ -7,6 +7,7 @@ from langchain_openai import OpenAIEmbeddings, AzureOpenAIEmbeddings
 from langchain_deepseek import ChatDeepSeek
 from langchain_sambanova import ChatSambaNovaCloud
 from langchain_core.prompts import ChatPromptTemplate
+from .claude_proxy_wrapper import create_claude_proxy_model
 
 import logging
 logger = logging.getLogger("tutorpipeline.science.api_handler")
@@ -37,6 +38,11 @@ class ApiHandler:
         # self.openai_api_key = str(os.getenv("OPENAI_API_KEY"))
         # self.deepseek_api_key = str(os.getenv("DEEPSEEK_API_KEY"))
         self.sambanova_api_key = str(os.getenv("SAMBANOVA_API_KEY"))
+        
+        # Claude proxy configuration
+        self.claude_proxy_url = str(os.getenv("CLAUDE_PROXY_URL", "http://localhost:8082"))
+        self.claude_proxy_key = str(os.getenv("CLAUDE_PROXY_KEY", "your-key"))
+        
         self.models = self.load_models()
         self.embedding_models = self.load_embedding_models()
 
@@ -51,7 +57,7 @@ class ApiHandler:
             api_version (str): API version for Azure
             deployment_name (str): Model deployment name/identifier
             temperature (float): Temperature parameter for model responses
-            host (str): Host platform ('azure', 'openai', 'sambanova', or 'deepseek')
+            host (str): Host platform ('azure', 'openai', 'sambanova', 'claude_proxy', or 'deepseek')
 
         Returns:
             Language model instance configured for the specified platform
@@ -86,6 +92,24 @@ class ApiHandler:
                 top_p=0.1,
                 streaming=stream,
                 model_kwargs={"stream_options": {"include_usage": True}} if stream else {}
+            )
+        elif host == 'claude_proxy':
+            # Map deployment_name to Claude model
+            claude_model_map = {
+                'gpt-4.1': 'claude-3-5-opus-20241022',
+                'gpt-4.1-mini': 'claude-3-5-sonnet-20241022',
+                'o3-mini': 'claude-3-5-haiku-20241022',
+                'default': 'claude-3-5-sonnet-20241022'
+            }
+            claude_model = claude_model_map.get(deployment_name, claude_model_map['default'])
+            
+            return create_claude_proxy_model(
+                base_url=self.claude_proxy_url,
+                api_key=self.claude_proxy_key,
+                model_name=claude_model,
+                temperature=temperature,
+                max_tokens=20000,
+                streaming=stream
             )
         # elif host == 'deepseek':
         #     return ChatDeepSeek(
@@ -141,6 +165,30 @@ class ApiHandler:
                 'advanced': {'instance': llm_llama, 'context_window': 128000},
                 'creative': {'instance': llm_llama, 'context_window': 128000},
                 'backup': {'instance': llm_basic, 'context_window': 128000},
+            }
+        elif self.para['llm_source'] == 'claude_proxy':
+            # Create Claude proxy models
+            llm_claude_basic = self.get_models(api_key=self.claude_proxy_key,
+                                              temperature=self.para['temperature'],
+                                              deployment_name='gpt-4.1-mini',
+                                              host='claude_proxy',
+                                              stream=self.para['stream'])
+            llm_claude_advance = self.get_models(api_key=self.claude_proxy_key,
+                                                temperature=self.para['temperature'],
+                                                deployment_name='gpt-4.1',
+                                                host='claude_proxy',
+                                                stream=self.para['stream'])
+            llm_claude_creative = self.get_models(api_key=self.claude_proxy_key,
+                                                 temperature=self.para['creative_temperature'],
+                                                 deployment_name='gpt-4.1',
+                                                 host='claude_proxy',
+                                                 stream=self.para['stream'])
+            
+            models = {
+                'basic': {'instance': llm_claude_basic, 'context_window': 128000},
+                'advanced': {'instance': llm_claude_advance, 'context_window': 128000},
+                'creative': {'instance': llm_claude_creative, 'context_window': 128000},
+                'backup': {'instance': llm_basic, 'context_window': 128000},  # Fallback to Azure
             }
         # elif self.para['llm_source'] == 'deepseek':
         #     models = {

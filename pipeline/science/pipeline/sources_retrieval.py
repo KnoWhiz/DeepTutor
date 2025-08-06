@@ -62,7 +62,7 @@ def normalize_text(text, remove_linebreaks=True):
     return text.strip()
 
 
-def locate_chunk_in_pdf(chunk: str, pdf_path: str, similarity_threshold: float = 0.8, remove_linebreaks: bool = False) -> dict:
+def locate_chunk_in_pdf(chunk: str, source_page_number: int, pdf_path: str, similarity_threshold: float = 0.8, remove_linebreaks: bool = False) -> dict:
     """
     Locates a text chunk within a PDF file and returns its position information.
     Uses both exact matching and fuzzy matching for robustness.
@@ -88,7 +88,24 @@ def locate_chunk_in_pdf(chunk: str, pdf_path: str, similarity_threshold: float =
         "success": False,
         "similarity": 0.0
     }
-    
+    logger.info(f"TEST: CODE0745 source_page_number: {source_page_number}, chunk: {chunk}")
+    if (source_page_number is not None) and (chunk is not None) and (chunk.strip() != ""):
+        result = {
+            "page_num": int(source_page_number),
+            "start_char": 1,
+            "end_char": 2,
+            "success": True,
+            "similarity": 1.0
+        }
+        return result
+    else:
+        return result
+
+    # NOTE: following the revision on source button generation logic, we 
+    # no longer output smaller chunk, but the entire pages, so we don't need to 
+    # search for the chunk, but we just need to get the page number;
+    # Therefore, we currently implement a simple version that just returns the actualpage number
+    # and avoid the following logic for simplicity and avoid bug of always returning first page
     try:
         # Normalize the search chunk
         normalized_chunk = normalize_text(chunk, remove_linebreaks)

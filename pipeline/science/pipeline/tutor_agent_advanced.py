@@ -427,7 +427,8 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
         _doc = process_pdf_file(file_path_list[index-1])[1]
         # annotations, _ = get_highlight_info(_doc, [source])
         # logger.info(f"TEST: source: {source}, index: {index}, file_path: {file_path_list[refined_source_index[source]]}")
-        annotations = locate_chunk_in_pdf(source, file_path_list[refined_source_index[source]])
+        source_page_number = source_pages.get(source)
+        annotations = locate_chunk_in_pdf(source, source_page_number, file_path_list[refined_source_index[source]])
         source_annotations[source] = annotations
         logger.info(f"For source number {i}, the annotations extraction is: {annotations}")
         i += 1

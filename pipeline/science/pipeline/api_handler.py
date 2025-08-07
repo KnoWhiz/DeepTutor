@@ -6,6 +6,7 @@ from langchain_openai import AzureChatOpenAI
 from langchain_openai import OpenAIEmbeddings, AzureOpenAIEmbeddings
 from langchain_deepseek import ChatDeepSeek
 from langchain_sambanova import ChatSambaNovaCloud
+from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
 
 import logging
@@ -37,6 +38,7 @@ class ApiHandler:
         # self.openai_api_key = str(os.getenv("OPENAI_API_KEY"))
         # self.deepseek_api_key = str(os.getenv("DEEPSEEK_API_KEY"))
         self.sambanova_api_key = str(os.getenv("SAMBANOVA_API_KEY"))
+        self.anthropic_api_key = str(os.getenv("ANTHROPIC_API_KEY"))
         self.models = self.load_models()
         self.embedding_models = self.load_embedding_models()
 
@@ -51,7 +53,7 @@ class ApiHandler:
             api_version (str): API version for Azure
             deployment_name (str): Model deployment name/identifier
             temperature (float): Temperature parameter for model responses
-            host (str): Host platform ('azure', 'openai', 'sambanova', or 'deepseek')
+            host (str): Host platform ('azure', 'openai', 'sambanova', 'anthropic', or 'deepseek')
 
         Returns:
             Language model instance configured for the specified platform
@@ -84,6 +86,16 @@ class ApiHandler:
                 max_tokens=3000,
                 temperature=temperature,
                 top_p=0.1,
+                streaming=stream,
+                model_kwargs={"stream_options": {"include_usage": True}} if stream else {}
+            )
+        elif host == 'anthropic':
+            return ChatAnthropic(
+                model=deployment_name,
+                anthropic_api_key=self.anthropic_api_key,
+                base_url=os.getenv("ANTHROPIC_BASE_URL", "https://api.anthropic.com"),  # Support proxy URL
+                temperature=temperature,
+                max_tokens=4000,
                 streaming=stream,
                 model_kwargs={"stream_options": {"include_usage": True}} if stream else {}
             )
@@ -127,6 +139,11 @@ class ApiHandler:
                                     deployment_name='Meta-Llama-3.3-70B-Instruct',
                                     host='sambanova',
                                     stream=self.para['stream'])
+        llm_claude_code = self.get_models(api_key=self.anthropic_api_key,
+                                          temperature=self.para['temperature'],
+                                          deployment_name='claude-3-5-sonnet-20241022',
+                                          host='anthropic',
+                                          stream=self.para['stream'])
 
         if self.para['llm_source'] == 'azure' or self.para['llm_source'] == 'openai':
             models = {
@@ -140,6 +157,13 @@ class ApiHandler:
                 'basic': {'instance': llm_llama, 'context_window': 128000},
                 'advanced': {'instance': llm_llama, 'context_window': 128000},
                 'creative': {'instance': llm_llama, 'context_window': 128000},
+                'backup': {'instance': llm_basic, 'context_window': 128000},
+            }
+        elif self.para['llm_source'] == 'anthropic':
+            models = {
+                'basic': {'instance': llm_claude_code, 'context_window': 200000},
+                'advanced': {'instance': llm_claude_code, 'context_window': 200000},
+                'creative': {'instance': llm_claude_code, 'context_window': 200000},
                 'backup': {'instance': llm_basic, 'context_window': 128000},
             }
         # elif self.para['llm_source'] == 'deepseek':

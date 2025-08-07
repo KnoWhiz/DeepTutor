@@ -1,6 +1,6 @@
 {
     "llm": {
-        "llm_source": "azure",
+        "llm_source": "anthropic",
         "level": "advanced",
         "temperature": 0,
         "creative_temperature": 0.5,

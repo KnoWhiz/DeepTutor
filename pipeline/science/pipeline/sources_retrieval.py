@@ -88,7 +88,7 @@ def locate_chunk_in_pdf(chunk: str, source_page_number: int, pdf_path: str, simi
         "success": False,
         "similarity": 0.0
     }
-    logger.info(f"TEST: CODE0745 source_page_number: {source_page_number}, chunk: {chunk}")
+    # logger.info(f"TEST: CODE0745 source_page_number: {source_page_number}, chunk: {chunk}")
     if (source_page_number is not None) and (chunk is not None) and (chunk.strip() != ""):
         result = {
             "page_num": int(source_page_number),

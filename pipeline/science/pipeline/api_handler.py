@@ -93,6 +93,7 @@ class ApiHandler:
             return ChatAnthropic(
                 model=deployment_name,
                 anthropic_api_key=self.anthropic_api_key,
+                base_url=os.getenv("ANTHROPIC_BASE_URL", "https://api.anthropic.com"),  # Support proxy URL
                 temperature=temperature,
                 max_tokens=4000,
                 streaming=stream,

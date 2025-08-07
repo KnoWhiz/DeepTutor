@@ -81,6 +81,39 @@ python verify_claude_code_usage.py
 
 This will show you which models are being used for each model type (basic, advanced, creative, backup).
 
+## Proxy Server Integration
+
+You can use the Claude Code proxy server to route requests through different providers (OpenAI, Azure, local models) while maintaining the Claude Code interface.
+
+### Quick Proxy Setup
+
+1. **Start the proxy server:**
+   ```bash
+   cd pipeline/science/features_lab/proxy/
+   python start_proxy.py
+   ```
+
+2. **Configure your pipeline:**
+   ```bash
+   export ANTHROPIC_BASE_URL="http://localhost:8082"
+   export ANTHROPIC_API_KEY="any-value"
+   ```
+
+3. **Test the integration:**
+   ```bash
+   cd pipeline/science/features_lab/claude_code_integration_test/
+   python test_proxy_integration.py
+   ```
+
+### Proxy Benefits
+
+- **Cost Optimization**: Use cheaper models (GPT-4o-mini instead of Claude)
+- **Provider Flexibility**: Switch between OpenAI, Azure, local models
+- **Same Interface**: Keep using Claude Code API format
+- **Easy Testing**: Test with local models before production
+
+For detailed proxy setup instructions, see [PROXY_SETUP.md](PROXY_SETUP.md).
+
 ## Usage
 
 ### Basic Usage
@@ -161,6 +194,12 @@ For testing with get_response.py functions:
 python test_claude_code_get_response.py
 ```
 
+For testing proxy integration:
+
+```bash
+python test_proxy_integration.py
+```
+
 ## Key Features
 
 1. **Code Understanding**: Claude Code is specifically designed for understanding and analyzing codebases
@@ -168,6 +207,7 @@ python test_claude_code_get_response.py
 3. **Streaming Support**: Real-time response streaming
 4. **Seamless Integration**: Works with existing pipeline infrastructure
 5. **Fallback Support**: Uses Azure models as backup
+6. **Proxy Support**: Route through different providers while maintaining Claude interface
 
 ## Configuration Options
 
@@ -178,6 +218,7 @@ The Claude Code model uses these default settings:
 - **Max Tokens**: 4000 (configurable)
 - **Streaming**: Supported
 - **Context Window**: 200,000 tokens
+- **Base URL**: Configurable via `ANTHROPIC_BASE_URL` environment variable
 
 ## Error Handling
 
@@ -241,3 +282,14 @@ When you switch to Claude Code, the following functions in `get_response.py` wil
 4. **`generate_follow_up_questions()`** - For generating follow-up questions
 
 All these functions will automatically use Claude Code once you set `llm_source='anthropic'` in the configuration.
+
+## Proxy Integration
+
+The proxy server allows you to:
+
+- Use Claude Code API format but route to OpenAI/other providers
+- Reduce costs by using cheaper models
+- Maintain the same Claude Code interface
+- Switch between different providers easily
+
+For detailed proxy setup and usage, see [PROXY_SETUP.md](PROXY_SETUP.md).

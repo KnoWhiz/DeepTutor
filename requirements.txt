@@ -15,7 +15,6 @@ langchain-deepseek-official==0.1.0
 langchain-openai==0.3.3
 langchain-text-splitters==0.3.8
 langchain_sambanova==0.1.5
-langchain-anthropic==0.2.1
 langid==1.1.6
 langgraph==0.3.21
 langsmith==0.1.147

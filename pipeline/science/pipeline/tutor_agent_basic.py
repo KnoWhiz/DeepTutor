@@ -386,7 +386,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         chat_history=chat_history,
         embedding_folder_list=embedding_folder_list
     )
-    logger.info(f"TEST: CODE0790 source_pages: {source_pages.values()}, refined_source_pages: {refined_source_pages.values()}, refined_source_index: {refined_source_index.values()}")
+    # logger.info(f"TEST: CODE0790 source_pages: {source_pages.values()}, refined_source_pages: {refined_source_pages.values()}, refined_source_index: {refined_source_index.values()}")
 
     for source_key, source_value in sources.items():
         yield "<source>"
@@ -418,7 +418,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     images_processing_start = time.time()
     image_url_list = []
     for source, index, page in zip(refined_source_index.keys(), refined_source_index.values(), refined_source_pages.values()):
-        logger.info(f"TEST: source: {source}, index: {index}, page: {page}")
+        # logger.info(f"TEST: source: {source}, index: {index}, page: {page}")
         if source.startswith("https://knowhiztutorrag.blob"):
             image_url = source
             image_url_list.append(image_url)

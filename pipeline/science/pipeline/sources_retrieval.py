@@ -101,121 +101,121 @@ def locate_chunk_in_pdf(chunk: str, source_page_number: int, pdf_path: str, simi
     else:
         return result
 
-    # NOTE: following the revision on source button generation logic, we 
-    # no longer output smaller chunk, but the entire pages, so we don't need to 
-    # search for the chunk, but we just need to get the page number;
-    # Therefore, we currently implement a simple version that just returns the actualpage number
-    # and avoid the following logic for simplicity and avoid bug of always returning first page
-    try:
-        # Normalize the search chunk
-        normalized_chunk = normalize_text(chunk, remove_linebreaks)
-        chunk_words = normalized_chunk.split()
-        min_match_length = min(100, len(normalized_chunk))  # For long chunks, we'll use word-based search
+    # # NOTE: following the revision on source button generation logic, we 
+    # # no longer output smaller chunk, but the entire pages, so we don't need to 
+    # # search for the chunk, but we just need to get the page number;
+    # # Therefore, we currently implement a simple version that just returns the actualpage number
+    # # and avoid the following logic for simplicity and avoid bug of always returning first page
+    # try:
+    #     # Normalize the search chunk
+    #     normalized_chunk = normalize_text(chunk, remove_linebreaks)
+    #     chunk_words = normalized_chunk.split()
+    #     min_match_length = min(100, len(normalized_chunk))  # For long chunks, we'll use word-based search
         
-        # Open the PDF file
-        doc = fitz.open(pdf_path)
+    #     # Open the PDF file
+    #     doc = fitz.open(pdf_path)
         
-        # First try exact matching
-        for page_num in range(len(doc)):
-            page = doc[page_num]
-            text = page.get_text()
-            normalized_text = normalize_text(text, remove_linebreaks)
+    #     # First try exact matching
+    #     for page_num in range(len(doc)):
+    #         page = doc[page_num]
+    #         text = page.get_text()
+    #         normalized_text = normalize_text(text, remove_linebreaks)
             
-            # Try exact match first
-            start_pos = normalized_text.find(normalized_chunk)
-            if start_pos != -1:
-                end_pos = start_pos + len(normalized_chunk)
-                result["page_num"] = page_num
-                result["start_char"] = start_pos
-                result["end_char"] = end_pos
-                result["success"] = True
-                result["similarity"] = 1.0
-                break
+    #         # Try exact match first
+    #         start_pos = normalized_text.find(normalized_chunk)
+    #         if start_pos != -1:
+    #             end_pos = start_pos + len(normalized_chunk)
+    #             result["page_num"] = page_num
+    #             result["start_char"] = start_pos
+    #             result["end_char"] = end_pos
+    #             result["success"] = True
+    #             result["similarity"] = 1.0
+    #             break
             
-            # If chunk is long, try matching the first N words
-            if len(chunk_words) > 10:
-                first_words = " ".join(chunk_words[:10])
-                start_pos = normalized_text.find(first_words)
+    #         # If chunk is long, try matching the first N words
+    #         if len(chunk_words) > 10:
+    #             first_words = " ".join(chunk_words[:10])
+    #             start_pos = normalized_text.find(first_words)
                 
-                if start_pos != -1:
-                    # Found beginning of the chunk, now check similarity
-                    potential_match = normalized_text[start_pos:start_pos + len(normalized_chunk)]
+    #             if start_pos != -1:
+    #                 # Found beginning of the chunk, now check similarity
+    #                 potential_match = normalized_text[start_pos:start_pos + len(normalized_chunk)]
                     
-                    # Check if lengths are comparable
-                    if abs(len(potential_match) - len(normalized_chunk)) < 0.2 * len(normalized_chunk):
-                        # Calculate similarity
-                        similarity = SequenceMatcher(None, normalized_chunk, potential_match).ratio()
+    #                 # Check if lengths are comparable
+    #                 if abs(len(potential_match) - len(normalized_chunk)) < 0.2 * len(normalized_chunk):
+    #                     # Calculate similarity
+    #                     similarity = SequenceMatcher(None, normalized_chunk, potential_match).ratio()
                         
-                        if similarity > similarity_threshold:
-                            result["page_num"] = page_num
-                            result["start_char"] = start_pos
-                            result["end_char"] = start_pos + len(potential_match)
-                            result["success"] = True
-                            result["similarity"] = similarity
-                            break
+    #                     if similarity > similarity_threshold:
+    #                         result["page_num"] = page_num
+    #                         result["start_char"] = start_pos
+    #                         result["end_char"] = start_pos + len(potential_match)
+    #                         result["success"] = True
+    #                         result["similarity"] = similarity
+    #                         break
         
-        # If not found, try sliding window approach on pages
-        if not result["success"]:
-            for page_num in range(len(doc)):
-                page = doc[page_num]
-                text = page.get_text()
-                normalized_text = normalize_text(text, remove_linebreaks)
+    #     # If not found, try sliding window approach on pages
+    #     if not result["success"]:
+    #         for page_num in range(len(doc)):
+    #             page = doc[page_num]
+    #             text = page.get_text()
+    #             normalized_text = normalize_text(text, remove_linebreaks)
                 
-                # For very long chunks, we'll use a sliding window approach
-                # to find the most similar section
-                if len(normalized_chunk) > min_match_length:
-                    best_similarity = 0
-                    best_start = -1
+    #             # For very long chunks, we'll use a sliding window approach
+    #             # to find the most similar section
+    #             if len(normalized_chunk) > min_match_length:
+    #                 best_similarity = 0
+    #                 best_start = -1
                     
-                    # Try to match beginning of chunk with sliding windows
-                    first_words = " ".join(chunk_words[:10])
-                    for match in re.finditer(re.escape(chunk_words[0]), normalized_text):
-                        start_pos = match.start()
+    #                 # Try to match beginning of chunk with sliding windows
+    #                 first_words = " ".join(chunk_words[:10])
+    #                 for match in re.finditer(re.escape(chunk_words[0]), normalized_text):
+    #                     start_pos = match.start()
                         
-                        # Skip if there's not enough text left
-                        if start_pos + len(normalized_chunk) > len(normalized_text):
-                            continue
+    #                     # Skip if there's not enough text left
+    #                     if start_pos + len(normalized_chunk) > len(normalized_text):
+    #                         continue
                         
-                        # Extract a section of text of similar length
-                        window_size = min(len(normalized_chunk) + 100, len(normalized_text) - start_pos)
-                        window_text = normalized_text[start_pos:start_pos + window_size]
+    #                     # Extract a section of text of similar length
+    #                     window_size = min(len(normalized_chunk) + 100, len(normalized_text) - start_pos)
+    #                     window_text = normalized_text[start_pos:start_pos + window_size]
                         
-                        # Compare beginning of window with beginning of chunk
-                        window_start = window_text[:len(first_words)]
-                        similarity = SequenceMatcher(None, first_words, window_start).ratio()
+    #                     # Compare beginning of window with beginning of chunk
+    #                     window_start = window_text[:len(first_words)]
+    #                     similarity = SequenceMatcher(None, first_words, window_start).ratio()
                         
-                        if similarity > 0.8:  # If beginning matches well, check the whole chunk
-                            chunk_similarity = SequenceMatcher(None, normalized_chunk, 
-                                                             window_text[:len(normalized_chunk)]).ratio()
-                            if chunk_similarity > best_similarity:
-                                best_similarity = chunk_similarity
-                                best_start = start_pos
+    #                     if similarity > 0.8:  # If beginning matches well, check the whole chunk
+    #                         chunk_similarity = SequenceMatcher(None, normalized_chunk, 
+    #                                                          window_text[:len(normalized_chunk)]).ratio()
+    #                         if chunk_similarity > best_similarity:
+    #                             best_similarity = chunk_similarity
+    #                             best_start = start_pos
                     
-                    if best_similarity > similarity_threshold:
-                        result["page_num"] = page_num
-                        result["start_char"] = best_start
-                        result["end_char"] = best_start + len(normalized_chunk)
-                        result["success"] = True
-                        result["similarity"] = best_similarity
-                        break
+    #                 if best_similarity > similarity_threshold:
+    #                     result["page_num"] = page_num
+    #                     result["start_char"] = best_start
+    #                     result["end_char"] = best_start + len(normalized_chunk)
+    #                     result["success"] = True
+    #                     result["similarity"] = best_similarity
+    #                     break
         
-        doc.close()
-    except Exception as e:
-        print(f"Error processing PDF: {e}")
+    #     doc.close()
+    # except Exception as e:
+    #     print(f"Error processing PDF: {e}")
     
-    logger.info(f"TEST: result: {result}")
-    logger.info(f"Format of result: {type(result)}")
+    # logger.info(f"TEST: result: {result}")
+    # logger.info(f"Format of result: {type(result)}")
 
-    if isinstance(result, dict):
-        return result
-    else:
-        return {
-        "page_num": 1,
-        "start_char": 1,
-        "end_char": 10,
-        "success": False,
-        "similarity": 0.0
-    }
+    # if isinstance(result, dict):
+    #     return result
+    # else:
+    #     return {
+    #     "page_num": 1,
+    #     "start_char": 1,
+    #     "end_char": 10,
+    #     "success": False,
+    #     "similarity": 0.0
+    # }
 
 
 def get_response_source_complex(chat_session: ChatSession, file_path_list, user_input, answer, chat_history, embedding_folder_list):
@@ -330,7 +330,7 @@ def get_response_source_complex(chat_session: ChatSession, file_path_list, user_
     for chunk in answer_chunks_with_scores:
         sources_chunks.append(chunk[0])
 
-    logger.info(f"TEST: sources_chunks: {sources_chunks}")
+    # logger.info(f"TEST: sources_chunks: {sources_chunks}")
 
     # sources_chunks_text = [chunk.page_content for chunk in sources_chunks]
 

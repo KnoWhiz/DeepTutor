@@ -403,7 +403,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
     images_processing_start = time.time()
     image_url_list = []
     for source, index, page in zip(refined_source_index.keys(), refined_source_index.values(), refined_source_pages.values()):
-        logger.info(f"TEST: source: {source}, index: {index}, page: {page}")
+        # logger.info(f"TEST: source: {source}, index: {index}, page: {page}")
         if source.startswith("https://knowhiztutorrag.blob"):
             image_url = source
             image_url_list.append(image_url)

@@ -150,7 +150,7 @@ async def get_GraphRAG_global_response(question: Question, chat_history, file_pa
     context = search_engine_result.context_data["reports"]
     answer_string = search_engine_result.response
     context_string = str(answer_string)
-    logger.info(f"TEST: formatted_context_string before get_rag_context: {chat_session.formatted_context}")
+    # logger.info(f"TEST: formatted_context_string before get_rag_context: {chat_session.formatted_context}")
     formatted_context = await get_rag_context(chat_session=chat_session,
                                         file_path_list=file_path_list,
                                         question=question,
@@ -161,7 +161,7 @@ async def get_GraphRAG_global_response(question: Question, chat_history, file_pa
                                         context=context_string)
     # formatted_context_string = str(formatted_context)
     formatted_context_string = chat_session.formatted_context
-    logger.info(f"TEST: formatted_context_string after get_rag_context: {chat_session.formatted_context}")
+    # logger.info(f"TEST: formatted_context_string after get_rag_context: {chat_session.formatted_context}")
     prompt = f"""
     You are a deep thinking tutor helping a student reading a paper.
     This is the global context from the paper: {context_string}

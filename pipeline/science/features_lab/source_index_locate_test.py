@@ -213,7 +213,7 @@ def locate_chunk_in_pdf(chunk: str, pdf_path: str, similarity_threshold: float =
     except Exception as e:
         print(f"Error processing PDF: {e}")
     
-    logger.info(f"TEST: result: {result}")
+    # logger.info(f"TEST: result: {result}")
     logger.info(f"Format of result: {type(result)}")
 
     if isinstance(result, dict):

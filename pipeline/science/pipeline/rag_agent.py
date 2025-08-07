@@ -188,11 +188,13 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
     if chat_session.mode == ChatMode.BASIC or chat_session.mode == ChatMode.ADVANCED:
         logger.info(f"Current mode is {chat_session.mode}")
         try:
-            logger.info(f"Loading markdown embeddings from {[os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]}")
-            markdown_embedding_folder_list = [os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]
-            db = load_embeddings(markdown_embedding_folder_list, 'default')
+            logger.info(f"Loading markdown embeddings from {[os.path.join(embedding_folder, 'markdown', 'page_based_index') for embedding_folder in embedding_folder_list]}")
+            # Fix: Page-based embeddings are saved under markdown/page_based_index subfolder
+            pagebased_embedding_folder_list = [os.path.join(embedding_folder, 'markdown', 'page_based_index') for embedding_folder in embedding_folder_list]
+            db = load_embeddings(pagebased_embedding_folder_list, 'default')
         except Exception as e:
             logger.exception(f"Failed to load markdown embeddings for deep thinking mode: {str(e)}")
+            # Fallback to main embedding folder if page_based_index doesn't exist
             db = load_embeddings(embedding_folder_list, 'default')
     # === STEP 2b: Lite Mode Handling ===
     # Handle Lite mode in other cases - uses lightweight embeddings
@@ -332,6 +334,7 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
         # Load page-based embeddings based on the current mode
         if chat_session.mode == ChatMode.BASIC or chat_session.mode == ChatMode.ADVANCED:
             logger.info(f"Loading page-based embeddings for {chat_session.mode} mode")
+            # Fix: Page-based embeddings are saved under markdown/page_based_index subfolder
             page_embedding_folder_list = [os.path.join(embedding_folder, 'markdown', 'page_based_index') for embedding_folder in embedding_folder_list]
             page_db = load_embeddings(page_embedding_folder_list, 'default')
         else:  # ChatMode.LITE

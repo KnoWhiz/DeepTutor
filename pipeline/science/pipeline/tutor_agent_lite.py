@@ -173,7 +173,7 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     words_per_file = int(total_word_budget // files_count if files_count > 0 else total_word_budget)
     
     logger.info(f"Loading PDF content with {words_per_file} words per file from {files_count} files")
-    yield "\n\n**📚 Loading PDF content with distributed word budget...**\n\n"
+    yield "\n\n**📚 Loading PDF content with distributed word budget ...**\n\n"
     
     for file_path in file_path_list:
         try:
@@ -208,7 +208,7 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     
     time_tracking["pdf_content_loading"] = time.time() - pdf_content_loading_start
     logger.info(f"PDF content loading complete. Time: {format_time_tracking(time_tracking)}")
-    yield "\n\n**📚 PDF content loading complete**\n\n"
+    yield "\n\n**📚 PDF content loading complete ...**\n\n"
     yield "</thinking>"
 
     # Handle initial welcome message when chat history is empty or summary is requested

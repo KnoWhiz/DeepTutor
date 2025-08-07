@@ -425,11 +425,11 @@ def test_extract_answer_content():
 
 
 
-**📚 Loading PDF content with distributed word budget...**
+**📚 Loading PDF content with distributed word budget ...**
 
 
 
-**📚 PDF content loading complete**
+**📚 PDF content loading complete ...**
 
 <response>Summary
 

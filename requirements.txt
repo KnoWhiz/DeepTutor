@@ -8,13 +8,13 @@ fastembed==0.4.2
 graphrag==0.5.0
 IPython==9.0.2
 langchain==0.3.25
+langchain_anthropic==0.2.1
 langchain-community==0.3.11
 langchain-core==0.3.59
 langchain-deepseek-official==0.1.0
 langchain-openai==0.3.3
 langchain-text-splitters==0.3.8
 langchain_sambanova==0.1.5
-langchain-anthropic==0.2.1
 langid==1.1.6
 langgraph==0.3.21
 langsmith==0.1.147

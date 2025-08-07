@@ -223,7 +223,7 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
 
     all_chunks_with_scores = db.similarity_search_with_score(rag_user_input_string, k=fetch_k)
 
-    logger.info(f"TEST: all_chunks_with_scores: {all_chunks_with_scores}")
+    # logger.info(f"TEST: all_chunks_with_scores: {all_chunks_with_scores}")
 
     # === STEP 5: Quality Filtering ===
     # Remove short chunks that don't provide meaningful context

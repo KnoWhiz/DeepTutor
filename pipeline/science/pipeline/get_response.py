@@ -249,9 +249,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         formatted_context_string = chat_session.formatted_context
         prompt = f"""
         You are a deep thinking tutor helping a student reading a paper.
-        Reference context chunks with relevance scores from the paper: 
-        {formatted_context_string}
-        The student's query is: {user_input_string}
+
         For formulas, use LaTeX format with $...$ or 
         $$
         ...
@@ -276,6 +274,10 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         Format requirement:
         1. Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like {example_keys}, etc>]" at the end of the sentence after the period mark. If there are more than one context chunk keys, use the format "[<chunk_key_1>][<chunk_key_2>] ..." to cite all the context chunk keys.
         2. Use markdown syntax for formatting the response to make it more clear and readable.
+
+        Reference context chunks with relevance scores from the paper: 
+        {formatted_context_string}
+        The student's query is: {user_input_string}
         """
         # prompt = ChatPromptTemplate.from_template(prompt)
         llm = get_llm('advanced', config['llm'])
@@ -315,14 +317,14 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         basic_prompt = """
             You are a patient and honest professor helping a student reading a paper.
             Use the given context to answer the question.
-            If you don't know the answer, say you don't know.
-            Reference context from the paper: ```{context}```
+            If you cannot find the answer in the context, just say you cannot find the answer, and try to answer the question based on your own knowledge.
             If the concept can be better explained by formulas, use LaTeX syntax in markdown
             For inline formulas, use single dollar sign: $a/b = c/d$
             For block formulas, use double dollar sign:
             \n$$
             \frac{{a}}{{b}} = \frac{{c}}{{d}}
             \n$$
+            Reference context from the paper: ```{context}```
             """ + "\n\nThis is a detailed plan for constructing the answer: " + str(question.answer_planning)
 
         # Load embeddings for Non-deep thinking mode
@@ -375,10 +377,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
 
         prompt = f"""
         You are a deep thinking tutor helping a student reading a paper.
-        Reference context chunks with relevance scores from the paper: 
-        {formatted_context_string}
-        This is a detailed plan for constructing the answer: {str(question.answer_planning)}
-        The student's query is: {user_input_string}
+        
         For formulas, use LaTeX format with $...$ or 
         $$
         ...
@@ -391,6 +390,11 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         Format requirement:
         1. Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like {example_keys}, etc>]" at the end of the sentence after the period mark. If there are more than one context chunk keys, use the format "[<chunk_key_1>][<chunk_key_2>] ..." to cite all the context chunk keys.
         2. Use markdown syntax for formatting the response to make it more clear and readable.
+
+        Reference context chunks with relevance scores from the paper: 
+        {formatted_context_string}
+        This is a detailed plan for constructing the answer: {str(question.answer_planning)}
+        The student's query is: {user_input_string}
         """
         logger.info(f"Size of whole prompt: {len(prompt)}")
         if stream is False:
@@ -400,9 +404,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 logger.exception(f"Error in deep_inference_agent with chat history, retry with no chat history: {e}")
                 prompt = f"""
                 You are a deep thinking tutor helping a student reading a paper.
-                Reference context from the paper: {formatted_context_string}
-                This is a detailed plan for constructing the answer: {str(question.answer_planning)}
-                The student's query is: {user_input_string}
+                
                 For formulas, use LaTeX format with $...$ or 
                 $$
                 ...
@@ -415,6 +417,10 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 Format requirement:
                 1. Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like {example_keys}, etc>]" at the end of the sentence after the period mark. If there are more than one context chunk keys, use the format "[<chunk_key_1>][<chunk_key_2>] ..." to cite all the context chunk keys.
                 2. Use markdown syntax for formatting the response to make it more clear and readable.
+
+                Reference context from the paper: {formatted_context_string}
+                This is a detailed plan for constructing the answer: {str(question.answer_planning)}
+                The student's query is: {user_input_string}
                 """
                 answer = str(deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session))
 
@@ -441,9 +447,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 logger.exception(f"Error in deep_inference_agent with chat history, retry with no chat history: {e}")
                 prompt = f"""
                 You are a deep thinking tutor helping a student reading a paper.
-                Reference context from the paper: {formatted_context_string}
-                This is a detailed plan for constructing the answer: {str(question.answer_planning)}
-                The student's query is: {user_input_string}
+                
                 For formulas, use LaTeX format with $...$ or 
                 $$
                 ...
@@ -456,6 +460,10 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                 Format requirement:
                 1. Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like {example_keys}, etc>]" at the end of the sentence after the period mark. If there are more than one context chunk keys, use the format "[<chunk_key_1>][<chunk_key_2>] ..." to cite all the context chunk keys.
                 2. Use markdown syntax for formatting the response to make it more clear and readable.
+
+                Reference context from the paper: {formatted_context_string}
+                This is a detailed plan for constructing the answer: {str(question.answer_planning)}
+                The student's query is: {user_input_string}
                 """
                 answer = deep_inference_agent(user_prompt=prompt, stream=stream, chat_session=chat_session)
             return answer
@@ -489,14 +497,11 @@ async def get_query_helper(chat_session: ChatSession, user_input, context_chat_h
 
     system_prompt = (
         """
-        You are a educational professor helping a student reading a document {context}.
+        You are a educational professor helping a student reading a document.
         The goals are:
         1. to ask questions in a better way to make sure it's optimized to query a Vector Database for RAG (Retrieval Augmented Generation).
         2. to identify the question is about local or global context of the document.
         3. refer to the previous conversation history when generating the question.
-
-        Previous conversation history:
-        ```{chat_history}```
 
         Organize final response in the following JSON format:
         ```json
@@ -505,6 +510,12 @@ async def get_query_helper(chat_session: ChatSession, user_input, context_chat_h
             "question_type": "local" or "global" or "image", (if the question is like "what is fig. 1 mainly about?", the question_type should be "image")
         }}
         ```
+
+        Previous conversation history:
+        ```{chat_history}```
+
+        The document content is:
+        ```{context}```
         """
     )
     human_prompt = (
@@ -560,12 +571,6 @@ async def get_query_helper(chat_session: ChatSession, user_input, context_chat_h
         5. Do not make up or assume anything or guess without any evidence, only use the information provided in the previous conversation history and current question to analyze the user's intent and what to include and exclude in the answer.
         6. If the query is about a specific figure, please include the figure number in the answer.
 
-        Document summary:
-        ```{context}```
-
-        Previous conversation history:
-        ```{chat_history}```
-
         Organize your analysis in the following format:
         ```json
         {{
@@ -579,6 +584,12 @@ async def get_query_helper(chat_session: ChatSession, user_input, context_chat_h
             "misconceptions_to_address": ["<potential misconceptions that should be corrected>"]
         }}
         ```
+
+        Document summary:
+        ```{context}```
+
+        Previous conversation history:
+        ```{chat_history}```
         """
     )
 

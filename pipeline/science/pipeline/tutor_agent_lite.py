@@ -230,30 +230,29 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
             
             # Handle appendix with follow-up questions
             yield "<appendix>"
-            if len(file_path_list) <= config["summary_file_limit"]:
-                yield "\n\n**💬 Loading follow-up questions ...**\n\n"
-                message_content = chat_session.current_message
-                if isinstance(message_content, list) and len(message_content) > 0:
-                    message_content = message_content[0]
-                
-                follow_up_questions = generate_follow_up_questions(message_content, [])
-                for i in range(len(follow_up_questions)):
-                    follow_up_questions[i] = translate_content(
-                        content=follow_up_questions[i],
-                        target_lang=chat_session.current_language,
-                        stream=False
-                    )
-                    # Clean up translation prefixes - apply before including in XML
-                    follow_up_questions[i] = clean_translation_prefix(follow_up_questions[i])
+            yield "\n\n**💬 Loading follow-up questions ...**\n\n"
+            message_content = chat_session.current_message
+            if isinstance(message_content, list) and len(message_content) > 0:
+                message_content = message_content[0]
+            
+            follow_up_questions = generate_follow_up_questions(message_content, [])
+            for i in range(len(follow_up_questions)):
+                follow_up_questions[i] = translate_content(
+                    content=follow_up_questions[i],
+                    target_lang=chat_session.current_language,
+                    stream=False
+                )
+                # Clean up translation prefixes - apply before including in XML
+                follow_up_questions[i] = clean_translation_prefix(follow_up_questions[i])
 
-                for chunk in follow_up_questions:
-                    # Ensure the chunk is properly cleaned and formatted before wrapping in XML
-                    cleaned_chunk = chunk.strip()
-                    if cleaned_chunk:
-                        yield "<followup_question>"
-                        yield f"{cleaned_chunk}"
-                        yield "</followup_question>\n\n"
-                yield "\n\n**💬 Loading follow-up questions done ...**\n\n"
+            for chunk in follow_up_questions:
+                # Ensure the chunk is properly cleaned and formatted before wrapping in XML
+                cleaned_chunk = chunk.strip()
+                if cleaned_chunk:
+                    yield "<followup_question>"
+                    yield f"{cleaned_chunk}"
+                    yield "</followup_question>\n\n"
+            yield "\n\n**💬 Loading follow-up questions done ...**\n\n"
 
             yield "</appendix>"
             return
@@ -351,16 +350,12 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
         yield "{" + str(source_annotations_value) + "}"
         yield "</source_annotations>"
 
-    logger.info(f"TEST: file_path_list: {file_path_list}")
-    logger.info(f"TEST: config['summary_file_limit']: {config['summary_file_limit']}")
-    logger.info(f"TEST: len(file_path_list) <= config['summary_file_limit']: {len(file_path_list) <= config['summary_file_limit']}")
-    
     # For Lite mode, we have minimal sources and follow-up questions
     yield "\n\n**💬 Loading follow-up questions ...**\n\n"
     message_content = chat_session.current_message
     if isinstance(message_content, list) and len(message_content) > 0:
         message_content = message_content[0]
-
+    
     follow_up_questions = generate_follow_up_questions(message_content, [])
     for i in range(len(follow_up_questions)):
         follow_up_questions[i] = translate_content(

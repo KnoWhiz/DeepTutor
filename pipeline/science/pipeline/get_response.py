@@ -343,10 +343,10 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         try:
             logger.info(f"Loading markdown embeddings from {[os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]}")
             markdown_embedding_folder_list = [os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]
-            db = load_embeddings(markdown_embedding_folder_list, 'default')
+            db = await load_embeddings(markdown_embedding_folder_list, 'default')
         except Exception as e:
             logger.exception(f"Failed to load markdown embeddings for Non-deep thinking mode: {str(e)}")
-            db = load_embeddings(embedding_folder_list, 'default')
+            db = await load_embeddings(embedding_folder_list, 'default')
 
         answer = await get_db_rag_response(
             prompt_string=basic_prompt,

@@ -550,7 +550,7 @@ async def load_embeddings(embedding_folder_list: list[str | Path], embedding_typ
             # Attempt to regenerate missing lite embeddings
             try:
                 logger.info("Starting regeneration process for missing lite embeddings...")
-                regenerated_folders = asyncio.run(regenerate_missing_lite_embeddings(invalid_folders, embedding_folder_list))
+                regenerated_folders = await regenerate_missing_lite_embeddings(invalid_folders, embedding_folder_list)
                 
                 if regenerated_folders:
                     logger.info(f"Successfully regenerated {len(regenerated_folders)} embedding folders")
@@ -735,7 +735,7 @@ async def regenerate_missing_lite_embeddings(invalid_folders: list[str | Path], 
     return regenerated_folders
 
 
-def load_embeddings_with_regeneration(embedding_folder_list: list[str | Path], embedding_type: str = 'default', allow_regeneration: bool = True):
+async def load_embeddings_with_regeneration(embedding_folder_list: list[str | Path], embedding_type: str = 'default', allow_regeneration: bool = True):
     """
     Load embeddings from the specified folders with automatic regeneration of missing files.
     
@@ -757,4 +757,4 @@ def load_embeddings_with_regeneration(embedding_folder_list: list[str | Path], e
         logger.warning("Regeneration is disabled, but load_embeddings() will still validate and attempt regeneration for 'lite' type")
     
     # The main load_embeddings function now handles regeneration automatically
-    return load_embeddings(embedding_folder_list, embedding_type)
+    return await load_embeddings(embedding_folder_list, embedding_type)

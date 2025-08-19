@@ -22,6 +22,7 @@ from pipeline.science.pipeline.utils import (
 from pipeline.science.pipeline.embeddings import (
     get_embedding_models,
     load_embeddings,
+    load_embeddings_with_regeneration,
 )
 from pipeline.science.pipeline.content_translator import (
     detect_language,
@@ -202,7 +203,7 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
         logger.info(f"Current mode is {chat_session.mode}")
         actual_embedding_folder_list = [os.path.join(embedding_folder, 'lite_embedding') for embedding_folder in embedding_folder_list]
         logger.info(f"actual_embedding_folder_list in get_rag_context: {actual_embedding_folder_list}")
-        db = load_embeddings(actual_embedding_folder_list, 'lite')
+        db = load_embeddings_with_regeneration(actual_embedding_folder_list, 'lite', allow_regeneration=True)
 
     # === STEP 3: Token Budget Configuration ===
     # Configure token limits based on chat mode for optimal context size
@@ -340,7 +341,7 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
         else:  # ChatMode.LITE
             logger.info(f"Loading page-based embeddings for {chat_session.mode} mode")
             page_embedding_folder_list = [os.path.join(embedding_folder, 'lite_embedding') for embedding_folder in embedding_folder_list]
-            page_db = load_embeddings(page_embedding_folder_list, 'lite')
+            page_db = load_embeddings_with_regeneration(page_embedding_folder_list, 'lite', allow_regeneration=True)
         
         logger.info(f"Successfully loaded page-based embeddings from: {page_embedding_folder_list}")
         

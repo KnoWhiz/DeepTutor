@@ -1,3 +1,35 @@
+#!/usr/bin/env python3
+"""
+Embeddings module for the DeepTutor pipeline.
+
+This module provides functionality for creating, loading, and managing embeddings
+for various document types and chat modes. It includes robust error handling and
+automatic regeneration of missing embedding index files.
+
+Key Features:
+- Document embedding creation using various embedding models
+- FAISS vector store management for efficient similarity search
+- Automatic validation of embedding index files before loading
+- Automatic regeneration of missing embeddings when possible
+- Support for different embedding types (lite, default, etc.)
+
+New Functionality (Added for robustness):
+- validate_embedding_index_files(): Checks for missing FAISS index files
+- load_embeddings_with_regeneration(): Loads embeddings with automatic regeneration
+- regenerate_missing_lite_embeddings(): Regenerates missing lite embeddings from source PDFs
+
+Error Handling:
+The module now gracefully handles missing embedding index files by:
+1. Validating all embedding folders before attempting to load
+2. Providing detailed logging about missing files
+3. Attempting automatic regeneration when possible
+4. Falling back to partial loading with valid folders only
+5. Raising informative errors when no valid embeddings can be loaded
+
+This addresses the RuntimeError that occurred when FAISS index files were missing:
+"Error: 'f' failed: could not open ... for reading: No such file or directory"
+"""
+
 import os
 import time
 from pathlib import Path
@@ -440,33 +472,258 @@ async def generate_LiteRAG_embedding(_doc, file_path, embedding_folder):
             logger.warning("No page content found to create LiteRAG embeddings")
 
 
+def validate_embedding_index_files(embedding_folder_list: list[str | Path], embedding_type: str = 'lite') -> tuple[list[str | Path], list[str | Path]]:
+    """
+    Validate that all required index files exist for each embedding folder.
+    
+    Args:
+        embedding_folder_list: List of embedding folder paths
+        embedding_type: Type of embedding ('lite', 'default', etc.)
+    
+    Returns:
+        tuple: (valid_folders, invalid_folders) - Lists of folder paths
+    """
+    valid_folders = []
+    invalid_folders = []
+    
+    for embedding_folder in embedding_folder_list:
+        embedding_folder_path = Path(embedding_folder)
+        
+        if embedding_type == 'lite':
+            # For lite embeddings, check for index.faiss and index.pkl files
+            faiss_path = embedding_folder_path / "index.faiss"
+            pkl_path = embedding_folder_path / "index.pkl"
+            
+            if faiss_path.exists() and pkl_path.exists():
+                valid_folders.append(embedding_folder)
+                logger.debug(f"Valid embedding folder: {embedding_folder}")
+            else:
+                invalid_folders.append(embedding_folder)
+                logger.warning(f"Invalid embedding folder (missing index files): {embedding_folder}")
+                if not faiss_path.exists():
+                    logger.warning(f"Missing file: {faiss_path}")
+                if not pkl_path.exists():
+                    logger.warning(f"Missing file: {pkl_path}")
+        else:
+            # For other embedding types, check if the folder exists and has content
+            if embedding_folder_path.exists() and any(embedding_folder_path.iterdir()):
+                valid_folders.append(embedding_folder)
+                logger.debug(f"Valid embedding folder: {embedding_folder}")
+            else:
+                invalid_folders.append(embedding_folder)
+                logger.warning(f"Invalid embedding folder (empty or missing): {embedding_folder}")
+    
+    return valid_folders, invalid_folders
+
+
 def load_embeddings(embedding_folder_list: list[str | Path], embedding_type: str = 'default'):
     """
     Load embeddings from the specified folder.
     Adds a file_index metadata field to each document indicating which folder it came from.
+    
+    Args:
+        embedding_folder_list: List of paths to embedding folders
+        embedding_type: Type of embedding ('lite', 'default', etc.)
+    
+    Returns:
+        FAISS database with merged embeddings
+        
+    Raises:
+        RuntimeError: If no valid embedding folders are found or if critical files are missing
     """
     config = load_config()
     para = config['llm']
     embeddings = get_embedding_models(embedding_type, para)
     
-    # Load each database separately and add file_index to metadata
+    # Validate all embedding folders before attempting to load
+    logger.info(f"Validating {len(embedding_folder_list)} embedding folders...")
+    valid_folders, invalid_folders = validate_embedding_index_files(embedding_folder_list, embedding_type)
+    
+    if invalid_folders:
+        logger.error(f"Found {len(invalid_folders)} invalid embedding folders:")
+        for folder in invalid_folders:
+            logger.error(f"  - {folder}")
+        
+        if not valid_folders:
+            error_msg = (
+                f"No valid embedding folders found. All {len(embedding_folder_list)} folders are missing required index files. "
+                f"Please regenerate the embeddings for these folders: {invalid_folders}"
+            )
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
+        else:
+            logger.warning(f"Proceeding with {len(valid_folders)} valid folders, skipping {len(invalid_folders)} invalid folders")
+    
+    # Load each valid database separately and add file_index to metadata
     all_docs = []
-    for i, embedding_folder in enumerate(embedding_folder_list):
-        db = FAISS.load_local(embedding_folder, embeddings, allow_dangerous_deserialization=True)
-        # Get the documents and add file_index to their metadata
-        docs = db.docstore._dict.values()
-        for doc in docs:
-            doc.metadata["file_index"] = i
-            all_docs.append(doc)
+    original_folder_mapping = {valid_folder: embedding_folder_list.index(valid_folder) 
+                              for valid_folder in valid_folders if valid_folder in embedding_folder_list}
+    
+    for i, embedding_folder in enumerate(valid_folders):
+        try:
+            logger.info(f"Loading embeddings from: {embedding_folder}")
+            db = FAISS.load_local(embedding_folder, embeddings, allow_dangerous_deserialization=True)
+            
+            # Get the documents and add file_index to their metadata
+            docs = db.docstore._dict.values()
+            original_index = original_folder_mapping.get(embedding_folder, i)
+            
+            for doc in docs:
+                doc.metadata["file_index"] = original_index
+                doc.metadata["embedding_folder"] = str(embedding_folder)
+                all_docs.append(doc)
+                
+            logger.info(f"Successfully loaded {len(docs)} documents from {embedding_folder}")
+            
+        except Exception as e:
+            logger.error(f"Failed to load embeddings from {embedding_folder}: {str(e)}")
+            # Remove this folder from valid folders and add to invalid folders
+            if embedding_folder not in invalid_folders:
+                invalid_folders.append(embedding_folder)
+            continue
+    
+    if not all_docs:
+        error_msg = (
+            f"No documents could be loaded from any embedding folders. "
+            f"Total folders attempted: {len(embedding_folder_list)}, "
+            f"Invalid folders: {len(invalid_folders)}"
+        )
+        logger.error(error_msg)
+        raise RuntimeError(error_msg)
     
     # Create a new database with all the documents that have updated metadata
+    logger.info(f"Creating merged database from {len(all_docs)} documents...")
     db_merged = FAISS.from_documents(all_docs, embeddings)
     
+    # Log summary information
+    logger.info(f"Successfully created merged database:")
+    logger.info(f"  - Total chunks: {len(all_docs)}")
+    logger.info(f"  - Valid folders: {len(valid_folders)}")
+    logger.info(f"  - Invalid folders: {len(invalid_folders)}")
+    
     # Log the first 5 chunks for testing
-    logger.info(f"Total chunks in merged database: {len(all_docs)}")
     for i, doc in enumerate(all_docs[:5]):
         logger.info(f"Chunk {i+1} - Content preview: {doc.page_content[:50]}...")
         logger.info(f"Chunk {i+1} - Metadata: {doc.metadata}")
-        logger.info(f"Chunk {i+1} - From embedding folder index: {doc.metadata['file_index']} (corresponds to {embedding_folder_list[doc.metadata['file_index']]})")
+        if doc.metadata['file_index'] < len(embedding_folder_list):
+            logger.info(f"Chunk {i+1} - From embedding folder index: {doc.metadata['file_index']} (corresponds to {embedding_folder_list[doc.metadata['file_index']]})")
     
     return db_merged
+
+
+async def regenerate_missing_lite_embeddings(invalid_folders: list[str | Path], embedding_folder_list: list[str | Path]) -> list[str | Path]:
+    """
+    Regenerate missing lite embeddings for invalid folders.
+    
+    Args:
+        invalid_folders: List of embedding folder paths that are missing index files
+        embedding_folder_list: Original list of all embedding folder paths
+    
+    Returns:
+        List of successfully regenerated embedding folder paths
+    """
+    regenerated_folders = []
+    
+    for embedding_folder in invalid_folders:
+        try:
+            logger.info(f"Attempting to regenerate embeddings for: {embedding_folder}")
+            
+            # Extract the parent folder (should contain the original file)
+            embedding_folder_path = Path(embedding_folder)
+            parent_folder = embedding_folder_path.parent
+            
+            # Look for PDF files in the parent folder
+            pdf_files = list(parent_folder.glob("*.pdf"))
+            if not pdf_files:
+                logger.error(f"No PDF files found in {parent_folder} to regenerate embeddings")
+                continue
+            
+            # Use the first PDF file found (assuming one file per embedding folder)
+            file_path = str(pdf_files[0])
+            logger.info(f"Found PDF file for regeneration: {file_path}")
+            
+            # Open the PDF file using fitz (PyMuPDF)
+            import fitz
+            _doc = None
+            try:
+                _doc = fitz.open(file_path)
+                
+                # Generate lite embeddings using the existing function
+                await generate_LiteRAG_embedding(_doc, file_path, str(parent_folder))
+                
+            finally:
+                # Ensure the document is closed even if an error occurs
+                if _doc is not None:
+                    _doc.close()
+            
+            # Verify that the embeddings were created successfully
+            faiss_path = embedding_folder_path / "index.faiss"
+            pkl_path = embedding_folder_path / "index.pkl"
+            
+            if faiss_path.exists() and pkl_path.exists():
+                regenerated_folders.append(str(embedding_folder))
+                logger.info(f"Successfully regenerated embeddings for: {embedding_folder}")
+            else:
+                logger.error(f"Failed to regenerate embeddings for: {embedding_folder} - index files not created")
+                
+        except Exception as e:
+            logger.error(f"Error regenerating embeddings for {embedding_folder}: {str(e)}")
+            continue
+    
+    if regenerated_folders:
+        logger.info(f"Successfully regenerated {len(regenerated_folders)} embedding folders")
+    else:
+        logger.warning("No embedding folders were successfully regenerated")
+    
+    return regenerated_folders
+
+
+def load_embeddings_with_regeneration(embedding_folder_list: list[str | Path], embedding_type: str = 'default', allow_regeneration: bool = True):
+    """
+    Load embeddings from the specified folders with automatic regeneration of missing files.
+    
+    Args:
+        embedding_folder_list: List of paths to embedding folders
+        embedding_type: Type of embedding ('lite', 'default', etc.)
+        allow_regeneration: Whether to attempt regeneration of missing embeddings
+    
+    Returns:
+        FAISS database with merged embeddings
+        
+    Raises:
+        RuntimeError: If no valid embedding folders are found after regeneration attempts
+    """
+    import asyncio
+    
+    # First attempt to load embeddings normally
+    try:
+        return load_embeddings(embedding_folder_list, embedding_type)
+    except RuntimeError as e:
+        if not allow_regeneration or embedding_type != 'lite':
+            # Re-raise the error if regeneration is not allowed or not supported
+            raise e
+        
+        logger.info("Initial loading failed, attempting to regenerate missing embeddings...")
+        
+        # Validate folders to identify which ones need regeneration
+        valid_folders, invalid_folders = validate_embedding_index_files(embedding_folder_list, embedding_type)
+        
+        if not invalid_folders:
+            # If no invalid folders, re-raise the original error
+            raise e
+        
+        # Attempt to regenerate missing embeddings
+        try:
+            regenerated_folders = asyncio.run(regenerate_missing_lite_embeddings(invalid_folders, embedding_folder_list))
+            
+            if regenerated_folders:
+                logger.info(f"Regeneration completed. Attempting to load embeddings again...")
+                # Try loading again after regeneration
+                return load_embeddings(embedding_folder_list, embedding_type)
+            else:
+                logger.error("No embeddings could be regenerated")
+                raise RuntimeError(f"Failed to regenerate embeddings for folders: {invalid_folders}")
+                
+        except Exception as regen_error:
+            logger.error(f"Error during regeneration process: {str(regen_error)}")
+            raise RuntimeError(f"Failed to load embeddings and regeneration failed: {str(regen_error)}")

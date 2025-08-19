@@ -138,9 +138,6 @@ async def get_multiple_files_summary(file_path_list, embedding_folder_list, chat
     You are an expert academic tutor helping a student understand multiple documents. 
     The student has loaded multiple PDF files and needs a comprehensive summary that explains what each document is about.
     
-    Here are the files with previews of their content:
-    {formatted_previews}
-    
     Please provide a comprehensive summary that:
     1. Introduces each document with its title (derived from content if possible) and main topic
     2. Summarizes the key content and main findings of each document
@@ -151,6 +148,9 @@ async def get_multiple_files_summary(file_path_list, embedding_folder_list, chat
     7. Highest title level is 3, and the title should be concise and informative.
     
     Format your summary with a friendly welcome message at the beginning and a closing "Ask me anything" message at the end.
+
+    Here are the files with previews of their content:
+    {formatted_previews}
     """
     
     logger.info(f"Generated summary prompt with length: {len(prompt)} characters")

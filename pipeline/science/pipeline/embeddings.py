@@ -516,7 +516,7 @@ def validate_embedding_index_files(embedding_folder_list: list[str | Path], embe
     return valid_folders, invalid_folders
 
 
-def load_embeddings(embedding_folder_list: list[str | Path], embedding_type: str = 'default'):
+async def load_embeddings(embedding_folder_list: list[str | Path], embedding_type: str = 'default'):
     """
     Load embeddings from the specified folder.
     Adds a file_index metadata field to each document indicating which folder it came from.
@@ -529,8 +529,9 @@ def load_embeddings(embedding_folder_list: list[str | Path], embedding_type: str
         FAISS database with merged embeddings
         
     Raises:
-        RuntimeError: If no valid embedding folders are found or if critical files are missing
+        RuntimeError: If no valid embedding folders are found after regeneration attempts
     """
+    
     config = load_config()
     para = config['llm']
     embeddings = get_embedding_models(embedding_type, para)
@@ -539,26 +540,53 @@ def load_embeddings(embedding_folder_list: list[str | Path], embedding_type: str
     logger.info(f"Validating {len(embedding_folder_list)} embedding folders...")
     valid_folders, invalid_folders = validate_embedding_index_files(embedding_folder_list, embedding_type)
     
+    # If there are invalid folders, attempt to regenerate them immediately
     if invalid_folders:
-        logger.error(f"Found {len(invalid_folders)} invalid embedding folders:")
+        logger.info(f"Found {len(invalid_folders)} invalid embedding folders. Attempting regeneration...")
         for folder in invalid_folders:
-            logger.error(f"  - {folder}")
+            logger.info(f"  - Invalid folder: {folder}")
         
-        if not valid_folders:
-            error_msg = (
-                f"No valid embedding folders found. All {len(embedding_folder_list)} folders are missing required index files. "
-                f"Please regenerate the embeddings for these folders: {invalid_folders}"
-            )
-            logger.error(error_msg)
-            raise RuntimeError(error_msg)
+        if embedding_type == 'lite':
+            # Attempt to regenerate missing lite embeddings
+            try:
+                logger.info("Starting regeneration process for missing lite embeddings...")
+                regenerated_folders = asyncio.run(regenerate_missing_lite_embeddings(invalid_folders, embedding_folder_list))
+                
+                if regenerated_folders:
+                    logger.info(f"Successfully regenerated {len(regenerated_folders)} embedding folders")
+                    # Re-validate after regeneration to update our valid/invalid lists
+                    valid_folders, remaining_invalid = validate_embedding_index_files(embedding_folder_list, embedding_type)
+                    if remaining_invalid:
+                        logger.warning(f"Still have {len(remaining_invalid)} invalid folders after regeneration:")
+                        for folder in remaining_invalid:
+                            logger.warning(f"  - Still invalid: {folder}")
+                else:
+                    logger.error("No embedding folders were successfully regenerated")
+                    
+            except Exception as e:
+                logger.error(f"Error during regeneration process: {str(e)}")
+                # Continue with whatever valid folders we have
         else:
-            logger.warning(f"Proceeding with {len(valid_folders)} valid folders, skipping {len(invalid_folders)} invalid folders")
+            logger.warning(f"Regeneration not supported for embedding type '{embedding_type}'. Proceeding with valid folders only.")
+    
+    # Final validation check
+    if not valid_folders:
+        error_msg = (
+            f"No valid embedding folders found after regeneration attempts. "
+            f"Total folders: {len(embedding_folder_list)}, "
+            f"All folders are missing required index files."
+        )
+        logger.error(error_msg)
+        raise RuntimeError(error_msg)
+    
+    logger.info(f"Proceeding to load embeddings from {len(valid_folders)} valid folders")
     
     # Load each valid database separately and add file_index to metadata
     all_docs = []
     original_folder_mapping = {valid_folder: embedding_folder_list.index(valid_folder) 
                               for valid_folder in valid_folders if valid_folder in embedding_folder_list}
     
+    successfully_loaded = 0
     for i, embedding_folder in enumerate(valid_folders):
         try:
             logger.info(f"Loading embeddings from: {embedding_folder}")
@@ -574,19 +602,18 @@ def load_embeddings(embedding_folder_list: list[str | Path], embedding_type: str
                 all_docs.append(doc)
                 
             logger.info(f"Successfully loaded {len(docs)} documents from {embedding_folder}")
+            successfully_loaded += 1
             
         except Exception as e:
             logger.error(f"Failed to load embeddings from {embedding_folder}: {str(e)}")
-            # Remove this folder from valid folders and add to invalid folders
-            if embedding_folder not in invalid_folders:
-                invalid_folders.append(embedding_folder)
+            # This shouldn't happen since we validated, but let's be safe
             continue
     
     if not all_docs:
         error_msg = (
             f"No documents could be loaded from any embedding folders. "
             f"Total folders attempted: {len(embedding_folder_list)}, "
-            f"Invalid folders: {len(invalid_folders)}"
+            f"Successfully loaded: {successfully_loaded}"
         )
         logger.error(error_msg)
         raise RuntimeError(error_msg)
@@ -598,8 +625,8 @@ def load_embeddings(embedding_folder_list: list[str | Path], embedding_type: str
     # Log summary information
     logger.info(f"Successfully created merged database:")
     logger.info(f"  - Total chunks: {len(all_docs)}")
-    logger.info(f"  - Valid folders: {len(valid_folders)}")
-    logger.info(f"  - Invalid folders: {len(invalid_folders)}")
+    logger.info(f"  - Successfully loaded folders: {successfully_loaded}")
+    logger.info(f"  - Total folders requested: {len(embedding_folder_list)}")
     
     # Log the first 5 chunks for testing
     for i, doc in enumerate(all_docs[:5]):
@@ -615,6 +642,12 @@ async def regenerate_missing_lite_embeddings(invalid_folders: list[str | Path], 
     """
     Regenerate missing lite embeddings for invalid folders.
     
+    This function will:
+    1. Clean up any existing incomplete files in invalid folders
+    2. Find the source PDF files for each invalid folder
+    3. Regenerate the embeddings and overwrite the folder contents
+    4. Verify that the regeneration was successful
+    
     Args:
         invalid_folders: List of embedding folder paths that are missing index files
         embedding_folder_list: Original list of all embedding folder paths
@@ -622,6 +655,8 @@ async def regenerate_missing_lite_embeddings(invalid_folders: list[str | Path], 
     Returns:
         List of successfully regenerated embedding folder paths
     """
+    import shutil
+    
     regenerated_folders = []
     
     for embedding_folder in invalid_folders:
@@ -631,6 +666,16 @@ async def regenerate_missing_lite_embeddings(invalid_folders: list[str | Path], 
             # Extract the parent folder (should contain the original file)
             embedding_folder_path = Path(embedding_folder)
             parent_folder = embedding_folder_path.parent
+            
+            # Clean up any existing incomplete files in the embedding folder
+            if embedding_folder_path.exists():
+                logger.info(f"Cleaning up existing incomplete folder: {embedding_folder}")
+                try:
+                    shutil.rmtree(embedding_folder_path)
+                    logger.info(f"Successfully removed incomplete folder: {embedding_folder}")
+                except Exception as cleanup_error:
+                    logger.warning(f"Could not clean up folder {embedding_folder}: {cleanup_error}")
+                    # Continue anyway, the generation might still work
             
             # Look for PDF files in the parent folder
             pdf_files = list(parent_folder.glob("*.pdf"))
@@ -649,6 +694,8 @@ async def regenerate_missing_lite_embeddings(invalid_folders: list[str | Path], 
                 _doc = fitz.open(file_path)
                 
                 # Generate lite embeddings using the existing function
+                # This will create the lite_embedding folder and save the index files
+                logger.info(f"Generating lite embeddings for: {file_path}")
                 await generate_LiteRAG_embedding(_doc, file_path, str(parent_folder))
                 
             finally:
@@ -662,18 +709,28 @@ async def regenerate_missing_lite_embeddings(invalid_folders: list[str | Path], 
             
             if faiss_path.exists() and pkl_path.exists():
                 regenerated_folders.append(str(embedding_folder))
-                logger.info(f"Successfully regenerated embeddings for: {embedding_folder}")
+                logger.info(f"✅ Successfully regenerated embeddings for: {embedding_folder}")
+                logger.info(f"   - Created: {faiss_path}")
+                logger.info(f"   - Created: {pkl_path}")
             else:
-                logger.error(f"Failed to regenerate embeddings for: {embedding_folder} - index files not created")
+                logger.error(f"❌ Failed to regenerate embeddings for: {embedding_folder}")
+                logger.error(f"   - Missing: {faiss_path} (exists: {faiss_path.exists()})")
+                logger.error(f"   - Missing: {pkl_path} (exists: {pkl_path.exists()})")
                 
         except Exception as e:
-            logger.error(f"Error regenerating embeddings for {embedding_folder}: {str(e)}")
+            logger.error(f"❌ Error regenerating embeddings for {embedding_folder}: {str(e)}")
+            logger.error(f"   - Exception type: {type(e).__name__}")
+            # Continue with other folders
             continue
     
     if regenerated_folders:
-        logger.info(f"Successfully regenerated {len(regenerated_folders)} embedding folders")
+        logger.info(f"🎉 Successfully regenerated {len(regenerated_folders)} out of {len(invalid_folders)} embedding folders")
+        for folder in regenerated_folders:
+            logger.info(f"   ✅ {folder}")
     else:
-        logger.warning("No embedding folders were successfully regenerated")
+        logger.warning(f"⚠️  No embedding folders were successfully regenerated out of {len(invalid_folders)} attempts")
+        for folder in invalid_folders:
+            logger.warning(f"   ❌ {folder}")
     
     return regenerated_folders
 
@@ -682,10 +739,13 @@ def load_embeddings_with_regeneration(embedding_folder_list: list[str | Path], e
     """
     Load embeddings from the specified folders with automatic regeneration of missing files.
     
+    This function is now a wrapper around load_embeddings() since regeneration is handled
+    automatically in the main function.
+    
     Args:
         embedding_folder_list: List of paths to embedding folders
         embedding_type: Type of embedding ('lite', 'default', etc.)
-        allow_regeneration: Whether to attempt regeneration of missing embeddings
+        allow_regeneration: Whether to attempt regeneration (for backward compatibility)
     
     Returns:
         FAISS database with merged embeddings
@@ -693,37 +753,8 @@ def load_embeddings_with_regeneration(embedding_folder_list: list[str | Path], e
     Raises:
         RuntimeError: If no valid embedding folders are found after regeneration attempts
     """
-    import asyncio
+    if not allow_regeneration:
+        logger.warning("Regeneration is disabled, but load_embeddings() will still validate and attempt regeneration for 'lite' type")
     
-    # First attempt to load embeddings normally
-    try:
-        return load_embeddings(embedding_folder_list, embedding_type)
-    except RuntimeError as e:
-        if not allow_regeneration or embedding_type != 'lite':
-            # Re-raise the error if regeneration is not allowed or not supported
-            raise e
-        
-        logger.info("Initial loading failed, attempting to regenerate missing embeddings...")
-        
-        # Validate folders to identify which ones need regeneration
-        valid_folders, invalid_folders = validate_embedding_index_files(embedding_folder_list, embedding_type)
-        
-        if not invalid_folders:
-            # If no invalid folders, re-raise the original error
-            raise e
-        
-        # Attempt to regenerate missing embeddings
-        try:
-            regenerated_folders = asyncio.run(regenerate_missing_lite_embeddings(invalid_folders, embedding_folder_list))
-            
-            if regenerated_folders:
-                logger.info(f"Regeneration completed. Attempting to load embeddings again...")
-                # Try loading again after regeneration
-                return load_embeddings(embedding_folder_list, embedding_type)
-            else:
-                logger.error("No embeddings could be regenerated")
-                raise RuntimeError(f"Failed to regenerate embeddings for folders: {invalid_folders}")
-                
-        except Exception as regen_error:
-            logger.error(f"Error during regeneration process: {str(regen_error)}")
-            raise RuntimeError(f"Failed to load embeddings and regeneration failed: {str(regen_error)}")
+    # The main load_embeddings function now handles regeneration automatically
+    return load_embeddings(embedding_folder_list, embedding_type)

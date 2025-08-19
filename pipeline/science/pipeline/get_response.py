@@ -62,8 +62,20 @@ async def get_multiple_files_summary(file_path_list, embedding_folder_list, chat
     Returns:
         A generator yielding the summary if stream=True, otherwise a string
     """
+    # Load config and LLM
     config = load_config()
     llm = get_llm('advanced', config['llm'])
+
+    # If the number of files is more than summary_file_limit, just reply "Hi, I'm DeepTutor. What can I help you with?"
+    if len(file_path_list) > config["summary_file_limit"]:
+        if stream:
+            def process_stream():
+                yield "<response>\n\n"
+                yield "Hi, I'm DeepTutor. What can I help you with?"
+                yield "\n\n</response>"
+            return process_stream()
+        else:
+            return "<response>\n\nHi, I'm DeepTutor. What can I help you with?\n\n</response>"
     
     # Log the list of files being processed
     logger.info(f"Processing multiple files for summary: {file_path_list}")

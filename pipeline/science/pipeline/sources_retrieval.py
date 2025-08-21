@@ -218,7 +218,7 @@ def locate_chunk_in_pdf(chunk: str, source_page_number: int, pdf_path: str, simi
     # }
 
 
-def get_response_source_complex(chat_session: ChatSession, file_path_list, user_input, answer, chat_history, embedding_folder_list):
+async def get_response_source_complex(chat_session: ChatSession, file_path_list, user_input, answer, chat_history, embedding_folder_list):
     """
     Retrieves and processes source references for AI-generated responses in a tutoring system.
     
@@ -312,7 +312,7 @@ def get_response_source_complex(chat_session: ChatSession, file_path_list, user_
     # Create a reverse mapping based on image_url_mapping_merged
     image_url_mapping_merged_reverse = {v: k for k, v in image_url_mapping_merged.items()}
 
-    db_merged = load_embeddings(embedding_folder_list, 'default')
+    db_merged = await load_embeddings(embedding_folder_list, 'default')
 
     # Get relevant chunks for both question and answer with scores
     question_chunks_with_scores = []

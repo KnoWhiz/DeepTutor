@@ -22,6 +22,7 @@ from pipeline.science.pipeline.utils import (
 from pipeline.science.pipeline.embeddings import (
     get_embedding_models,
     load_embeddings,
+    load_embeddings_with_regeneration,
 )
 from pipeline.science.pipeline.content_translator import (
     detect_language,
@@ -191,18 +192,18 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
             logger.info(f"Loading markdown embeddings from {[os.path.join(embedding_folder, 'markdown', 'page_based_index') for embedding_folder in embedding_folder_list]}")
             # Fix: Page-based embeddings are saved under markdown/page_based_index subfolder
             pagebased_embedding_folder_list = [os.path.join(embedding_folder, 'markdown', 'page_based_index') for embedding_folder in embedding_folder_list]
-            db = load_embeddings(pagebased_embedding_folder_list, 'default')
+            db = await load_embeddings(pagebased_embedding_folder_list, 'default')
         except Exception as e:
             logger.exception(f"Failed to load markdown embeddings for deep thinking mode: {str(e)}")
             # Fallback to main embedding folder if page_based_index doesn't exist
-            db = load_embeddings(embedding_folder_list, 'default')
+            db = await load_embeddings(embedding_folder_list, 'default')
     # === STEP 2b: Lite Mode Handling ===
     # Handle Lite mode in other cases - uses lightweight embeddings
     else:
         logger.info(f"Current mode is {chat_session.mode}")
         actual_embedding_folder_list = [os.path.join(embedding_folder, 'lite_embedding') for embedding_folder in embedding_folder_list]
         logger.info(f"actual_embedding_folder_list in get_rag_context: {actual_embedding_folder_list}")
-        db = load_embeddings(actual_embedding_folder_list, 'lite')
+        db = await load_embeddings_with_regeneration(actual_embedding_folder_list, 'lite', allow_regeneration=True)
 
     # === STEP 3: Token Budget Configuration ===
     # Configure token limits based on chat mode for optimal context size
@@ -336,11 +337,11 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
             logger.info(f"Loading page-based embeddings for {chat_session.mode} mode")
             # Fix: Page-based embeddings are saved under markdown/page_based_index subfolder
             page_embedding_folder_list = [os.path.join(embedding_folder, 'markdown', 'page_based_index') for embedding_folder in embedding_folder_list]
-            page_db = load_embeddings(page_embedding_folder_list, 'default')
+            page_db = await load_embeddings(page_embedding_folder_list, 'default')
         else:  # ChatMode.LITE
             logger.info(f"Loading page-based embeddings for {chat_session.mode} mode")
             page_embedding_folder_list = [os.path.join(embedding_folder, 'lite_embedding') for embedding_folder in embedding_folder_list]
-            page_db = load_embeddings(page_embedding_folder_list, 'lite')
+            page_db = await load_embeddings_with_regeneration(page_embedding_folder_list, 'lite', allow_regeneration=True)
         
         logger.info(f"Successfully loaded page-based embeddings from: {page_embedding_folder_list}")
         

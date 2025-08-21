@@ -62,8 +62,20 @@ async def get_multiple_files_summary(file_path_list, embedding_folder_list, chat
     Returns:
         A generator yielding the summary if stream=True, otherwise a string
     """
+    # Load config and LLM
     config = load_config()
     llm = get_llm('advanced', config['llm'])
+
+    # If the number of files is more than summary_file_limit, just reply "Hi, I'm DeepTutor. What can I help you with?"
+    if len(file_path_list) > config["summary_file_limit"]:
+        if stream:
+            def process_stream():
+                yield "<response>\n\n"
+                yield "Hi, I'm DeepTutor. What can I help you with?"
+                yield "\n\n</response>"
+            return process_stream()
+        else:
+            return "<response>\n\nHi, I'm DeepTutor. What can I help you with?\n\n</response>"
     
     # Log the list of files being processed
     logger.info(f"Processing multiple files for summary: {file_path_list}")
@@ -138,9 +150,6 @@ async def get_multiple_files_summary(file_path_list, embedding_folder_list, chat
     You are an expert academic tutor helping a student understand multiple documents. 
     The student has loaded multiple PDF files and needs a comprehensive summary that explains what each document is about.
     
-    Here are the files with previews of their content:
-    {formatted_previews}
-    
     Please provide a comprehensive summary that:
     1. Introduces each document with its title (derived from content if possible) and main topic
     2. Summarizes the key content and main findings of each document
@@ -151,6 +160,9 @@ async def get_multiple_files_summary(file_path_list, embedding_folder_list, chat
     7. Highest title level is 3, and the title should be concise and informative.
     
     Format your summary with a friendly welcome message at the beginning and a closing "Ask me anything" message at the end.
+
+    Here are the files with previews of their content:
+    {formatted_previews}
     """
     
     logger.info(f"Generated summary prompt with length: {len(prompt)} characters")
@@ -331,10 +343,10 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         try:
             logger.info(f"Loading markdown embeddings from {[os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]}")
             markdown_embedding_folder_list = [os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]
-            db = load_embeddings(markdown_embedding_folder_list, 'default')
+            db = await load_embeddings(markdown_embedding_folder_list, 'default')
         except Exception as e:
             logger.exception(f"Failed to load markdown embeddings for Non-deep thinking mode: {str(e)}")
-            db = load_embeddings(embedding_folder_list, 'default')
+            db = await load_embeddings(embedding_folder_list, 'default')
 
         answer = await get_db_rag_response(
             prompt_string=basic_prompt,

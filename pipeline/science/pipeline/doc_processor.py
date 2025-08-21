@@ -116,19 +116,19 @@ def save_file_txt_locally(file_path, filename, embedding_folder, chat_session: C
         else:
             logger.info(f"File already exists: {output_file_path} (no markdown file available to overwrite it)")
 
-        # Create a mapping file to track original filenames
-        mapping_file = os.path.join(GraphRAG_embedding_folder, "filename_mapping.json")
-        try:
-            if os.path.exists(mapping_file):
-                with open(mapping_file, 'r') as f:
-                    mapping = json.load(f)
-            else:
-                mapping = {}
-            mapping[hashed_name] = base_name
-            with open(mapping_file, 'w') as f:
-                json.dump(mapping, f, indent=2)
-        except Exception as e:
-            logger.exception(f"Error saving filename mapping: {e}")
+        # # Create a mapping file to track original filenames
+        # mapping_file = os.path.join(GraphRAG_embedding_folder, "filename_mapping.json")
+        # try:
+        #     if os.path.exists(mapping_file):
+        #         with open(mapping_file, 'r') as f:
+        #             mapping = json.load(f)
+        #     else:
+        #         mapping = {}
+        #     mapping[hashed_name] = base_name
+        #     with open(mapping_file, 'w') as f:
+        #         json.dump(mapping, f, indent=2)
+        # except Exception as e:
+        #     logger.exception(f"Error saving filename mapping: {e}")
     except OSError as e:
         logger.exception(f"Error saving file: {e}")
         raise

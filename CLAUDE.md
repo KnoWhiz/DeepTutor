@@ -176,7 +176,7 @@ All application state managed through Streamlit session state via `frontend/stat
 
 ### Local Development
 ```bash
-export ENVIRONMENT=local
+export ENVIRONMENT=staging
 python -m streamlit run tutor.py
 ```
 

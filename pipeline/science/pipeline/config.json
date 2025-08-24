@@ -13,11 +13,11 @@
     },
     "retriever": {
         "search_type": "similarity",
-        "k": 9
+        "k": 15
     },
     "sources_retriever": {
         "search_type": "similarity",
-        "k": 9
+        "k": 15
     },
     "languages": {
         "🇺🇸 English": "English",

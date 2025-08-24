@@ -19,6 +19,7 @@ from pipeline.science.pipeline.doc_processor import (
     save_file_txt_locally,
     process_pdf_file,
     get_highlight_info,
+    extract_document_from_file,
 )
 from pipeline.science.pipeline.content_translator import (
     detect_language,
@@ -67,7 +68,7 @@ async def tutor_agent_basic(chat_session: ChatSession, file_path_list, user_inpu
     return tutor_agent_basic_streaming_tracking(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream)
     # answer = tutor_agent_basic_streaming_tracking(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream)
 
-    # # For Lite mode, we have minimal sources and follow-up questions
+    # # For Basic mode, we have minimal sources and follow-up questions
     # sources = {}
     # source_pages = {}
     # source_annotations = {}
@@ -101,6 +102,7 @@ async def tutor_agent_basic_streaming_tracking(chat_session: ChatSession, file_p
 async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
     """
     Streaming tutor agent for Basic mode.
+
     Args:
         chat_session: Current chat session object
         file_path_list: List of paths to uploaded documents
@@ -115,18 +117,19 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         time_tracking = {}
 
     config = load_config()
-    summary_wording = config["summary_wording"]
-    logger.info(f"Summary wording: {summary_wording}")
-
-    file_id_list = [generate_file_id(file_path) for file_path in file_path_list]
-    path_prefix = os.getenv("FILE_PATH_PREFIX")
-    embedded_content_path = os.path.join(path_prefix, 'embedded_content')
-    embedding_folder_list = [os.path.join(embedded_content_path, file_id) for file_id in file_id_list]
 
     # Compute hashed ID and prepare embedding folder
     yield "<thinking>"
+    yield "Processing documents ...\n\n"
     hashing_start_time = time.time()
     file_id_list = [generate_file_id(file_path) for file_path in file_path_list]
+    # path_prefix = os.getenv("FILE_PATH_PREFIX")
+    # if not path_prefix:
+    #     path_prefix = ""
+    # embedded_content_path = os.path.join(path_prefix, 'embedded_content')
+    # embedding_folder_list = [os.path.join(embedded_content_path, file_id) for file_id in file_id_list]
+    path_prefix = os.getenv("FILE_PATH_PREFIX")
+    embedded_content_path = os.path.join(path_prefix, 'embedded_content')
     embedding_folder_list = [os.path.join(embedded_content_path, file_id) for file_id in file_id_list]
     logger.info(f"Embedding folder: {embedding_folder_list}")
     if not os.path.exists(embedded_content_path):
@@ -144,25 +147,26 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
     time_tracking["file_loading_save_text"] = time.time() - save_file_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    yield "\n\n**📙 Loading documents done ...**\n\n"
 
-    # Process VectorRAG embeddings
-    vectorrag_start_time = time.time()
-    logger.info(f"BASIC (VectorRAG) mode for list of file ids: {file_id_list}")
+    # Process Markdown RAG embeddings
+    basic_embedding_start_time = time.time()
+    logger.info(f"BASIC (Markdown RAG) mode for list of file ids: {file_id_list}")
     for file_id, embedding_folder, file_path in zip(file_id_list, embedding_folder_list, file_path_list):
         # Doc processing
         if vectorrag_index_files_decompress(embedding_folder):
-            logger.info(f"VectorRAG index files for {file_id} are ready.")
+            logger.info(f"Markdown RAG index files for {file_id} are ready.")
         else:
             # Files are missing and have been cleaned up
             _document, _doc = process_pdf_file(file_path)
             save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
-            logger.info(f"VectorRAG embedding for {file_id} ...")
+            logger.info(f"Markdown RAG embedding for {file_id} ...")
             # await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
             async for chunk in embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder):
                 yield chunk
             logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
             if vectorrag_index_files_compress(embedding_folder):
-                logger.info(f"VectorRAG index files for {file_id} are ready and uploaded to Azure Blob Storage.")
+                logger.info(f"Markdown RAG index files for {file_id} are ready and uploaded to Azure Blob Storage.")
             else:
                 # Retry once if first attempt fails
                 save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
@@ -171,213 +175,151 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
                     yield chunk
                 logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
                 if vectorrag_index_files_compress(embedding_folder):
-                    logger.info(f"VectorRAG index files for {file_id} are ready and uploaded to Azure Blob Storage.")
+                    logger.info(f"Markdown RAG index files for {file_id} are ready and uploaded to Azure Blob Storage.")
                 else:
-                    logger.info(f"Error compressing and uploading VectorRAG index files for {file_id} to Azure Blob Storage.")
-    time_tracking["vectorrag_generate_embedding_total"] = time.time() - vectorrag_start_time
+                    logger.info(f"Error compressing and uploading Markdown RAG index files for {file_id} to Azure Blob Storage.")
+    time_tracking["basic_embedding_total"] = time.time() - basic_embedding_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    logger.info("Markdown RAG embeddings ready ...")
+    yield "\n\n**🔍 Markdown RAG embeddings ready ...**"
+    # yield "</thinking>"
+    yield "\n\n**🧠 Loading response ...**\n\n"
 
     chat_history = chat_session.chat_history
     context_chat_history = chat_history
 
-    if user_input == summary_wording or not chat_session.chat_history:
-        # Handle initial welcome message when chat history is empty
-        # initial_message_start_time = time.time()
-        # yield "<thinking>"
+    # Load PDF content with distributed word budget
+    pdf_content_loading_start = time.time()
+    pdf_content = ""
+    
+    # Calculate word budget per file
+    total_word_budget = int(config["basic_token_limit"] / 20)
+    files_count = len(file_path_list)
+    words_per_file = int(total_word_budget // files_count if files_count > 0 else total_word_budget)
+    
+    logger.info(f"Loading PDF content with {words_per_file} words per file from {files_count} files")
+    yield "\n\n**📚 Loading PDF content with distributed word budget ...**\n\n"
+    
+    for file_path in file_path_list:
         try:
-            # Try to load existing document summary
-            document_summary_path_list = [os.path.join(embedding_folder, "documents_summary.txt") for embedding_folder in embedding_folder_list]
-            initial_message_list = []
-            for document_summary_path in document_summary_path_list:
-                with open(document_summary_path, "r") as f:
-                    initial_message_list.append(f.read())
-            # FIXME: Add a function to combine the initial messages into a single summary message
-            initial_message = "\n".join(initial_message_list)
-        except FileNotFoundError:
-            initial_message = "Hello! How can I assist you today?"
+            # Extract document from the file
+            logger.info(f"Extracting document from {file_path}")
+            document = extract_document_from_file(file_path)
+            logger.info(f"Extracted document from {file_path}")
+            # Extract text from the document
+            logger.info(f"Extracting text from document")
+            file_content = ""
+            for doc in document:
+                if hasattr(doc, 'page_content') and doc.page_content:
+                    file_content += doc.page_content.strip() + "\n"
+            logger.info(f"Extracted text from document")
+            # Take only the words_per_file words from this file
+            file_words = file_content.split()
+            logger.info(f"Split text into {len(file_words)} words")
+            if len(file_words) > words_per_file:
+                file_words = file_words[:words_per_file]
+            file_excerpt = " ".join(file_words)
+            logger.info(f"Joined {len(file_words)} words into {file_excerpt}")
+            pdf_content += f"\n\n--- Related content ---\n{file_excerpt}\n"
+            logger.info(f"Added {len(file_words)} words from {file_path}")
+        except Exception as e:
+            logger.error(f"Error extracting content from {file_path}: {str(e)}")
+            yield f"\n\n**⚠️ Error loading content from {os.path.basename(file_path)}: {str(e)}**\n\n"
+    
+    if len(file_path_list) > 1 and user_input != config["summary_wording"]:
+        # For regular queries with multiple files, we'll rely on embeddings
+        # rather than including all PDF content directly
+        pdf_content = ""
+    
+    time_tracking["pdf_content_loading"] = time.time() - pdf_content_loading_start
+    logger.info(f"PDF content loading complete. Time: {format_time_tracking(time_tracking)}")
+    yield "\n\n**📚 PDF content loading complete ...**\n\n"
+    yield "</thinking>"
+
+    # Handle initial welcome message when chat history is empty or summary is requested
+    if user_input == config["summary_wording"] or not chat_history:
+        # If summary is requested and we have multiple files, get_response will handle it with the special function
+        # Just pass the request through to get_response
+        if user_input == config["summary_wording"] and len(file_path_list) > 1:
+            logger.info("Handling multiple files summary request in basic mode")
+            # yield "\n\n**🧠 Analyzing multiple files and generating a comprehensive summary...**\n\n"
+            # yield "</thinking>"
+            # get_response will handle the multiple file summary generation
+            response_start = time.time()
+            question = Question(text=user_input, language=chat_session.current_language, question_type="global")
+            response = await get_response(chat_session, file_path_list, question, context_chat_history, embedding_folder_list, deep_thinking=deep_thinking, stream=stream)
+            answer = response[0] if isinstance(response, tuple) else response
+            for chunk in answer:
+                yield chunk
+            time_tracking["response_generation"] = time.time() - response_start
+            
+            # Handle appendix with follow-up questions
+            yield "<appendix>"
+            if len(file_path_list) <= config["summary_file_limit"]:
+                yield "\n\n**💬 Loading follow-up questions ...**\n\n"
+                message_content = chat_session.current_message
+                if isinstance(message_content, list) and len(message_content) > 0:
+                    message_content = message_content[0]
+                
+                follow_up_questions = generate_follow_up_questions(message_content, [])
+                for i in range(len(follow_up_questions)):
+                    follow_up_questions[i] = translate_content(
+                        content=follow_up_questions[i],
+                        target_lang=chat_session.current_language,
+                        stream=False
+                    )
+                    # Clean up translation prefixes - apply before including in XML
+                    follow_up_questions[i] = clean_translation_prefix(follow_up_questions[i])
+
+                for chunk in follow_up_questions:
+                    # Ensure the chunk is properly cleaned and formatted before wrapping in XML
+                    cleaned_chunk = chunk.strip()
+                    if cleaned_chunk:
+                        yield "<followup_question>"
+                        yield f"{cleaned_chunk}"
+                        yield "</followup_question>\n\n"
+                yield "\n\n**💬 Loading follow-up questions done ...**\n\n"
+
+            yield "</appendix>"
+            return
+        else:
+            # Regular summary for single file or initial message when no chat history
+            # Include the PDF content in addition to user_input as refined_user_input
+            refined_user_input = f"{user_input}\n\nThis is the document content: {pdf_content}"
+            question = Question(text=refined_user_input, language=chat_session.current_language, question_type="local")
+    else:
         # yield "</thinking>"
-        # yield "\n\n**Loading response ...**\n\n"
+        refined_user_input = f"{user_input}\n\n{pdf_content}"
+        # Regular chat flow - include PDF content in the user input
+        question = Question(text=refined_user_input, language=chat_session.current_language, question_type="local")
 
-        language = detect_language(initial_message)
-        if language != chat_session.current_language:
-            translation_response = True
-            yield "<original_response>\n\n"
-            yield initial_message
-            yield "</original_response>"
-            yield "</thinking>"
-            yield "\n\n**🧠 Loading response ...**\n\n"
-            yield "<response>\n\n"        # Translate the initial message to the selected language
-            answer = translate_content(
-                content=initial_message,
-                target_lang=chat_session.current_language,
-                stream=stream
-            )
-            if (type(answer) is str):
-                yield answer
-            else:
-                for chunk in answer:
-                    yield chunk
-            yield "</response>"
-        else:
-            translation_response = False
-            yield "</thinking>"
-            yield "\n\n**🧠 Loading response ...**\n\n"
-            yield "<response>\n\n"        # Translate the initial message to the selected language
-            yield initial_message
-            yield "</response>"
+    logger.info(f"Refined user input created with PDF content: {refined_user_input}")
 
-        yield "<appendix>"
-        yield "\n\n**💬 Loading follow-up questions ...**\n\n"
-        follow_up_questions = generate_follow_up_questions(chat_session.current_message, [])
-        for i in range(len(follow_up_questions)):
-            follow_up_questions[i] = translate_content(
-                content=follow_up_questions[i],
-                target_lang=chat_session.current_language,
-                stream=False
-            )
-            # Clean up translation prefixes
-            follow_up_questions[i] = clean_translation_prefix(follow_up_questions[i])
-        for chunk in follow_up_questions:
-            # Ensure the chunk is properly cleaned and formatted before wrapping in XML
-            cleaned_chunk = chunk.strip()
-            if cleaned_chunk:
-                yield "<followup_question>"
-                yield f"{cleaned_chunk}"
-                yield "</followup_question>\n\n"
-        yield "\n\n**💬 Loading follow-up questions done ...**\n\n"
-        yield "</appendix>"
-
-        # time_tracking["summary_message"] = time.time() - initial_message_start_time
-        logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-
-        return
-
-    # Regular chat flow
-    # Refine user input
-    yield "\n\n**🧠 Understanding the user input ...**\n\n"
-    query_start = time.time()
-    async for question_progress_update in get_query_helper(chat_session, user_input, context_chat_history, embedding_folder_list):
-        if isinstance(question_progress_update, Question):
-            # This is the final return value - a Question object
-            question = question_progress_update
-            logger.info(f"Received Question object from streaming function: {question}")
-        elif isinstance(question_progress_update, str):
-            # yield f"\n\n💬 {question_progress_update}"
-            pass
-        else:
-            continue
-    refined_user_input = question.text
-    logger.info(f"Refined user input: {refined_user_input}")
-    time_tracking["query_refinement"] = time.time() - query_start
-    yield "\n\n**🧠 Understanding the user input done ...**\n\n"
+    # time_tracking["summary_message"] = time.time() - initial_message_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Get response
-    translation_response = False
     response_start = time.time()
     response = await get_response(chat_session, file_path_list, question, context_chat_history, embedding_folder_list, deep_thinking=deep_thinking, stream=stream)
     answer = response[0] if isinstance(response, tuple) else response
-    
-    def needs_translation():
-        """Helper function to determine if translation is needed."""
-        content = extract_basic_mode_content(chat_session.current_message)[0]
-        language = detect_language(content)
-        return language != chat_session.current_language
-        
-    def is_in_thinking_mode():
-        """Helper function to check if we're in thinking mode."""
-        return chat_session.current_message.endswith("</thinking>") or not chat_session.current_message
-    
-    if deep_thinking is False:
-        yield "</thinking>"
-        # yield "\n\n**💡 Loading the response ...**\n\n"
-    else:
-        for chunk in answer:
-            # Process chunks without </think> tag
-            if "</think>" not in chunk:
-                # Handle response opening tag
-                if "<response>" in chunk:
-                    translation_needed = needs_translation()
-                    
-                    if not translation_needed:
-                        if is_in_thinking_mode():
-                            yield chunk  # First response chunk
-                        else:
-                            # yield chunk.replace("<response>", "")  # Continuation chunk
-                            yield chunk
-                    else:
-                        yield chunk.replace("<response>", "<original_response>")
-
-                    if chat_session.question.question_type == "image":
-                        yield f"\n\n![]({chat_session.question.image_url})\n"
-                
-                # Handle response closing tag
-                elif "</response>" in chunk:
-                    translation_needed = needs_translation()
-
-                    if not translation_needed:
-                        yield chunk
-                    else:
-                        # End original response and prepare for translation
-                        yield chunk.replace("</response>", "</original_response>")
-                        yield "</thinking>"
-                        # yield "\n\n**💡 Loading the response ...**\n\n"
-                        translation_response = True
-
-                # Handle regular content
-                else:
-                    yield chunk
-
-            # Handle </think> tag (end of thinking section)
-            else:
-                translation_response = needs_translation()
-
-                if not translation_response:
-                    chunk = chunk.replace("</think>", "")
-                    # yield "\n\n**💡 Loading the response ...**\n\n"
-                    yield chunk
-                    yield "</think>"
-                    yield "</thinking>"
-                # else:
-                #     yield "<response>"
-                #     yield translation_response
-                #     yield "</response>"
-    
+    for chunk in answer:
+        yield chunk
     time_tracking["response_generation"] = time.time() - response_start
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
-    # Refine and translate the answer to the selected language
-    content=extract_basic_mode_content(chat_session.current_message)[0]
-    language = detect_language(content)
-    if language != chat_session.current_language:
-        translation_start = time.time()
-        answer = translate_content(
-            content=content,
-            target_lang=chat_session.current_language,
-            stream=stream
-        )
-        # if answer != content:
-        yield "<response>\n\n"
-        if chat_session.question.question_type == "image":
-            yield f"\n\n![]({chat_session.question.image_url})\n"
-        if (type(answer) is str):
-            yield answer
-        else:
-            for chunk in answer:
-                yield chunk
-        yield "</response>"
-        # yield "\n\n**💡 Loading the response done ...**\n\n"
-        time_tracking["translation"] = time.time() - translation_start
-        logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-
-    # Get sources
     yield "<appendix>"
-    sources = {}
-    source_pages = {}
-    refined_source_pages = {}
-    refined_source_index = {}
-    sources_start = time.time()
+
+    # Add source retrieval - similar to what's in basic and advanced modes
     yield "\n\n**🔍 Retrieving sources ...**\n\n"
+    sources_start = time.time()
+
+    # Ensure the markdown directories exist for storing image context and URLs
+    for folder in embedding_folder_list:
+        markdown_dir = os.path.join(folder, "markdown")
+        if not os.path.exists(markdown_dir):
+            os.makedirs(markdown_dir, exist_ok=True)
+            logger.info(f"Created markdown directory: {markdown_dir}")
+    
     sources, source_pages, refined_source_pages, refined_source_index = get_response_source(
         chat_session=chat_session,
         file_path_list=file_path_list,
@@ -386,7 +328,6 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         chat_history=chat_history,
         embedding_folder_list=embedding_folder_list
     )
-    # logger.info(f"TEST: CODE0790 source_pages: {source_pages.values()}, refined_source_pages: {refined_source_pages.values()}, refined_source_index: {refined_source_index.values()}")
 
     for source_key, source_value in sources.items():
         yield "<source>"
@@ -413,27 +354,6 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     # yield "\n\n**🔍 Retrieving sources done ...**\n\n"
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
-    # Process image sources
-    # yield "\n\n**📊 Processing image sources ...**\n\n"
-    images_processing_start = time.time()
-    image_url_list = []
-    for source, index, page in zip(refined_source_index.keys(), refined_source_index.values(), refined_source_pages.values()):
-        # logger.info(f"TEST: source: {source}, index: {index}, page: {page}")
-        if source.startswith("https://knowhiztutorrag.blob"):
-            image_url = source
-            image_url_list.append(image_url)
-    time_tracking["image_processing"] = time.time() - images_processing_start
-    # yield "\n\n**📊 Processing image sources done ...**\n\n"
-    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-
-    # Append images URL in markdown format to the end of the answer
-    annotations_start = time.time()
-    if image_url_list:
-        for image_url in image_url_list:
-            if image_url:
-                yield "\n"
-                yield f"![]({image_url})"
-
     source_annotations = {}
     i = 0
     for source, index in refined_source_index.items():
@@ -445,10 +365,8 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         source_annotations[source] = annotations
         logger.info(f"For source number {i}, the annotations extraction is: {annotations}")
         i += 1
-    time_tracking["annotations"] = time.time() - annotations_start
     # yield "\n\n**🔍 Retrieving source annotations done ...**\n\n"
     # logger.info(f"source_annotations: {source_annotations}")
-    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     for source_annotations_key, source_annotations_value in source_annotations.items():
         yield "<source_annotations>"
@@ -456,17 +374,24 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         yield "{" + str(source_annotations_value) + "}"
         yield "</source_annotations>"
 
-    # Generate follow-up questions
+    logger.info(f"TEST: file_path_list: {file_path_list}")
+    logger.info(f"TEST: config['summary_file_limit']: {config['summary_file_limit']}")
+    logger.info(f"TEST: len(file_path_list) <= config['summary_file_limit']: {len(file_path_list) <= config['summary_file_limit']}")
+    
+    # For Basic mode, we have minimal sources and follow-up questions
     yield "\n\n**💬 Loading follow-up questions ...**\n\n"
-    followup_start = time.time()
-    follow_up_questions = generate_follow_up_questions(answer, chat_history)
+    message_content = chat_session.current_message
+    if isinstance(message_content, list) and len(message_content) > 0:
+        message_content = message_content[0]
+
+    follow_up_questions = generate_follow_up_questions(message_content, [])
     for i in range(len(follow_up_questions)):
         follow_up_questions[i] = translate_content(
             content=follow_up_questions[i],
             target_lang=chat_session.current_language,
             stream=False
         )
-        # Clean up translation prefixes
+        # Clean up translation prefixes - apply before including in XML
         follow_up_questions[i] = clean_translation_prefix(follow_up_questions[i])
 
     for chunk in follow_up_questions:
@@ -476,10 +401,9 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
             yield "<followup_question>"
             yield f"{cleaned_chunk}"
             yield "</followup_question>\n\n"
-    time_tracking["followup_questions"] = time.time() - followup_start
     yield "\n\n**💬 Loading follow-up questions done ...**\n\n"
+
     yield "</appendix>"
-    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
     # Memory clean up
     _document = None

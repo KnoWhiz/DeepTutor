@@ -405,21 +405,21 @@ def test_extract_answer_content():
 
 
 
-**🔍 Loading LiteRAG embeddings ...**
+**🔍 Loading RAG embeddings ...**
 
-**🔍 Loading LiteRAG embeddings ...**
+**🔍 Loading RAG embeddings ...**
 
-**🔍 Loading LiteRAG embeddings ...**
+**🔍 Loading RAG embeddings ...**
 
-**🔍 Loading LiteRAG embeddings ...**
+**🔍 Loading RAG embeddings ...**
 
-**🔍 Loading LiteRAG embeddings ...**
+**🔍 Loading RAG embeddings ...**
 
-**🔍 Loading LiteRAG embeddings ...**
+**🔍 Loading RAG embeddings ...**
 
-**🔍 Loading LiteRAG embeddings ...**
+**🔍 Loading RAG embeddings ...**
 
-**🔍 LiteRAG embeddings ready ...**</thinking>
+**🔍 RAG embeddings ready ...**</thinking>
 
 **🧠 Loading response ...**
 

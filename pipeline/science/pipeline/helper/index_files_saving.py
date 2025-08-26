@@ -9,7 +9,7 @@ logger = logging.getLogger("tutorpipeline.science.helper.index_files_saving")
 
 def literag_index_files_decompress(embedding_folder):
     """
-    Function to decompress the LiteRAG index files and download them from Azure Blob Storage
+    Function to decompress the RAG index files and download them from Azure Blob Storage
     :param embedding_folder: The path to the embedding folder
     :return: True if the index files are ready now in embedding_folder, False otherwise
     """

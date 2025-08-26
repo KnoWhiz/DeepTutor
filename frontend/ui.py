@@ -121,7 +121,7 @@ def show_file_upload(on_change=None):
         
         # Use the appropriate file uploader based on mode
         if allow_multiple:
-            current_file = st.file_uploader("Upload documents no more than **800 pages** to get started.", 
+            current_file = st.file_uploader("Upload documents no more than **1200 pages** to get started.", 
                                           type="pdf", 
                                           on_change=on_change,
                                           accept_multiple_files=True)
@@ -130,7 +130,7 @@ def show_file_upload(on_change=None):
             if current_file and len(current_file) > 0:
                 st.success(f"{len(current_file)} documents uploaded. Select a document from the dropdown in the document view.")
         else:
-            current_file = st.file_uploader("Upload a document no more than **800 pages** to get started.", 
+            current_file = st.file_uploader("Upload a document no more than **1200 pages** to get started.", 
                                           type="pdf", 
                                           on_change=on_change)
         

@@ -54,7 +54,7 @@ def calculate_page_length(_doc, file_path):
     """
     from pipeline.science.pipeline.embeddings import extract_document_from_file
     
-    # Extract document using the same method as LiteRAG
+    # Extract document using the same method as RAG
     document = extract_document_from_file(file_path)
     
     page_stats = []
@@ -64,7 +64,7 @@ def calculate_page_length(_doc, file_path):
     for page_num, page_doc in enumerate(document):
         page_text = page_doc.page_content
         
-        # Clean up the text (same as LiteRAG)
+        # Clean up the text (same as RAG)
         clean_text = page_text.strip()
         if clean_text:
             clean_text = clean_text.replace("-\n", "")
@@ -116,9 +116,9 @@ async def embeddings_agent(
         logger.info("Mode: ChatMode.BASIC. Generating VectorRAG embeddings...")
         yield "\n\n**🗂️ Loading VectorRAG embeddings ...**"
     elif _mode == ChatMode.LITE:
-        logger.info("Mode: ChatMode.LITE. Generating LiteRAG embeddings...")
-        # yield f"\n\n**🔍 Loading LiteRAG embeddings for file: {os.path.basename(file_path)} ...**"
-        yield "\n\n**🔍 Loading LiteRAG embeddings for files ...**"
+        logger.info("Mode: ChatMode.LITE. Generating RAG embeddings...")
+        # yield f"\n\n**🔍 Loading RAG embeddings for file: {os.path.basename(file_path)} ...**"
+        yield "\n\n**🔍 Loading RAG embeddings for files ...**"
         lite_embedding_start_time = time.time()
         await generate_LiteRAG_embedding(_doc, file_path, embedding_folder)
         time_tracking['lite_embedding_total'] = time.time() - lite_embedding_start_time

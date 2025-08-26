@@ -155,7 +155,7 @@ Key processing steps for each response (especially Basic mode):
 
 ### File Processing Constraints
 - **File Size**: 50MB limit enforced in `tutor.py:79-83` and `tutor.py:161-163`
-- **Page Limit**: 800-page limit enforced in `tutor.py:116-118` and `tutor.py:180-182`
+- **Page Limit**: 1200-page limit enforced in `tutor.py:116-118` and `tutor.py:180-182`
 - **Storage**: Files stored in `tmp/tutor_pipeline/input_files/` directory
 - **Multiple Files**: Supported in Lite mode only (`tutor.py:64-152`)
 

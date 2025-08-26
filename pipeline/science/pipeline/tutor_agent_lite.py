@@ -37,7 +37,7 @@ logger = logging.getLogger("tutorpipeline.science.tutor_agent_lite")
 async def tutor_agent_lite(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
     """
     Lightweight tutor agent that provides basic tutoring capabilities with minimal resource usage.
-    Uses LiteRAG for document processing and doesn't perform advanced source retrieval.
+    Uses RAG for document processing and doesn't perform advanced source retrieval.
 
     Args:
         chat_session: Current chat session object
@@ -137,26 +137,26 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
     yield "\n\n**📙 Loading documents done ...**\n\n"
 
-    # Process LiteRAG embeddings
+    # Process RAG embeddings
     lite_embedding_start_time = time.time()
-    # yield "\n\n**🔍 Loading LiteRAG embeddings ...**"
+    # yield "\n\n**🔍 Loading RAG embeddings ...**"
     for file_id, embedding_folder, file_path in zip(file_id_list, embedding_folder_list, file_path_list):
         if literag_index_files_decompress(embedding_folder):
-            # Check if the LiteRAG index files are ready locally
-            logger.info(f"LiteRAG embedding index files for {file_id} are ready.")
-            # yield "\n\n**🔍 LiteRAG embedding index files are ready.**"
+            # Check if the RAG index files are ready locally
+            logger.info(f"RAG embedding index files for {file_id} are ready.")
+            # yield "\n\n**🔍 RAG embedding index files are ready.**"
         else:
             # Files are missing and have been cleaned up
             _document, _doc = process_pdf_file(file_path)
             save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
-            logger.info(f"Loading LiteRAG embedding for {file_id} ...")
-            # yield "\n\n**🔍 Loading LiteRAG embeddings ...**"
+            logger.info(f"Loading RAG embedding for {file_id} ...")
+            # yield "\n\n**🔍 Loading RAG embeddings ...**"
             async for chunk in embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder):
                 yield chunk
     time_tracking["lite_embedding_total"] = time.time() - lite_embedding_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-    logger.info("LiteRAG embeddings ready ...")
-    yield "\n\n**🔍 LiteRAG embeddings ready ...**"
+    logger.info("RAG embeddings ready ...")
+    yield "\n\n**🔍 RAG embeddings ready ...**"
     # yield "</thinking>"
     yield "\n\n**🧠 Loading response ...**\n\n"
 
@@ -168,12 +168,12 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     pdf_content = ""
     
     # Calculate word budget per file
-    total_word_budget = int(config["basic_token_limit"] / 20)
+    total_word_budget = int(config["basic_token_limit"] / 100)
     files_count = len(file_path_list)
     words_per_file = int(total_word_budget // files_count if files_count > 0 else total_word_budget)
     
     logger.info(f"Loading PDF content with {words_per_file} words per file from {files_count} files")
-    yield "\n\n**📚 Loading PDF content with distributed word budget ...**\n\n"
+    # yield "\n\n**📚 Loading PDF content with distributed word budget ...**\n\n"
     
     for file_path in file_path_list:
         try:

@@ -64,7 +64,7 @@ async def generate_document_summary(file_path, embedding_folder, md_document=Non
     para = config['llm']
     llm = get_llm(para["level"], para)  # Using Advanced model for better quality
     api = ApiHandler(para)
-    max_tokens = int(api.models['advanced']['context_window']/2)
+    max_tokens = int(api.models['advanced']['context_window']/3)
     # max_tokens = int(65536/3)
     default_topics = config['default_topics']
 

@@ -339,7 +339,7 @@ def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_s
                                     "source": f"page_{page_stat['page_num']}",
                                     "page_type": "full_page",
                                     "total_pages": len(page_stats),
-                                    "file_path": str(output_dir),  # Add file path like LiteRAG
+                                    "file_path": str(output_dir),  # Add file path like RAG
                                     "start_char": start_pos,
                                     "end_char": end_pos,
                                     "total_chars": len(md_document),
@@ -415,7 +415,7 @@ def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_s
 
 async def generate_LiteRAG_embedding(_doc, file_path, embedding_folder):
     """
-    Generate LiteRAG embeddings for the document using page-level chunks.
+    Generate RAG embeddings for the document using page-level chunks.
     Each page becomes one chunk in the embedding.
     """
     config = load_config()
@@ -429,9 +429,9 @@ async def generate_LiteRAG_embedding(_doc, file_path, embedding_folder):
     embeddings = get_embedding_models('lite', para)
     
     if os.path.exists(faiss_path) and os.path.exists(pkl_path):
-        logger.info("LiteRAG embedding already exists. We can load existing embeddings...")
+        logger.info("RAG embedding already exists. We can load existing embeddings...")
     else:
-        logger.info("Creating LiteRAG embeddings using page-level chunks...")
+        logger.info("Creating RAG embeddings using page-level chunks...")
         
         # Extract document using the doc_processor function
         document = extract_document_from_file(file_path)
@@ -469,7 +469,7 @@ async def generate_LiteRAG_embedding(_doc, file_path, embedding_folder):
             db.save_local(lite_embedding_folder)
             logger.info(f"Saved {len(page_documents)} page-level chunks to {lite_embedding_folder}")
         else:
-            logger.warning("No page content found to create LiteRAG embeddings")
+            logger.warning("No page content found to create RAG embeddings")
 
 
 def validate_embedding_index_files(embedding_folder_list: list[str | Path], embedding_type: str = 'lite') -> tuple[list[str | Path], list[str | Path]]:

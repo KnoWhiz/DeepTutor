@@ -81,6 +81,22 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
     if len(file_path_list) > 1:
         chat_session.mode = ChatMode.LITE
 
+    # If the document number is 1 and its page number is more than 50, set the mode to LITE
+    if len(file_path_list) == 1:
+        try:
+            # Get the page count of the single document
+            from pipeline.science.pipeline.doc_processor import process_pdf_file
+            document, doc = process_pdf_file(file_path_list[0])
+            page_count = len(doc)
+            doc.close()
+            
+            if page_count > 50:
+                chat_session.mode = ChatMode.LITE
+                logger.info(f"Document has {page_count} pages (>50), switching to LITE mode")
+        except Exception as e:
+            logger.warning(f"Could not determine page count for document {file_path_list[0]}: {str(e)}")
+            # If we can't determine page count, keep the current mode
+
     # Route to appropriate specialized agent based on mode
     if chat_session.mode == ChatMode.LITE:
         return await tutor_agent_lite(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream)

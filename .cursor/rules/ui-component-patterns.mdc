@@ -93,7 +93,7 @@ uploaded_files = st.file_uploader(
 #### File Validation
 - 50MB size limit enforcement
 - PDF format validation
-- 800-page limit for documents
+- 1200-page limit for documents
 
 ### State Management Integration
 

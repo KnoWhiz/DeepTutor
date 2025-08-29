@@ -140,7 +140,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
         save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
     time_tracking["file_loading_save_text"] = time.time() - save_file_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-    yield "\n\n**📙 Loading documents done ...**\n\n"
+    # yield "\n\n**📙 Loading documents done ...**\n\n"
 
     # Process GraphRAG embeddings
     graphrag_start_time = time.time()

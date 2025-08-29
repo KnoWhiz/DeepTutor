@@ -120,7 +120,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
 
     # Compute hashed ID and prepare embedding folder
     yield "<thinking>"
-    yield "Processing documents ...\n\n"
+    # yield "Processing documents ...\n\n"
     hashing_start_time = time.time()
     file_id_list = [generate_file_id(file_path) for file_path in file_path_list]
     # path_prefix = os.getenv("FILE_PATH_PREFIX")
@@ -147,7 +147,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
     time_tracking["file_loading_save_text"] = time.time() - save_file_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-    yield "\n\n**📙 Loading documents done ...**\n\n"
+    # yield "\n\n**📙 Loading documents done ...**\n\n"
 
     # Process Markdown RAG embeddings
     basic_embedding_start_time = time.time()
@@ -181,9 +181,9 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     time_tracking["basic_embedding_total"] = time.time() - basic_embedding_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
     logger.info("Markdown RAG embeddings ready ...")
-    yield "\n\n**🔍 Markdown RAG embeddings ready ...**"
+    # yield "\n\n**🔍 Markdown RAG embeddings ready ...**"
     # yield "</thinking>"
-    yield "\n\n**🧠 Loading response ...**\n\n"
+    # yield "\n\n**🧠 Loading response ...**\n\n"
 
     chat_history = chat_session.chat_history
     context_chat_history = chat_history
@@ -233,7 +233,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     
     time_tracking["pdf_content_loading"] = time.time() - pdf_content_loading_start
     logger.info(f"PDF content loading complete. Time: {format_time_tracking(time_tracking)}")
-    yield "\n\n**📚 PDF content loading complete ...**\n\n"
+    # yield "\n\n**📚 PDF content loading complete ...**\n\n"
     yield "</thinking>"
 
     # Handle initial welcome message when chat history is empty or summary is requested

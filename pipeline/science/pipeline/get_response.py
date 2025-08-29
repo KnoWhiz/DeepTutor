@@ -284,8 +284,9 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         Only use the information from the context chunks to answer the question. Give the response in a scientific and academic tone. Do not make up or assume anything or guess without any evidence. If you answer some questions based on your own knowledge, clearly state that you are using your own knowledge.
 
         Format requirement:
-        1. Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like {example_keys}, etc>]" at the end of the sentence after the period mark. If there are more than one context chunk keys, use the format "[<chunk_key_1>][<chunk_key_2>] ..." to cite all the context chunk keys.
-        2. Use markdown syntax for formatting the response to make it more clear and readable.
+        1. Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like {example_keys}, etc>]" at the end of the sentence after the period mark. If there are more than one context chunk keys, use the format "[<chunk_key_1>][<chunk_key_2>](...<one sentence from the source content>...)" to cite all the context chunk keys.
+        2. Use bold to emphasize the important information in the response and improve readability.
+        3. Use markdown syntax for formatting the response to make it more clear and readable.
 
         Reference context chunks with relevance scores from the paper: 
         {formatted_context_string}

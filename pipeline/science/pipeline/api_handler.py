@@ -64,7 +64,7 @@ class ApiHandler:
                 api_key=api_key,
                 model_name=deployment_name,
                 temperature=temperature,
-                max_tokens=20000,
+                max_tokens=12768,
                 model_kwargs={"stream_options": {"include_usage": True}} if stream else {}
             )
         elif host == 'azure':
@@ -75,7 +75,7 @@ class ApiHandler:
                 azure_deployment=deployment_name,
                 temperature=temperature,
                 streaming=stream,
-                max_tokens=20000,
+                max_tokens=12768,
                 model_kwargs={"stream_options": {"include_usage": True}} if stream else {}
             )
         elif host == 'sambanova':

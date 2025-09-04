@@ -88,7 +88,7 @@ def main():
     try:
         streamlit_app = current_dir / "streamlit_chatbot.py"
         subprocess.run([
-            "streamlit", "run", str(streamlit_app),
+            "python", "-m", "streamlit", "run", str(streamlit_app),
             "--server.port", "8501",
             "--server.address", "localhost",
             "--browser.gatherUsageStats", "false"

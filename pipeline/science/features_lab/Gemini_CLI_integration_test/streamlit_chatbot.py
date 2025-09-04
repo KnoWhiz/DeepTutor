@@ -61,7 +61,7 @@ def handle_file_upload():
         # Check if this is a new file
         if uploaded_file.name not in [f["name"] for f in st.session_state.uploaded_files]:
             
-            with st.sidebar.spinner(f"Processing {uploaded_file.name}..."):
+            with st.spinner(f"Processing {uploaded_file.name}..."):
                 try:
                     if uploaded_file.type == "application/pdf":
                         # Convert PDF to text

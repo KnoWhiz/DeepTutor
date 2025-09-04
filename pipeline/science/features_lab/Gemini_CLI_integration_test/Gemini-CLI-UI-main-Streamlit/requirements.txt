@@ -1,0 +1,12 @@
+# Core Python dependencies for Gemini CLI Agent
+# No external dependencies required - uses only Python standard library
+
+# Optional dependencies for enhanced functionality:
+# streamlit>=1.28.0  # For creating web UI
+# requests>=2.31.0   # For HTTP requests (if needed for API calls)
+# typing-extensions>=4.0.0  # For enhanced type hints on older Python versions
+
+# Development dependencies:
+# pytest>=7.0.0      # For testing
+# black>=23.0.0      # For code formatting
+# mypy>=1.0.0        # For type checking 

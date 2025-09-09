@@ -7,6 +7,9 @@ alwaysApply: false
 
 ## Environment Configuration
 
+For test purpose, you can use deeptutor environment via: conda activate deeptutor.
+In this environment we already have @requirements.txt 
+
 ### Environment Types
 DeepTutor supports three deployment environments controlled by the `ENVIRONMENT` variable:
 

@@ -40,3 +40,6 @@ openai==1.65.1
 opencv-python-headless==4.8.1.78
 unstructured==0.17.2
 anthropic==0.42.0
+requests==2.32.3
+beautifulsoup4==4.12.3
+streamlit-chat==0.1.1

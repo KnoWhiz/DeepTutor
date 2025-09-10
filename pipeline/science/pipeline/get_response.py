@@ -266,9 +266,10 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         $$
         ...
         $$
-        and make sure latex syntax can be properly rendered in the response.
+        and MUST make sure latex syntax can be properly rendered, and ALL formulas are wrapped in "$" or "$$" markers in the response.
 
         RESPONSE GUIDELINES:
+        0. IMPORTANT: At the beginning of the response, use one or two sentences to quickly give a short and concise answer to the question (as TL;DR) so the student can quickly understand the answer before going into the details.
         1. Provide concise, accurate answers directly addressing the question
         2. Use clear, precise language with appropriate technical terminology
         3. Format key concepts and important points in **bold**
@@ -277,19 +278,27 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         6. When explaining technical concepts, include relevant examples or applications
         7. Clearly state limitations of explanations when uncertainty exists
         8. Use bullet points or numbered lists for sequential explanations
-        9. Cite specific parts of the document when directly referencing content
         Your goal is to deliver accurate, clear, and professionally structured responses that enhance comprehension of complex topics.
 
         Requirement:
-        Only use the information from the context chunks to answer the question. Give the response in a scientific and academic tone. Do not make up or assume anything or guess without any evidence. If you answer some questions based on your own knowledge, clearly state that you are using your own knowledge.
+        Give the response in a scientific and academic tone. Do not make up or assume anything or guess without any evidence. 
 
-        Format requirement:
-        1. Make sure each sentence in the response there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<chunk_key, like {example_keys}, etc>]" at the end of the sentence after the period mark. If there are more than one context chunk keys, use the format "[<chunk_key_1>][<chunk_key_2>](_...<one sentence from the source content, in italic format>..._)" to cite all the context chunk keys.
-        2. Use bold to emphasize the important information in the response and improve readability.
-        3. Use markdown syntax for formatting the response to make it more clear and readable.
+        Case 1: If the answer can be answered with the context chunks, only use the information from the context chunks to answer the question. In that case, follow the format requirement below.
+            Format requirement if question can be answered with the context chunks:
+            1. Strictly ensure that for each sentence in the response, there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<1>], [<2>], [<3>], [<4>], etc." at the end of the sentence after the period mark. If there are more than one context chunk keys, use the format "[<1>][<2>]...[<n>]" to cite all the context chunk keys. 
+            2. For each source citation key (like [<1>], [<2>], etc.), append the corresponding source content in one sentence (wrapped in brackets, quotes, and use italics) after the citation key. For example ("_...<one sentence from the source content, in italic format>..._")
+            3. Use bold or underline or bullet points in markdown syntax to emphasize the important information in the response and improve readability.
+            4. Use markdown syntax for formatting the response to make it more clear and readable.
+
+        Case 2: If the answer cannot be answered with the context chunks, you can answer the question with your own knowledge. In that case, follow the format requirement below.
+            Format requirement if question cannot be answered with the context chunks:
+            1. Clearly state that you are using your own knowledge to answer the question.
+            2. Use bold or underline or bullet points in markdown syntax to emphasize the important information in the response and improve readability.
+            3. Use markdown syntax for formatting the response to make it more clear and readable.
 
         Reference context chunks with relevance scores from the paper: 
         {formatted_context_string}
+
         The student's query is: {user_input_string}
         """
         # prompt = ChatPromptTemplate.from_template(prompt)

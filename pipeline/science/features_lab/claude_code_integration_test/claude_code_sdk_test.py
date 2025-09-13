@@ -379,8 +379,8 @@ def get_claude_code_response(
 ) -> Generator[str, None, None]:
     codebase_folder_dir = file_path_list[0]
     # pass the API key to the Claude Code process
-    load_dotenv()
-    API_KEY = os.getenv("ANTHROPIC_API_KEY")
+    load_dotenv(".env")
+    API_KEY = str(os.getenv("ANTHROPIC_API_KEY"))
     print(f"API_KEY: {API_KEY}")
     opts = ClaudeCodeOptions(
         env={"ANTHROPIC_API_KEY": API_KEY},

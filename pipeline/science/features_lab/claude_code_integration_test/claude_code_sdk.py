@@ -371,160 +371,11 @@ def get_claude_code_response(
     deep_thinking: bool = True,
     stream: bool = True
 ) -> Generator[str, None, None]:
-    """
-    Generate a response using Claude Code SDK for code analysis and generation.
-    
-    This function provides the same interface as get_response but uses Claude Code SDK
-    for enhanced code understanding and generation capabilities.
-    
-    Args:
-        chat_session: ChatSession object containing session information
-        file_path_list: List of file paths to analyze
-        question: Question object containing the user's question
-        chat_history: List of previous chat messages
-        codebase_folder_dir: Path to the codebase folder for context
-        deep_thinking: Whether to use deep thinking mode (not used in this implementation)
-        stream: Whether to return a streaming generator (always True for this implementation)
-    
-    Yields:
-        str: Streaming response chunks
-    """
-    try:
-        # Check if dependencies are available
-        if Anthropic is None:
-            raise ImportError("Anthropic library not available. Please install: pip install anthropic")
-        
-
-        # Load .env file from the project root directory
-        env_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", ".env")
-        
-        # Force override existing environment variables to ensure we use the correct API key
-        load_dotenv(env_path, override=True)
-        
-        # Initialize Claude client
-        api_key = os.getenv("ANTHROPIC_API_KEY")
-        if not api_key:
-            raise ValueError("ANTHROPIC_API_KEY not found in environment variables")
-        
-        client = Anthropic(api_key=api_key)
-        
-        # Prepare the user input
-        user_input = question.text
-        user_input_string = str(user_input + "\n\n" + question.special_context)
-        
-        # Build context from uploaded files
-        context_files = []
-        for file_path in file_path_list:
-            if os.path.exists(file_path):
-                try:
-                    with open(file_path, 'r', encoding='utf-8') as f:
-                        content = f.read()
-                    context_files.append({
-                        "path": file_path,
-                        "content": content
-                    })
-                except Exception as e:
-                    logger.warning(f"Could not read file {file_path}: {e}")
-        
-        # Add codebase folder context if provided
-        if codebase_folder_dir and os.path.exists(codebase_folder_dir):
-            try:
-                # Get all Python files in the codebase folder
-                for root, dirs, files in os.walk(codebase_folder_dir):
-                    for file in files:
-                        if file.endswith('.py'):
-                            file_path = os.path.join(root, file)
-                            try:
-                                with open(file_path, 'r', encoding='utf-8') as f:
-                                    content = f.read()
-                                context_files.append({
-                                    "path": file_path,
-                                    "content": content
-                                })
-                            except Exception as file_error:
-                                logger.warning(f"Could not read codebase file {file_path}: {file_error}")
-            except Exception as folder_error:
-                logger.warning(f"Could not process codebase folder {codebase_folder_dir}: {folder_error}")
-        
-        # Build the system prompt
-        system_prompt = """You are an expert code analysis and generation assistant. You have access to the user's codebase and uploaded files. 
-
-Your capabilities include:
-- Analyzing code structure and patterns
-- Generating code based on requirements
-- Explaining complex code logic
-- Suggesting improvements and optimizations
-- Debugging and fixing issues
-- Creating documentation and comments
-
-Guidelines:
-1. Provide clear, accurate, and helpful responses
-2. Use proper code formatting with syntax highlighting
-3. Explain your reasoning when generating or modifying code
-4. Consider best practices and coding standards
-5. Be specific about file locations and line numbers when relevant
-6. Use markdown formatting for better readability
-
-Always provide practical, actionable advice that helps the user understand and improve their code."""
-
-        # Build the user message with context
-        user_message = f"""User Question: {user_input_string}
-
-Context from uploaded files and codebase:
-"""
-        
-        for file_info in context_files[:10]:  # Limit to first 10 files to avoid token limits
-            user_message += f"\n--- File: {file_info['path']} ---\n"
-            user_message += file_info['content'][:2000] + "\n"  # Limit content length
-        
-        if len(context_files) > 10:
-            user_message += f"\n... and {len(context_files) - 10} more files"
-        
-        # Add chat history context
-        if chat_history:
-            user_message += "\n\nPrevious conversation:\n"
-            for msg in chat_history[-5:]:  # Last 5 messages
-                if isinstance(msg, dict):
-                    role = msg.get('role', 'user')
-                    content = msg.get('content', '')
-                    user_message += f"{role}: {content}\n"
-        
-        # Create the streaming response
-        def process_stream():
-            try:
-                yield "<response>\n\n"
-                
-                # Use Claude Code SDK for streaming response
-                with client.messages.stream(
-                    model="claude-3-5-sonnet-20241022",
-                    max_tokens=4000,
-                    system=system_prompt,
-                    messages=[{"role": "user", "content": user_message}]
-                ) as stream:
-                    for event in stream:
-                        if event.type == "content_block_delta":
-                            if hasattr(event.delta, 'text'):
-                                yield event.delta.text
-                        elif event.type == "message_stop":
-                            break
-                
-                yield "\n\n</response>"
-                
-            except Exception as e:
-                logger.error(f"Error in Claude Code SDK streaming: {e}")
-                yield f"Error: {str(e)}\n\n</response>"
-        
-        return process_stream()
-        
-    except Exception as e:
-        logger.error(f"Error in get_claude_code_response: {e}")
-        error_message = str(e)
-        
-        def error_stream():
-            yield "<response>\n\n"
-            yield f"Error: {error_message}\n\n</response>"
-        
-        return error_stream()
+    def generate_response():
+        yield "<response>"
+        yield "Here is the flow of the code"
+        yield "</response>"
+    return generate_response()
 
 
 # Example usage and testing function
@@ -551,7 +402,7 @@ def test_claude_code_sdk():
     ]
     
     # Codebase folder directory
-    codebase_dir = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/pipeline/science/pipeline"
+    codebase_dir = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/pipeline/science/features_lab/claude_code_integration_test/test_files"
     
     # Empty chat history for testing
     chat_history = []

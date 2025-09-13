@@ -13,6 +13,7 @@ import logging
 from dotenv import load_dotenv
 import json
 import uuid
+from claude_code_sdk import query, ClaudeCodeOptions
 
 try:
     from bson import ObjectId

@@ -555,8 +555,8 @@ def test_claude_code_sdk():
         chat_session=session,
         file_path_list=file_paths,
         question=question,
-            chat_history=chat_history,
-            codebase_folder_dir=codebase_dir,
+        chat_history=chat_history,
+        codebase_folder_dir=codebase_dir,
         deep_thinking=True,
         stream=True
         )

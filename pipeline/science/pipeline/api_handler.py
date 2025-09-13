@@ -119,14 +119,14 @@ class ApiHandler:
                                     stream=self.para['stream'])
         llm_advance = self.get_models(api_key=self.azure_api_key_backup,
                                       temperature=self.para['temperature'],
-                                      deployment_name='gpt-4.1',
+                                      deployment_name='gpt-5-chat',
                                       endpoint=self.azure_endpoint_backup,
                                       api_version='2024-12-01-preview',
                                       host='azure',
                                       stream=self.para['stream'])
         llm_creative = self.get_models(api_key=self.azure_api_key_backup,
                                       temperature=self.para['creative_temperature'],
-                                      deployment_name='gpt-4.1',
+                                      deployment_name='gpt-5-chat',
                                       endpoint=self.azure_endpoint_backup,
                                       api_version='2024-12-01-preview',
                                       host='azure',

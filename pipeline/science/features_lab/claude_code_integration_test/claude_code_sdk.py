@@ -11,6 +11,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 import logging
 from dotenv import load_dotenv
+import json
+import uuid
 
 try:
     from bson import ObjectId
@@ -24,6 +26,121 @@ except ImportError as e:
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+def get_chat_history_path(session_id: str) -> str:
+    """Get the full path for a chat history file.
+
+    Args:
+        session_id: Unique identifier for the chat session
+
+    Returns:
+        str: Full path to the chat history JSON file
+    """
+    base_dir = os.path.join(os.path.dirname(__file__), "chat_history")
+    return os.path.join(base_dir, f"{session_id}.json")
+
+
+def create_session_id() -> str:
+    """Create a unique session ID using timestamp and UUID.
+
+    Returns:
+        str: Unique session identifier
+    """
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    unique_id = str(uuid.uuid4())[:8]
+    return f"chat_session_{timestamp}_{unique_id}"
+
+
+def save_chat_history(session_id: str, chat_history: List[Dict]) -> None:
+    """Save chat history to a JSON file.
+
+    Args:
+        session_id: Unique identifier for the chat session
+        chat_history: List of chat messages with their metadata
+    """
+    if not chat_history:
+        return
+
+    file_path = get_chat_history_path(session_id)
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
+    try:
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump({
+                "session_id": session_id,
+                "last_updated": datetime.now().isoformat(),
+                "messages": chat_history
+            }, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        logger.info(f"Error saving chat history: {e}")
+
+
+def load_chat_history(session_id: str) -> Optional[List[Dict]]:
+    """Load chat history from a JSON file.
+
+    Args:
+        session_id: Unique identifier for the chat session
+
+    Returns:
+        Optional[List[Dict]]: List of chat messages if file exists, None otherwise
+    """
+    file_path = get_chat_history_path(session_id)
+
+    if not os.path.exists(file_path):
+        return None
+
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return data.get("messages", [])
+    except Exception as e:
+        logger.info(f"Error loading chat history: {e}")
+        return None
+
+
+def delete_chat_history(session_id: str) -> bool:
+    """Delete a chat history file.
+
+    Args:
+        session_id: Unique identifier for the chat session
+
+    Returns:
+        bool: True if deletion was successful, False otherwise
+    """
+    file_path = get_chat_history_path(session_id)
+
+    if not os.path.exists(file_path):
+        return False
+
+    try:
+        os.remove(file_path)
+        return True
+    except Exception as e:
+        logger.info(f"Error deleting chat history: {e}")
+        return False
+
+
+def cleanup_old_sessions() -> None:
+    """Clean up chat history files older than 24 hours."""
+    base_dir = os.path.join(os.path.dirname(__file__), "chat_history")
+    if not os.path.exists(base_dir):
+        return
+
+    current_time = datetime.now()
+
+    for filename in os.listdir(base_dir):
+        if not filename.endswith(".json"):
+            continue
+
+        file_path = os.path.join(base_dir, filename)
+        try:
+            # Check file modification time
+            file_time = datetime.fromtimestamp(os.path.getmtime(file_path))
+            # Delete if older than 24 hours
+            if (current_time - file_time).total_seconds() > 86400:  # 24 hours in seconds
+                os.remove(file_path)
+        except Exception as e:
+            logger.info(f"Error cleaning up old session {filename}: {e}")
 
 # Copy Question class from utils.py
 class Question:
@@ -86,6 +203,7 @@ def create_session_id() -> str:
     """Create a unique session ID."""
     return str(ObjectId())
 
+# Copy ChatSession class from session_manager.py
 @dataclass
 class ChatSession:
     """Class to manage all chat session related information.
@@ -122,25 +240,30 @@ class ChatSession:
             return
 
         # Load existing chat history if available
-        # For this implementation, we'll skip loading from file
+        loaded_history = load_chat_history(self.session_id)
+        if loaded_history:
+            self.chat_history = loaded_history
+
         self.is_initialized = True
 
     def add_message(self, message: Dict) -> None:
         """Add a new message to the chat history.
-        
+
         Args:
             message: Dictionary containing message data
         """
         self.chat_history.append(message)
+        save_chat_history(self.session_id, self.chat_history)
 
     def clear_history(self) -> None:
         """Clear the chat history."""
         self.chat_history = []
+        delete_chat_history(self.session_id)
         self.accumulated_cost = 0.0  # Reset accumulated cost when history is cleared
 
     def set_mode(self, mode: ChatMode) -> None:
         """Set the chat mode.
-        
+
         Args:
             mode: New chat mode to set
         """
@@ -156,7 +279,7 @@ class ChatSession:
 
     def remove_file(self, file_path: str) -> None:
         """Remove a file from the session's uploaded files.
-        
+
         Args:
             file_path: Path to the file to remove
         """
@@ -211,14 +334,14 @@ class ChatSession:
     @classmethod
     def from_dict(cls, data: Dict) -> "ChatSession":
         """Create a ChatSession instance from dictionary data.
-        
+
         Args:
             data: Dictionary containing session state information
 
         Returns:
             ChatSession instance initialized with the provided data
         """
-        if "current_message" not in data:
+        if not "current_message" in data:
             data["current_message"] = ""
         # Set default accumulated_cost if not present in data
         accumulated_cost = data.get("accumulated_cost", 0.0)

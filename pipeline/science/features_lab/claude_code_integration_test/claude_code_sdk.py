@@ -366,14 +366,23 @@ def get_claude_code_response(
     chat_session: ChatSession,
     file_path_list: List[str], 
     question: Question,
-    chat_history: List[Dict], 
-    codebase_folder_dir: str,
+    chat_history: str, 
     deep_thinking: bool = True,
     stream: bool = True
 ) -> Generator[str, None, None]:
+    codebase_folder_dir = file_path_list[0]
     def generate_response():
         yield "<response>"
-        yield "Here is the flow of the code"
+        yield "Here is the place holder response chunk 1 from claude code sdk"
+        yield "Here is the place holder response chunk 2 from claude code sdk"
+        yield "Here is the place holder response chunk 3 from claude code sdk"
+        yield "Here is the place holder response chunk 4 from claude code sdk"
+        yield "Here is the place holder response chunk 5 from claude code sdk"
+        yield "Here is the place holder response chunk 6 from claude code sdk"
+        yield "Here is the place holder response chunk 7 from claude code sdk"
+        yield "Here is the place holder response chunk 8 from claude code sdk"
+        yield "Here is the place holder response chunk 9 from claude code sdk"
+        yield "Here is the place holder response chunk 10 from claude code sdk"
         yield "</response>"
     return generate_response()
 
@@ -396,16 +405,11 @@ def test_claude_code_sdk():
         special_context="Focus on code quality and best practices"
     )
     
-    # Test file paths (adjust these to your actual files)
-    file_paths = [
-        # "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/pipeline/science/pipeline/get_response.py"
-    ]
-    
     # Codebase folder directory
     codebase_dir = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/pipeline/science/features_lab/claude_code_integration_test/test_files"
     
     # Empty chat history for testing
-    chat_history = []
+    chat_history = """chat history"""
     
     # Test the function
     print("Testing Claude Code SDK chatbot...")
@@ -414,10 +418,9 @@ def test_claude_code_sdk():
     try:
         response_generator = get_claude_code_response(
             chat_session=session,
-            file_path_list=file_paths,
+            file_path_list=[codebase_dir],
             question=question,
             chat_history=chat_history,
-            codebase_folder_dir=codebase_dir,
             deep_thinking=True,
             stream=True
         )

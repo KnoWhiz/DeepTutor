@@ -1,144 +1,148 @@
-from __future__ import annotations
-from typing import Dict, Generator, Optional, List
-import json, os, pathlib
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import argparse
+import json
+import os
+import sys
+from typing import List, Optional
 from dotenv import load_dotenv
-from openai import OpenAI
+from openai import OpenAI, OpenAIError
 
 load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-SYSTEM_INSTRUCTIONS = """\
-你是严谨的研究助理。优先基于提供的context回答；若context不足，再使用web search补全证据。
-使用了web信息时，请在答案结尾给出来源要点（站点名/标题）。"""
 
-def _extract_text_from_final_obj(final_obj) -> str:
-    # 1) try convenience property (may be absent)
-    try:
-        txt = getattr(final_obj, "output_text", None)
-        if txt:
-            return txt
-    except Exception:
-        pass
-    # 2) traverse canonical structure
-    try:
-        d = final_obj.to_dict() if hasattr(final_obj, "to_dict") else final_obj
-        chunks: List[str] = []
-        for out in d.get("output", []):
-            for part in out.get("content", []):
-                # model output is usually under type "output_text"
-                if part.get("type") in ("output_text", "text"):
-                    if isinstance(part.get("text"), str):
-                        chunks.append(part["text"])
-        return "".join(chunks)
-    except Exception:
-        return ""
+SYSTEM_PROMPT = (
+    "你是严谨的信息研究助理。需要实时或外部信息时先使用 web_search 工具；"
+    "整合检索结果后输出清晰要点，并在关键结论后给出可点击的来源注释。"
+    "如果证据不足，要明确说明不确定性并给出下一步可验证的线索。"
+)
 
-def stream_chat_with_context(
+def build_tools(sites: Optional[List[str]], use_preview: bool):
+    """
+    返回 tools 配置：
+    - 默认使用官方托管的 web_search
+    - 若提供 --sites 白名单，则以预览配置形式传入（不同版本字段名略有变化，脚本做了兼容处理）
+    """
+    if sites:
+        # 预览版/带参数的 Web Search（允许传入站点白名单、位置等）
+        return [{
+            "type": "web_search_preview",
+            # 一些常用可选项（按需增减；不同版本 SDK 字段名可能略有差异）
+            "sites": sites,                     # 仅搜索这些站点
+            "search_context_size": "medium",    # 返回上下文规模：small/medium/large
+            "user_location": {                  # 近似位置（用于本地化结果排序）
+                "type": "approximate",
+                "country": "US",
+                "region": "CA",
+                "city": "Berkeley"
+            }
+        }]
+    else:
+        # 最小可用：一行开启托管 Web Search
+        return [{"type": "web_search"}]
+
+
+def call_responses_once(
+    client: OpenAI,
     query: str,
-    context: str,
-    *,
-    model: str = "gpt-5",
-    reasoning_effort: str = "medium",      # minimal | low | medium | high
-    verbosity: str = "medium",             # low | medium | high
-    max_output_tokens: int = 4000,
-    enable_web_search: bool = True,
-    debug_tool_calls: bool = False,
-) -> Generator[Dict, None, None]:
-    """
-    Yield events:
-      - {"type":"text.delta","text":...}
-      - {"type":"tool.delta","delta":...}      # if debug_tool_calls=True
-      - {"type":"error","error":{...}}
-      - {"type":"final","output_text":str,"raw":dict|None}
-    """
-    tools = [{"type": "web_search"}] if enable_web_search else []
+    model: str,
+    sites: Optional[List[str]] = None,
+    stream: bool = False,
+):
+    tools = build_tools(sites, use_preview=bool(sites))
+
+    # 构造 Responses API 输入（messages/role 风格由 SDK 统一到 input）
+    payload = dict(
+        model=model,
+        input=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": query},
+        ],
+        tools=tools,
+        parallel_tool_calls=True,
+        # 开启“可显示的推理摘要”（不会泄露原始 chain-of-thought）
+        reasoning={"effort": "medium", "summary": "auto"},
+    )
+
+    if not stream:
+        resp = client.responses.create(**payload)
+        print("\n=== Final Answer ===\n")
+        print(resp.output_text.strip())
+        # 尝试附加“推理摘要”（不同模型/权限下可能为空）
+        try:
+            rs = getattr(resp, "reasoning", None)
+            if rs and getattr(rs, "summary", None):
+                print("\n--- Reasoning Summary ---\n" + rs.summary.strip())
+        except Exception:
+            pass
+        return
+
+    # 流式输出：逐步显示“开始推理/正在搜索/整合证据/最终答案…”
+    print("• 开始推理…")
     try:
-        with client.responses.stream(
-            model=model,
-            reasoning={"effort": reasoning_effort},
-            text={"verbosity": verbosity},          # do NOT send temperature to gpt-5
-            instructions=SYSTEM_INSTRUCTIONS,
-            tools=tools,
-            tool_choice="auto" if tools else "none",
-            max_output_tokens=max_output_tokens,
-            input=[
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "input_text",
-                         "text": f"[Context]\n{context}\n\n[Query]\n{query}"}
-                    ],
-                }
-            ],
-        ) as stream:
-            saw_text = False
-
-            for event in stream:
-                et = getattr(event, "type", None)
-
-                if et == "response.output_text.delta":
-                    saw_text = True
-                    yield {"type": "text.delta", "text": event.delta}
-
-                elif et == "response.function_call_arguments.delta":
-                    if debug_tool_calls:
-                        yield {"type": "tool.delta", "delta": event.delta}
-
-                elif et == "response.refusal.delta":
-                    saw_text = True
-                    yield {"type": "text.delta", "text": event.delta}
-
-                elif et == "response.error":
-                    yield {"type": "error", "error": event.error}
-
-                # (Optional) marker when model finishes emitting text
-                elif et == "response.output_text.done":
+        with client.responses.stream(**payload) as stream_obj:
+            for event in stream_obj:
+                et = getattr(event, "type", "")
+                # 这些事件名以官方 SDK 为准；不同版本可能略有差异
+                if et == "response.created":
+                    print("• 会话已创建")
+                elif et == "response.tool_call.created":
+                    print("• 正在联网搜索…")
+                elif et == "response.tool_call.delta":
+                    # 某些版本会给出逐步的工具调用增量（可忽略或做更细日志）
                     pass
+                elif et == "response.tool_call.completed":
+                    print("• 搜索完成，正在整合证据…")
+                elif et == "response.output_text.delta":
+                    # 逐字输出正文
+                    sys.stdout.write(event.delta)
+                    sys.stdout.flush()
+                elif et == "response.completed":
+                    print("\n• 完成")
+            final = stream_obj.get_final_response()
+            # 可选：输出“推理摘要”
+            try:
+                rs = getattr(final, "reasoning", None)
+                if rs and getattr(rs, "summary", None):
+                    print("\n--- Reasoning Summary ---\n" + rs.summary.strip())
+            except Exception:
+                pass
 
-            final = stream.get_final_response()
-            # robust fallback: extract text from the canonical structure
-            output_text = _extract_text_from_final_obj(final)
-            raw = final.to_dict() if hasattr(final, "to_dict") else None
+    except OpenAIError as e:
+        # 常见：账户暂未开通 web_search；给出友好提示并回退到非联网回答
+        msg = str(e)
+        print(f"\n[Warn] 流式失败：{msg}\n改用非流式/可能不联网的方式重试…\n")
+        resp = client.responses.create(**payload)
+        print(resp.output_text.strip())
 
-            # If you got no text deltas and still no text, dump raw for inspection
-            if not saw_text and not output_text and raw:
-                dump_path = pathlib.Path("/tmp/last_final.json")
-                try:
-                    dump_path.write_text(json.dumps(raw, ensure_ascii=False, indent=2))
-                except Exception:
-                    pass  # best-effort debugging
 
-            yield {"type": "final", "output_text": output_text, "raw": raw}
+def main():
+    parser = argparse.ArgumentParser(
+        description="Responses API + Web Search：边检索边推理的本地脚本"
+    )
+    parser.add_argument("query", type=str, help="你的问题/调研任务")
+    parser.add_argument("--model", type=str, default="gpt-5",
+                        help="模型（如 gpt-5 / gpt-5-thinking / o4-mini 等）")
+    parser.add_argument("--stream", action="store_true",
+                        help="流式输出进度与逐字文本")
+    parser.add_argument("--sites", nargs="*", default=None,
+                        help="仅在这些站点检索（空格分隔，如：arxiv.org aps.org berkeley.edu）")
+    args = parser.parse_args()
 
-    except Exception as e:
-        yield {"type": "error", "error": {"message": str(e), "exc_type": type(e).__name__}}
+    if not os.getenv("OPENAI_API_KEY"):
+        print("ERROR: 请先在环境变量中设置 OPENAI_API_KEY")
+        sys.exit(1)
 
-def load_context():
-    with open("/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/pipeline/science/features_lab/Responses_API_test/context.txt", "r") as f:
-        return f.read()
+    client = OpenAI()  # 会自动从 OPENAI_API_KEY 读取密钥
+    call_responses_once(
+        client=client,
+        query=args.query,
+        model=args.model,
+        sites=args.sites,
+        stream=args.stream,
+    )
+
 
 if __name__ == "__main__":
-    # For context, load from "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/pipeline/science/features_lab/PDF_translate_test/test_document.pdf"
-    ctx = load_context()
-    print(ctx)
-    buf = []
-    for ev in stream_chat_with_context(
-        "联网搜索Bingran You的信息",
-        ctx,
-        reasoning_effort="high",
-        verbosity="medium",
-        enable_web_search=True,
-        debug_tool_calls=True,
-    ):
-        t = ev["type"]
-        if t == "text.delta":
-            buf.append(ev["text"])
-            print(ev["text"], end="", flush=True)
-        elif t == "tool.delta":
-            print(f"\n[TOOL ARGS] {ev['delta']}", flush=True)
-        elif t == "error":
-            print(f"\n[ERROR] {ev['error']}", flush=True)
-        elif t == "final":
-            if not buf and ev.get("output_text"):
-                print(ev["output_text"], end="", flush=True)
-            print("\n---\n[FINAL META READY]")
+    main()

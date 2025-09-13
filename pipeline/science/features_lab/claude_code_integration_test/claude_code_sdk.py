@@ -199,8 +199,8 @@ class ChatMode:
     BASIC = "basic"
     ADVANCED = "advanced"
 
-def create_session_id() -> str:
-    """Create a unique session ID."""
+def create_session_id_from_objectid() -> str:
+    """Create a unique session ID using ObjectId."""
     return str(ObjectId())
 
 # Copy ChatSession class from session_manager.py
@@ -221,7 +221,7 @@ class ChatSession:
         accumulated_cost: Total accumulated cost for the current session
     """
 
-    session_id: str = field(default_factory=create_session_id)
+    session_id: str = field(default_factory=create_session_id_from_objectid)
     mode: ChatMode = ChatMode.BASIC # ChatMode.LITE, ChatMode.BASIC or ChatMode.ADVANCED
     chat_history: List[Dict] = field(default_factory=list)
     uploaded_files: Set[str] = field(default_factory=set)
@@ -341,7 +341,7 @@ class ChatSession:
         Returns:
             ChatSession instance initialized with the provided data
         """
-        if not "current_message" in data:
+        if "current_message" not in data:
             data["current_message"] = ""
         # Set default accumulated_cost if not present in data
         accumulated_cost = data.get("accumulated_cost", 0.0)
@@ -395,9 +395,18 @@ def get_claude_code_response(
             raise ImportError("Anthropic library not available. Please install: pip install anthropic")
         
 
-        load_dotenv()
+        # Load .env file from the project root directory
+        env_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", ".env")
+        
+        # Force override existing environment variables to ensure we use the correct API key
+        load_dotenv(env_path, override=True)
+        
         # Initialize Claude client
-        client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        api_key = os.getenv("ANTHROPIC_API_KEY")
+        if not api_key:
+            raise ValueError("ANTHROPIC_API_KEY not found in environment variables")
+        
+        client = Anthropic(api_key=api_key)
         
         # Prepare the user input
         user_input = question.text
@@ -529,7 +538,8 @@ def test_claude_code_sdk():
     
     # Create a test question
     question = Question(
-        text="Can you analyze the code structure and suggest improvements?",
+        # text="Can you analyze the code structure and suggest improvements?",
+        text="Review the codebase and draw the flow of the code",
         language="English",
         question_type="global",
         special_context="Focus on code quality and best practices"
@@ -537,7 +547,7 @@ def test_claude_code_sdk():
     
     # Test file paths (adjust these to your actual files)
     file_paths = [
-        "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/pipeline/science/pipeline/get_response.py"
+        # "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/pipeline/science/pipeline/get_response.py"
     ]
     
     # Codebase folder directory

@@ -13,7 +13,6 @@ import logging
 from dotenv import load_dotenv
 import json
 import uuid
-from claude_code_sdk import query, ClaudeCodeOptions
 
 try:
     from bson import ObjectId
@@ -23,6 +22,13 @@ except ImportError as e:
     print("Please install: pip install anthropic pymongo")
     ObjectId = None
     Anthropic = None
+
+import os, asyncio
+from claude_code_sdk import (
+    query,
+    ClaudeSDKClient, ClaudeCodeOptions,
+    AssistantMessage, TextBlock, ResultMessage
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -372,19 +378,27 @@ def get_claude_code_response(
     stream: bool = True
 ) -> Generator[str, None, None]:
     codebase_folder_dir = file_path_list[0]
+    # pass the API key to the Claude Code process
+    load_dotenv()
+    API_KEY = os.getenv("ANTHROPIC_API_KEY")
+    print(f"API_KEY: {API_KEY}")
+    opts = ClaudeCodeOptions(
+        env={"ANTHROPIC_API_KEY": API_KEY},
+        permission_mode="plan"  # safe: read/plan only, no file edits/exec
+    )
     def generate_response():
-        yield "<response>"
-        yield "Here is the place holder response chunk 1 from claude code sdk"
-        yield "Here is the place holder response chunk 2 from claude code sdk"
-        yield "Here is the place holder response chunk 3 from claude code sdk"
-        yield "Here is the place holder response chunk 4 from claude code sdk"
-        yield "Here is the place holder response chunk 5 from claude code sdk"
-        yield "Here is the place holder response chunk 6 from claude code sdk"
-        yield "Here is the place holder response chunk 7 from claude code sdk"
-        yield "Here is the place holder response chunk 8 from claude code sdk"
-        yield "Here is the place holder response chunk 9 from claude code sdk"
-        yield "Here is the place holder response chunk 10 from claude code sdk"
-        yield "</response>"
+        yield "<response>\n"
+        yield "Here is the place holder response chunk 1 from claude code sdk\n"
+        yield "Here is the place holder response chunk 2 from claude code sdk\n"
+        yield "Here is the place holder response chunk 3 from claude code sdk\n"
+        yield "Here is the place holder response chunk 4 from claude code sdk\n"
+        yield "Here is the place holder response chunk 5 from claude code sdk\n"
+        yield "Here is the place holder response chunk 6 from claude code sdk\n"
+        yield "Here is the place holder response chunk 7 from claude code sdk\n"
+        yield "Here is the place holder response chunk 8 from claude code sdk\n"
+        yield "Here is the place holder response chunk 9 from claude code sdk\n"
+        yield "Here is the place holder response chunk 10 from claude code sdk\n"
+        yield "</response>\n"
     return generate_response()
 
 

@@ -1,290 +1,451 @@
-"""Claude Code SDK integration for DeepTutor.
+"""
+Claude Code SDK Chatbot Implementation
 
-This module provides a chatbot implementation using Claude's API with code analysis capabilities.
-It maintains compatibility with the existing get_response function interface.
+This module implements a chatbot using the Claude Code SDK for code analysis and generation.
+It provides a streaming response generator similar to the get_response function format.
 """
 
 import os
-from typing import List, Dict, Optional, AsyncGenerator
-from dataclasses import dataclass
-from pathlib import Path
-import anthropic
+from typing import Generator, Dict, List, Optional, Set
+from dataclasses import dataclass, field
+from datetime import datetime
+import logging
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+try:
+    from bson import ObjectId
+    from anthropic import Anthropic
+except ImportError as e:
+    print(f"Warning: Required dependencies not installed: {e}")
+    print("Please install: pip install anthropic pymongo")
+    ObjectId = None
+    Anthropic = None
 
-# Initialize Anthropic client
-client = anthropic.Anthropic(
-    api_key=os.environ.get("ANTHROPIC_API_KEY")
-)
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
+# Copy Question class from utils.py
+class Question:
+    """
+    Represents a question with its text, language, and type information.
+
+    Attributes:
+        text (str): The text content of the question
+        language (str): The detected language of the question (e.g., "English")
+        question_type (str): The type of question (e.g., "local" or "global" or "image")
+        special_context (str): Special context for the question
+        answer_planning (dict): Planning information for constructing the answer
+    """
+
+    def __init__(self, text="", language="English", question_type="global", special_context="", answer_planning=None, image_url=None):
+        """
+        Initialize a Question object.
+
+        Args:
+            text (str): The text content of the question
+            language (str): The language of the question
+            question_type (str): The type of the question (local or global or image)
+            special_context (str): Special context for the question
+            answer_planning (dict): Planning information for constructing the answer
+            image_url (str): The image url for the image question
+        """
+        self.text = text
+        self.language = language
+        if question_type not in ["local", "global", "image"]:
+            self.question_type = "global"
+        else:
+            self.question_type = question_type
+
+        self.special_context = special_context
+        self.answer_planning = answer_planning or {}
+        self.image_url = image_url   # This is the image url for the image question
+
+    def __str__(self):
+        """Return string representation of the Question."""
+        return f"Question(text='{self.text}', language='{self.language}', type='{self.question_type}', image_url='{self.image_url}')"
+
+    def to_dict(self):
+        """Convert Question object to dictionary."""
+        return {
+            "text": self.text,
+            "language": self.language,
+            "question_type": self.question_type,
+            "special_context": self.special_context,
+            "answer_planning": self.answer_planning,
+            "image_url": str(self.image_url)
+        }
+
+# Copy ChatMode enum and ChatSession class from session_manager.py
+class ChatMode:
+    LITE = "lite"
+    BASIC = "basic"
+    ADVANCED = "advanced"
+
+def create_session_id() -> str:
+    """Create a unique session ID."""
+    return str(ObjectId())
 
 @dataclass
 class ChatSession:
-    """Simplified ChatSession class for compatibility."""
-    session_id: str
-    mode: str = "ADVANCED"
-    model: str = "claude-3-5-sonnet-20241022"
-    formatted_context: str = ""
-    
+    """Class to manage all chat session related information.
 
-@dataclass
-class Question:
-    """Simplified Question class for compatibility."""
-    text: str
-    special_context: str = ""
+    This class replaces the need for ST's session state by maintaining all
+    chat-related information in a single place.
 
+    Attributes:
+        session_id: Unique identifier for the session
+        mode: Current chat mode (Lite, Basic or Advanced)
+        chat_history: List of chat messages
+        uploaded_files: Set of uploaded file paths
+        current_language: Current programming language context
+        is_initialized: Whether the session has been initialized
+        accumulated_cost: Total accumulated cost for the current session
+    """
 
-class ClaudeCodeSDK:
-    """Main class for Claude Code SDK integration."""
-    
-    def __init__(self, codebase_path: str):
-        """Initialize the Claude Code SDK.
+    session_id: str = field(default_factory=create_session_id)
+    mode: ChatMode = ChatMode.BASIC # ChatMode.LITE, ChatMode.BASIC or ChatMode.ADVANCED
+    chat_history: List[Dict] = field(default_factory=list)
+    uploaded_files: Set[str] = field(default_factory=set)
+    current_language: Optional[str] = None
+    is_initialized: bool = False
+    current_message: Optional[str] = "" # Latest current response message from streaming tutor agent
+    new_message_id: str = str(ObjectId()) # new message from user
+    question: Optional[Question] = None # Question object
+    formatted_context: Optional[Dict] = None # Formatted context for the question
+    page_formatted_context: Optional[Dict] = None # Page-level formatted context for broader coverage
+    accumulated_cost: float = 0.0 # Total accumulated cost for the current session
+
+    def initialize(self) -> None:
+        """Initialize the chat session if not already initialized."""
+        if self.is_initialized:
+            return
+
+        # Load existing chat history if available
+        # For this implementation, we'll skip loading from file
+        self.is_initialized = True
+
+    def add_message(self, message: Dict) -> None:
+        """Add a new message to the chat history.
         
         Args:
-            codebase_path: Path to the codebase folder to analyze
+            message: Dictionary containing message data
         """
-        self.codebase_path = Path(codebase_path)
-        self.client = client
-        self.file_contents_cache = {}
-        
-    def load_codebase_files(self, file_path_list: Optional[List[str]] = None) -> Dict[str, str]:
-        """Load files from the codebase.
+        self.chat_history.append(message)
+
+    def clear_history(self) -> None:
+        """Clear the chat history."""
+        self.chat_history = []
+        self.accumulated_cost = 0.0  # Reset accumulated cost when history is cleared
+
+    def set_mode(self, mode: ChatMode) -> None:
+        """Set the chat mode.
         
         Args:
-            file_path_list: Optional list of specific files to load.
-                          If None, loads all code files in the codebase.
+            mode: New chat mode to set
+        """
+        self.mode = mode
+
+    def add_file(self, file_path: str) -> None:
+        """Add a file to the session's uploaded files.
+
+        Args:
+            file_path: Path to the uploaded file
+        """
+        self.uploaded_files.add(file_path)
+
+    def remove_file(self, file_path: str) -> None:
+        """Remove a file from the session's uploaded files.
+        
+        Args:
+            file_path: Path to the file to remove
+        """
+        self.uploaded_files.discard(file_path)
+
+    def set_language(self, language: str) -> None:
+        """Set the current programming language context.
+
+        Args:
+            language: Programming language to set
+        """
+        self.current_language = language
+        
+    def update_cost(self, cost: float) -> None:
+        """Update the accumulated cost of the session.
+        
+        Args:
+            cost: Cost to add to the total accumulated cost
+        """
+        self.accumulated_cost += cost
+        logger.info(f"Updated accumulated cost for session {self.session_id}: ${self.accumulated_cost:.6f}")
+        
+    def get_accumulated_cost(self) -> float:
+        """Get the total accumulated cost of the session.
         
         Returns:
-            Dictionary mapping file paths to their contents
+            Total accumulated cost as a float
         """
-        file_contents = {}
-        
-        if file_path_list:
-            # Load specific files
-            for file_path in file_path_list:
-                full_path = self.codebase_path / file_path if not Path(file_path).is_absolute() else Path(file_path)
-                if full_path.exists() and full_path.is_file():
-                    try:
-                        with open(full_path, "r", encoding="utf-8") as f:
-                            file_contents[str(full_path)] = f.read()
-                    except Exception as e:
-                        print(f"Error reading {full_path}: {e}")
-        else:
-            # Load all code files in the codebase
-            code_extensions = {".py", ".js", ".jsx", ".ts", ".tsx", ".java", ".cpp", ".c", ".h", ".hpp", ".cs", ".go", ".rs", ".md", ".txt"}
-            
-            for file_path in self.codebase_path.rglob("*"):
-                if file_path.is_file() and file_path.suffix in code_extensions:
-                    try:
-                        with open(file_path, "r", encoding="utf-8") as f:
-                            relative_path = file_path.relative_to(self.codebase_path)
-                            file_contents[str(relative_path)] = f.read()
-                    except Exception as e:
-                        print(f"Error reading {file_path}: {e}")
-        
-        self.file_contents_cache = file_contents
-        return file_contents
-    
-    def format_codebase_context(self, file_contents: Dict[str, str]) -> str:
-        """Format codebase files as context for Claude.
-        
-        Args:
-            file_contents: Dictionary mapping file paths to contents
-        
+        return self.accumulated_cost
+
+    def to_dict(self) -> Dict:
+        """Convert session state to dictionary format.
+
         Returns:
-            Formatted string with file contents
+            Dict containing all session state information
         """
-        if not file_contents:
-            return "No codebase files loaded."
-        
-        context_parts = ["<codebase_context>\n"]
-        
-        for file_path, content in file_contents.items():
-            context_parts.append(f"\n<file path=\"{file_path}\">")
-            context_parts.append(content)
-            context_parts.append("</file>\n")
-        
-        context_parts.append("\n</codebase_context>")
-        return "".join(context_parts)
-    
-    def format_chat_history(self, chat_history: List[Dict[str, str]]) -> str:
-        """Format chat history for Claude.
+        return {
+            "session_id": self.session_id,
+            "mode": self.mode.value,
+            "chat_history": self.chat_history,
+            "uploaded_files": list(self.uploaded_files),
+            "current_language": self.current_language,
+            "last_updated": datetime.now().isoformat(),
+            "current_message": self.current_message,
+            "new_message_id": self.new_message_id,
+            "question": self.question,
+            "formatted_context": self.formatted_context,
+            "page_formatted_context": self.page_formatted_context,
+            "accumulated_cost": self.accumulated_cost
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict) -> "ChatSession":
+        """Create a ChatSession instance from dictionary data.
         
         Args:
-            chat_history: List of message dictionaries with 'role' and 'content'
-        
+            data: Dictionary containing session state information
+
         Returns:
-            Formatted chat history string
+            ChatSession instance initialized with the provided data
         """
-        if not chat_history:
-            return "No previous conversation."
-        
-        formatted = []
-        for msg in chat_history:
-            role = msg.get("role", "user")
-            content = msg.get("content", "")
-            formatted.append(f"{role.upper()}: {content}")
-        
-        return "\n\n".join(formatted)
-    
-    async def stream_response(self, prompt: str, model: str = "claude-3-5-sonnet-20241022") -> AsyncGenerator[str, None]:
-        """Stream response from Claude API.
-        
-        Args:
-            prompt: The prompt to send to Claude
-            model: The model to use
-        
-        Yields:
-            Chunks of the response text
-        """
-        try:
-            # Use synchronous streaming API
-            with self.client.messages.stream(
-                model=model,
-                max_tokens=4096,
-                temperature=0.7,
-                messages=[
-                    {"role": "user", "content": prompt}
-                ]
-            ) as stream:
-                for text in stream.text_stream:
-                    yield text
-        except Exception as e:
-            yield f"Error: {str(e)}"
+        if "current_message" not in data:
+            data["current_message"] = ""
+        # Set default accumulated_cost if not present in data
+        accumulated_cost = data.get("accumulated_cost", 0.0)
+        session = cls(
+            session_id=data["session_id"],
+            mode=ChatMode(data["mode"]),
+            chat_history=data["chat_history"],
+            uploaded_files=set(data["uploaded_files"]),
+            current_language=data["current_language"],
+            current_message=data["current_message"],
+            new_message_id=data["new_message_id"],
+            question=data["question"],
+            formatted_context=data["formatted_context"],
+            page_formatted_context=data.get("page_formatted_context", None),
+            accumulated_cost=accumulated_cost
+        )
+        session.is_initialized = True
+        return session
 
 
-async def get_response(
+def get_claude_code_response(
     chat_session: ChatSession,
-    file_path_list: Optional[List[str]],
+    file_path_list: List[str], 
     question: Question,
-    chat_history: List[Dict[str, str]],
-    embedding_folder_list: Optional[List[str]] = None,
+    chat_history: List[Dict], 
+    codebase_folder_dir: str,
     deep_thinking: bool = True,
-    stream: bool = False
-) -> AsyncGenerator[str, None]:
-    """Main function to get response from Claude Code SDK.
+    stream: bool = True
+) -> Generator[str, None, None]:
+    """
+    Generate a response using Claude Code SDK for code analysis and generation.
     
-    This function maintains compatibility with the existing get_response interface
-    while using Claude's API for code analysis and question answering.
+    This function provides the same interface as get_response but uses Claude Code SDK
+    for enhanced code understanding and generation capabilities.
     
     Args:
-        chat_session: Chat session information
-        file_path_list: List of files to analyze (relative to codebase)
-        question: The user's question
-        chat_history: Previous conversation history
-        embedding_folder_list: Not used in this implementation
-        deep_thinking: Whether to use deep thinking mode
-        stream: Whether to stream the response
+        chat_session: ChatSession object containing session information
+        file_path_list: List of file paths to analyze
+        question: Question object containing the user's question
+        chat_history: List of previous chat messages
+        codebase_folder_dir: Path to the codebase folder for context
+        deep_thinking: Whether to use deep thinking mode (not used in this implementation)
+        stream: Whether to return a streaming generator (always True for this implementation)
     
     Yields:
-        Response chunks if streaming, otherwise returns complete response
+        str: Streaming response chunks
     """
-    # Initialize the SDK with the test files folder
-    codebase_path = "/Users/bingranyou/Documents/GitHub_Mac_mini/DeepTutor/pipeline/science/features_lab/claude_code_integration_test/test_files"
-    sdk = ClaudeCodeSDK(codebase_path)
-    
-    # Load codebase files
-    file_contents = sdk.load_codebase_files(file_path_list)
-    codebase_context = sdk.format_codebase_context(file_contents)
-    
-    # Format chat history
-    formatted_history = sdk.format_chat_history(chat_history)
-    
-    # Combine question text with special context
-    user_input = question.text
-    if question.special_context:
-        user_input += "\n\n" + question.special_context
-    
-    # Build the prompt
-    prompt = f"""You are an expert code tutor helping a student understand code and technical documents.
-
-You have access to the following codebase files:
-{codebase_context}
-
-Previous conversation:
-{formatted_history}
-
-RESPONSE GUIDELINES:
-1. **TL;DR First**: Start with a 1-2 sentence summary answering the question directly
-2. **Code Analysis**: When analyzing code, reference specific functions, classes, and line numbers
-3. **Clear Explanations**: Use clear, precise technical language
-4. **Formatting**: 
-   - Use **bold** for key concepts
-   - Use `inline code` for code references
-   - Use code blocks with language syntax highlighting for longer code snippets
-   - Use LaTeX with $...$ for inline math or $$...$$ for block math
-5. **Structure**: Break down complex topics into logical segments
-6. **Examples**: Include relevant examples when explaining concepts
-7. **Accuracy**: Only use information from the provided context when available
-8. **Professional Tone**: Maintain an academic, helpful tone
-
-{"DEEP THINKING MODE: Provide thorough, detailed analysis with step-by-step explanations." if deep_thinking else ""}
-
-Student's Question:
-{user_input}
-
-Please provide a comprehensive response following the guidelines above."""
-    
-    # Store context in session for reference
-    chat_session.formatted_context = codebase_context
-    
-    # Generate response
-    if stream:
-        # Return a streaming generator
-        async def response_generator():
-            yield "<response>\n\n"
-            async for chunk in sdk.stream_response(prompt, chat_session.model):
-                yield chunk
-            yield "\n\n</response>"
+    try:
+        # Check if dependencies are available
+        if Anthropic is None:
+            raise ImportError("Anthropic library not available. Please install: pip install anthropic")
         
-        return response_generator()
-    else:
-        # Return complete response (for non-streaming mode)
-        response_parts = []
-        async for chunk in sdk.stream_response(prompt, chat_session.model):
-            response_parts.append(chunk)
-        return "".join(response_parts)
+
+        load_dotenv()
+        # Initialize Claude client
+        client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        
+        # Prepare the user input
+        user_input = question.text
+        user_input_string = str(user_input + "\n\n" + question.special_context)
+        
+        # Build context from uploaded files
+        context_files = []
+        for file_path in file_path_list:
+            if os.path.exists(file_path):
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    context_files.append({
+                        "path": file_path,
+                        "content": content
+                    })
+                except Exception as e:
+                    logger.warning(f"Could not read file {file_path}: {e}")
+        
+        # Add codebase folder context if provided
+        if codebase_folder_dir and os.path.exists(codebase_folder_dir):
+            try:
+                # Get all Python files in the codebase folder
+                for root, dirs, files in os.walk(codebase_folder_dir):
+                    for file in files:
+                        if file.endswith('.py'):
+                            file_path = os.path.join(root, file)
+                            try:
+                                with open(file_path, 'r', encoding='utf-8') as f:
+                                    content = f.read()
+                                context_files.append({
+                                    "path": file_path,
+                                    "content": content
+                                })
+                            except Exception as file_error:
+                                logger.warning(f"Could not read codebase file {file_path}: {file_error}")
+            except Exception as folder_error:
+                logger.warning(f"Could not process codebase folder {codebase_folder_dir}: {folder_error}")
+        
+        # Build the system prompt
+        system_prompt = """You are an expert code analysis and generation assistant. You have access to the user's codebase and uploaded files. 
+
+Your capabilities include:
+- Analyzing code structure and patterns
+- Generating code based on requirements
+- Explaining complex code logic
+- Suggesting improvements and optimizations
+- Debugging and fixing issues
+- Creating documentation and comments
+
+Guidelines:
+1. Provide clear, accurate, and helpful responses
+2. Use proper code formatting with syntax highlighting
+3. Explain your reasoning when generating or modifying code
+4. Consider best practices and coding standards
+5. Be specific about file locations and line numbers when relevant
+6. Use markdown formatting for better readability
+
+Always provide practical, actionable advice that helps the user understand and improve their code."""
+
+        # Build the user message with context
+        user_message = f"""User Question: {user_input_string}
+
+Context from uploaded files and codebase:
+"""
+        
+        for file_info in context_files[:10]:  # Limit to first 10 files to avoid token limits
+            user_message += f"\n--- File: {file_info['path']} ---\n"
+            user_message += file_info['content'][:2000] + "\n"  # Limit content length
+        
+        if len(context_files) > 10:
+            user_message += f"\n... and {len(context_files) - 10} more files"
+        
+        # Add chat history context
+        if chat_history:
+            user_message += "\n\nPrevious conversation:\n"
+            for msg in chat_history[-5:]:  # Last 5 messages
+                if isinstance(msg, dict):
+                    role = msg.get('role', 'user')
+                    content = msg.get('content', '')
+                    user_message += f"{role}: {content}\n"
+        
+        # Create the streaming response
+        def process_stream():
+            try:
+                yield "<response>\n\n"
+                
+                # Use Claude Code SDK for streaming response
+                with client.messages.stream(
+                    model="claude-3-5-sonnet-20241022",
+                    max_tokens=4000,
+                    system=system_prompt,
+                    messages=[{"role": "user", "content": user_message}]
+                ) as stream:
+                    for event in stream:
+                        if event.type == "content_block_delta":
+                            if hasattr(event.delta, 'text'):
+                                yield event.delta.text
+                        elif event.type == "message_stop":
+                            break
+                
+                yield "\n\n</response>"
+                
+            except Exception as e:
+                logger.error(f"Error in Claude Code SDK streaming: {e}")
+                yield f"Error: {str(e)}\n\n</response>"
+        
+        return process_stream()
+        
+    except Exception as e:
+        logger.error(f"Error in get_claude_code_response: {e}")
+        error_message = str(e)
+        
+        def error_stream():
+            yield "<response>\n\n"
+            yield f"Error: {error_message}\n\n</response>"
+        
+        return error_stream()
 
 
-# Convenience function for testing
-async def create_test_session() -> ChatSession:
-    """Create a test chat session."""
-    return ChatSession(
-        session_id="test_session_001",
-        mode="ADVANCED",
-        model="claude-3-5-sonnet-20241022"
-    )
-
-
-# Convenience function to run a simple query
-async def simple_query(
-    question_text: str,
-    file_paths: Optional[List[str]] = None,
-    chat_history: Optional[List[Dict[str, str]]] = None
-) -> AsyncGenerator[str, None]:
-    """Run a simple query against the codebase.
-    
-    Args:
-        question_text: The question to ask
-        file_paths: Optional list of specific files to analyze
-        chat_history: Optional chat history
-    
-    Yields:
-        Response chunks
+# Example usage and testing function
+def test_claude_code_sdk():
     """
-    session = await create_test_session()
-    question = Question(text=question_text)
-    history = chat_history or []
+    Test function to demonstrate how to use the Claude Code SDK chatbot.
+    """
+    # Create a test session
+    session = ChatSession()
+    session.initialize()
     
-    async for chunk in await get_response(
+    # Create a test question
+    question = Question(
+        text="Can you analyze the code structure and suggest improvements?",
+        language="English",
+        question_type="global",
+        special_context="Focus on code quality and best practices"
+    )
+    
+    # Test file paths (adjust these to your actual files)
+    file_paths = [
+        "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/pipeline/science/pipeline/get_response.py"
+    ]
+    
+    # Codebase folder directory
+    codebase_dir = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/pipeline/science/pipeline"
+    
+    # Empty chat history for testing
+    chat_history = []
+    
+    # Test the function
+    print("Testing Claude Code SDK chatbot...")
+    print("=" * 50)
+    
+    try:
+        response_generator = get_claude_code_response(
         chat_session=session,
         file_path_list=file_paths,
         question=question,
-        chat_history=history,
-        embedding_folder_list=[],
+            chat_history=chat_history,
+            codebase_folder_dir=codebase_dir,
         deep_thinking=True,
         stream=True
-    ):
-        yield chunk
+        )
+        
+        print("Streaming response:")
+        for chunk in response_generator:
+            print(chunk, end="", flush=True)
+            
+    except Exception as e:
+        print(f"Error during testing: {e}")
+
+
+if __name__ == "__main__":
+    # Run the test
+    test_claude_code_sdk()

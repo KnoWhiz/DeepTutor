@@ -194,7 +194,7 @@ async def get_multiple_files_summary(file_path_list, embedding_folder_list, chat
         return f"<response>\n\n{response_text}\n\n</response>"
 
 
-async def get_response(chat_session: ChatSession, file_path_list, question: Question, chat_history, embedding_folder_list, deep_thinking = True, stream=False):
+async def get_response(chat_session: ChatSession, file_path_list, question: Question, chat_history, embedding_folder_list, deep_thinking = True, stream=True):
     generators_list = []
     config = load_config()
     user_input = question.text

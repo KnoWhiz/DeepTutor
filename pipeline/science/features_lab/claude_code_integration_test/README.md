@@ -1,141 +1,221 @@
-# Claude Code SDK Integration for DeepTutor
+# Claude Code SDK Chatbot Implementation
 
-This implementation provides a Claude-based chatbot with code analysis capabilities that maintains compatibility with the existing DeepTutor `get_response` function interface.
+This implementation provides a Claude Code SDK-based chatbot that follows the same interface as the original `get_response` function but uses Claude's code analysis capabilities.
 
 ## Features
 
-- **Compatible Interface**: Maintains the same function signature as the original `get_response` function
-- **Streaming Support**: Supports both streaming and non-streaming responses
-- **Code Analysis**: Can analyze code files and provide detailed explanations
-- **Chat History**: Maintains conversation context across multiple interactions
-- **Deep Thinking Mode**: Provides more detailed analysis when enabled
-- **Multi-file Support**: Can analyze multiple files simultaneously
+- **Same Interface**: Uses the exact same function signature as `get_response`
+- **Code Analysis**: Leverages Claude Code SDK for enhanced code understanding
+- **Streaming Response**: Returns a generator for real-time streaming
+- **File Context**: Analyzes uploaded files and codebase directories
+- **Chat History**: Maintains conversation context
+- **Error Handling**: Robust error handling with graceful fallbacks
 
-## Installation
+## Dependencies
 
-1. Ensure you have the `deeptutor` conda environment activated:
+Install the required dependencies:
+
 ```bash
-conda activate deeptutor
+pip install anthropic pymongo
 ```
 
-2. Install required dependencies (already installed in deeptutor env):
+## Environment Setup
+
+Make sure you have your Anthropic API key set in your `.env` file:
+
 ```bash
-pip install anthropic python-dotenv
-```
-
-3. Ensure your `.env` file contains the `ANTHROPIC_API_KEY`:
-```
 ANTHROPIC_API_KEY=your_api_key_here
 ```
-
-## Files
-
-- **claude_code_sdk.py** - Main implementation with the core chatbot logic
-- **test_claude_sdk.py** - Comprehensive test suite with interactive mode
-- **test_files/** - Sample codebase folder for testing
 
 ## Usage
 
 ### Basic Usage
 
 ```python
-import asyncio
-from claude_code_sdk import ChatSession, Question, get_response
+from claude_code_sdk import get_claude_code_response, ChatSession, Question, ChatMode
 
-async def main():
-    # Create a chat session
-    session = ChatSession(
-        session_id="unique_id",
-        mode="ADVANCED",
-        model="claude-3-5-sonnet-20241022"
-    )
-    
-    # Create a question
-    question = Question(
-        text="Explain the Calculator class",
-        special_context="Focus on error handling"
-    )
-    
-    # Get streaming response
-    async for chunk in await get_response(
-        chat_session=session,
-        file_path_list=["sample_code.py"],
-        question=question,
-        chat_history=[],
-        embedding_folder_list=[],
-        deep_thinking=True,
-        stream=True
-    ):
-        print(chunk, end="", flush=True)
+# Create a session
+session = ChatSession()
+session.initialize()
 
-asyncio.run(main())
+# Create a question
+question = Question(
+    text="Can you analyze this code and suggest improvements?",
+    language="English",
+    question_type="global"
+)
+
+# Define files to analyze
+file_paths = ["path/to/your/file.py"]
+
+# Define codebase directory
+codebase_dir = "path/to/your/codebase"
+
+# Get streaming response
+response_generator = get_claude_code_response(
+    chat_session=session,
+    file_path_list=file_paths,
+    question=question,
+    chat_history=[],
+    codebase_folder_dir=codebase_dir,
+    deep_thinking=True,
+    stream=True
+)
+
+# Process the streaming response
+for chunk in response_generator:
+    print(chunk, end="", flush=True)
 ```
 
-### Simple Query Helper
+### Function Signature
 
 ```python
-import asyncio
-from claude_code_sdk import simple_query
-
-async def main():
-    async for chunk in simple_query("What does this code do?", ["sample_code.py"]):
-        print(chunk, end="", flush=True)
-
-asyncio.run(main())
+def get_claude_code_response(
+    chat_session: ChatSession, 
+    file_path_list: List[str], 
+    question: Question, 
+    chat_history: List[Dict], 
+    codebase_folder_dir: str,
+    deep_thinking: bool = True, 
+    stream: bool = True
+) -> Generator[str, None, None]:
 ```
 
-## Running Tests
+**Parameters:**
+- `chat_session`: ChatSession object containing session information
+- `file_path_list`: List of file paths to analyze
+- `question`: Question object containing the user's question
+- `chat_history`: List of previous chat messages
+- `codebase_folder_dir`: Path to the codebase folder for context
+- `deep_thinking`: Whether to use deep thinking mode (not used in this implementation)
+- `stream`: Whether to return a streaming generator (always True)
 
-Run the comprehensive test suite:
+**Returns:**
+- Generator[str, None, None]: Streaming response chunks
+
+## Testing
+
+### Method 1: Run the test script
 
 ```bash
+cd /Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/pipeline/science/features_lab/claude_code_integration_test/
 python test_claude_sdk.py
 ```
 
-The test suite includes:
-1. Basic functionality tests
-2. Simple query tests
-3. Streaming response tests
-4. Chat history tests
-5. Multi-file analysis tests
-6. Deep thinking mode tests
-7. Interactive chat mode
-
-## Interactive Mode
-
-After running the tests, you can enter interactive mode to chat with the bot about the codebase:
+### Method 2: Run the built-in test
 
 ```bash
-python test_claude_sdk.py
-# Choose 'y' when prompted for interactive mode
+cd /Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/pipeline/science/features_lab/claude_code_integration_test/
+python claude_code_sdk.py
 ```
 
-## Configuration
+### Method 3: Interactive testing
 
-The SDK uses the following default configuration:
-- **Codebase Path**: `/Users/bingranyou/Documents/GitHub_Mac_mini/DeepTutor/pipeline/science/features_lab/claude_code_integration_test/test_files`
-- **Model**: `claude-3-5-sonnet-20241022`
-- **Max Tokens**: 4096
-- **Temperature**: 0.7
+```python
+# In a Python REPL or Jupyter notebook
+from claude_code_sdk import get_claude_code_response, ChatSession, Question, ChatMode
 
-These can be modified in the `claude_code_sdk.py` file.
+# Set up your test
+session = ChatSession()
+session.initialize()
 
-## Response Format
+question = Question(
+    text="What does this code do?",
+    language="English",
+    question_type="global"
+)
 
-Responses follow these guidelines:
-1. Start with a TL;DR summary
-2. Use **bold** for key concepts
-3. Use `inline code` for code references
-4. Include code blocks with syntax highlighting
-5. Support LaTeX math with `$...$` or `$$...$$`
-6. Break down complex topics into logical segments
+file_paths = ["/path/to/your/test/file.py"]
+codebase_dir = "/path/to/your/codebase"
 
-## Limitations
+# Get response
+response = get_claude_code_response(
+    chat_session=session,
+    file_path_list=file_paths,
+    question=question,
+    chat_history=[],
+    codebase_folder_dir=codebase_dir
+)
 
-- Requires valid ANTHROPIC_API_KEY
-- Subject to Claude API rate limits
-- Currently configured for a specific codebase path (can be modified)
+# Print response
+for chunk in response:
+    print(chunk, end="")
+```
 
-## Integration with DeepTutor
+## Customization
 
-This implementation maintains full compatibility with the existing DeepTutor interface, allowing it to be used as a drop-in replacement for the original `get_response` function while leveraging Claude's capabilities for code analysis and understanding.
+### Modifying the System Prompt
+
+Edit the `system_prompt` variable in the `get_claude_code_response` function to customize the AI's behavior:
+
+```python
+system_prompt = """Your custom system prompt here..."""
+```
+
+### Adjusting File Processing
+
+Modify the file processing logic to:
+- Change file extensions to analyze (currently `.py` files)
+- Adjust content length limits
+- Add file filtering logic
+
+### Error Handling
+
+The implementation includes comprehensive error handling:
+- Missing dependencies
+- File read errors
+- API errors
+- Network issues
+
+## Integration with Existing Code
+
+To integrate with your existing codebase, simply replace calls to `get_response` with `get_claude_code_response`:
+
+```python
+# Before
+response = await get_response(
+    chat_session=session,
+    file_path_list=files,
+    question=question,
+    chat_history=history,
+    embedding_folder_list=embeddings,
+    deep_thinking=True,
+    stream=True
+)
+
+# After
+response = get_claude_code_response(
+    chat_session=session,
+    file_path_list=files,
+    question=question,
+    chat_history=history,
+    codebase_folder_dir="/path/to/codebase",
+    deep_thinking=True,
+    stream=True
+)
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **ImportError**: Make sure to install dependencies with `pip install anthropic pymongo`
+2. **API Key Error**: Verify your `ANTHROPIC_API_KEY` is set correctly
+3. **File Not Found**: Check that file paths and codebase directory exist
+4. **Permission Errors**: Ensure read permissions for files and directories
+
+### Debug Mode
+
+Enable debug logging by modifying the logging level:
+
+```python
+import logging
+logging.basicConfig(level=logging.DEBUG)
+```
+
+## Performance Considerations
+
+- The implementation limits context to the first 10 files to avoid token limits
+- File content is truncated to 2000 characters per file
+- Consider the total context size when processing large codebases
+- Monitor API usage and costs through the session's accumulated cost tracking

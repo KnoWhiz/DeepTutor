@@ -552,13 +552,13 @@ def test_claude_code_sdk():
     
     try:
         response_generator = get_claude_code_response(
-        chat_session=session,
-        file_path_list=file_paths,
-        question=question,
-        chat_history=chat_history,
-        codebase_folder_dir=codebase_dir,
-        deep_thinking=True,
-        stream=True
+            chat_session=session,
+            file_path_list=file_paths,
+            question=question,
+            chat_history=chat_history,
+            codebase_folder_dir=codebase_dir,
+            deep_thinking=True,
+            stream=True
         )
         
         print("Streaming response:")

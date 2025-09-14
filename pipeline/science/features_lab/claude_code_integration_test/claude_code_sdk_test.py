@@ -405,17 +405,25 @@ async def get_claude_code_response_async(
     
     codebase_folder_dir = file_path_list[0]
     
-    # Load environment variables
-    load_dotenv(".env")
+    # Load environment variables from project root
+    project_root = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor"
+    env_path = os.path.join(project_root, ".env")
+    load_dotenv(env_path, override=True)  # Override existing env vars
     api_key = os.getenv("ANTHROPIC_API_KEY")
     
     if not api_key:
         yield "Error: ANTHROPIC_API_KEY not found in .env file\n"
         return
     
+    # Debug: Show that we have the API key (first few characters only)
+    yield f"✅ API key loaded: {api_key[:15]}... (length: {len(api_key)})\n"
+    
     yield "<response>\n"
     
     try:
+        # Set environment variable for the current process
+        os.environ["ANTHROPIC_API_KEY"] = api_key
+        
         # Configure Claude Code options
         options = ClaudeCodeOptions(
             cwd=codebase_folder_dir,
@@ -459,19 +467,31 @@ The codebase is located at: {codebase_folder_dir}
             if isinstance(message, AssistantMessage):
                 for block in message.content:
                     if isinstance(block, TextBlock):
-                        # Stream the text content
+                        # Stream the text content immediately
                         yield block.text
                     elif hasattr(block, 'text'):
                         yield block.text
             elif isinstance(message, ResultMessage):
-                # Handle result messages
-                if hasattr(message, 'content'):
-                    yield str(message.content)
-                else:
-                    yield str(message)
+                # Handle result messages - show the final result
+                if hasattr(message, 'result') and message.result:
+                    yield message.result
             else:
-                # Handle other message types
-                yield str(message)
+                # Show progress for other message types (like UserMessage with tool results)
+                message_str = str(message)
+                if "ToolResultBlock" in message_str:
+                    # Extract meaningful progress information
+                    if "sample_code.py" in message_str:
+                        yield "📄 Analyzing Python code file...\n"
+                    elif "sample.js" in message_str:
+                        yield "📄 Analyzing JavaScript code file...\n"
+                    elif "README.md" in message_str:
+                        yield "📄 Reading documentation file...\n"
+                    elif "paper2.txt" in message_str:
+                        yield "📄 Processing large text document...\n"
+                    elif "total" in message_str:
+                        yield "📁 Exploring directory structure...\n"
+                elif hasattr(message, 'subtype') and message.subtype == 'init':
+                    yield "🔧 Initializing Claude Code session...\n"
         
         yield "\n</response>\n"
         

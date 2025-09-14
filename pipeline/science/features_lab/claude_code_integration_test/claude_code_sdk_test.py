@@ -395,13 +395,13 @@ async def get_claude_code_response_async(
     
     # Install Claude Code SDK globally
     try:
-        yield "Installing Claude Code SDK globally...\n"
+        logger.info("Installing Claude Code SDK globally...\n")
         subprocess.run([
             "npm", "install", "-g", "@anthropic-ai/claude-code"
         ], check=True, capture_output=True, text=True)
-        yield "Claude Code SDK installed successfully.\n"
+        logger.info("Claude Code SDK installed successfully.\n")
     except subprocess.CalledProcessError as e:
-        yield f"Warning: Failed to install Claude Code SDK: {e}\n"
+        logger.warning(f"Warning: Failed to install Claude Code SDK: {e}\n")
     
     codebase_folder_dir = file_path_list[0]
     
@@ -412,11 +412,11 @@ async def get_claude_code_response_async(
     api_key = os.getenv("ANTHROPIC_API_KEY")
     
     if not api_key:
-        yield "Error: ANTHROPIC_API_KEY not found in .env file\n"
+        logger.error("Error: ANTHROPIC_API_KEY not found in .env file\n")
         return
     
     # Debug: Show that we have the API key (first few characters only)
-    yield f"✅ API key loaded: {api_key[:15]}... (length: {len(api_key)})\n"
+    logger.info(f"✅ API key loaded: {api_key[:15]}... (length: {len(api_key)})\n")
     
     yield "<response>\n"
     
@@ -432,37 +432,37 @@ async def get_claude_code_response_async(
             ],
             env={"ANTHROPIC_API_KEY": api_key},
             permission_mode="plan",  # Read-only mode, no file edits
-            system_prompt=f"""You are a helpful coding assistant analyzing a codebase. 
+            system_prompt=f"""You are a patient, helpful, and friendly tutor helping a student reading papers. 
+
+            Instructions:
+            1. First, explore and understand the file base structure
+            2. Analyze the relevant files
+            3. If you need additional information to provide a complete answer, use web search
+            4. Provide a comprehensive response based on the file base analysis and any web search results
+            5. Focus on being professional, helpful and informative
+            
+            Remember: You can only read files and search the web. Do not attempt to edit any files.
             
             Context from chat history: {chat_history}
             
             Your task: {question.text}
             
-            Instructions:
-            1. First, explore and understand the codebase structure
-            2. Analyze the relevant code files
-            3. If you need additional information to provide a complete answer, use web search
-            4. Provide a comprehensive response based on the codebase analysis and any web search results
-            5. Focus on being helpful and informative
-            
-            Remember: You can only read files and search the web. Do not attempt to edit any files."""
+            """
         )
         
         # Create the prompt for Claude Code
-        prompt = f"""Please analyze this codebase and answer the following question:
+        prompt = f"""Please analyze this file base and answer the question in the end.
+                Please:
+                1. First explore the file base structure to understand what files are available
+                2. Read and analyze relevant code files
+                3. If you need additional context or information to provide a complete answer, perform web searches
+                4. Provide a comprehensive analysis and answer
 
-Question: {question.text}
-
-Please:
-1. First explore the codebase structure to understand what files are available
-2. Read and analyze relevant code files
-3. If you need additional context or information to provide a complete answer, perform web searches
-4. Provide a comprehensive analysis and answer
-
-The codebase is located at: {codebase_folder_dir}
-"""
+                The file base is located at: {codebase_folder_dir}
+                Question: {question.text}
+                """
         
-        # Use Claude Code SDK to analyze the codebase
+        # Use Claude Code SDK to analyze the file base
         async for message in query(prompt=prompt, options=options):
             if isinstance(message, AssistantMessage):
                 for block in message.content:
@@ -476,27 +476,29 @@ The codebase is located at: {codebase_folder_dir}
                 if hasattr(message, 'result') and message.result:
                     yield message.result
             else:
-                # Show progress for other message types (like UserMessage with tool results)
-                message_str = str(message)
-                if "ToolResultBlock" in message_str:
-                    # Extract meaningful progress information
-                    if "sample_code.py" in message_str:
-                        yield "📄 Analyzing Python code file...\n"
-                    elif "sample.js" in message_str:
-                        yield "📄 Analyzing JavaScript code file...\n"
-                    elif "README.md" in message_str:
-                        yield "📄 Reading documentation file...\n"
-                    elif "paper2.txt" in message_str:
-                        yield "📄 Processing large text document...\n"
-                    elif "total" in message_str:
-                        yield "📁 Exploring directory structure...\n"
-                elif hasattr(message, 'subtype') and message.subtype == 'init':
-                    yield "🔧 Initializing Claude Code session...\n"
+                yield str(message)
+            # else:
+            #     # Show progress for other message types (like UserMessage with tool results)
+            #     message_str = str(message)
+            #     if "ToolResultBlock" in message_str:
+            #         # Extract meaningful progress information
+            #         if "sample_code.py" in message_str:
+            #             yield "📄 Analyzing Python code file...\n"
+            #         elif "sample.js" in message_str:
+            #             yield "📄 Analyzing JavaScript code file...\n"
+            #         elif "README.md" in message_str:
+            #             yield "📄 Reading documentation file...\n"
+            #         elif "paper2.txt" in message_str:
+            #             yield "📄 Processing large text document...\n"
+            #         elif "total" in message_str:
+            #             yield "📁 Exploring directory structure...\n"
+            #     elif hasattr(message, 'subtype') and message.subtype == 'init':
+            #         yield "🔧 Initializing Claude Code session...\n"
         
         yield "\n</response>\n"
         
     except Exception as e:
-        yield f"Error during Claude Code analysis: {str(e)}\n"
+        logger.error(f"Error during Claude Code analysis: {str(e)}\n")
         yield "</response>\n"
 
 
@@ -509,11 +511,12 @@ def get_claude_code_response(
     stream: bool = True
 ) -> Generator[str, None, None]:
     """
-    Synchronous wrapper for the async Claude Code SDK chatbot.
+    Synchronous wrapper for the async Claude Code SDK chatbot. 
+    This function is used to get the response from the Claude Code SDK chatbot.
     
     Args:
         chat_session: Current chat session
-        file_path_list: List containing the codebase folder path
+        file_path_list: List containing the file base folder path
         question: Question object with text and metadata
         chat_history: Previous chat history as string
         deep_thinking: Whether to use deep thinking mode
@@ -521,6 +524,7 @@ def get_claude_code_response(
         
     Yields:
         str: Response chunks in streaming format
+        This function is used to get the response from the Claude Code SDK chatbot.
     """
     async def async_generator():
         async for chunk in get_claude_code_response_async(

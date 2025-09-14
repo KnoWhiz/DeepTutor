@@ -49,3 +49,5 @@ graph_diagram.mmd
 /test/app
 pipeline/science/features_lab/all_chunks.json
 /tmp
+pipeline/science/features_lab/claude_code_integration_test/chat_history/68c64ee63fcf37344a6a4306.json
+pipeline/science/features_lab/claude_code_integration_test/chat_history/68c64f7a3fcf373a94fb763f.json

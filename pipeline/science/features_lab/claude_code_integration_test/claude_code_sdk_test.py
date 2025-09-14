@@ -1,41 +1,97 @@
 """
-Claude Code SDK Chatbot Implementation
+Claude Code SDK Chatbot Implementation (Final, SDK-consistent Streaming)
 
-This module implements a chatbot using the Claude Code SDK for code analysis and generation.
-It provides a streaming response generator similar to the get_response function format.
+This module implements a Claude Code SDK–based chatbot for code analysis and generation,
+using the Python SDK's streaming APIs from:
+https://docs.anthropic.com/en/docs/claude-code/sdk/sdk-python
+
+Key points:
+- Uses ClaudeSDKClient with receive_response() for robust streaming
+- Handles AssistantMessage content blocks (Text, Thinking, ToolUse, ToolResult)
+- Gracefully supports older claude_code_sdk versions (e.g., no max_thinking_tokens)
+- Threaded sync wrapper with backpressure (Queue) and clean sentinel shutdown
+
+Requirements:
+  pip install claude-code-sdk python-dotenv
+  npm install -g @anthropic-ai/claude-code
+  export ANTHROPIC_API_KEY=...
+
+Run:
+  python claude_code_sdk_test.py
 """
 
+from __future__ import annotations
+
 import os
-from typing import Generator, Dict, List, Optional, Set
-from dataclasses import dataclass, field
-from datetime import datetime
-import logging
-from dotenv import load_dotenv
 import json
 import uuid
 import asyncio
 import threading
 import queue
+import logging
 from enum import Enum
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Generator, Dict, List, Optional, Set, AsyncIterator
 
+from dotenv import load_dotenv
+
+# Optional dependency (used only for nice session IDs)
 try:
     from bson import ObjectId
-    from anthropic import Anthropic
-except ImportError as e:
-    print(f"Warning: Required dependencies not installed: {e}")
-    print("Please install: pip install anthropic pymongo")
+except ImportError:
     ObjectId = None
-    Anthropic = None
 
-from claude_code_sdk import (
-    query,
-    ClaudeCodeOptions,
-    AssistantMessage, TextBlock, ResultMessage
-)
+# ---- Claude Code SDK imports (match current public docs) ----
+try:
+    from claude_code_sdk import (
+        query,
+        ClaudeCodeOptions,
+        ClaudeSDKClient,
+        AssistantMessage,
+        ResultMessage,
+        TextBlock,
+        # The following may not exist in older SDK versions; we handle that gracefully.
+    )
+    try:
+        from claude_code_sdk import ThinkingBlock, ToolUseBlock, ToolResultBlock
+    except Exception:
+        ThinkingBlock = None  # type: ignore
+        ToolUseBlock = None   # type: ignore
+        ToolResultBlock = None  # type: ignore
+    try:
+        from claude_code_sdk import (
+            CLINotFoundError,
+            ProcessError,
+            CLIConnectionError,
+            CLIJSONDecodeError,
+        )
+    except Exception:
+        # Older SDKs may not expose all errors; provide fallbacks
+        class _FallbackSDKError(Exception): ...
+        class CLINotFoundError(_FallbackSDKError): ...
+        class ProcessError(_FallbackSDKError):
+            def __init__(self, message: str, exit_code: int | None = None, stderr: str | None = None):
+                super().__init__(message)
+                self.exit_code = exit_code
+                self.stderr = stderr
+        class CLIConnectionError(_FallbackSDKError): ...
+        class CLIJSONDecodeError(_FallbackSDKError): ...
+except ImportError as e:
+    raise ImportError(
+        "claude_code_sdk is not installed or not importable. "
+        "Please install it with: pip install claude-code-sdk"
+    ) from e
+
+# ------------------------------------------------------------
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# -------------------------
+# Utilities: chat history I/O
+# -------------------------
 
 def get_chat_history_path(session_id: str) -> str:
     base_dir = os.path.join(os.path.dirname(__file__), "chat_history")
@@ -46,6 +102,9 @@ def create_session_id() -> str:
     unique_id = str(uuid.uuid4())[:8]
     return f"chat_session_{timestamp}_{unique_id}"
 
+def create_session_id_from_objectid() -> str:
+    return str(ObjectId()) if ObjectId else create_session_id()
+
 def save_chat_history(session_id: str, chat_history: List[Dict]) -> None:
     if not chat_history:
         return
@@ -53,13 +112,19 @@ def save_chat_history(session_id: str, chat_history: List[Dict]) -> None:
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
     try:
         with open(file_path, "w", encoding="utf-8") as f:
-            json.dump({
-                "session_id": session_id,
-                "last_updated": datetime.now().isoformat(),
-                "messages": chat_history
-            }, f, indent=2, ensure_ascii=False)
+            json.dump(
+                {
+                    "session_id": session_id,
+                    "last_updated": datetime.now().isoformat(),
+                    "messages": chat_history,
+                },
+                f,
+                indent=2,
+                ensure_ascii=False,
+            )
     except Exception as e:
         logger.info(f"Error saving chat history: {e}")
+
 def load_chat_history(session_id: str) -> Optional[List[Dict]]:
     file_path = get_chat_history_path(session_id)
     if not os.path.exists(file_path):
@@ -71,6 +136,7 @@ def load_chat_history(session_id: str) -> Optional[List[Dict]]:
     except Exception as e:
         logger.info(f"Error loading chat history: {e}")
         return None
+
 def delete_chat_history(session_id: str) -> bool:
     file_path = get_chat_history_path(session_id)
     if not os.path.exists(file_path):
@@ -81,6 +147,7 @@ def delete_chat_history(session_id: str) -> bool:
     except Exception as e:
         logger.info(f"Error deleting chat history: {e}")
         return False
+
 def cleanup_old_sessions() -> None:
     base_dir = os.path.join(os.path.dirname(__file__), "chat_history")
     if not os.path.exists(base_dir):
@@ -102,8 +169,15 @@ def cleanup_old_sessions() -> None:
 # -------------------------
 
 class Question:
-    def __init__(self, text="", language="English", question_type="global",
-                 special_context="", answer_planning=None, image_url=None):
+    def __init__(
+        self,
+        text: str = "",
+        language: str = "English",
+        question_type: str = "global",
+        special_context: str = "",
+        answer_planning: Optional[Dict] = None,
+        image_url: Optional[str] = None,
+    ):
         self.text = text
         self.language = language
         if question_type not in ["local", "global", "image"]:
@@ -115,7 +189,10 @@ class Question:
         self.image_url = image_url
 
     def __str__(self):
-        return f"Question(text='{self.text}', language='{self.language}', type='{self.question_type}', image_url='{self.image_url}')"
+        return (
+            f"Question(text='{self.text}', language='{self.language}', "
+            f"type='{self.question_type}', image_url='{self.image_url}')"
+        )
 
     def to_dict(self):
         return {
@@ -124,16 +201,13 @@ class Question:
             "question_type": self.question_type,
             "special_context": self.special_context,
             "answer_planning": self.answer_planning,
-            "image_url": str(self.image_url)
+            "image_url": str(self.image_url),
         }
 
 class ChatMode(str, Enum):
     LITE = "lite"
     BASIC = "basic"
     ADVANCED = "advanced"
-
-def create_session_id_from_objectid() -> str:
-    return str(ObjectId()) if ObjectId else create_session_id()
 
 @dataclass
 class ChatSession:
@@ -148,7 +222,7 @@ class ChatSession:
     question: Optional[Question] = None
     formatted_context: Optional[Dict] = None
     page_formatted_context: Optional[Dict] = None
-    accumulated_cost: float = 0.0
+    accumulated_cost: float = 0.0  # Placeholder for parity with other backends
 
     def initialize(self) -> None:
         if self.is_initialized:
@@ -181,7 +255,9 @@ class ChatSession:
 
     def update_cost(self, cost: float) -> None:
         self.accumulated_cost += cost
-        logger.info(f"Updated accumulated cost for session {self.session_id}: ${self.accumulated_cost:.6f}")
+        logger.info(
+            f"Updated accumulated cost for session {self.session_id}: ${self.accumulated_cost:.6f}"
+        )
 
     def get_accumulated_cost(self) -> float:
         return self.accumulated_cost
@@ -199,7 +275,7 @@ class ChatSession:
             "question": self.question,
             "formatted_context": self.formatted_context,
             "page_formatted_context": self.page_formatted_context,
-            "accumulated_cost": self.accumulated_cost
+            "accumulated_cost": self.accumulated_cost,
         }
 
     @classmethod
@@ -214,11 +290,13 @@ class ChatSession:
             uploaded_files=set(data.get("uploaded_files", [])),
             current_language=data.get("current_language"),
             current_message=data["current_message"],
-            new_message_id=data.get("new_message_id", str(ObjectId()) if ObjectId else create_session_id()),
+            new_message_id=data.get(
+                "new_message_id", str(ObjectId()) if ObjectId else create_session_id()
+            ),
             question=data.get("question"),
             formatted_context=data.get("formatted_context"),
             page_formatted_context=data.get("page_formatted_context"),
-            accumulated_cost=accumulated_cost
+            accumulated_cost=accumulated_cost,
         )
         session.is_initialized = True
         return session
@@ -227,131 +305,152 @@ class ChatSession:
 # Claude Code streaming core
 # -------------------------
 
+def _make_options_with_fallback(**kwargs) -> ClaudeCodeOptions:
+    """
+    Instantiate ClaudeCodeOptions, gracefully handling SDK versions that
+    don't support some fields (e.g., max_thinking_tokens).
+    """
+    try:
+        return ClaudeCodeOptions(**kwargs)
+    except TypeError:
+        # Remove keys that older SDKs may not support
+        unsupported = ("max_thinking_tokens", "can_use_tool", "hooks")
+        filtered = {k: v for k, v in kwargs.items() if k not in unsupported}
+        return ClaudeCodeOptions(**filtered)
+
+def _block_name(b: object) -> str:
+    return getattr(b, "__class__", type(b)).__name__
+
+async def _iter_response_messages(client: ClaudeSDKClient) -> AsyncIterator[str]:
+    """
+    Iterate over messages from Claude and yield user-facing text chunks.
+    Handles Text, Thinking, ToolUse, and ToolResult blocks when available.
+    """
+    async for message in client.receive_response():
+        if isinstance(message, AssistantMessage):
+            for block in message.content:
+                # Text
+                if isinstance(block, TextBlock):
+                    yield block.text
+
+                # Thinking (if SDK provides this class)
+                elif ThinkingBlock and isinstance(block, ThinkingBlock):  # type: ignore
+                    thinking = getattr(block, "thinking", "")
+                    if thinking:
+                        yield f"\n<thinking>{thinking}</thinking>\n"
+
+                # ToolUse (if SDK provides)
+                elif ToolUseBlock and isinstance(block, ToolUseBlock):  # type: ignore
+                    name = getattr(block, "name", "tool")
+                    yield f"\n<tool name='{name}' />\n"
+
+                # ToolResult (if SDK provides)
+                elif ToolResultBlock and isinstance(block, ToolResultBlock):  # type: ignore
+                    content = getattr(block, "content", None)
+                    if isinstance(content, str):
+                        yield f"\n<tool_result>{content}</tool_result>\n"
+                    elif isinstance(content, list):
+                        snippet = json.dumps(content)
+                        if len(snippet) > 2000:
+                            snippet = snippet[:2000] + "…"
+                        yield f"\n<tool_result>{snippet}</tool_result>\n"
+                    else:
+                        yield "\n<tool_result />\n"
+
+                # Fallback for unknown blocks
+                else:
+                    yield f"\n<!-- unsupported block: {_block_name(block)} -->\n"
+
+        elif isinstance(message, ResultMessage):
+            # Marks completion of this response
+            yield "\n</done>\n"
+
 async def get_claude_code_response_async(
     chat_session: ChatSession,
     file_path_list: List[str],
     question: Question,
     chat_history: str,
     deep_thinking: bool = True,
-    stream: bool = True
-) -> Generator[str, None, None]:
+    stream: bool = True,
+) -> AsyncIterator[str]:
     """
-    Async implementation of Claude Code SDK chatbot that analyzes codebases and performs web searches.
-    Streams text chunks as they arrive.
+    Async implementation using ClaudeSDKClient for robust streaming.
     """
-    import subprocess
-
-    # Install Claude Code SDK globally (best-effort)
-    try:
-        logger.info("Installing Claude Code SDK globally...\n")
-        subprocess.run(
-            ["npm", "install", "-g", "@anthropic-ai/claude-code"],
-            check=True, capture_output=True, text=True
-        )
-        logger.info("Claude Code SDK installed successfully.\n")
-    except subprocess.CalledProcessError as e:
-        logger.warning(f"Warning: Failed to install Claude Code SDK: {e}\n")
-
-    codebase_folder_dir = file_path_list[0]
-
-    # Load env
-    # project_root = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor"
-    # env_path = os.path.join(project_root, ".env")
-    # load_dotenv(env_path, override=True)
+    # Load env & key
     load_dotenv(".env")
     api_key = os.getenv("ANTHROPIC_API_KEY")
-
     if not api_key:
-        logger.error("Error: ANTHROPIC_API_KEY not found in .env file\n")
+        yield "<error>ANTHROPIC_API_KEY is not set. Please export it or add to .env</error>\n"
         return
+    os.environ["ANTHROPIC_API_KEY"] = api_key  # ensure CLI/SDK can see it
 
-    logger.info(f"✅ API key loaded: {api_key[:15]}... (length: {len(api_key)})\n")
+    # Codebase path
+    if not file_path_list:
+        yield "<error>No codebase directory provided.</error>\n"
+        return
+    codebase_folder_dir = file_path_list[0]
 
-    # Stream start marker
-    yield "<response>\n"
+    # Build options (per docs)
+    options = _make_options_with_fallback(
+        cwd=codebase_folder_dir,
+        allowed_tools=["Read", "Glob", "Grep", "WebSearch"],
+        permission_mode="plan",  # read-only (no edits)
+        env={"ANTHROPIC_API_KEY": api_key},
+        system_prompt=(
+            "You are a patient, helpful, and professional tutor assisting with reading code "
+            "and research papers. You can read files and search the web when needed. "
+            "Be precise, cite filenames/paths you inspected, and keep answers concise unless asked.\n\n"
+            f"Context from chat history:\n{chat_history}"
+        ),
+        # Use token budget if supported by current SDK; otherwise silently ignored by fallback
+        max_thinking_tokens=8000 if deep_thinking else 0,
+    )
 
-    try:
-        os.environ["ANTHROPIC_API_KEY"] = api_key
+    prompt = f"""Analyze the repository and answer the question.
 
-        options = ClaudeCodeOptions(
-            cwd=codebase_folder_dir,
-            allowed_tools=["Read", "Glob", "Grep", "WebSearch"],
-            env={"ANTHROPIC_API_KEY": api_key},
-            permission_mode="plan",  # read-only
-            system_prompt=f"""You are a patient, helpful, and friendly tutor helping a student reading papers.
-
-Instructions:
-1) Explore and understand the file base structure
-2) Analyze the relevant files
-3) If needed, use web search
-4) Provide a comprehensive response based on analysis and searches
-5) Be professional, helpful and informative
-
-You can only read files and search the web. Do not edit files.
-
-Context from chat history: {chat_history}
-
-Your task: {question.text}
-"""
-        )
-
-        prompt = f"""Please analyze this file base and answer the question at the end.
 Steps:
-1) Explore the file base structure
+1) Explore the file base structure (list key dirs/files you looked at)
 2) Read & analyze relevant code/files
 3) Use web search if additional context is needed
-4) Provide a comprehensive analysis and final answer
+4) Provide a concise, actionable answer
 
-File base: {codebase_folder_dir}
+Codebase: {codebase_folder_dir}
 Question: {question.text}
 """
 
-        # Stream messages from Claude Code
-        async for message in query(prompt=prompt, options=options):
-            # Assistant text blocks
-            if isinstance(message, AssistantMessage):
-                for block in message.content:
-                    if isinstance(block, TextBlock):
-                        yield block.text
-                    elif hasattr(block, "text"):
-                        yield block.text
+    # Begin streaming
+    yield "<response>\n"
+    try:
+        async with ClaudeSDKClient(options=options) as client:
+            # Send query into a named session for resumability
+            await client.query(prompt, session_id=chat_session.session_id)
 
-            # Result messages (final structured result)
-            elif isinstance(message, ResultMessage):
-                if hasattr(message, "result") and message.result:
-                    yield message.result
+            # Stream messages until ResultMessage is received
+            async for text in _iter_response_messages(client):
+                yield text
 
-            else:
-                # Generic status updates inferred from message shape/content
-                # Keep these short & informative
-                mstr = str(message)
-                if "subtype='init'" in mstr:
-                    yield "\n🔧 Initializing DeepTutor session...\n"
-                elif "Glob" in mstr or "content=" in mstr and ("/" in mstr or "\\n" in mstr):
-                    yield "\n📁 Exploring directory structure...\n"
-                elif "Read" in mstr:
-                    yield "\n📄 Reading file contents...\n"
-                elif "Grep" in mstr:
-                    yield "\n🔍 Searching within files...\n"
-                elif "WebSearch" in mstr:
-                    yield "\n🌐 Performing web search...\n"
-                else:
-                    # Fallback to raw text if it looks meaningful
-                    # Avoid dumping giant tool payloads
-                    snippet = mstr
-                    if len(snippet) > 600:
-                        snippet = snippet[:600] + "…\n"
-                    yield snippet
-
-        # Stream end marker
-        yield "\n</response>\n"
-
-    except Exception as e:
-        logger.error(f"Error during DeepTutor Claude Code analysis: {str(e)}\n")
         yield "</response>\n"
 
+    except CLINotFoundError:
+        yield (
+            "<error>Claude Code CLI not found. "
+            "Install with: npm install -g @anthropic-ai/claude-code</error>\n</response>\n"
+        )
+    except CLIJSONDecodeError as e:
+        yield f"<error>Failed to parse CLI JSON output: {e}</error>\n</response>\n"
+    except ProcessError as e:
+        detail = f" (exit_code={e.exit_code})" if getattr(e, 'exit_code', None) else ""
+        yield f"<error>Claude Code process failed{detail}. Check logs.</error>\n</response>\n"
+    except CLIConnectionError as e:
+        yield f"<error>Failed to connect to Claude Code: {e}</error>\n</response>\n"
+    except asyncio.CancelledError:
+        yield "<error>Streaming cancelled.</error>\n</response>\n"
+        raise
+    except Exception as e:
+        yield f"<error>{type(e).__name__}: {str(e)}</error>\n</response>\n"
+
 # --------------------------------------------
-# Synchronous streaming wrapper (FIXED VERSION)
+# Synchronous streaming wrapper (threaded)
 # --------------------------------------------
 
 def get_claude_code_response(
@@ -360,29 +459,31 @@ def get_claude_code_response(
     question: Question,
     chat_history: str,
     deep_thinking: bool = True,
-    stream: bool = True
+    stream: bool = True,
 ) -> Generator[str, None, None]:
     """
-    True streaming wrapper over the async generator.
-    Runs the async producer in a background thread and yields chunks as they arrive.
+    True streaming wrapper over the async generator using a background thread.
+
+    - Dedicated event loop via asyncio.run()
+    - Bounded queue with backpressure (maxsize=256)
+    - Sentinel-based shutdown (no busy-waiting)
     """
-    q: queue.Queue = queue.Queue(maxsize=100)
+    q: "queue.Queue[object]" = queue.Queue(maxsize=256)
     SENTINEL = object()
 
     def runner():
         async def consume():
             try:
-                async for chunk in get_claude_code_response_async(
+                agen = get_claude_code_response_async(
                     chat_session, file_path_list, question, chat_history, deep_thinking, stream
-                ):
-                    # Non-blocking put with backpressure
-                    q.put(chunk)
+                )
+                async for chunk in agen:
+                    q.put(chunk)  # blocks if full → backpressure
             except Exception as e:
-                q.put(f"\n[stream-error] {e}\n")
+                q.put(f"\n[stream-error] {type(e).__name__}: {e}\n")
             finally:
                 q.put(SENTINEL)
 
-        # Start a fresh event loop in this thread
         asyncio.run(consume())
 
     t = threading.Thread(target=runner, name="claude-code-stream", daemon=True)
@@ -392,7 +493,7 @@ def get_claude_code_response(
         item = q.get()
         if item is SENTINEL:
             break
-        yield item
+        yield item if isinstance(item, str) else str(item)
 
 # --------------------
 # Example test harness
@@ -400,7 +501,7 @@ def get_claude_code_response(
 
 def test_claude_code_sdk():
     """
-    Test function to demonstrate how to use the Claude Code SDK chatbot with streaming.
+    Demonstrates how to use the Claude Code SDK chatbot with streaming.
     """
     session = ChatSession()
     session.initialize()
@@ -410,11 +511,15 @@ def test_claude_code_sdk():
             text="Analyze the file base structure. Keep the response as concise as possible.",
             language="English",
             question_type="global",
-            special_context="Focus on understanding the overall architecture"
+            special_context="Focus on understanding the overall architecture",
         )
     ]
 
-    codebase_dir = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/pipeline/science/features_lab/claude_code_integration_test/test_files"
+    # Replace with your actual path
+    codebase_dir = (
+        "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/"
+        "pipeline/science/features_lab/claude_code_integration_test/test_files"
+    )
 
     chat_history = """Previous conversation:
 User: Hello, I'd like to analyze some code.
@@ -424,7 +529,7 @@ Assistant: I'd be happy to help you analyze your code! Please share the codebase
     for i, question in enumerate(test_questions, 1):
         print(f"\n{'='*70}")
         print(f"TEST {i}: {question.text}")
-        print('='*70)
+        print("=" * 70)
 
         try:
             response_generator = get_claude_code_response(
@@ -433,17 +538,19 @@ Assistant: I'd be happy to help you analyze your code! Please share the codebase
                 question=question,
                 chat_history=chat_history,
                 deep_thinking=True,
-                stream=True
+                stream=True,
             )
 
             print("Streaming response:")
             print("-" * 50)
             response_content = ""
             for chunk in response_generator:
-                # IMPORTANT: flush=True to see live streaming in the terminal
-                print(chunk, end="", flush=True)
+                print(chunk, end="", flush=True)  # show live chunks
                 response_content += chunk
 
+            # Append to history
+            session.add_message({"role": "user", "content": question.text})
+            session.add_message({"role": "assistant", "content": response_content})
             chat_history += f"\nUser: {question.text}\nAssistant: {response_content}"
 
             print("\n" + "-" * 50)

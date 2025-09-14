@@ -422,6 +422,7 @@ async def get_claude_code_response_async(
             allowed_tools=[
                 "Read", "Glob", "Grep", "WebSearch"
             ],
+            env={"ANTHROPIC_API_KEY": api_key},
             permission_mode="plan",  # Read-only mode, no file edits
             system_prompt=f"""You are a helpful coding assistant analyzing a codebase. 
             

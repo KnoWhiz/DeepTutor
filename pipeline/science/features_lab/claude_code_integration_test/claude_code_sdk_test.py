@@ -60,7 +60,6 @@ def save_chat_history(session_id: str, chat_history: List[Dict]) -> None:
             }, f, indent=2, ensure_ascii=False)
     except Exception as e:
         logger.info(f"Error saving chat history: {e}")
-
 def load_chat_history(session_id: str) -> Optional[List[Dict]]:
     file_path = get_chat_history_path(session_id)
     if not os.path.exists(file_path):
@@ -72,7 +71,6 @@ def load_chat_history(session_id: str) -> Optional[List[Dict]]:
     except Exception as e:
         logger.info(f"Error loading chat history: {e}")
         return None
-
 def delete_chat_history(session_id: str) -> bool:
     file_path = get_chat_history_path(session_id)
     if not os.path.exists(file_path):
@@ -83,7 +81,6 @@ def delete_chat_history(session_id: str) -> bool:
     except Exception as e:
         logger.info(f"Error deleting chat history: {e}")
         return False
-
 def cleanup_old_sessions() -> None:
     base_dir = os.path.join(os.path.dirname(__file__), "chat_history")
     if not os.path.exists(base_dir):
@@ -258,9 +255,10 @@ async def get_claude_code_response_async(
     codebase_folder_dir = file_path_list[0]
 
     # Load env
-    project_root = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor"
-    env_path = os.path.join(project_root, ".env")
-    load_dotenv(env_path, override=True)
+    # project_root = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor"
+    # env_path = os.path.join(project_root, ".env")
+    # load_dotenv(env_path, override=True)
+    load_dotenv(".env")
     api_key = os.getenv("ANTHROPIC_API_KEY")
 
     if not api_key:
@@ -328,15 +326,15 @@ Question: {question.text}
                 # Keep these short & informative
                 mstr = str(message)
                 if "subtype='init'" in mstr:
-                    yield "🔧 Initializing Claude Code session...\n"
+                    yield "\n🔧 Initializing DeepTutor session...\n"
                 elif "Glob" in mstr or "content=" in mstr and ("/" in mstr or "\\n" in mstr):
-                    yield "📁 Exploring directory structure...\n"
+                    yield "\n📁 Exploring directory structure...\n"
                 elif "Read" in mstr:
-                    yield "📄 Reading file contents...\n"
+                    yield "\n📄 Reading file contents...\n"
                 elif "Grep" in mstr:
-                    yield "🔍 Searching within files...\n"
+                    yield "\n🔍 Searching within files...\n"
                 elif "WebSearch" in mstr:
-                    yield "🌐 Performing web search...\n"
+                    yield "\n🌐 Performing web search...\n"
                 else:
                     # Fallback to raw text if it looks meaningful
                     # Avoid dumping giant tool payloads
@@ -349,7 +347,7 @@ Question: {question.text}
         yield "\n</response>\n"
 
     except Exception as e:
-        logger.error(f"Error during Claude Code analysis: {str(e)}\n")
+        logger.error(f"Error during DeepTutor Claude Code analysis: {str(e)}\n")
         yield "</response>\n"
 
 # --------------------------------------------
@@ -404,21 +402,12 @@ def test_claude_code_sdk():
     """
     Test function to demonstrate how to use the Claude Code SDK chatbot with streaming.
     """
-    print("Testing Claude Code SDK chatbot...")
-    print("=" * 70)
-
-    print("Activating conda environment 'deeptutor'...")
-    try:
-        print("Please ensure you have activated the conda environment with: conda activate deeptutor")
-    except Exception as e:
-        print(f"Note: Please activate conda environment manually: {e}")
-
     session = ChatSession()
     session.initialize()
 
     test_questions = [
         Question(
-            text="Analyze the codebase structure and explain what each file does",
+            text="Analyze the file base structure. Keep the response as concise as possible.",
             language="English",
             question_type="global",
             special_context="Focus on understanding the overall architecture"

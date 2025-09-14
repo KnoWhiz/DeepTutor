@@ -508,7 +508,7 @@ def test_claude_code_sdk():
 
     test_questions = [
         Question(
-            text="Analyze the file base structure. Keep the response as concise as possible.",
+            text="Analyze the file base structure. Keep the response as concise as possible. And tell me what is Bingran You by doing web search.",
             language="English",
             question_type="global",
             special_context="Focus on understanding the overall architecture",

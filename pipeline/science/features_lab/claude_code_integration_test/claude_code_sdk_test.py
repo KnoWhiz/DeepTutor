@@ -13,6 +13,7 @@ import logging
 from dotenv import load_dotenv
 import json
 import uuid
+import asyncio
 
 try:
     from bson import ObjectId
@@ -23,10 +24,9 @@ except ImportError as e:
     ObjectId = None
     Anthropic = None
 
-import os, asyncio
 from claude_code_sdk import (
     query,
-    ClaudeSDKClient, ClaudeCodeOptions,
+    ClaudeCodeOptions,
     AssistantMessage, TextBlock, ResultMessage
 )
 
@@ -369,6 +369,116 @@ class ChatSession:
         return session
 
 
+async def get_claude_code_response_async(
+    chat_session: ChatSession,
+    file_path_list: List[str], 
+    question: Question,
+    chat_history: str, 
+    deep_thinking: bool = True,
+    stream: bool = True
+) -> Generator[str, None, None]:
+    """
+    Async implementation of Claude Code SDK chatbot that analyzes codebases and performs web searches.
+    
+    Args:
+        chat_session: Current chat session
+        file_path_list: List containing the codebase folder path
+        question: Question object with text and metadata
+        chat_history: Previous chat history as string
+        deep_thinking: Whether to use deep thinking mode
+        stream: Whether to stream responses
+        
+    Yields:
+        str: Response chunks in streaming format
+    """
+    import subprocess
+    
+    # Install Claude Code SDK globally
+    try:
+        yield "Installing Claude Code SDK globally...\n"
+        subprocess.run([
+            "npm", "install", "-g", "@anthropic-ai/claude-code"
+        ], check=True, capture_output=True, text=True)
+        yield "Claude Code SDK installed successfully.\n"
+    except subprocess.CalledProcessError as e:
+        yield f"Warning: Failed to install Claude Code SDK: {e}\n"
+    
+    codebase_folder_dir = file_path_list[0]
+    
+    # Load environment variables
+    load_dotenv(".env")
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    
+    if not api_key:
+        yield "Error: ANTHROPIC_API_KEY not found in .env file\n"
+        return
+    
+    yield "<response>\n"
+    
+    try:
+        # Configure Claude Code options
+        options = ClaudeCodeOptions(
+            cwd=codebase_folder_dir,
+            allowed_tools=[
+                "Read", "Glob", "Grep", "WebSearch"
+            ],
+            permission_mode="plan",  # Read-only mode, no file edits
+            system_prompt=f"""You are a helpful coding assistant analyzing a codebase. 
+            
+            Context from chat history: {chat_history}
+            
+            Your task: {question.text}
+            
+            Instructions:
+            1. First, explore and understand the codebase structure
+            2. Analyze the relevant code files
+            3. If you need additional information to provide a complete answer, use web search
+            4. Provide a comprehensive response based on the codebase analysis and any web search results
+            5. Focus on being helpful and informative
+            
+            Remember: You can only read files and search the web. Do not attempt to edit any files."""
+        )
+        
+        # Create the prompt for Claude Code
+        prompt = f"""Please analyze this codebase and answer the following question:
+
+Question: {question.text}
+
+Please:
+1. First explore the codebase structure to understand what files are available
+2. Read and analyze relevant code files
+3. If you need additional context or information to provide a complete answer, perform web searches
+4. Provide a comprehensive analysis and answer
+
+The codebase is located at: {codebase_folder_dir}
+"""
+        
+        # Use Claude Code SDK to analyze the codebase
+        async for message in query(prompt=prompt, options=options):
+            if isinstance(message, AssistantMessage):
+                for block in message.content:
+                    if isinstance(block, TextBlock):
+                        # Stream the text content
+                        yield block.text
+                    elif hasattr(block, 'text'):
+                        yield block.text
+            elif isinstance(message, ResultMessage):
+                # Handle result messages
+                if hasattr(message, 'content'):
+                    yield str(message.content)
+                else:
+                    yield str(message)
+            else:
+                # Handle other message types
+                yield str(message)
+        
+        yield "\n</response>\n"
+        
+    except Exception as e:
+        yield f"Error during Claude Code analysis: {str(e)}\n"
+        yield "</response>\n"
+
+
 def get_claude_code_response(
     chat_session: ChatSession,
     file_path_list: List[str], 
@@ -377,29 +487,61 @@ def get_claude_code_response(
     deep_thinking: bool = True,
     stream: bool = True
 ) -> Generator[str, None, None]:
-    codebase_folder_dir = file_path_list[0]
-    # pass the API key to the Claude Code process
-    load_dotenv(".env")
-    API_KEY = str(os.getenv("ANTHROPIC_API_KEY"))
-    print(f"API_KEY: {API_KEY}")
-    opts = ClaudeCodeOptions(
-        env={"ANTHROPIC_API_KEY": API_KEY},
-        permission_mode="plan"  # safe: read/plan only, no file edits/exec
-    )
-    def generate_response():
-        yield "<response>\n"
-        yield "Here is the place holder response chunk 1 from claude code sdk\n"
-        yield "Here is the place holder response chunk 2 from claude code sdk\n"
-        yield "Here is the place holder response chunk 3 from claude code sdk\n"
-        yield "Here is the place holder response chunk 4 from claude code sdk\n"
-        yield "Here is the place holder response chunk 5 from claude code sdk\n"
-        yield "Here is the place holder response chunk 6 from claude code sdk\n"
-        yield "Here is the place holder response chunk 7 from claude code sdk\n"
-        yield "Here is the place holder response chunk 8 from claude code sdk\n"
-        yield "Here is the place holder response chunk 9 from claude code sdk\n"
-        yield "Here is the place holder response chunk 10 from claude code sdk\n"
-        yield "</response>\n"
-    return generate_response()
+    """
+    Synchronous wrapper for the async Claude Code SDK chatbot.
+    
+    Args:
+        chat_session: Current chat session
+        file_path_list: List containing the codebase folder path
+        question: Question object with text and metadata
+        chat_history: Previous chat history as string
+        deep_thinking: Whether to use deep thinking mode
+        stream: Whether to stream responses
+        
+    Yields:
+        str: Response chunks in streaming format
+    """
+    async def async_generator():
+        async for chunk in get_claude_code_response_async(
+            chat_session, file_path_list, question, chat_history, deep_thinking, stream
+        ):
+            yield chunk
+    
+    # Run the async generator in a new event loop
+    async def run_async_generator():
+        chunks = []
+        async for chunk in async_generator():
+            chunks.append(chunk)
+        return chunks
+    
+    try:
+        # Try to get existing event loop
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # If loop is running, we need to use a different approach
+            import concurrent.futures
+            
+            def run_in_thread():
+                new_loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(new_loop)
+                try:
+                    return new_loop.run_until_complete(run_async_generator())
+                finally:
+                    new_loop.close()
+            
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(run_in_thread)
+                chunks = future.result()
+        else:
+            # If no loop is running, we can use it directly
+            chunks = loop.run_until_complete(run_async_generator())
+    except RuntimeError:
+        # No event loop exists, create a new one
+        chunks = asyncio.run(run_async_generator())
+    
+    # Yield all chunks
+    for chunk in chunks:
+        yield chunk
 
 
 # Example usage and testing function
@@ -407,45 +549,91 @@ def test_claude_code_sdk():
     """
     Test function to demonstrate how to use the Claude Code SDK chatbot.
     """
+    
+    print("Testing Claude Code SDK chatbot...")
+    print("=" * 70)
+    
+    # Activate conda environment
+    print("Activating conda environment 'deeptutor'...")
+    try:
+        # Note: In practice, the conda environment should be activated before running this script
+        # This is just for demonstration
+        print("Please ensure you have activated the conda environment with: conda activate deeptutor")
+    except Exception as e:
+        print(f"Note: Please activate conda environment manually: {e}")
+    
     # Create a test session
     session = ChatSession()
     session.initialize()
     
-    # Create a test question
-    question = Question(
-        # text="Can you analyze the code structure and suggest improvements?",
-        text="Review the codebase and draw the flow of the code",
-        language="English",
-        question_type="global",
-        special_context="Focus on code quality and best practices"
-    )
+    # Create test questions to demonstrate different capabilities
+    test_questions = [
+        Question(
+            text="Analyze the codebase structure and explain what each file does",
+            language="English",
+            question_type="global",
+            special_context="Focus on understanding the overall architecture"
+        ),
+        # Question(
+        #     text="Compare the Python and JavaScript implementations and identify similarities",
+        #     language="English", 
+        #     question_type="global",
+        #     special_context="Cross-language analysis"
+        # ),
+        # Question(
+        #     text="What design patterns are used in this codebase?",
+        #     language="English",
+        #     question_type="global", 
+        #     special_context="Focus on design patterns and best practices"
+        # )
+    ]
     
     # Codebase folder directory
     codebase_dir = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/pipeline/science/features_lab/claude_code_integration_test/test_files"
     
-    # Empty chat history for testing
-    chat_history = """chat history"""
+    # Sample chat history for testing
+    chat_history = """Previous conversation:
+User: Hello, I'd like to analyze some code.
+Assistant: I'd be happy to help you analyze your code! Please share the codebase or specific files you'd like me to review.
+"""
     
-    # Test the function
-    print("Testing Claude Code SDK chatbot...")
-    print("=" * 50)
-    
-    try:
-        response_generator = get_claude_code_response(
-            chat_session=session,
-            file_path_list=[codebase_dir],
-            question=question,
-            chat_history=chat_history,
-            deep_thinking=True,
-            stream=True
-        )
+    # Test each question
+    for i, question in enumerate(test_questions, 1):
+        print(f"\n{'='*70}")
+        print(f"TEST {i}: {question.text}")
+        print('='*70)
         
-        print("Streaming response:")
-        for chunk in response_generator:
-            print(chunk, end="", flush=True)
+        try:
+            response_generator = get_claude_code_response(
+                chat_session=session,
+                file_path_list=[codebase_dir],
+                question=question,
+                chat_history=chat_history,
+                deep_thinking=True,
+                stream=True
+            )
             
-    except Exception as e:
-        print(f"Error during testing: {e}")
+            print("Streaming response:")
+            print("-" * 50)
+            response_content = ""
+            for chunk in response_generator:
+                print(chunk, end="", flush=True)
+                response_content += chunk
+            
+            # Add this response to chat history for next test
+            chat_history += f"\nUser: {question.text}\nAssistant: {response_content}"
+            
+            print("\n" + "-" * 50)
+            print(f"Test {i} completed successfully!")
+                
+        except Exception as e:
+            print(f"Error during test {i}: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    print(f"\n{'='*70}")
+    print("All tests completed!")
+    print(f"{'='*70}")
 
 
 if __name__ == "__main__":

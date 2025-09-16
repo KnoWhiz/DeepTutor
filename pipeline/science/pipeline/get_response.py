@@ -44,6 +44,7 @@ from pipeline.science.pipeline.images_understanding import (
     analyze_image
 )
 from pipeline.science.pipeline.rag_agent import get_rag_context
+from pipeline.science.pipeline.claude_code_sdk import get_claude_code_response, get_claude_code_response_async
 
 import logging
 logger = logging.getLogger("tutorpipeline.science.get_response")
@@ -206,42 +207,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         return await get_multiple_files_summary(file_path_list, embedding_folder_list, chat_session, stream)
     
     # Handle Lite mode first
-    if chat_session.mode == ChatMode.LITE or chat_session.mode == ChatMode.BASIC or chat_session.mode == ChatMode.ADVANCED:
-        # lite_prompt = """
-        # You are an expert tutor specializing in precise, professional explanations of complex document content.
-        # CONTEXT INFORMATION:
-        # - Previous conversation: {chat_history}
-        # - Reference content from document: {context}
-        # USER QUESTION:
-        # {input}
-        # RESPONSE GUIDELINES:
-        # 1. Provide concise, accurate answers directly addressing the question
-        # 2. Use clear, precise language with appropriate technical terminology
-        # 3. Format key concepts and important points in **bold**
-        # 4. Maintain a professional, academic tone throughout the response
-        # 5. Break down complex information into structured, logical segments
-        # 6. When explaining technical concepts, include relevant examples or applications
-        # 7. Clearly state limitations of explanations when uncertainty exists
-        # 8. Use bullet points or numbered lists for sequential explanations
-        # 9. Cite specific parts of the document when directly referencing content
-        # Your goal is to deliver accurate, clear, and professionally structured responses that enhance comprehension of complex topics.
-        # """
-        # actual_embedding_folder_list = [os.path.join(embedding_folder, 'lite_embedding') for embedding_folder in embedding_folder_list]
-        # db = load_embeddings(actual_embedding_folder_list, 'lite')
-        # logger.info(f"Type of db: {type(db)}")
-        # answer = await get_db_rag_response(
-        #     prompt_string=lite_prompt,
-        #     user_input=user_input + "\n\n" + question.special_context,
-        #     chat_history=chat_history,
-        #     chat_session=chat_session,
-        #     db=db,
-        #     stream=stream
-        # )   # If stream is True, the answer is a generator; otherwise, it's a string
-        # if stream is True:
-        #     return answer
-        # else:
-        #     return answer
-
+    if chat_session.mode == ChatMode.LITE:
         config = load_config()
         token_limit = config["inference_token_limit"]
         map_symbol_to_index = config["map_symbol_to_index"]
@@ -315,6 +281,13 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                     yield str(chunk)
             yield "\n\n</response>"
         return process_stream()
+
+    elif chat_session.mode == ChatMode.BASIC or chat_session.mode == ChatMode.ADVANCED:
+        file_path_list_copy = file_path_list.copy()
+        # The folder should be the markdown folder
+        file_path_list_copy[0] = os.path.join(embedding_folder_list[0], "markdown")
+        logger.info(f"get_claude_code_response in folder: {file_path_list_copy[0]}")
+        return await get_claude_code_response_async(ChatSession, file_path_list_copy, Question, chat_history, embedding_folder_list, deep_thinking = True, stream=True)
 
 
 async def get_query_helper(chat_session: ChatSession, user_input, context_chat_history, embedding_folder_list):

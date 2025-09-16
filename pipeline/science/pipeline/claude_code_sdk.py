@@ -430,8 +430,6 @@ Question: {question.text}
             async for text in _iter_response_messages(client):
                 yield text
 
-        yield "</response>\n"
-
     except CLINotFoundError:
         logger.error(
             "<error>Claude Code CLI not found. "
@@ -449,6 +447,8 @@ Question: {question.text}
         raise
     except Exception as e:
         logger.error(f"<error>{type(e).__name__}: {str(e)}</error>\n</response>\n")
+
+    yield "</response>\n"
 
 # --------------------------------------------
 # Synchronous streaming wrapper (threaded)

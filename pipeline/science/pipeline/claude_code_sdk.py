@@ -311,11 +311,14 @@ def _make_options_with_fallback(**kwargs) -> ClaudeCodeOptions:
     don't support some fields (e.g., max_thinking_tokens).
     """
     try:
+        logger.info(f"Making options with kwargs: {kwargs}")
         return ClaudeCodeOptions(**kwargs)
     except TypeError:
         # Remove keys that older SDKs may not support
+        logger.info("Removing keys that older SDKs may not support")
         unsupported = ("max_thinking_tokens", "can_use_tool", "hooks")
         filtered = {k: v for k, v in kwargs.items() if k not in unsupported}
+        logger.info(f"Filtered keys: {filtered}")
         return ClaudeCodeOptions(**filtered)
 
 def _block_name(b: object) -> str:
@@ -398,25 +401,30 @@ async def get_claude_code_response_async(
         permission_mode="plan",  # read-only (no edits)
         env={"ANTHROPIC_API_KEY": api_key},
         system_prompt=(
-            "You are a patient, helpful, and professional tutor assisting with reading code "
-            "and research papers. You can read files and search the web when needed. "
-            "Be precise, cite filenames/paths you inspected, and keep answers concise unless asked.\n\n"
-            f"Context from chat history:\n{chat_history}"
+            "You are a patient, helpful, and professional academic tutor specializing in research papers. "
+            "You are working with markdown, text, and image files that contain research paper content. "
+            "Your goal is to help students understand complex academic concepts by reading and analyzing these files. "
+            "Focus on the .md and .txt and image files which contain the actual research content, not auxiliary files.\n\n"
+            f"Previous conversation context:\n{chat_history}"
         ),
         # Use token budget if supported by current SDK; otherwise silently ignored by fallback
         max_thinking_tokens=8000 if deep_thinking else 0,
     )
 
-    prompt = f"""Analyze the repository and answer the question.
+    prompt = f"""You are working with research paper documents that have been converted to markdown or text or image format. Your task is to analyze these files and answer the student's question.
 
 Steps:
-1) Explore the file base structure (list key dirs/files you looked at)
-2) Read & analyze relevant code/files
-3) Use web search if additional context is needed
-4) Provide a concise, actionable answer
+1) First, explore the directory structure to identify the main document files (*.md and *.txt files) and image files
+2) Read and analyze the relevant documents and images to understand the research content
+3) Focus on the specific content that relates to the student's question
+4) Use web search if additional external context is needed beyond the documents
+5) Provide a comprehensive, well-cited answer based on the document content
 
-Codebase: {codebase_folder_dir}
-Question: {question.text}
+Only access the directory: {codebase_folder_dir} to generate the answer.
+Document Context: This directory contains research papers converted to markdown or text or image format, along with associated image files and metadata.
+Student's Question: {question.text}
+
+Important: Focus on analyzing the markdown (.md) or text (.txt) or image files which contain the actual research paper content. These documents contain scientific/academic information that you should use to answer the question.
 """
 
     # Begin streaming

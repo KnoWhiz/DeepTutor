@@ -433,22 +433,22 @@ Question: {question.text}
         yield "</response>\n"
 
     except CLINotFoundError:
-        yield (
+        logger.error(
             "<error>Claude Code CLI not found. "
             "Install with: npm install -g @anthropic-ai/claude-code</error>\n</response>\n"
         )
     except CLIJSONDecodeError as e:
-        yield f"<error>Failed to parse CLI JSON output: {e}</error>\n</response>\n"
+        logger.error(f"<error>Failed to parse CLI JSON output: {e}</error>\n</response>\n")
     except ProcessError as e:
         detail = f" (exit_code={e.exit_code})" if getattr(e, 'exit_code', None) else ""
-        yield f"<error>Claude Code process failed{detail}. Check logs.</error>\n</response>\n"
+        logger.error(f"<error>Claude Code process failed{detail}. Check logs.</error>\n</response>\n")
     except CLIConnectionError as e:
-        yield f"<error>Failed to connect to Claude Code: {e}</error>\n</response>\n"
+        logger.error(f"<error>Failed to connect to Claude Code: {e}</error>\n</response>\n")
     except asyncio.CancelledError:
-        yield "<error>Streaming cancelled.</error>\n</response>\n"
+        logger.error("<error>Streaming cancelled.</error>\n</response>\n")
         raise
     except Exception as e:
-        yield f"<error>{type(e).__name__}: {str(e)}</error>\n</response>\n"
+        logger.error(f"<error>{type(e).__name__}: {str(e)}</error>\n</response>\n")
 
 # --------------------------------------------
 # Synchronous streaming wrapper (threaded)

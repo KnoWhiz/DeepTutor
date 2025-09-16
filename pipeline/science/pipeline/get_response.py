@@ -287,7 +287,10 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         # The folder should be the markdown folder
         file_path_list_copy[0] = os.path.join(embedding_folder_list[0], "markdown")
         logger.info(f"get_claude_code_response in folder: {file_path_list_copy[0]}")
-        return await get_claude_code_response_async(ChatSession, file_path_list_copy, Question, chat_history, embedding_folder_list, deep_thinking = True, stream=True)
+        # Convert chat_history to string format for Claude Code SDK
+        chat_history_string = truncate_chat_history(chat_history) if chat_history else ""
+        # Return the async generator directly for streaming
+        return get_claude_code_response_async(chat_session, file_path_list_copy, question, chat_history_string, embedding_folder_list, deep_thinking=True, stream=True)
 
 
 async def get_query_helper(chat_session: ChatSession, user_input, context_chat_history, embedding_folder_list):

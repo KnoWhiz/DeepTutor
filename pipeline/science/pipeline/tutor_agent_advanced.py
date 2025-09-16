@@ -293,7 +293,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
         yield "</thinking>"
         # yield "\n\n**💡 Loading the response ...**\n\n" 
     else:
-        for chunk in answer:
+        async for chunk in answer:
             if "</think>" not in chunk:
                 if "<response>" in chunk:
                     if translation_response is False:

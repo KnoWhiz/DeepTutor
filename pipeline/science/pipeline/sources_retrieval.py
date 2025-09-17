@@ -5,6 +5,9 @@ import fitz
 # import pprint
 import json
 
+import math
+from collections import Counter, defaultdict
+
 from difflib import SequenceMatcher
 
 from langchain_community.vectorstores import FAISS
@@ -101,352 +104,223 @@ def locate_chunk_in_pdf(chunk: str, source_page_number: int, pdf_path: str, simi
     else:
         return result
 
-    # # NOTE: following the revision on source button generation logic, we 
-    # # no longer output smaller chunk, but the entire pages, so we don't need to 
-    # # search for the chunk, but we just need to get the page number;
-    # # Therefore, we currently implement a simple version that just returns the actualpage number
-    # # and avoid the following logic for simplicity and avoid bug of always returning first page
-    # try:
-    #     # Normalize the search chunk
-    #     normalized_chunk = normalize_text(chunk, remove_linebreaks)
-    #     chunk_words = normalized_chunk.split()
-    #     min_match_length = min(100, len(normalized_chunk))  # For long chunks, we'll use word-based search
-        
-    #     # Open the PDF file
-    #     doc = fitz.open(pdf_path)
-        
-    #     # First try exact matching
-    #     for page_num in range(len(doc)):
-    #         page = doc[page_num]
-    #         text = page.get_text()
-    #         normalized_text = normalize_text(text, remove_linebreaks)
-            
-    #         # Try exact match first
-    #         start_pos = normalized_text.find(normalized_chunk)
-    #         if start_pos != -1:
-    #             end_pos = start_pos + len(normalized_chunk)
-    #             result["page_num"] = page_num
-    #             result["start_char"] = start_pos
-    #             result["end_char"] = end_pos
-    #             result["success"] = True
-    #             result["similarity"] = 1.0
-    #             break
-            
-    #         # If chunk is long, try matching the first N words
-    #         if len(chunk_words) > 10:
-    #             first_words = " ".join(chunk_words[:10])
-    #             start_pos = normalized_text.find(first_words)
-                
-    #             if start_pos != -1:
-    #                 # Found beginning of the chunk, now check similarity
-    #                 potential_match = normalized_text[start_pos:start_pos + len(normalized_chunk)]
-                    
-    #                 # Check if lengths are comparable
-    #                 if abs(len(potential_match) - len(normalized_chunk)) < 0.2 * len(normalized_chunk):
-    #                     # Calculate similarity
-    #                     similarity = SequenceMatcher(None, normalized_chunk, potential_match).ratio()
-                        
-    #                     if similarity > similarity_threshold:
-    #                         result["page_num"] = page_num
-    #                         result["start_char"] = start_pos
-    #                         result["end_char"] = start_pos + len(potential_match)
-    #                         result["success"] = True
-    #                         result["similarity"] = similarity
-    #                         break
-        
-    #     # If not found, try sliding window approach on pages
-    #     if not result["success"]:
-    #         for page_num in range(len(doc)):
-    #             page = doc[page_num]
-    #             text = page.get_text()
-    #             normalized_text = normalize_text(text, remove_linebreaks)
-                
-    #             # For very long chunks, we'll use a sliding window approach
-    #             # to find the most similar section
-    #             if len(normalized_chunk) > min_match_length:
-    #                 best_similarity = 0
-    #                 best_start = -1
-                    
-    #                 # Try to match beginning of chunk with sliding windows
-    #                 first_words = " ".join(chunk_words[:10])
-    #                 for match in re.finditer(re.escape(chunk_words[0]), normalized_text):
-    #                     start_pos = match.start()
-                        
-    #                     # Skip if there's not enough text left
-    #                     if start_pos + len(normalized_chunk) > len(normalized_text):
-    #                         continue
-                        
-    #                     # Extract a section of text of similar length
-    #                     window_size = min(len(normalized_chunk) + 100, len(normalized_text) - start_pos)
-    #                     window_text = normalized_text[start_pos:start_pos + window_size]
-                        
-    #                     # Compare beginning of window with beginning of chunk
-    #                     window_start = window_text[:len(first_words)]
-    #                     similarity = SequenceMatcher(None, first_words, window_start).ratio()
-                        
-    #                     if similarity > 0.8:  # If beginning matches well, check the whole chunk
-    #                         chunk_similarity = SequenceMatcher(None, normalized_chunk, 
-    #                                                          window_text[:len(normalized_chunk)]).ratio()
-    #                         if chunk_similarity > best_similarity:
-    #                             best_similarity = chunk_similarity
-    #                             best_start = start_pos
-                    
-    #                 if best_similarity > similarity_threshold:
-    #                     result["page_num"] = page_num
-    #                     result["start_char"] = best_start
-    #                     result["end_char"] = best_start + len(normalized_chunk)
-    #                     result["success"] = True
-    #                     result["similarity"] = best_similarity
-    #                     break
-        
-    #     doc.close()
-    # except Exception as e:
-    #     print(f"Error processing PDF: {e}")
-    
-    # logger.info(f"TEST: result: {result}")
-    # logger.info(f"Format of result: {type(result)}")
-
-    # if isinstance(result, dict):
-    #     return result
-    # else:
-    #     return {
-    #     "page_num": 1,
-    #     "start_char": 1,
-    #     "end_char": 10,
-    #     "success": False,
-    #     "similarity": 0.0
-    # }
 
 
-async def get_response_source_complex(chat_session: ChatSession, file_path_list, user_input, answer, chat_history, embedding_folder_list):
+def find_most_relevant_chunk(answer: str,
+                             full_content: str,
+                             user_input: str = "",
+                             divider_number: int = 4) -> str:
     """
-    Retrieves and processes source references for AI-generated responses in a tutoring system.
-    
-    This function performs semantic similarity search across embedded document chunks to identify
-    relevant source content that supports the generated response. It handles both textual content
-    and image references, providing normalized relevance scores and metadata for source attribution.
-    
+    Split full_content into `divider_number` chunks and return the single chunk
+    most relevant to (primarily) `user_input` and (secondarily) `answer`.
+    No LLMs used; ranking is a weighted combo of TF-IDF cosine, fuzzy ratio,
+    and Jaccard token overlap. User input is weighted more than answer.
+
     Args:
-        chat_session (ChatSession): Active chat session containing conversation context and settings
-        file_path_list (List[str]): Paths to the uploaded document files being referenced
-        user_input (str): The original user query that prompted the response
-        answer (str): The AI-generated response content to find sources for
-        chat_history (List): Historical conversation context for improved source matching
-        embedding_folder_list (List[str]): Paths to directories containing pre-computed embeddings
-    
+        answer: The assistant's answer string (secondary signal)
+        full_content: The entire source content to split and search
+        user_input: The original user question (primary signal)
+        divider_number: Number of chunks to split full_content into (>=1)
+
     Returns:
-        Tuple[Dict, Dict, Dict, Dict]: A 4-tuple containing:
-            - sources_with_scores: Dictionary mapping source content to normalized relevance scores (0-1)
-            - source_pages: Dictionary mapping source content to original page numbers in documents
-            - refined_source_pages: Dictionary mapping validated sources to 1-indexed page numbers
-            - refined_source_index: Dictionary mapping sources to their corresponding file indices
-    
-    Processing Pipeline:
-        1. Loads image context mappings and URL references from embedding metadata
-        2. Performs similarity search on chat context and response content
-        3. Extracts and normalizes relevance scores across all retrieved chunks
-        4. Maps image descriptions to URLs while preserving source attribution
-        5. Validates sources against original documents and filters results
-        6. Returns structured source data for citation and reference display
-    
-    Note:
-        - Relevance scores are inverted distance metrics (lower distance = higher relevance)
-        - Image sources are mapped from descriptions to actual URLs when available
-        - Source validation ensures cited content can be located in original documents
-        - Page numbers are converted to 1-indexed format for user display
+        str: The most relevant chunk (raw text)
     """
-    mode = chat_session.mode
-    config = load_config()
-    para = config['llm']
 
-    # Load image context, mapping from image file name to image descriptions
-    logger.info(f"TEST: loading from embedding_folder_list: {embedding_folder_list}")
-    image_context_path_list = [os.path.join(embedding_folder, "markdown/image_context.json") for embedding_folder in embedding_folder_list]
-    image_context_list = []
-    for image_context_path in image_context_path_list:
-        if os.path.exists(image_context_path):
-            with open(image_context_path, 'r') as f:
-                image_context = json.loads(f.read())
-        else:
-            logger.info(f"image_context_path: {image_context_path} does not exist")
-            image_context = {}
-            with open(image_context_path, 'w') as f:
-                json.dump(image_context, f)
-        image_context_list.append(image_context)
+    # ----------------------
+    # Guard clauses & setup
+    # ----------------------
+    if not isinstance(full_content, str) or not full_content.strip():
+        return full_content or ""
 
-    # Load images URL list mapping from images file name to image URL
-    image_url_mapping_list = []
-    for embedding_folder in embedding_folder_list:
-        image_url_path = os.path.join(embedding_folder, "markdown/image_urls.json")
-        if os.path.exists(image_url_path):
-            with open(image_url_path, 'r') as f:
-                image_url_mapping = json.load(f)
-        else:
-            logger.info("Image URL mapping file not found. Creating a new one.")
-            image_url_mapping = {}
-            with open(image_url_path, 'w') as f:
-                json.dump(image_url_mapping, f)
-        image_url_mapping_list.append(image_url_mapping)
+    divider_number = max(1, int(divider_number or 1))
+    text = full_content
 
-    # Create reverse mapping from description to image name
-    image_mapping_list = []
-    for image_context in image_context_list:
-        image_mapping = {}
-        for image_name, descriptions in image_context.items():
-            for desc in descriptions:
-                image_mapping[desc] = image_name
-        image_mapping_list.append(image_mapping)
+    # ----------------------
+    # Chunking (near-equal, with soft boundary nudging to sentence ends)
+    # ----------------------
+    def _find_boundary_near(idx: int, span: int = 120) -> int:
+        # Try to snap to a nearby "natural" boundary to avoid cutting sentences
+        if idx <= 0 or idx >= len(text):
+            return max(0, min(idx, len(text)))
+        lo = max(0, idx - span)
+        hi = min(len(text), idx + span)
+        window = text[lo:hi]
+        # Prefer sentence-ish boundaries: ., ?, !, ;, \n
+        candidates = []
+        for i, ch in enumerate(window):
+            if ch in ".?!;\n":
+                candidates.append(lo + i)
+        if not candidates:
+            return idx
+        # Choose the boundary closest to idx
+        return min(candidates, key=lambda x: abs(x - idx))
 
-    # Create a single mapping from description to image URL, mapping from image description to image URL
-    image_url_mapping_merged = {}
-    for idx, (image_mapping, image_url_mapping_merged) in enumerate(zip(image_mapping_list, image_url_mapping_list)):
-        for description, image_name in image_mapping.items():
-            if image_name in image_url_mapping_merged.keys():
-                # If the image name exists in URL mapping, link the description directly to the URL
-                image_url_mapping_merged[description] = image_url_mapping_merged[image_name]
-            else:
-                # If image URL not found, log a warning but don't break the process
-                logger.warning(f"Image URL not found for {image_name} in embedding folder {idx}")
-    logger.info(f"Created image URL mapping with {len(image_url_mapping_merged)} entries")
+    approx = max(1, len(text) // divider_number)
+    cuts = [0]
+    for k in range(1, divider_number):
+        cuts.append(_find_boundary_near(k * approx))
+    cuts.append(len(text))
 
-    # Create a reverse mapping based on image_url_mapping_merged
-    image_url_mapping_merged_reverse = {v: k for k, v in image_url_mapping_merged.items()}
+    chunks = []
+    for i in range(len(cuts) - 1):
+        chunk_i = text[cuts[i]:cuts[i + 1]].strip()
+        if chunk_i:
+            chunks.append(chunk_i)
+    if not chunks:
+        return text
 
-    db_merged = await load_embeddings(embedding_folder_list, 'default')
+    # If we ended up with fewer than requested chunks (e.g., very short text),
+    # just return the only one.
+    if len(chunks) == 1:
+        return chunks[0]
 
-    # Get relevant chunks for both question and answer with scores
-    question_chunks_with_scores = []
-    for key, value in chat_session.formatted_context.items():
-        source_chunk = db_merged.similarity_search_with_score(str(value["content"]), k=1)
-        question_chunks_with_scores.append(source_chunk[0])
+    # ----------------------
+    # Text normalization & features
+    # ----------------------
+    def _normalize(s: str) -> str:
+        s = s or ""
+        s = s.lower()
+        # Match the normalize_text() behavior lightly (keep simple)
+        s = s.replace('−', '-').replace('∼', '~')
+        # Collapse whitespace
+        s = re.sub(r'\s+', ' ', s).strip()
+        return s
 
-    # answer_chunks_with_scores = db_merged.similarity_search_with_score(answer, k=config['sources_retriever']['k'])
-    answer_chunks_with_scores = []
+    def _tokens(s: str):
+        # Unicode-aware, keeps CJK and alnum; drops most punctuation
+        # Using \w with UNICODE grabs letters/numbers/_ plus CJK word chars
+        return re.findall(r'\w+', s, flags=re.UNICODE)
 
-    # The total list of sources chunks from question and answer
-    sources_chunks = []
-    for chunk in question_chunks_with_scores:
-        sources_chunks.append(chunk[0])
-    for chunk in answer_chunks_with_scores:
-        sources_chunks.append(chunk[0])
+    def _char_ngrams(s: str, n: int = 3):
+        # Remove spaces to let n-grams span words slightly (helps fuzzy match)
+        z = re.sub(r'\s+', '', s)
+        if len(z) < n:
+            return []
+        return [z[i:i+n] for i in range(len(z) - n + 1)]
 
-    # logger.info(f"TEST: sources_chunks: {sources_chunks}")
+    def _feature_counts(s: str) -> Counter:
+        s_norm = _normalize(s)
+        toks = _tokens(s_norm)
+        grams = _char_ngrams(s_norm, 3)
+        # Prefix feature namespaces so they don't collide
+        return Counter([f"w:{t}" for t in toks] + [f"c:{g}" for g in grams])
 
-    # sources_chunks_text = [chunk.page_content for chunk in sources_chunks]
+    # ----------------------
+    # Build TF-IDF over chunks
+    # ----------------------
+    chunk_features = [ _feature_counts(c) for c in chunks ]
+    # Document frequency from chunks only
+    df = Counter()
+    for feats in chunk_features:
+        for f in feats.keys():
+            df[f] += 1
 
-    # # logger.info(f"TEST: sources_chunks: {sources_chunks}")
-    # logger.info(f"TEST: sources_chunks_text: {sources_chunks_text}")
+    N = len(chunk_features)
 
-    # Get source pages dictionary, which maps each source to the page number it is found in. the page number is in the metadata of the document chunks
-    source_pages = {}
-    source_file_index = {}
-    for chunk in sources_chunks:
-        try:
-            source_pages[chunk.page_content] = chunk.metadata['page']
-        except KeyError:
-            logger.exception(f"Error getting source pages for {chunk.page_content}")
-            logger.info(f"Chunk metadata: {chunk.metadata}")
-            source_pages[chunk.page_content] = 1
-        try:
-            # FIXME: KeyError: 'file_index' is not in the metadata
-            source_file_index[chunk.page_content] = chunk.metadata['file_index']
-            # source_file_index[chunk.page_content] = 1
-        except KeyError:
-            logger.exception(f"Error getting source file index for {chunk.page_content}")
-            logger.info(f"Chunk metadata: {chunk.metadata}")
-            source_file_index[chunk.page_content] = 1
+    def _idf(f: str) -> float:
+        # Smoothed IDF
+        return math.log((1 + N) / (1 + df.get(f, 0))) + 1.0
 
-    # Extract page content and scores, normalize scores to 0-1 range
-    if question_chunks_with_scores and answer_chunks_with_scores:
-        max_score = max(max(score for _, score in question_chunks_with_scores),
-                       max(score for _, score in answer_chunks_with_scores))
-        min_score = min(min(score for _, score in question_chunks_with_scores),
-                       min(score for _, score in answer_chunks_with_scores))
-    elif question_chunks_with_scores:
-        max_score = max(score for _, score in question_chunks_with_scores)
-        min_score = min(score for _, score in question_chunks_with_scores)
-    elif answer_chunks_with_scores:
-        max_score = max(score for _, score in answer_chunks_with_scores)
-        min_score = min(score for _, score in answer_chunks_with_scores)
-    else:
-        # If both lists are empty, set default values
-        max_score = 1.0
-        min_score = 0.0
-    
-    score_range = max_score - min_score if max_score != min_score else 1
+    def _tfidf_vec(feats: Counter) -> dict:
+        vec = {}
+        for f, tf in feats.items():
+            # log-scaled TF
+            w = (1 + math.log(tf)) * _idf(f)
+            vec[f] = w
+        return vec
 
-    # Get sources_with_scores dictionary, which maps each source to the score it has
-    sources_with_scores = {}
-    # Process question chunks
-    for chunk, score in question_chunks_with_scores:
-        normalized_score = 1 - (score - min_score) / score_range  # Invert because lower distance = higher relevance
-        sources_with_scores[chunk.page_content] = max(normalized_score, sources_with_scores.get(chunk.page_content, 0))
-    # Process answer chunks
-    for chunk, score in answer_chunks_with_scores:
-        normalized_score = 1 - (score - min_score) / score_range  # Invert because lower distance = higher relevance
-        sources_with_scores[chunk.page_content] = max(normalized_score, sources_with_scores.get(chunk.page_content, 0))
+    def _cosine(a: dict, b: dict) -> float:
+        if not a or not b:
+            return 0.0
+        # dot
+        dot = 0.0
+        # iterate over smaller vector for speed
+        if len(a) > len(b):
+            a, b = b, a
+        for f, wa in a.items():
+            wb = b.get(f)
+            if wb:
+                dot += wa * wb
+        # norms
+        na = math.sqrt(sum(v*v for v in a.values()))
+        nb = math.sqrt(sum(v*v for v in b.values()))
+        if na == 0 or nb == 0:
+            return 0.0
+        return dot / (na * nb)
 
-    # Replace matching sources with image names while preserving scores
-    #     Source_pages: a dictionary that maps each source to the page number it is found in
-    #     Source_file_index: a dictionary that maps each source to the file index it is found in
-    #     Sources_with_scores: a dictionary that maps each source to the score it has
-    sources_with_scores = {image_url_mapping_merged.get(source, source): score
-                         for source, score in sources_with_scores.items()}
-    source_pages = {image_url_mapping_merged.get(source, source): page
-                         for source, page in source_pages.items()}
-    source_file_index = {image_url_mapping_merged.get(source, source): file_index
-                         for source, file_index in source_file_index.items()}
+    # ----------------------
+    # Build query vector (favor user_input over answer)
+    # ----------------------
+    user_w = 0.75
+    ans_w  = 0.25
 
-    # # TEST
-    # logger.info(f"TEST: sources before refine: sources_with_scores - {sources_with_scores}")
-    logger.info(f"TEST: length of sources before refine: {len(sources_with_scores)}")
+    q_user = _feature_counts(user_input)
+    q_ans  = _feature_counts(answer)
 
-    # Refine and limit sources while preserving scores
-    markdown_dir_list = [os.path.join(embedding_folder, "markdown") for embedding_folder in embedding_folder_list]
-    # sources_with_scores = refine_sources_complex(sources_with_scores, file_path_list, markdown_dir_list, user_input, image_url_mapping_merged, source_pages, source_file_index, image_url_mapping_merged_reverse)
-    # FIXME: Temporary use simple version and remove filtering logic
-    # sources_with_scores = refine_sources_simple(sources_with_scores, file_path_list)
+    # Weighted merge before TF-IDF transform
+    q_merged = Counter()
+    for f, v in q_user.items():
+        q_merged[f] += user_w * v
+    for f, v in q_ans.items():
+        q_merged[f] += ans_w * v
 
-    # Refine source pages while preserving scores
-    refined_source_pages = {}
-    refined_source_index = {}
-    for source, page in source_pages.items():
-        if source in sources_with_scores:
-            refined_source_pages[source] = page + 1
-            refined_source_index[source] = source_file_index[source]
+    q_vec = _tfidf_vec(q_merged)
 
-    # # TEST
-    # logger.info(f"TEST: sources after refine: sources_with_scores - {sources_with_scores}")
-    logger.info(f"TEST: length of sources after refine: {len(sources_with_scores)}")
+    # Precompute chunk vectors
+    chunk_vecs = [ _tfidf_vec(cf) for cf in chunk_features ]
 
+    # ----------------------
+    # Additional lightweight signals
+    # ----------------------
+    user_norm = _normalize(user_input)
+    ans_norm  = _normalize(answer)
 
-    # # TEST
-    # logger.info("TEST: refined source index:")
-    # for source, index in refined_source_index.items():
-    #     logger.info(f"{source}: {index}")
-    # logger.info(f"TEST: length of refined source index: {len(refined_source_index)}")
+    user_tokens = set(_tokens(user_norm))
+    ans_tokens  = set(_tokens(ans_norm))
+    query_tokens = user_tokens | ans_tokens
 
-    # # TEST
-    # logger.info(f"TEST: sources after refine: sources_with_scores - {sources_with_scores}")
-    # logger.info(f"TEST: length of sources after refine: {len(sources_with_scores)}")
+    def _jaccard_tokens(chunk_text: str) -> float:
+        ctoks = set(_tokens(_normalize(chunk_text)))
+        if not ctoks and not query_tokens:
+            return 0.0
+        inter = len(ctoks & query_tokens)
+        union = len(ctoks | query_tokens) or 1
+        return inter / union
 
+    def _fuzzy_ratio(a: str, b: str) -> float:
+        # SequenceMatcher ratio in [0,1]
+        if not a or not b:
+            return 0.0
+        return SequenceMatcher(None, a, b).ratio()
 
-    # # TEST
-    # logger.info("TEST: refined source index:")
-    # for source, index in refined_source_index.items():
-    #     logger.info(f"{source}: {index}")
-    # logger.info(f"TEST: length of refined source index: {len(refined_source_index)}")
+    # ----------------------
+    # Score & select best chunk
+    # ----------------------
+    # Weights: TF-IDF cosine dominates; fuzzy & Jaccard as stabilizers
+    W_cosine = 0.60
+    W_fuzzy  = 0.25   # internally favors user_input over answer
+    W_jacc   = 0.15
 
-    # # TEST
-    # logger.info("TEST: refined source pages:")
-    # for source, page in refined_source_pages.items():
-    #     logger.info(f"{source}: {page}")
-    # logger.info(f"TEST: length of refined source pages: {len(refined_source_pages)}")
+    best_idx = 0
+    best_score = float("-inf")
 
-    # Memory cleanup
-    db = None
+    for i, (c_text, c_vec) in enumerate(zip(chunks, chunk_vecs)):
+        cos = _cosine(q_vec, c_vec)
 
-    return sources_with_scores, source_pages, refined_source_pages, refined_source_index
+        # Heavily bias fuzzy toward user_input
+        f_user = _fuzzy_ratio(user_norm, _normalize(c_text))
+        f_ans  = _fuzzy_ratio(ans_norm,  _normalize(c_text))
+        f_mix  = 0.70 * f_user + 0.30 * f_ans
+
+        jac = _jaccard_tokens(c_text)
+
+        score = W_cosine * cos + W_fuzzy * f_mix + W_jacc * jac
+
+        if score > best_score:
+            best_score = score
+            best_idx = i
+
+    return chunks[best_idx]
 
 
 def get_response_source(chat_session: ChatSession, file_path_list, user_input, answer, chat_history, embedding_folder_list):
@@ -499,8 +373,10 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
     # Extract information directly from formatted_context
     if hasattr(chat_session, 'formatted_context') and chat_session.formatted_context:
         for symbol, context_data in chat_session.formatted_context.items():
-            content = context_data["content"]
-            score = context_data["score"] 
+            # content = context_data["content"][:100]
+            # content = context_data["content"]
+            content = find_most_relevant_chunk(answer, full_content=context_data["content"], user_input=user_input, divider_number=4)
+            score = context_data["score"]
             page_num = context_data["page_num"]  # 1-indexed from context
             source_index = context_data["source_index"]  # 1-indexed from context
             

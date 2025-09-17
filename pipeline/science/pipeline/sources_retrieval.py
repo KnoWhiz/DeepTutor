@@ -102,64 +102,6 @@ def locate_chunk_in_pdf(chunk: str, source_page_number: int, pdf_path: str, simi
         return result
 
 
-def find_most_relevant_chunk(answer: str, full_content: str, user_input: str, divider_number: int = 4) -> str:
-    """
-    Split the provided content into ``divider_number`` chunks and return the chunk that best
-    matches the combined ``answer`` and ``user_input`` text via SequenceMatcher similarity.
-
-    Args:
-        answer: Generated answer text.
-        full_content: Full context string to split into chunks.
-        user_input: Original user prompt associated with the answer.
-        divider_number: Number of chunks to divide the content into (minimum of 1).
-
-    Returns:
-        The chunk of ``full_content`` that most closely matches the answer/user input. Returns an
-        empty string if ``full_content`` is falsy.
-    """
-    if not full_content:
-        return ""
-
-    try:
-        divider = max(1, int(divider_number))
-    except (TypeError, ValueError):
-        divider = 4
-
-    # Create chunk boundaries using proportional indices to keep segments roughly even.
-    content_length = len(full_content)
-    boundaries = [round(i * content_length / divider) for i in range(divider + 1)]
-
-    chunks = []
-    for idx in range(divider):
-        start = boundaries[idx]
-        end = boundaries[idx + 1]
-        chunk = full_content[start:end]
-        if chunk:
-            chunks.append(chunk)
-
-    if not chunks:
-        return ""
-
-    normalized_answer = normalize_text(answer or "", remove_linebreaks=False).lower()
-    normalized_user_input = normalize_text(user_input or "", remove_linebreaks=False).lower()
-    search_text = f"{normalized_user_input} {normalized_answer}".strip()
-
-    if not search_text:
-        return chunks[0]
-
-    best_chunk = chunks[0]
-    best_score = -1.0
-
-    for chunk in chunks:
-        normalized_chunk = normalize_text(chunk, remove_linebreaks=False).lower()
-        score = SequenceMatcher(None, search_text, normalized_chunk).ratio()
-        if score > best_score:
-            best_score = score
-            best_chunk = chunk
-
-    return best_chunk
-
-
 def get_response_source(chat_session: ChatSession, file_path_list, user_input, answer, chat_history, embedding_folder_list):
     """
     Simplified version that retrieves source references directly from chat_session.formatted_context.

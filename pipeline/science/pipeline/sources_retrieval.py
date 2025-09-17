@@ -105,192 +105,221 @@ def locate_chunk_in_pdf(chunk: str, source_page_number: int, pdf_path: str, simi
         return result
 
 
-def find_most_relevant_chunk(answer: str, full_content: str, user_input: str = "", divider_number: int = 4) -> str:
+
+def find_most_relevant_chunk(answer: str,
+                             full_content: str,
+                             user_input: str = "",
+                             divider_number: int = 4) -> str:
     """
-    Split `full_content` into `divider_number` chunks and return the single chunk
-    most relevant to `answer` (augmented with `user_input`) using classical IR signals.
-    
-    No LLMs used. Fast and robust to paraphrases via TF-IDF + BM25 + Jaccard + fuzzy ratio.
+    Split full_content into `divider_number` chunks and return the single chunk
+    most relevant to (primarily) `user_input` and (secondarily) `answer`.
+    No LLMs used; ranking is a weighted combo of TF-IDF cosine, fuzzy ratio,
+    and Jaccard token overlap. User input is weighted more than answer.
 
     Args:
-        answer: Model's answer text (the target we're matching to)
-        full_content: Long source text to split and search within
-        user_input: The original user query (helps guide relevance)
-        divider_number: Number of chunks to split into (default: 4)
+        answer: The assistant's answer string (secondary signal)
+        full_content: The entire source content to split and search
+        user_input: The original user question (primary signal)
+        divider_number: Number of chunks to split full_content into (>=1)
 
     Returns:
-        str: The most relevant chunk (empty string if no content).
+        str: The most relevant chunk (raw text)
     """
-    # --- helpers -------------------------------------------------------------
-    def safe_normalize(s: str) -> str:
-        # Use existing normalize_text if available; otherwise a minimal fallback.
-        try:
-            return normalize_text(s, remove_linebreaks=True)
-        except NameError:
-            s = re.sub(r'[\n\r]+', ' ', s)
-            s = re.sub(r'\s+', ' ', s)
-            s = s.replace('−', '-').replace('∼', '~')
-            return s.strip()
 
-    def split_text_into_chunks(text: str, n: int):
-        """Length-aware split that prefers breaking on whitespace near boundaries."""
-        text = text or ""
-        n = max(1, int(n or 1))
-        text_len = len(text)
-        if text_len == 0:
-            return [""]
-        if n == 1 or text_len < n * 400:  # small texts: just return as one or few simple splits
-            approx = max(1, text_len // n)
-        else:
-            approx = text_len // n
+    # ----------------------
+    # Guard clauses & setup
+    # ----------------------
+    if not isinstance(full_content, str) or not full_content.strip():
+        return full_content or ""
 
-        cut_points = [0]
-        for i in range(1, n):
-            target = i * text_len // n
-            # look for whitespace to the right, then to the left, within a small window
-            window = 120
-            right = re.search(r'\s', text[target:min(text_len, target + window)])
-            left = None if right else re.search(r'\s(?=\S*$)', text[max(0, target - window):target])
-            if right:
-                cut_points.append(target + right.start())
-            elif left:
-                cut_points.append(target - (window - left.start()))
-            else:
-                cut_points.append(target)
-        cut_points.append(text_len)
-        chunks = []
-        for i in range(len(cut_points) - 1):
-            chunk = text[cut_points[i]:cut_points[i+1]].strip()
-            if chunk:
-                chunks.append(chunk)
-        return chunks if chunks else [""]
+    divider_number = max(1, int(divider_number or 1))
+    text = full_content
 
-    STOPWORDS = {
-        # small, hand-rolled English stopword list (expandable)
-        "the","a","an","and","or","but","if","then","else","for","to","in","of","on","at","by","as",
-        "is","am","are","was","were","be","been","being","with","from","that","this","these","those",
-        "it","its","into","over","under","between","through","about","above","below","up","down",
-        "we","you","they","he","she","i","me","my","our","your","their","them","his","her","ours",
-        "yours","theirs","not","no","yes","can","could","may","might","should","would","will","shall",
-        "do","does","did","done","doing","than","such","via","per"
-    }
+    # ----------------------
+    # Chunking (near-equal, with soft boundary nudging to sentence ends)
+    # ----------------------
+    def _find_boundary_near(idx: int, span: int = 120) -> int:
+        # Try to snap to a nearby "natural" boundary to avoid cutting sentences
+        if idx <= 0 or idx >= len(text):
+            return max(0, min(idx, len(text)))
+        lo = max(0, idx - span)
+        hi = min(len(text), idx + span)
+        window = text[lo:hi]
+        # Prefer sentence-ish boundaries: ., ?, !, ;, \n
+        candidates = []
+        for i, ch in enumerate(window):
+            if ch in ".?!;\n":
+                candidates.append(lo + i)
+        if not candidates:
+            return idx
+        # Choose the boundary closest to idx
+        return min(candidates, key=lambda x: abs(x - idx))
 
-    def tokenize(s: str):
+    approx = max(1, len(text) // divider_number)
+    cuts = [0]
+    for k in range(1, divider_number):
+        cuts.append(_find_boundary_near(k * approx))
+    cuts.append(len(text))
+
+    chunks = []
+    for i in range(len(cuts) - 1):
+        chunk_i = text[cuts[i]:cuts[i + 1]].strip()
+        if chunk_i:
+            chunks.append(chunk_i)
+    if not chunks:
+        return text
+
+    # If we ended up with fewer than requested chunks (e.g., very short text),
+    # just return the only one.
+    if len(chunks) == 1:
+        return chunks[0]
+
+    # ----------------------
+    # Text normalization & features
+    # ----------------------
+    def _normalize(s: str) -> str:
+        s = s or ""
         s = s.lower()
-        tokens = re.findall(r"\w+", s, flags=re.UNICODE)
-        return [t for t in tokens if t and t not in STOPWORDS]
+        # Match the normalize_text() behavior lightly (keep simple)
+        s = s.replace('−', '-').replace('∼', '~')
+        # Collapse whitespace
+        s = re.sub(r'\s+', ' ', s).strip()
+        return s
 
-    def jaccard(a_tokens, b_tokens):
-        A, B = set(a_tokens), set(b_tokens)
-        if not A and not B:
-            return 0.0
-        return len(A & B) / max(1, len(A | B))
+    def _tokens(s: str):
+        # Unicode-aware, keeps CJK and alnum; drops most punctuation
+        # Using \w with UNICODE grabs letters/numbers/_ plus CJK word chars
+        return re.findall(r'\w+', s, flags=re.UNICODE)
 
-    def build_idf(chunks_tokens):
-        N = len(chunks_tokens)
-        df = Counter()
-        for toks in chunks_tokens:
-            for t in set(toks):
-                df[t] += 1
-        idf = {}
-        for t, d in df.items():
-            # BM25-style IDF with +1 to keep positive
-            idf[t] = math.log((N - d + 0.5) / (d + 0.5) + 1.0)
-        return idf
-
-    def tfidf_cosine(doc_tokens, query_tokens, idf):
-        if not doc_tokens or not query_tokens:
-            return 0.0
-        tf_doc = Counter(doc_tokens)
-        tf_q = Counter(query_tokens)
-        # log-scaled tf
-        doc_vec = {}
-        for t, c in tf_doc.items():
-            doc_vec[t] = (1.0 + math.log(c)) * idf.get(t, 0.0)
-        q_vec = {}
-        for t, c in tf_q.items():
-            q_vec[t] = (1.0 + math.log(c)) * idf.get(t, 0.0)
-        # cosine
-        dot = 0.0
-        for t, w in q_vec.items():
-            dot += w * doc_vec.get(t, 0.0)
-        norm_d = math.sqrt(sum(v*v for v in doc_vec.values()))
-        norm_q = math.sqrt(sum(v*v for v in q_vec.values()))
-        if norm_d == 0.0 or norm_q == 0.0:
-            return 0.0
-        return dot / (norm_d * norm_q)
-
-    def bm25_score(doc_tokens, query_tokens, idf, avgdl, k1=1.5, b=0.75):
-        if not doc_tokens or not query_tokens:
-            return 0.0
-        tf = Counter(doc_tokens)
-        dl = len(doc_tokens)
-        score = 0.0
-        for t in set(query_tokens):
-            f = tf.get(t, 0)
-            if f == 0:
-                continue
-            denom = f + k1 * (1.0 - b + b * (dl / (avgdl if avgdl > 0 else 1.0)))
-            score += idf.get(t, 0.0) * ((f * (k1 + 1.0)) / (denom if denom > 0 else 1.0))
-        return score
-
-    def minmax_norm(scores):
-        if not scores:
+    def _char_ngrams(s: str, n: int = 3):
+        # Remove spaces to let n-grams span words slightly (helps fuzzy match)
+        z = re.sub(r'\s+', '', s)
+        if len(z) < n:
             return []
-        mn, mx = min(scores), max(scores)
-        if mx - mn < 1e-12:
-            return [0.0 for _ in scores]
-        return [(s - mn) / (mx - mn) for s in scores]
+        return [z[i:i+n] for i in range(len(z) - n + 1)]
 
-    # --- main ---------------------------------------------------------------
-    content = safe_normalize(full_content or "")
-    if not content.strip():
-        return ""
+    def _feature_counts(s: str) -> Counter:
+        s_norm = _normalize(s)
+        toks = _tokens(s_norm)
+        grams = _char_ngrams(s_norm, 3)
+        # Prefix feature namespaces so they don't collide
+        return Counter([f"w:{t}" for t in toks] + [f"c:{g}" for g in grams])
 
-    # split
-    chunks = split_text_into_chunks(content, divider_number)
-    # tokens
-    chunks_tokens = [tokenize(c) for c in chunks]
-    query_text = safe_normalize((answer or "") + " " + (user_input or ""))
-    query_tokens = tokenize(query_text)
+    # ----------------------
+    # Build TF-IDF over chunks
+    # ----------------------
+    chunk_features = [ _feature_counts(c) for c in chunks ]
+    # Document frequency from chunks only
+    df = Counter()
+    for feats in chunk_features:
+        for f in feats.keys():
+            df[f] += 1
 
-    # if everything is empty, return the longest chunk
-    if all(len(t) == 0 for t in chunks_tokens) or not query_tokens:
-        return max(chunks, key=len, default="")
+    N = len(chunk_features)
 
-    # idf and stats
-    idf = build_idf(chunks_tokens)
-    avgdl = sum(len(toks) for toks in chunks_tokens) / max(1, len(chunks_tokens))
+    def _idf(f: str) -> float:
+        # Smoothed IDF
+        return math.log((1 + N) / (1 + df.get(f, 0))) + 1.0
 
-    # compute signals
-    tfidf_scores = [tfidf_cosine(toks, query_tokens, idf) for toks in chunks_tokens]
-    bm25_scores_ = [bm25_score(toks, query_tokens, idf, avgdl) for toks in chunks_tokens]
-    jaccard_scores_ = [jaccard(toks, query_tokens) for toks in chunks_tokens]
-    # SequenceMatcher on raw strings (cheap since few chunks)
-    seq_scores = []
-    ans_norm = query_text.lower()
-    for c in chunks:
-        try:
-            seq_scores.append(SequenceMatcher(None, ans_norm, c.lower()).ratio())
-        except Exception:
-            seq_scores.append(0.0)
+    def _tfidf_vec(feats: Counter) -> dict:
+        vec = {}
+        for f, tf in feats.items():
+            # log-scaled TF
+            w = (1 + math.log(tf)) * _idf(f)
+            vec[f] = w
+        return vec
 
-    # normalize for stable combination
-    tfidf_n = minmax_norm(tfidf_scores)
-    bm25_n = minmax_norm(bm25_scores_)
-    jacc_n = minmax_norm(jaccard_scores_)
-    seq_n = minmax_norm(seq_scores)
+    def _cosine(a: dict, b: dict) -> float:
+        if not a or not b:
+            return 0.0
+        # dot
+        dot = 0.0
+        # iterate over smaller vector for speed
+        if len(a) > len(b):
+            a, b = b, a
+        for f, wa in a.items():
+            wb = b.get(f)
+            if wb:
+                dot += wa * wb
+        # norms
+        na = math.sqrt(sum(v*v for v in a.values()))
+        nb = math.sqrt(sum(v*v for v in b.values()))
+        if na == 0 or nb == 0:
+            return 0.0
+        return dot / (na * nb)
 
-    # weighted blend: emphasize lexical/semantic overlap (tfidf/bm25),
-    # keep set-similarity and fuzzy as light signals.
-    weights = (0.5, 0.35, 0.1, 0.05)
-    blended = [
-        weights[0]*tfidf_n[i] + weights[1]*bm25_n[i] + weights[2]*jacc_n[i] + weights[3]*seq_n[i]
-        for i in range(len(chunks))
-    ]
+    # ----------------------
+    # Build query vector (favor user_input over answer)
+    # ----------------------
+    user_w = 0.75
+    ans_w  = 0.25
 
-    # pick best; tie-break by longer chunk (more context)
-    best_idx = max(range(len(chunks)), key=lambda i: (blended[i], len(chunks[i])))
+    q_user = _feature_counts(user_input)
+    q_ans  = _feature_counts(answer)
+
+    # Weighted merge before TF-IDF transform
+    q_merged = Counter()
+    for f, v in q_user.items():
+        q_merged[f] += user_w * v
+    for f, v in q_ans.items():
+        q_merged[f] += ans_w * v
+
+    q_vec = _tfidf_vec(q_merged)
+
+    # Precompute chunk vectors
+    chunk_vecs = [ _tfidf_vec(cf) for cf in chunk_features ]
+
+    # ----------------------
+    # Additional lightweight signals
+    # ----------------------
+    user_norm = _normalize(user_input)
+    ans_norm  = _normalize(answer)
+
+    user_tokens = set(_tokens(user_norm))
+    ans_tokens  = set(_tokens(ans_norm))
+    query_tokens = user_tokens | ans_tokens
+
+    def _jaccard_tokens(chunk_text: str) -> float:
+        ctoks = set(_tokens(_normalize(chunk_text)))
+        if not ctoks and not query_tokens:
+            return 0.0
+        inter = len(ctoks & query_tokens)
+        union = len(ctoks | query_tokens) or 1
+        return inter / union
+
+    def _fuzzy_ratio(a: str, b: str) -> float:
+        # SequenceMatcher ratio in [0,1]
+        if not a or not b:
+            return 0.0
+        return SequenceMatcher(None, a, b).ratio()
+
+    # ----------------------
+    # Score & select best chunk
+    # ----------------------
+    # Weights: TF-IDF cosine dominates; fuzzy & Jaccard as stabilizers
+    W_cosine = 0.60
+    W_fuzzy  = 0.25   # internally favors user_input over answer
+    W_jacc   = 0.15
+
+    best_idx = 0
+    best_score = float("-inf")
+
+    for i, (c_text, c_vec) in enumerate(zip(chunks, chunk_vecs)):
+        cos = _cosine(q_vec, c_vec)
+
+        # Heavily bias fuzzy toward user_input
+        f_user = _fuzzy_ratio(user_norm, _normalize(c_text))
+        f_ans  = _fuzzy_ratio(ans_norm,  _normalize(c_text))
+        f_mix  = 0.70 * f_user + 0.30 * f_ans
+
+        jac = _jaccard_tokens(c_text)
+
+        score = W_cosine * cos + W_fuzzy * f_mix + W_jacc * jac
+
+        if score > best_score:
+            best_score = score
+            best_idx = i
+
     return chunks[best_idx]
 
 

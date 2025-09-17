@@ -152,8 +152,8 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
     # Extract information directly from formatted_context
     if hasattr(chat_session, 'formatted_context') and chat_session.formatted_context:
         for symbol, context_data in chat_session.formatted_context.items():
-            content = context_data["content"]
-            score = context_data["score"] 
+            content = context_data["content"][:100]
+            score = context_data["score"]
             page_num = context_data["page_num"]  # 1-indexed from context
             source_index = context_data["source_index"]  # 1-indexed from context
             

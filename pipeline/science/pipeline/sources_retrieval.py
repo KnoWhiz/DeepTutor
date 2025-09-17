@@ -5,6 +5,9 @@ import fitz
 # import pprint
 import json
 
+import math
+from collections import Counter, defaultdict
+
 from difflib import SequenceMatcher
 
 from langchain_community.vectorstores import FAISS
@@ -102,6 +105,195 @@ def locate_chunk_in_pdf(chunk: str, source_page_number: int, pdf_path: str, simi
         return result
 
 
+def find_most_relevant_chunk(answer: str, full_content: str, user_input: str = "", divider_number: int = 4) -> str:
+    """
+    Split `full_content` into `divider_number` chunks and return the single chunk
+    most relevant to `answer` (augmented with `user_input`) using classical IR signals.
+    
+    No LLMs used. Fast and robust to paraphrases via TF-IDF + BM25 + Jaccard + fuzzy ratio.
+
+    Args:
+        answer: Model's answer text (the target we're matching to)
+        full_content: Long source text to split and search within
+        user_input: The original user query (helps guide relevance)
+        divider_number: Number of chunks to split into (default: 4)
+
+    Returns:
+        str: The most relevant chunk (empty string if no content).
+    """
+    # --- helpers -------------------------------------------------------------
+    def safe_normalize(s: str) -> str:
+        # Use existing normalize_text if available; otherwise a minimal fallback.
+        try:
+            return normalize_text(s, remove_linebreaks=True)
+        except NameError:
+            s = re.sub(r'[\n\r]+', ' ', s)
+            s = re.sub(r'\s+', ' ', s)
+            s = s.replace('−', '-').replace('∼', '~')
+            return s.strip()
+
+    def split_text_into_chunks(text: str, n: int):
+        """Length-aware split that prefers breaking on whitespace near boundaries."""
+        text = text or ""
+        n = max(1, int(n or 1))
+        text_len = len(text)
+        if text_len == 0:
+            return [""]
+        if n == 1 or text_len < n * 400:  # small texts: just return as one or few simple splits
+            approx = max(1, text_len // n)
+        else:
+            approx = text_len // n
+
+        cut_points = [0]
+        for i in range(1, n):
+            target = i * text_len // n
+            # look for whitespace to the right, then to the left, within a small window
+            window = 120
+            right = re.search(r'\s', text[target:min(text_len, target + window)])
+            left = None if right else re.search(r'\s(?=\S*$)', text[max(0, target - window):target])
+            if right:
+                cut_points.append(target + right.start())
+            elif left:
+                cut_points.append(target - (window - left.start()))
+            else:
+                cut_points.append(target)
+        cut_points.append(text_len)
+        chunks = []
+        for i in range(len(cut_points) - 1):
+            chunk = text[cut_points[i]:cut_points[i+1]].strip()
+            if chunk:
+                chunks.append(chunk)
+        return chunks if chunks else [""]
+
+    STOPWORDS = {
+        # small, hand-rolled English stopword list (expandable)
+        "the","a","an","and","or","but","if","then","else","for","to","in","of","on","at","by","as",
+        "is","am","are","was","were","be","been","being","with","from","that","this","these","those",
+        "it","its","into","over","under","between","through","about","above","below","up","down",
+        "we","you","they","he","she","i","me","my","our","your","their","them","his","her","ours",
+        "yours","theirs","not","no","yes","can","could","may","might","should","would","will","shall",
+        "do","does","did","done","doing","than","such","via","per"
+    }
+
+    def tokenize(s: str):
+        s = s.lower()
+        tokens = re.findall(r"\w+", s, flags=re.UNICODE)
+        return [t for t in tokens if t and t not in STOPWORDS]
+
+    def jaccard(a_tokens, b_tokens):
+        A, B = set(a_tokens), set(b_tokens)
+        if not A and not B:
+            return 0.0
+        return len(A & B) / max(1, len(A | B))
+
+    def build_idf(chunks_tokens):
+        N = len(chunks_tokens)
+        df = Counter()
+        for toks in chunks_tokens:
+            for t in set(toks):
+                df[t] += 1
+        idf = {}
+        for t, d in df.items():
+            # BM25-style IDF with +1 to keep positive
+            idf[t] = math.log((N - d + 0.5) / (d + 0.5) + 1.0)
+        return idf
+
+    def tfidf_cosine(doc_tokens, query_tokens, idf):
+        if not doc_tokens or not query_tokens:
+            return 0.0
+        tf_doc = Counter(doc_tokens)
+        tf_q = Counter(query_tokens)
+        # log-scaled tf
+        doc_vec = {}
+        for t, c in tf_doc.items():
+            doc_vec[t] = (1.0 + math.log(c)) * idf.get(t, 0.0)
+        q_vec = {}
+        for t, c in tf_q.items():
+            q_vec[t] = (1.0 + math.log(c)) * idf.get(t, 0.0)
+        # cosine
+        dot = 0.0
+        for t, w in q_vec.items():
+            dot += w * doc_vec.get(t, 0.0)
+        norm_d = math.sqrt(sum(v*v for v in doc_vec.values()))
+        norm_q = math.sqrt(sum(v*v for v in q_vec.values()))
+        if norm_d == 0.0 or norm_q == 0.0:
+            return 0.0
+        return dot / (norm_d * norm_q)
+
+    def bm25_score(doc_tokens, query_tokens, idf, avgdl, k1=1.5, b=0.75):
+        if not doc_tokens or not query_tokens:
+            return 0.0
+        tf = Counter(doc_tokens)
+        dl = len(doc_tokens)
+        score = 0.0
+        for t in set(query_tokens):
+            f = tf.get(t, 0)
+            if f == 0:
+                continue
+            denom = f + k1 * (1.0 - b + b * (dl / (avgdl if avgdl > 0 else 1.0)))
+            score += idf.get(t, 0.0) * ((f * (k1 + 1.0)) / (denom if denom > 0 else 1.0))
+        return score
+
+    def minmax_norm(scores):
+        if not scores:
+            return []
+        mn, mx = min(scores), max(scores)
+        if mx - mn < 1e-12:
+            return [0.0 for _ in scores]
+        return [(s - mn) / (mx - mn) for s in scores]
+
+    # --- main ---------------------------------------------------------------
+    content = safe_normalize(full_content or "")
+    if not content.strip():
+        return ""
+
+    # split
+    chunks = split_text_into_chunks(content, divider_number)
+    # tokens
+    chunks_tokens = [tokenize(c) for c in chunks]
+    query_text = safe_normalize((answer or "") + " " + (user_input or ""))
+    query_tokens = tokenize(query_text)
+
+    # if everything is empty, return the longest chunk
+    if all(len(t) == 0 for t in chunks_tokens) or not query_tokens:
+        return max(chunks, key=len, default="")
+
+    # idf and stats
+    idf = build_idf(chunks_tokens)
+    avgdl = sum(len(toks) for toks in chunks_tokens) / max(1, len(chunks_tokens))
+
+    # compute signals
+    tfidf_scores = [tfidf_cosine(toks, query_tokens, idf) for toks in chunks_tokens]
+    bm25_scores_ = [bm25_score(toks, query_tokens, idf, avgdl) for toks in chunks_tokens]
+    jaccard_scores_ = [jaccard(toks, query_tokens) for toks in chunks_tokens]
+    # SequenceMatcher on raw strings (cheap since few chunks)
+    seq_scores = []
+    ans_norm = query_text.lower()
+    for c in chunks:
+        try:
+            seq_scores.append(SequenceMatcher(None, ans_norm, c.lower()).ratio())
+        except Exception:
+            seq_scores.append(0.0)
+
+    # normalize for stable combination
+    tfidf_n = minmax_norm(tfidf_scores)
+    bm25_n = minmax_norm(bm25_scores_)
+    jacc_n = minmax_norm(jaccard_scores_)
+    seq_n = minmax_norm(seq_scores)
+
+    # weighted blend: emphasize lexical/semantic overlap (tfidf/bm25),
+    # keep set-similarity and fuzzy as light signals.
+    weights = (0.5, 0.35, 0.1, 0.05)
+    blended = [
+        weights[0]*tfidf_n[i] + weights[1]*bm25_n[i] + weights[2]*jacc_n[i] + weights[3]*seq_n[i]
+        for i in range(len(chunks))
+    ]
+
+    # pick best; tie-break by longer chunk (more context)
+    best_idx = max(range(len(chunks)), key=lambda i: (blended[i], len(chunks[i])))
+    return chunks[best_idx]
+
+
 def get_response_source(chat_session: ChatSession, file_path_list, user_input, answer, chat_history, embedding_folder_list):
     """
     Simplified version that retrieves source references directly from chat_session.formatted_context.
@@ -153,7 +345,8 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
     if hasattr(chat_session, 'formatted_context') and chat_session.formatted_context:
         for symbol, context_data in chat_session.formatted_context.items():
             # content = context_data["content"][:100]
-            content = context_data["content"]
+            # content = context_data["content"]
+            content = find_most_relevant_chunk(answer, full_content=context_data["content"], user_input=user_input, divider_number=4)
             score = context_data["score"]
             page_num = context_data["page_num"]  # 1-indexed from context
             source_index = context_data["source_index"]  # 1-indexed from context

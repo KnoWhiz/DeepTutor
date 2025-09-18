@@ -61,7 +61,7 @@ async def get_multiple_files_summary(file_path_list, embedding_folder_list, chat
         stream: Whether to stream the response
         
     Returns:
-        A generator yielding the summary if stream=True, otherwise a string
+        An async generator yielding the summary if stream=True, otherwise a string
     """
     # Load config and LLM
     config = load_config()
@@ -70,11 +70,11 @@ async def get_multiple_files_summary(file_path_list, embedding_folder_list, chat
     # If the number of files is more than summary_file_limit, just reply "Hi, I'm DeepTutor. What can I help you with?"
     if len(file_path_list) > config["summary_file_limit"]:
         if stream:
-            def process_stream():
+            async def process_stream_async():
                 yield "<response>\n\n"
                 yield "Hi, I'm DeepTutor. What can I help you with?"
                 yield "\n\n</response>"
-            return process_stream()
+            return process_stream_async()
         else:
             return "<response>\n\nHi, I'm DeepTutor. What can I help you with?\n\n</response>"
     
@@ -173,19 +173,19 @@ async def get_multiple_files_summary(file_path_list, embedding_folder_list, chat
         # Stream response for real-time feedback - remove thinking part
         logger.info("Using streaming mode for summary generation")
         answer = llm.stream(prompt)
-        
-        def process_stream():
+
+        async def process_stream_async():
             yield "<response>\n\n"
             for chunk in answer:
                 # Convert AIMessageChunk to string
-                if hasattr(chunk, 'content'):
+                if hasattr(chunk, "content"):
                     yield chunk.content
                 else:
                     yield str(chunk)
             yield "\n\n</response>"
             logger.info("Completed streaming summary generation")
-        
-        return process_stream()
+
+        return process_stream_async()
     else:
         # Return complete response at once - remove thinking part
         logger.info("Using non-streaming mode for summary generation")

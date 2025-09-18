@@ -27,10 +27,59 @@ from pipeline.science.pipeline.embeddings import (
     load_embeddings,
 )
 from pipeline.science.pipeline.embeddings_agent import embeddings_agent
-from pipeline.science.pipeline.doc_processor import process_pdf_file
+from pipeline.science.pipeline.doc_processor import process_pdf_file, extract_document_from_file
 from pipeline.science.pipeline.session_manager import ChatSession
 import logging
 logger = logging.getLogger("tutorpipeline.science.sources_retrieval")
+
+
+def get_page_raw_text(pdf_path: str, page_number: int) -> str:
+    """
+    Extract raw text from a specific page of a PDF file.
+    
+    Args:
+        pdf_path (str): Path to the PDF file
+        page_number (int): Page number to extract text from (1-indexed, like page 1, 2, 3, etc.)
+        
+    Returns:
+        str: Raw text content of the specified page, or empty string if page not found
+        
+    Raises:
+        FileNotFoundError: If the PDF file doesn't exist
+        ValueError: If page_number is invalid (less than 1)
+        Exception: For other PDF processing errors
+    """
+    if not os.path.exists(pdf_path):
+        raise FileNotFoundError(f"PDF file not found: {pdf_path}")
+    
+    if page_number < 1:
+        raise ValueError(f"Page number must be >= 1, got: {page_number}")
+    
+    try:
+        # Extract document using the existing function from doc_processor
+        document = extract_document_from_file(pdf_path)
+        
+        # Convert to 0-indexed for document access
+        page_index = page_number - 1
+        
+        # Check if the page exists
+        if page_index >= len(document):
+            logger.warning(f"Page {page_number} not found in PDF {pdf_path}. Total pages: {len(document)}")
+            return ""
+        
+        # Extract the page content
+        page_doc = document[page_index]
+        if hasattr(page_doc, 'page_content') and page_doc.page_content:
+            raw_text = page_doc.page_content.strip()
+            logger.info(f"Successfully extracted {len(raw_text)} characters from page {page_number} of {os.path.basename(pdf_path)}")
+            return raw_text
+        else:
+            logger.warning(f"No content found on page {page_number} of {pdf_path}")
+            return ""
+            
+    except Exception as e:
+        logger.exception(f"Error extracting text from page {page_number} of {pdf_path}: {str(e)}")
+        raise Exception(f"Error extracting text from page {page_number}: {str(e)}")
 
 
 def normalize_text(text, remove_linebreaks=True):

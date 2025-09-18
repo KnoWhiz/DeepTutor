@@ -278,8 +278,16 @@ async def embeddings_agent(
             # Split the document into chunks when markdown extraction succeeded
             # yield "\n\n**📑 Splitting document into chunks ...**"
             create_searchable_chunks_start_time = time.time()
-            average_page_length = sum(len(doc.page_content) for doc in _document) / len(_document)
-            chunk_size = int(average_page_length // 3)
+            
+            # Calculate average page length, handling empty document case
+            if len(_document) > 0:
+                average_page_length = sum(len(doc.page_content) for doc in _document) / len(_document)
+                chunk_size = int(average_page_length // 3)
+            else:
+                # For empty documents (like image-only PDFs), use a default chunk size
+                average_page_length = 0.0
+                chunk_size = 1000  # Default chunk size for image-only PDFs
+            
             logger.info(f"Average page length: {average_page_length}")
             # yield f"\n\n**Average page length: {int(average_page_length)}**"
             logger.info(f"Chunk size: {chunk_size}")
@@ -287,6 +295,51 @@ async def embeddings_agent(
             texts = create_searchable_chunks(_doc, chunk_size)
             # yield f"\n\n**length of document chunks generated for get_response_source: {len(texts)}**"
             logger.info(f"length of document chunks generated for get_response_source: {len(texts)}")
+            
+            # Handle image-only PDFs: if no chunks were created from text extraction,
+            # but we have markdown content from OCR, divide it equally among pages
+            if len(texts) == 0 and doc_processor.get_md_document().strip():
+                logger.info("No text chunks found, but markdown content exists. Processing as image-only PDF...")
+                yield "\n\n**🖼️ Processing image-only PDF: dividing OCR content by pages ...**"
+                
+                markdown_content = doc_processor.get_md_document().strip()
+                total_pages = len(_doc)
+                
+                if total_pages > 0:
+                    # Calculate content per page
+                    content_per_page = len(markdown_content) // total_pages
+                    
+                    # Split content into pages
+                    for page_num in range(total_pages):
+                        start_pos = page_num * content_per_page
+                        if page_num == total_pages - 1:
+                            # Last page gets any remaining content
+                            end_pos = len(markdown_content)
+                        else:
+                            end_pos = (page_num + 1) * content_per_page
+                        
+                        page_content = markdown_content[start_pos:end_pos].strip()
+                        
+                        if page_content:
+                            texts.append(Document(
+                                page_content=page_content,
+                                metadata={
+                                    "page": page_num,
+                                    "source": f"page_{page_num + 1}",
+                                    "chunk_index": 0,
+                                    "is_ocr_content": True,
+                                    "total_pages": total_pages,
+                                    "content_start": start_pos,
+                                    "content_end": end_pos
+                                }
+                            ))
+                    
+                    logger.info(f"Created {len(texts)} chunks for image-only PDF with {total_pages} pages")
+                    yield f"\n\n**✅ Created {len(texts)} chunks for image-only PDF with {total_pages} pages**"
+                else:
+                    logger.warning("PDF has no pages, cannot process as image-only PDF")
+                    yield "\n\n**⚠️ PDF has no pages, cannot process as image-only PDF**"
+            
             time_tracking['create_searchable_chunks'] = time.time() - create_searchable_chunks_start_time
             logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 
@@ -304,45 +357,56 @@ async def embeddings_agent(
                 # yield f"\n\n**Found {len(image_context)} images with context**"
 
                 # Create a temporary FAISS index for similarity search
-                try:
-                    temp_db = FAISS.from_documents(texts, embeddings)
-                except Exception as e:
+                # Check if we have any texts to process
+                if not texts:
+                    logger.warning("No texts available for FAISS index creation, skipping image context processing")
+                    yield "\n\n**⚠️ No texts available for FAISS index creation, skipping image context processing**"
+                    temp_db = None
+                else:
                     try:
-                        logger.exception(f"Error creating temporary FAISS index: {e}")
-                        yield "\n\n**❌ Error creating temporary FAISS index: {e}**"
-                        logger.info("Continuing with small embeddings...")
-                        yield "\n\n**🔍 Continuing with small embeddings...**"
-                        temp_db = FAISS.from_documents(texts, embeddings_small)
+                        temp_db = FAISS.from_documents(texts, embeddings)
                     except Exception as e:
-                        logger.exception(f"Error creating temporary FAISS index with small embeddings: {e}")
-                        yield "\n\n**❌ Error creating temporary FAISS index with small embeddings: {e}**"
-                        logger.info("Continuing with lite embeddings...")
-                        yield "\n\n**🔍 Continuing with lite embeddings...**"
-                        temp_db = FAISS.from_documents(texts, embeddings_lite)
+                        try:
+                            logger.exception(f"Error creating temporary FAISS index: {e}")
+                            yield f"\n\n**❌ Error creating temporary FAISS index: {e}**"
+                            logger.info("Continuing with small embeddings...")
+                            yield "\n\n**🔍 Continuing with small embeddings...**"
+                            temp_db = FAISS.from_documents(texts, embeddings_small)
+                        except Exception as e:
+                            logger.exception(f"Error creating temporary FAISS index with small embeddings: {e}")
+                            yield f"\n\n**❌ Error creating temporary FAISS index with small embeddings: {e}**"
+                            logger.info("Continuing with lite embeddings...")
+                            yield "\n\n**🔍 Continuing with lite embeddings...**"
+                            temp_db = FAISS.from_documents(texts, embeddings_lite)
 
-                for image, context in image_context.items():
-                    for c in context:
-                        # Clean the context text for comparison
-                        clean_context = c.replace(" <markdown>", "").strip()
+                # Only process image context if we have a valid temp_db
+                if temp_db is not None:
+                    for image, context in image_context.items():
+                        for c in context:
+                            # Clean the context text for comparison
+                            clean_context = c.replace(" <markdown>", "").strip()
 
-                        # Use similarity search to find the most relevant chunk
-                        similar_chunks = temp_db.similarity_search_with_score(clean_context, k=1)
+                            # Use similarity search to find the most relevant chunk
+                            similar_chunks = temp_db.similarity_search_with_score(clean_context, k=1)
 
-                        if similar_chunks:
-                            best_match_chunk, score = similar_chunks[0]
-                            # Only use the page number if the similarity score is good enough
-                            # (score is distance, so lower is better)
-                            best_match_page = best_match_chunk.metadata.get("page", 0) if score < 1.0 else 0
-                        else:
-                            best_match_page = 0
+                            if similar_chunks:
+                                best_match_chunk, score = similar_chunks[0]
+                                # Only use the page number if the similarity score is good enough
+                                # (score is distance, so lower is better)
+                                best_match_page = best_match_chunk.metadata.get("page", 0) if score < 1.0 else 0
+                            else:
+                                best_match_page = 0
 
-                        texts.append(Document(
-                            page_content=c, 
-                            metadata={
-                                "source": image,
-                                "page": best_match_page
-                            }
-                        ))
+                            texts.append(Document(
+                                page_content=c, 
+                                metadata={
+                                    "source": image,
+                                    "page": best_match_page
+                                }
+                            ))
+                else:
+                    logger.warning("Cannot process image context without valid FAISS index")
+                    yield "\n\n**⚠️ Cannot process image context without valid FAISS index**"
 
             else:
                 logger.info("No image context found to process")
@@ -358,11 +422,53 @@ async def embeddings_agent(
         # Create the vector store to use as the index
         create_vector_store_start_time = time.time()
         # yield "\n\n**🗂️ Creating vector store ...**"
-        db = FAISS.from_documents(texts, embeddings)
-        # Save the embeddings to the specified folder
-        # yield "\n\n**Saving vector store to file...**"
-        logger.info("Saving vector store to file...")
-        db.save_local(embedding_folder)
+        
+        # Check if we have any texts to create embeddings from
+        if not texts:
+            logger.error("No texts available for vector store creation")
+            yield "\n\n**❌ No texts available for vector store creation**"
+            
+            # Create a minimal placeholder document to prevent complete failure
+            logger.info("Creating minimal placeholder document to prevent complete failure")
+            yield "\n\n**🔧 Creating minimal placeholder document to prevent complete failure**"
+            texts = [Document(
+                page_content="This document contains no extractable text content. It may be an image-only PDF or contain only non-text elements.",
+                metadata={
+                    "page": 0,
+                    "source": "placeholder",
+                    "chunk_index": 0,
+                    "is_placeholder": True,
+                    "warning": "No text content could be extracted from this document"
+                }
+            )]
+        
+        try:
+            db = FAISS.from_documents(texts, embeddings)
+            # Save the embeddings to the specified folder
+            # yield "\n\n**Saving vector store to file...**"
+            logger.info("Saving vector store to file...")
+            db.save_local(embedding_folder)
+        except Exception as e:
+            logger.exception(f"Error creating vector store with default embeddings: {e}")
+            yield f"\n\n**❌ Error creating vector store with default embeddings: {e}**"
+            try:
+                logger.info("Trying with small embeddings...")
+                yield "\n\n**🔍 Trying with small embeddings...**"
+                db = FAISS.from_documents(texts, embeddings_small)
+                db.save_local(embedding_folder)
+            except Exception as e2:
+                logger.exception(f"Error creating vector store with small embeddings: {e2}")
+                yield f"\n\n**❌ Error creating vector store with small embeddings: {e2}**"
+                try:
+                    logger.info("Trying with lite embeddings...")
+                    yield "\n\n**🔍 Trying with lite embeddings...**"
+                    db = FAISS.from_documents(texts, embeddings_lite)
+                    db.save_local(embedding_folder)
+                except Exception as e3:
+                    logger.exception(f"Error creating vector store with lite embeddings: {e3}")
+                    yield f"\n\n**❌ Error creating vector store with lite embeddings: {e3}**"
+                    raise ValueError(f"Failed to create vector store with all embedding models: {e3}")
+        
         time_tracking['vectorrag_create_vector_store'] = time.time() - create_vector_store_start_time
         logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 

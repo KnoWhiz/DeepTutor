@@ -59,8 +59,7 @@ async def get_db_rag_response(
 
     if chat_session.mode == ChatMode.LITE:
         logger.info("RAG response in LITE mode")
-        k_value = config["retriever"]["k"]  # Increase k for better context retrieval if in LITE mode
-        k_value = min(k_value + 2, 8)  # Add more context chunks for LITE mode, but cap at reasonable limit
+        k_value = config["retriever"]["k"]  # Use full k value for better context retrieval in LITE mode
         # logger.info(f"Stream: {stream}")
         llm = get_llm("backup", para, stream)
         parser = StrOutputParser()
@@ -200,10 +199,8 @@ async def get_embedding_folder_rag_response(
         logger.exception(f"Failed to load embeddings: {str(e)}")
         return "I'm sorry, I couldn't access the document information. Please try again later."
 
-    # Increase k for better context retrieval if in LITE mode
+    # Use full k value for better context retrieval
     k_value = config["retriever"]["k"]
-    if chat_session.mode == ChatMode.LITE:
-        k_value = min(k_value + 2, 8)  # Add more context chunks for LITE mode, but cap at reasonable limit
         
     answer = await get_db_rag_response(
         prompt_string=prompt_string,
@@ -308,10 +305,8 @@ async def get_embedding_folder_rag_response_string(
         logger.exception(f"Failed to load embeddings: {str(e)}")
         return "I'm sorry, I couldn't access the document information. Please try again later."
 
-    # Increase k for better context retrieval if in LITE mode
+    # Use full k value for better context retrieval
     k_value = config["retriever"]["k"]
-    if chat_session.mode == ChatMode.LITE:
-        k_value = min(k_value + 2, 8)  # Add more context chunks for LITE mode, but cap at reasonable limit
         
     response_text = await get_db_rag_response_string(
         prompt_string=prompt_string,
@@ -375,10 +370,8 @@ async def get_basic_rag_response(
         logger.exception(f"Failed to load embeddings: {str(e)}")
         return "I'm sorry, I couldn't access the document information. Please try again later."
 
-    # Increase k for better context retrieval if in LITE mode
+    # Use full k value for better context retrieval
     k_value = config["retriever"]["k"]
-    if chat_session.mode == ChatMode.LITE:
-        k_value = min(k_value + 2, 8)  # Add more context chunks for LITE mode, but cap at reasonable limit
         
     answer = await get_rag_response(
         prompt_string=prompt_string,
@@ -419,12 +412,10 @@ async def get_rag_response(
     parser = StrOutputParser()
     error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
 
-    # Increase k for better context retrieval if in LITE mode
+    # Use full k value for better context retrieval
     k_value = config["retriever"]["k"]
     if chat_session is None:
         chat_session = ChatSession()
-    if chat_session.mode == ChatMode.LITE:
-        k_value = min(k_value + 2, 8)  # Add more context chunks for LITE mode, but cap at reasonable limit
         
     retriever = db.as_retriever(search_kwargs={"k": k_value})
 

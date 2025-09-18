@@ -99,12 +99,12 @@ def get_page_content_from_file(file_path_list, file_index, page_number):
 async def get_rag_context(chat_session: ChatSession, file_path_list, question: Question, chat_history, embedding_folder_list, deep_thinking = True, stream=False, context=""):
     """
     Retrieves and processes relevant document context for RAG (Retrieval-Augmented Generation) operations.
-    
+
     This function performs semantic similarity search across embedded document chunks to identify
     the most relevant content for answering user questions. It supports multiple chat modes
     (Basic, Advanced, Lite) with different embedding strategies and provides both chunk-level
     and page-level context formatting for optimal AI response generation.
-    
+
     Args:
         chat_session (ChatSession): Active chat session containing mode settings and context state
         file_path_list (List[str]): Paths to uploaded document files being queried
@@ -114,10 +114,10 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
         deep_thinking (bool, optional): Enable enhanced reasoning capabilities. Defaults to True
         stream (bool, optional): Enable streaming response mode. Defaults to False
         context (str, optional): Additional context to append to user input. Defaults to ""
-    
+
     Returns:
         Dict[str, Dict]: Formatted context dictionary mapping symbols to content chunks with scores
-        
+
     Processing Pipeline:
         1. Mode Detection & Embedding Loading:
            - Basic/Advanced: Loads markdown embeddings for rich document understanding
@@ -145,7 +145,7 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
         6. Session State Update:
            - Stores formatted_context in chat session for response generation
            - Stores page_formatted_context for enhanced document understanding
-    
+
     Context Format:
         {
             "[<1>]": {
@@ -162,17 +162,17 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
             },
             ...
         }
-        
+
     Indexing Convention:
         - page_num: 1-indexed page numbers for user-friendly display (page 1, 2, 3, ...)
         - source_index: 1-indexed file positions for user-friendly display (file 1, 2, 3, ...)
         - Internal metadata uses 0-indexed values, but output context uses 1-indexed for clarity
-    
+
     Error Handling:
         - Graceful fallback from markdown to default embeddings if loading fails
         - Empty page context fallback if page-based embedding creation fails
         - Comprehensive logging for debugging retrieval quality issues
-        
+
     Performance Considerations:
         - Configurable token limits prevent context overflow
         - Deduplication reduces redundant processing

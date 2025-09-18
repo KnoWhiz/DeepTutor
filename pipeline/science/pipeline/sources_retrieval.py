@@ -35,14 +35,19 @@ logger = logging.getLogger("tutorpipeline.science.sources_retrieval")
 
 def get_page_raw_text(pdf_path: str, page_number: int) -> str:
     """
-    Extract raw text from a specific page of a PDF file.
+    Extract and clean raw text from a specific page of a PDF file.
+    
+    This function extracts text from a PDF page and applies text cleanup including:
+    - Removing hyphenation at line breaks (e.g., "word-\n" becomes "word")
+    - Normalizing whitespace (multiple spaces/tabs become single spaces)
+    - Stripping leading/trailing whitespace
     
     Args:
         pdf_path (str): Path to the PDF file
         page_number (int): Page number to extract text from (1-indexed, like page 1, 2, 3, etc.)
         
     Returns:
-        str: Raw text content of the specified page, or empty string if page not found
+        str: Cleaned text content of the specified page, or empty string if page not found or empty
         
     Raises:
         FileNotFoundError: If the PDF file doesn't exist
@@ -70,9 +75,21 @@ def get_page_raw_text(pdf_path: str, page_number: int) -> str:
         # Extract the page content
         page_doc = document[page_index]
         if hasattr(page_doc, 'page_content') and page_doc.page_content:
-            raw_text = page_doc.page_content.strip()
-            logger.info(f"Successfully extracted {len(raw_text)} characters from page {page_number} of {os.path.basename(pdf_path)}")
-            return raw_text
+            page_text = page_doc.page_content
+            
+            # Clean up the text using the same logic as in embeddings.py
+            clean_text = page_text.strip()
+            if clean_text:
+                # Remove hyphenation at line breaks
+                clean_text = clean_text.replace("-\n", "")
+                # Normalize spaces
+                clean_text = " ".join(clean_text.split())
+                
+                logger.info(f"Successfully extracted and cleaned {len(clean_text)} characters from page {page_number} of {os.path.basename(pdf_path)}")
+                return clean_text
+            else:
+                logger.warning(f"No content found on page {page_number} of {pdf_path} after cleanup")
+                return ""
         else:
             logger.warning(f"No content found on page {page_number} of {pdf_path}")
             return ""

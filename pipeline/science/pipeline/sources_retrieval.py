@@ -441,7 +441,7 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
         for symbol, context_data in chat_session.formatted_context.items():
             # content = context_data["content"][:100]
             # content = context_data["content"]
-            if chat_session.mode == ChatMode.ADVANCED:
+            if chat_session.mode == ChatMode.LITE:
                 full_content=context_data["content"]
                 content = find_most_relevant_chunk(answer, full_content, user_input=user_input, divider_number=4)
             else:

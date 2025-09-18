@@ -28,7 +28,7 @@ from pipeline.science.pipeline.embeddings import (
 )
 from pipeline.science.pipeline.embeddings_agent import embeddings_agent
 from pipeline.science.pipeline.doc_processor import process_pdf_file, extract_document_from_file
-from pipeline.science.pipeline.session_manager import ChatSession
+from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
 import logging
 logger = logging.getLogger("tutorpipeline.science.sources_retrieval")
 
@@ -424,7 +424,12 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
         for symbol, context_data in chat_session.formatted_context.items():
             # content = context_data["content"][:100]
             # content = context_data["content"]
-            content = find_most_relevant_chunk(answer, full_content=context_data["content"], user_input=user_input, divider_number=4)
+            if chat_session.mode == ChatMode.LITE:
+                full_content=context_data["content"]
+                content = find_most_relevant_chunk(answer, full_content, user_input=user_input, divider_number=4)
+            else:
+                full_content = get_page_raw_text(file_path_list[0], context_data["page_num"])
+                content = find_most_relevant_chunk(answer, full_content, user_input=user_input, divider_number=4)
             score = context_data["score"]
             page_num = context_data["page_num"]  # 1-indexed from context
             source_index = context_data["source_index"]  # 1-indexed from context

@@ -207,7 +207,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         return await get_multiple_files_summary(file_path_list, embedding_folder_list, chat_session, stream)
     
     # Handle Lite mode first
-    if chat_session.mode == ChatMode.LITE:
+    if chat_session.mode == ChatMode.LITE or chat_session.mode == ChatMode.BASIC:
         config = load_config()
         token_limit = config["inference_token_limit"]
         map_symbol_to_index = config["map_symbol_to_index"]
@@ -282,7 +282,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
             yield "\n\n</response>"
         return process_stream()
 
-    elif chat_session.mode == ChatMode.BASIC or chat_session.mode == ChatMode.ADVANCED:
+    elif chat_session.mode == ChatMode.ADVANCED:
         file_path_list_copy = file_path_list.copy()
         # The folder should be the markdown folder
         file_path_list_copy[0] = os.path.join(embedding_folder_list[0], "markdown")

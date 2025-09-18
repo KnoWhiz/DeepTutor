@@ -82,7 +82,10 @@ def calculate_page_length(_doc, file_path):
         })
         cumulative_chars += char_count
     for i in range(len(page_stats)):
-        page_stats[i]['char_proportion'] = page_stats[i]['char_count'] / total_chars
+        if total_chars == 0:
+            page_stats[i]['char_proportion'] = float(1/len(page_stats))
+        else:
+            page_stats[i]['char_proportion'] = page_stats[i]['char_count'] / total_chars
     return page_stats
 
 

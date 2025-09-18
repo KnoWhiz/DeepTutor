@@ -271,7 +271,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         llm = get_llm('advanced', config['llm'])
         # chain = prompt | llm | StrOutputParser()
         answer = llm.stream(prompt)
-        def process_stream():
+        async def process_stream():
             yield "<response>\n\n"
             for chunk in answer:
                 # Convert AIMessageChunk to string

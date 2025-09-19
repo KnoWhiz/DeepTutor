@@ -446,7 +446,7 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
                 content = find_most_relevant_chunk(answer, full_content, user_input=user_input, divider_number=4)
             else:
                 full_content = get_page_raw_text(file_path_list[0], context_data["page_num"])
-                logger.info(f"Full content: {full_content}")
+                # logger.info(f"Full content: {full_content}")
                 if len(full_content) > 0:
                     content = find_most_relevant_chunk(answer, full_content, user_input=user_input, divider_number=4)
                 else:

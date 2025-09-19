@@ -750,7 +750,7 @@ def extract_answer_content(message_content):
     for match in source_annotation_matches:
         annotation_count += 1
         source_annotation_content = match.group(1).strip()
-        logger.debug(f"Processing source annotation #{annotation_count}: {source_annotation_content[:100]}...")
+        logger.info(f"Processing source annotation #{annotation_count}: {source_annotation_content[:100]}...")
         
         # Find the last occurrence of "}{"
         last_separator_index = source_annotation_content.rfind("}{")
@@ -760,8 +760,8 @@ def extract_answer_content(message_content):
             text_content = source_annotation_content[:last_separator_index].strip()
             # Extract metadata string (everything after the last "}{" plus an opening brace)
             metadata_str = "{" + source_annotation_content[last_separator_index+1:].strip()
-            logger.debug(f"Extracted text content (first 50 chars): {text_content[:50]}...")
-            logger.debug(f"Extracted metadata string: {metadata_str[:100]}...")
+            logger.info(f"Extracted text content (first 50 chars): {text_content[:50]}...")
+            logger.info(f"Extracted metadata string: {metadata_str[:100]}...")
             
             try:
                 # Clean up any potential trailing/leading characters for JSON parsing
@@ -786,11 +786,11 @@ def extract_answer_content(message_content):
                         logger.warning(f"Skipped invalid page_num: {page_num}")
             except json.JSONDecodeError as e:
                 # If JSON parsing fails, log it and store the raw string
-                logger.warning(f"Failed to parse source annotation metadata: {e}")
-                logger.debug(f"Problematic JSON string: {metadata_str}")
+                logger.info(f"Failed to parse source annotation metadata: {e}")
+                logger.info(f"Problematic JSON string: {metadata_str}")
                 source_annotations[text_content] = metadata_str
         else:
-            logger.warning(f"Could not find text/metadata separator in annotation: {source_annotation_content[:50]}...")
+            logger.info(f"Could not find text/metadata separator in annotation: {source_annotation_content[:50]}...")
     
     logger.info(f"Completed source annotations extraction. Found {annotation_count} annotations, extracted {len(source_annotations)} valid entries")
 

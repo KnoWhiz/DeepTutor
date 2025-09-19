@@ -39,14 +39,42 @@ logger.info(f"SKIP_MARKER_API: {SKIP_MARKER_API}")
 
 def _is_pdf_image_only(pdf_path: str) -> bool:
     """
-    Return True iff *every* page has no extractable text.
-    Uses PyMuPDF's text extraction; pages with only images return empty strings.
+    Determine if a PDF contains only images (no extractable text).
+    
+    This function attempts to extract text from the PDF using PyMuPDFLoader.
+    If no meaningful text is found, it's considered an image-only PDF that requires OCR.
+    
+    Args:
+        pdf_path: Path to the PDF file to analyze
+        
+    Returns:
+        bool: True if the PDF appears to be image-only (no extractable text),
+              False if the PDF contains extractable text
     """
-    with fitz.open(pdf_path) as doc:
-        for page in doc:
-            if page.get_text("text").strip():  # any text => not image-only
-                return False
-    return True
+    try:
+        # Try to extract text using PyMuPDFLoader
+        loader = PyMuPDFLoader(pdf_path)
+        documents = loader.load()
+        
+        # Check if any meaningful text was extracted
+        total_text = ""
+        for doc in documents:
+            if hasattr(doc, 'page_content') and doc.page_content:
+                total_text += doc.page_content.strip()
+        
+        # If no text was extracted or only whitespace/special characters, 
+        # consider it image-only
+        if not total_text or len(total_text.strip()) < 10:
+            logger.info(f"PDF appears to be image-only: {pdf_path}")
+            return True
+        
+        logger.info(f"PDF contains extractable text: {pdf_path}")
+        return False
+        
+    except Exception as e:
+        logger.warning(f"Error analyzing PDF {pdf_path}: {e}. Assuming image-only.")
+        # If we can't analyze the PDF, assume it's image-only to be safe
+        return True
 
 
 def _ocr_with_ocrmypdf(input_pdf: str, output_pdf: str, sidecar_txt: str, language: str = "eng") -> None:

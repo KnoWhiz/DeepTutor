@@ -1,8 +1,10 @@
 import os
 import io
+import sys
 import hashlib
 import fitz
 import json
+import subprocess
 import requests
 import base64
 import time
@@ -34,12 +36,89 @@ SKIP_MARKER_API = True if os.getenv("ENVIRONMENT") == "local" else False
 logger.info(f"SKIP_MARKER_API: {SKIP_MARKER_API}")
 
 
+
+def _is_pdf_image_only(pdf_path: str) -> bool:
+    """
+    Return True iff *every* page has no extractable text.
+    Uses PyMuPDF's text extraction; pages with only images return empty strings.
+    """
+    with fitz.open(pdf_path) as doc:
+        for page in doc:
+            if page.get_text("text").strip():  # any text => not image-only
+                return False
+    return True
+
+
+def _ocr_with_ocrmypdf(input_pdf: str, output_pdf: str, sidecar_txt: str, language: str = "eng") -> None:
+    """
+    Run: python -m ocrmypdf --force-ocr --sidecar <sidecar_txt> -l <language> <input_pdf> <output_pdf>
+    Raises CalledProcessError if OCR fails.
+    """
+    cmd = [
+        sys.executable, "-m", "ocrmypdf",
+        "--force-ocr",
+        "--sidecar", sidecar_txt,
+        "-l", language,
+        input_pdf, output_pdf,
+    ]
+    # Let stderr/stdout flow so you can see ocrmypdf messages in logs if desired
+    subprocess.run(cmd, check=True)
+
+
+def _suffix_path(pdf_path: str, language: str) -> tuple[str, str]:
+    """
+    Build output paths like: <base>.ocr.<lang>.pdf and <base>.ocr.<lang>.txt
+    """
+    base, ext = os.path.splitext(pdf_path)
+    output_pdf = f"{base}.ocr.{language}{ext or '.pdf'}"
+    sidecar_txt = f"{base}.ocr.{language}.txt"
+    return output_pdf, sidecar_txt
+
+
 # Custom function to extract document objects from uploaded file
-def extract_document_from_file(file_path):
-    # Load the document
-    loader = PyMuPDFLoader(file_path)
-    document = loader.load()
-    return document
+def extract_document_from_file(file_path: str, ocr_and_overwrite: bool = True, language: str = "eng"):
+    """
+    Logic:
+      1) If PDF is *not* fully image-based: load normally via PyMuPDFLoader and return.
+      2) If PDF *is* fully image-based:
+         - Run OCR via ocrmypdf with --force-ocr and --sidecar.
+         - If ocr_and_overwrite=False: save as <name>.ocr.<lang>.pdf
+           If ocr_and_overwrite=True: overwrite original file.
+      3) Return PyMuPDFLoader.load() of the (possibly OCR'd) file.
+    """
+    if not os.path.isfile(file_path):
+        raise FileNotFoundError(f"PDF not found: {file_path}")
+
+    image_only = _is_pdf_image_only(file_path)
+    logger.info(f"Image only: {image_only}")
+
+    if not image_only:
+        # Normal path: no OCR required
+        loader = PyMuPDFLoader(file_path)
+        return loader.load()
+
+    # Image-only: perform OCR
+    if ocr_and_overwrite:
+        output_pdf = file_path
+        # Sidecar lives next to the original (won't be embedded in PDF)
+        sidecar_txt = os.path.splitext(file_path)[0] + f".ocr.{language}.txt"
+    else:
+        output_pdf, sidecar_txt = _suffix_path(file_path, language)
+
+    # Ensure output directory exists (usually it does, but be safe)
+    os.makedirs(os.path.dirname(os.path.abspath(output_pdf)) or ".", exist_ok=True)
+
+    # Run OCR
+    _ocr_with_ocrmypdf(
+        input_pdf=file_path,
+        output_pdf=output_pdf,
+        sidecar_txt=sidecar_txt,
+        language=language,
+    )
+
+    # Load from the OCR'd PDF
+    loader = PyMuPDFLoader(output_pdf)
+    return loader.load()
 
 
 # Function to process the PDF file

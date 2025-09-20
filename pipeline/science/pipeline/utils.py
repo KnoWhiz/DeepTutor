@@ -744,13 +744,13 @@ def extract_answer_content(message_content):
     
     # Extract source annotations (content between <source_annotations> tags)
     source_annotation_matches = re.finditer(r'<source_annotations>(.*?)</source_annotations>', message_content, re.DOTALL)
-    # logger.info(f"Starting source annotations extraction")
+    logger.info(f"Starting source annotations extraction")
     annotation_count = 0
     
     for match in source_annotation_matches:
         annotation_count += 1
         source_annotation_content = match.group(1).strip()
-        # logger.info(f"Processing source annotation #{annotation_count}: {source_annotation_content[:100]}...")
+        logger.info(f"Processing source annotation #{annotation_count}: {source_annotation_content[:100]}...")
         
         # Find the last occurrence of "}{"
         last_separator_index = source_annotation_content.rfind("}{")
@@ -786,7 +786,7 @@ def extract_answer_content(message_content):
                         logger.warning(f"Skipped invalid page_num: {page_num}")
             except json.JSONDecodeError as e:
                 # If JSON parsing fails, log it and store the raw string
-                # logger.info(f"Failed to parse source annotation metadata: {e}")
+                logger.info(f"Failed to parse source annotation metadata: {e}")
                 logger.info(f"Problematic JSON string: {metadata_str}")
                 source_annotations[text_content] = metadata_str
         else:
@@ -823,7 +823,7 @@ def extract_answer_content(message_content):
                 }
                 source_annotations[text] = data
             except Exception as e:
-                # logger.error(f"Failed to extract source annotation data: {e}")
+                logger.error(f"Failed to extract source annotation data: {e}")
                 # Fall back to storing as string if parsing fails
                 source_annotations[text] = json_str
 

@@ -1,8 +1,10 @@
 import os
 import io
+import sys
 import hashlib
 import fitz
 import json
+import subprocess
 import requests
 import base64
 import time
@@ -16,6 +18,8 @@ from pathlib import Path
 from PIL import Image
 
 from langchain_community.document_loaders import PyMuPDFLoader
+from pipeline.science.pipeline.helper.azure_blob import AzureBlobHelper
+from pipeline.science.pipeline.utils import generate_file_id
 
 from pipeline.science.pipeline.config import load_config
 from pipeline.science.pipeline.images_understanding import (
@@ -34,12 +38,162 @@ SKIP_MARKER_API = True if os.getenv("ENVIRONMENT") == "local" else False
 logger.info(f"SKIP_MARKER_API: {SKIP_MARKER_API}")
 
 
+
+def _is_pdf_image_only(pdf_path: str) -> bool:
+    """
+    Determine if a PDF contains only images (no extractable text).
+    
+    This function attempts to extract text from the PDF using PyMuPDFLoader.
+    If no meaningful text is found, it's considered an image-only PDF that requires OCR.
+    
+    Args:
+        pdf_path: Path to the PDF file to analyze
+        
+    Returns:
+        bool: True if the PDF appears to be image-only (no extractable text),
+              False if the PDF contains extractable text
+    """
+    try:
+        # Try to extract text using PyMuPDFLoader
+        loader = PyMuPDFLoader(pdf_path)
+        documents = loader.load()
+        
+        # Check if any meaningful text was extracted
+        total_text = ""
+        for doc in documents:
+            if hasattr(doc, 'page_content') and doc.page_content:
+                total_text += doc.page_content.strip()
+        
+        # If no text was extracted or only whitespace/special characters, 
+        # consider it image-only
+        if not total_text or len(total_text.strip()) < 10:
+            logger.info(f"PDF appears to be image-only: {pdf_path}")
+            return True
+        
+        logger.info(f"PDF contains extractable text: {pdf_path}")
+        return False
+        
+    except Exception as e:
+        logger.warning(f"Error analyzing PDF {pdf_path}: {e}. Assuming image-only.")
+        # If we can't analyze the PDF, assume it's image-only to be safe
+        return True
+
+
+def _ocr_with_ocrmypdf(input_pdf: str, output_pdf: str, sidecar_txt: str, language: str = "eng") -> None:
+    """
+    Run OCR with ocrmypdf, checking Azure blob storage first for existing OCR results.
+    If OCR result exists in Azure blob, download it. If not, run OCR and upload result.
+    
+    Args:
+        input_pdf: Path to input PDF file
+        output_pdf: Path where output PDF should be saved
+        sidecar_txt: Path for sidecar text file
+        language: Language code for OCR (default: "eng")
+    
+    Raises CalledProcessError if OCR fails.
+    """
+    # Generate file ID for the input PDF
+    file_id = generate_file_id(input_pdf)
+    blob_name = f"pdf_ocr/{file_id}.pdf"
+    container_name = "knowhiztutorrag"
+    
+    # Initialize Azure blob helper
+    azure_blob_helper = AzureBlobHelper()
+    
+    # Check if OCR result already exists in Azure blob storage
+    if azure_blob_helper.blob_exists(blob_name, container_name):
+        logger.info(f"OCR result already exists in Azure blob storage: {blob_name}")
+        try:
+            # Download the existing OCR result from Azure blob
+            azure_blob_helper.download(blob_name, output_pdf, container_name)
+            logger.info(f"Downloaded existing OCR result to {output_pdf}")
+            return
+        except Exception as e:
+            logger.warning(f"Failed to download existing OCR result: {e}. Proceeding with new OCR.")
+    
+    # If OCR result doesn't exist or download failed, run OCR
+    logger.info(f"Running OCR on {input_pdf} with language {language}")
+    cmd = [
+        sys.executable, "-m", "ocrmypdf",
+        "--force-ocr",
+        "--sidecar", sidecar_txt,
+        "-l", language,
+        input_pdf, output_pdf,
+    ]
+    # Let stderr/stdout flow so you can see ocrmypdf messages in logs if desired
+    subprocess.run(cmd, check=True)
+    
+    # Upload the OCR result to Azure blob storage with two different names
+    try:
+        # Upload with original file_id name
+        azure_blob_helper.upload(output_pdf, blob_name, container_name)
+        logger.info(f"Uploaded OCR result to Azure blob storage: {blob_name}")
+        
+        # Generate file_id for the OCR output file and upload with that name too
+        ocr_file_id = generate_file_id(output_pdf)
+        ocr_output_blob_name = f"pdf_ocr/{ocr_file_id}.pdf"
+        azure_blob_helper.upload(output_pdf, ocr_output_blob_name, container_name)
+        logger.info(f"Uploaded OCR result with OCR file_id to Azure blob storage: {ocr_output_blob_name}")
+        
+    except Exception as e:
+        logger.warning(f"Failed to upload OCR result to Azure blob storage: {e}")
+        # Don't raise the exception as OCR was successful, just logging failed
+
+
+def _suffix_path(pdf_path: str, language: str) -> tuple[str, str]:
+    """
+    Build output paths like: <base>.ocr.<lang>.pdf and <base>.ocr.<lang>.txt
+    """
+    base, ext = os.path.splitext(pdf_path)
+    output_pdf = f"{base}.ocr.{language}{ext or '.pdf'}"
+    sidecar_txt = f"{base}.ocr.{language}.txt"
+    return output_pdf, sidecar_txt
+
+
 # Custom function to extract document objects from uploaded file
-def extract_document_from_file(file_path):
-    # Load the document
-    loader = PyMuPDFLoader(file_path)
-    document = loader.load()
-    return document
+def extract_document_from_file(file_path: str, ocr_and_overwrite: bool = True, language: str = "eng"):
+    """
+    Logic:
+      1) If PDF is *not* fully image-based: load normally via PyMuPDFLoader and return.
+      2) If PDF *is* fully image-based:
+         - Run OCR via ocrmypdf with --force-ocr and --sidecar.
+         - If ocr_and_overwrite=False: save as <name>.ocr.<lang>.pdf
+           If ocr_and_overwrite=True: overwrite original file.
+      3) Return PyMuPDFLoader.load() of the (possibly OCR'd) file.
+    """
+    if not os.path.isfile(file_path):
+        raise FileNotFoundError(f"PDF not found: {file_path}")
+
+    image_only = _is_pdf_image_only(file_path)
+    logger.info(f"Image only: {image_only}")
+
+    if not image_only:
+        # Normal path: no OCR required
+        loader = PyMuPDFLoader(file_path)
+        return loader.load()
+
+    # Image-only: perform OCR
+    if ocr_and_overwrite:
+        output_pdf = file_path
+        # Sidecar lives next to the original (won't be embedded in PDF)
+        sidecar_txt = os.path.splitext(file_path)[0] + f".ocr.{language}.txt"
+    else:
+        output_pdf, sidecar_txt = _suffix_path(file_path, language)
+
+    # Ensure output directory exists (usually it does, but be safe)
+    os.makedirs(os.path.dirname(os.path.abspath(output_pdf)) or ".", exist_ok=True)
+
+    # Run OCR
+    _ocr_with_ocrmypdf(
+        input_pdf=file_path,
+        output_pdf=output_pdf,
+        sidecar_txt=sidecar_txt,
+        language=language,
+    )
+
+    # Load from the OCR'd PDF
+    loader = PyMuPDFLoader(output_pdf)
+    return loader.load()
 
 
 # Function to process the PDF file

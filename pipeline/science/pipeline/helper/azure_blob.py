@@ -34,6 +34,22 @@ class AzureBlobHelper(object):
             logger.info(f"Error uploading blob: {e}")
             raise
 
+    def blob_exists(self, blob_name: str, container_name: str) -> bool:
+        """
+        Check if a blob exists in the specified container
+        :param blob_name: Name of the blob to check
+        :param container_name: Name of the container
+        :return: True if blob exists, False otherwise
+        """
+        try:
+            blob_client = self.blob_service_client.get_blob_client(container=container_name, blob=blob_name)
+            blob_client.get_blob_properties()
+            logger.info(f"Blob {blob_name} exists in container {container_name}")
+            return True
+        except Exception as e:
+            logger.info(f"Blob {blob_name} does not exist in container {container_name}: {e}")
+            return False
+
 
 if __name__ == "__main__":
     azure_blob_helper = AzureBlobHelper()

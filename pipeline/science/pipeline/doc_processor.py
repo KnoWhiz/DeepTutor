@@ -18,6 +18,8 @@ from pathlib import Path
 from PIL import Image
 
 from langchain_community.document_loaders import PyMuPDFLoader
+from pipeline.science.pipeline.helper.azure_blob import AzureBlobHelper
+from pipeline.science.pipeline.utils import generate_file_id
 
 from pipeline.science.pipeline.config import load_config
 from pipeline.science.pipeline.images_understanding import (
@@ -79,9 +81,38 @@ def _is_pdf_image_only(pdf_path: str) -> bool:
 
 def _ocr_with_ocrmypdf(input_pdf: str, output_pdf: str, sidecar_txt: str, language: str = "eng") -> None:
     """
-    Run: python -m ocrmypdf --force-ocr --sidecar <sidecar_txt> -l <language> <input_pdf> <output_pdf>
+    Run OCR with ocrmypdf, checking Azure blob storage first for existing OCR results.
+    If OCR result exists in Azure blob, download it. If not, run OCR and upload result.
+    
+    Args:
+        input_pdf: Path to input PDF file
+        output_pdf: Path where output PDF should be saved
+        sidecar_txt: Path for sidecar text file
+        language: Language code for OCR (default: "eng")
+    
     Raises CalledProcessError if OCR fails.
     """
+    # Generate file ID for the input PDF
+    file_id = generate_file_id(input_pdf)
+    blob_name = f"pdf_ocr/{file_id}.pdf"
+    container_name = "knowhiztutorrag"
+    
+    # Initialize Azure blob helper
+    azure_blob_helper = AzureBlobHelper()
+    
+    # Check if OCR result already exists in Azure blob storage
+    if azure_blob_helper.blob_exists(blob_name, container_name):
+        logger.info(f"OCR result already exists in Azure blob storage: {blob_name}")
+        try:
+            # Download the existing OCR result from Azure blob
+            azure_blob_helper.download(blob_name, output_pdf, container_name)
+            logger.info(f"Downloaded existing OCR result to {output_pdf}")
+            return
+        except Exception as e:
+            logger.warning(f"Failed to download existing OCR result: {e}. Proceeding with new OCR.")
+    
+    # If OCR result doesn't exist or download failed, run OCR
+    logger.info(f"Running OCR on {input_pdf} with language {language}")
     cmd = [
         sys.executable, "-m", "ocrmypdf",
         "--force-ocr",
@@ -91,6 +122,14 @@ def _ocr_with_ocrmypdf(input_pdf: str, output_pdf: str, sidecar_txt: str, langua
     ]
     # Let stderr/stdout flow so you can see ocrmypdf messages in logs if desired
     subprocess.run(cmd, check=True)
+    
+    # Upload the OCR result to Azure blob storage
+    try:
+        azure_blob_helper.upload(output_pdf, blob_name, container_name)
+        logger.info(f"Uploaded OCR result to Azure blob storage: {blob_name}")
+    except Exception as e:
+        logger.warning(f"Failed to upload OCR result to Azure blob storage: {e}")
+        # Don't raise the exception as OCR was successful, just logging failed
 
 
 def _suffix_path(pdf_path: str, language: str) -> tuple[str, str]:

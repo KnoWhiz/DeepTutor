@@ -1,50 +1,31 @@
 import os
 import re
-from langchain_community.vectorstores import FAISS
-from langchain_core.runnables import RunnablePassthrough
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
 from langchain.output_parsers import OutputFixingParser
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-import json
 
 from pipeline.science.pipeline.config import load_config
 from pipeline.science.pipeline.utils import (
     truncate_chat_history,
     get_llm,
-    responses_refine,
     count_tokens,
     replace_latex_formulas,
-    generators_list_stream_response,
-    Question,
-    truncate_document
+    Question
 )
 from pipeline.science.pipeline.doc_processor import (
-    extract_document_from_file,
     process_pdf_file
 )
-from pipeline.science.pipeline.embeddings import (
-    get_embedding_models,
-    load_embeddings,
-)
 from pipeline.science.pipeline.content_translator import (
-    detect_language,
-    translate_content
+    detect_language
 )
-from pipeline.science.pipeline.inference import deep_inference_agent
 from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
-from pipeline.science.pipeline.get_graphrag_response import get_GraphRAG_global_response
-from pipeline.science.pipeline.get_rag_response import (
-    get_embedding_folder_rag_response, 
-    get_db_rag_response
-)
 from pipeline.science.pipeline.images_understanding import (
     aggregate_image_contexts_to_urls, 
     create_image_context_embeddings_db, 
     analyze_image
 )
 from pipeline.science.pipeline.rag_agent import get_rag_context
-from pipeline.science.pipeline.claude_code_sdk import get_claude_code_response, get_claude_code_response_async
+from pipeline.science.pipeline.claude_code_sdk import get_claude_code_response_async
 
 import logging
 logger = logging.getLogger("tutorpipeline.science.get_response")
@@ -147,32 +128,37 @@ async def get_multiple_files_summary(file_path_list, embedding_folder_list, chat
     formatted_previews = "\n".join(prompt_parts)
     logger.info(f"Created formatted previews for {len(file_previews)} files, total length: {len(formatted_previews)} characters")
     
-    prompt = f"""
-    You are an expert academic tutor helping a student understand multiple documents. 
-    The student has loaded multiple PDF files and needs a comprehensive summary that explains what each document is about.
-    
-    Please provide a comprehensive summary that:
-    1. Introduces each document with its title (derived from content if possible) and main topic
-    2. Summarizes the key content and main findings of each document
-    3. Identifies relationships or connections between the documents (they appear to be related scientific papers)
-    4. Highlights the most important concepts across all documents
-    5. Uses markdown formatting for clear organization with sections and subsections
-    6. Makes appropriate use of bold, bullet points, and other formatting to improve readability
-    7. Highest title level is 3, and the title should be concise and informative.
-    
-    Format your summary with a friendly welcome message at the beginning and a closing "Ask me anything" message at the end.
+    # Create proper ChatPromptTemplate with system and user messages
+    system_prompt = """You are an expert academic tutor helping a student understand multiple documents. 
+The student has loaded multiple PDF files and needs a comprehensive summary that explains what each document is about.
 
-    Here are the files with previews of their content:
-    {formatted_previews}
-    """
+Please provide a comprehensive summary that:
+1. Introduces each document with its title (derived from content if possible) and main topic
+2. Summarizes the key content and main findings of each document
+3. Identifies relationships or connections between the documents (they appear to be related scientific papers)
+4. Highlights the most important concepts across all documents
+5. Uses markdown formatting for clear organization with sections and subsections
+6. Makes appropriate use of bold, bullet points, and other formatting to improve readability
+7. Highest title level is 3, and the title should be concise and informative.
+
+Format your summary with a friendly welcome message at the beginning and a closing "Ask me anything" message at the end."""
+
+    user_prompt = """Here are the files with previews of their content:
+{formatted_previews}"""
+
+    prompt_template = ChatPromptTemplate.from_messages([
+        ("system", system_prompt),
+        ("human", user_prompt)
+    ])
     
-    logger.info(f"Generated summary prompt with length: {len(prompt)} characters")
+    logger.info(f"Generated summary prompt with length: {len(system_prompt + user_prompt)} characters")
     logger.info(f"Generating summary for multiple files: {[os.path.basename(fp) for fp in file_path_list]}")
     
     if stream:
         # Stream response for real-time feedback - remove thinking part
         logger.info("Using streaming mode for summary generation")
-        answer = llm.stream(prompt)
+        chain = prompt_template | llm
+        answer = chain.stream({"formatted_previews": formatted_previews})
 
         async def process_stream_async():
             yield "<response>\n\n"
@@ -189,14 +175,14 @@ async def get_multiple_files_summary(file_path_list, embedding_folder_list, chat
     else:
         # Return complete response at once - remove thinking part
         logger.info("Using non-streaming mode for summary generation")
-        response = llm.invoke(prompt)
+        chain = prompt_template | llm
+        response = chain.invoke({"formatted_previews": formatted_previews})
         response_text = response.content if hasattr(response, 'content') else str(response)
         logger.info(f"Generated summary with length: {len(response_text)} characters")
         return f"<response>\n\n{response_text}\n\n</response>"
 
 
 async def get_response(chat_session: ChatSession, file_path_list, question: Question, chat_history, embedding_folder_list, deep_thinking = True, stream=True):
-    generators_list = []
     config = load_config()
     user_input = question.text
     user_input_string = str(user_input + "\n\n" + question.special_context)
@@ -208,69 +194,69 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
     
     # Handle Lite mode first
     if chat_session.mode == ChatMode.LITE or chat_session.mode == ChatMode.BASIC:
-        config = load_config()
-        token_limit = config["inference_token_limit"]
-        map_symbol_to_index = config["map_symbol_to_index"]
-        # Get the first 3 keys from map_symbol_to_index for examples in the prompt
-        first_keys = list(map_symbol_to_index.keys())[:3]
-        example_keys = ", or ".join(first_keys)
         logger.info(f"embedding_folder_list in get_response: {embedding_folder_list}")
-        formatted_context = await get_rag_context(chat_session=chat_session,
-                                            file_path_list=file_path_list,
-                                            question=question,
-                                            chat_history=chat_history,
-                                            embedding_folder_list=embedding_folder_list,
-                                            deep_thinking=deep_thinking,
-                                            stream=stream,
-                                            context="")
-        # formatted_context_string = str(formatted_context)
+        await get_rag_context(chat_session=chat_session,
+                            file_path_list=file_path_list,
+                            question=question,
+                            chat_history=chat_history,
+                            embedding_folder_list=embedding_folder_list,
+                            deep_thinking=deep_thinking,
+                            stream=stream,
+                            context="")
         formatted_context_string = chat_session.formatted_context
-        prompt = f"""
-        You are a deep thinking tutor helping a student reading a paper.
+        # Create proper ChatPromptTemplate with system and user messages
+        system_prompt = """You are a deep thinking tutor helping a student reading a paper.
 
-        For formulas, use LaTeX format with $...$ or 
-        $$
-        ...
-        $$
-        and MUST make sure latex syntax can be properly rendered, and ALL formulas are wrapped in "$" or "$$" markers in the response.
+For formulas, use LaTeX format with $...$ or 
+$$
+...
+$$
+and MUST make sure latex syntax can be properly rendered, and ALL formulas are wrapped in "$" or "$$" markers in the response.
 
-        RESPONSE GUIDELINES:
-        0. IMPORTANT: At the beginning of the response, use one or two sentences to quickly give a short and concise answer to the question (as TL;DR) so the student can quickly understand the answer before going into the details.
-        1. Provide concise, accurate answers directly addressing the question
-        2. Use clear, precise language with appropriate technical terminology
-        3. Format key concepts and important points in **bold**
-        4. Maintain a professional, academic tone throughout the response
-        5. Break down complex information into structured, logical segments
-        6. When explaining technical concepts, include relevant examples or applications
-        7. Clearly state limitations of explanations when uncertainty exists
-        8. Use bullet points or numbered lists for sequential explanations
-        Your goal is to deliver accurate, clear, and professionally structured responses that enhance comprehension of complex topics.
+RESPONSE GUIDELINES:
+0. IMPORTANT: At the beginning of the response, use one or two sentences to quickly give a short and concise answer to the question (as TL;DR) so the student can quickly understand the answer before going into the details.
+1. Provide concise, accurate answers directly addressing the question
+2. Use clear, precise language with appropriate technical terminology
+3. Format key concepts and important points in **bold**
+4. Maintain a professional, academic tone throughout the response
+5. Break down complex information into structured, logical segments
+6. When explaining technical concepts, include relevant examples or applications
+7. Clearly state limitations of explanations when uncertainty exists
+8. Use bullet points or numbered lists for sequential explanations
+Your goal is to deliver accurate, clear, and professionally structured responses that enhance comprehension of complex topics.
 
-        Requirement:
-        Give the response in a scientific and academic tone. Do not make up or assume anything or guess without any evidence. 
+Requirement:
+Give the response in a scientific and academic tone. Do not make up or assume anything or guess without any evidence. 
 
-        Case 1: If the answer can be answered with the context chunks, only use the information from the context chunks to answer the question. In that case, follow the format requirement below.
-            Format requirement if question can be answered with the context chunks:
-            1. Strictly ensure that for each sentence in the response, there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<1>], [<2>], [<3>], [<4>], etc." at the end of the sentence after the period mark. If there are more than one context chunk keys, use the format "[<1>][<2>]...[<n>]" to cite all the context chunk keys. 
-            2. For each source citation key (like [<1>], [<2>], etc.), append the corresponding source content in one sentence (wrapped in brackets, quotes, and use italics) after the citation key. For example ("_...<one sentence from the source content, in italic format>..._")
-            3. Use bold or underline or bullet points in markdown syntax to emphasize the important information in the response and improve readability.
-            4. Use markdown syntax for formatting the response to make it more clear and readable.
+Case 1: If the answer can be answered with the context chunks, only use the information from the context chunks to answer the question. In that case, follow the format requirement below.
+    Format requirement if question can be answered with the context chunks:
+    1. Strictly ensure that for each sentence in the response, there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<1>], [<2>], [<3>], [<4>], etc." at the end of the sentence after the period mark. If there are more than one context chunk keys, use the format "[<1>][<2>]...[<n>]" to cite all the context chunk keys. 
+    2. For each source citation key (like [<1>], [<2>], etc.), append the corresponding source content in one sentence (wrapped in brackets, quotes, and use italics) after the citation key. For example ("_...<one sentence from the source content, in italic format>..._")
+    3. Use bold or underline or bullet points in markdown syntax to emphasize the important information in the response and improve readability.
+    4. Use markdown syntax for formatting the response to make it more clear and readable.
 
-        Case 2: If the answer cannot be answered with the context chunks, you can answer the question with your own knowledge. In that case, follow the format requirement below.
-            Format requirement if question cannot be answered with the context chunks:
-            1. Clearly state that you are using your own knowledge to answer the question.
-            2. Use bold or underline or bullet points in markdown syntax to emphasize the important information in the response and improve readability.
-            3. Use markdown syntax for formatting the response to make it more clear and readable.
+Case 2: If the answer cannot be answered with the context chunks, you can answer the question with your own knowledge. In that case, follow the format requirement below.
+    Format requirement if question cannot be answered with the context chunks:
+    1. Clearly state that you are using your own knowledge to answer the question.
+    2. Use bold or underline or bullet points in markdown syntax to emphasize the important information in the response and improve readability.
+    3. Use markdown syntax for formatting the response to make it more clear and readable."""
 
-        Reference context chunks with relevance scores from the paper: 
-        {formatted_context_string}
+        user_prompt = """Reference context chunks with relevance scores from the paper: 
+{formatted_context_string}
 
-        The student's query is: {user_input_string}
-        """
-        # prompt = ChatPromptTemplate.from_template(prompt)
+The student's query is: {user_input_string}"""
+
+        prompt_template = ChatPromptTemplate.from_messages([
+            ("system", system_prompt),
+            ("human", user_prompt)
+        ])
+        
         llm = get_llm('advanced', config['llm'])
-        # chain = prompt | llm | StrOutputParser()
-        answer = llm.stream(prompt)
+        chain = prompt_template | llm
+        answer = chain.stream({
+            "formatted_context_string": formatted_context_string,
+            "user_input_string": user_input_string
+        })
         async def process_stream():
             yield "<response>\n\n"
             for chunk in answer:

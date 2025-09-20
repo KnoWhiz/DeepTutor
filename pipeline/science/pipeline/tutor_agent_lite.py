@@ -224,7 +224,7 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
             question = Question(text=user_input, language=chat_session.current_language, question_type="global")
             response = await get_response(chat_session, file_path_list, question, context_chat_history, embedding_folder_list, deep_thinking=deep_thinking, stream=stream)
             answer = response[0] if isinstance(response, tuple) else response
-            for chunk in answer:
+            async for chunk in answer:
                 yield chunk
             time_tracking["response_generation"] = time.time() - response_start
             
@@ -277,7 +277,7 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     response_start = time.time()
     response = await get_response(chat_session, file_path_list, question, context_chat_history, embedding_folder_list, deep_thinking=deep_thinking, stream=stream)
     answer = response[0] if isinstance(response, tuple) else response
-    for chunk in answer:
+    async for chunk in answer:
         yield chunk
     time_tracking["response_generation"] = time.time() - response_start
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")

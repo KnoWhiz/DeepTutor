@@ -216,7 +216,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
             if (type(answer) is str):
                 yield answer
             else:
-                for chunk in answer:
+                async for chunk in answer:
                     yield chunk
             yield "</response>"
         else:
@@ -349,7 +349,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
         if (type(answer) is str):
             yield answer
         else:
-            for chunk in answer:
+            async for chunk in answer:
                 yield chunk
         yield "</response>"
         # yield "\n\n**💡 Loading the response done ...**\n\n"

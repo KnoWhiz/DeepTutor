@@ -516,7 +516,7 @@ def validate_embedding_index_files(embedding_folder_list: list[str | Path], embe
     return valid_folders, invalid_folders
 
 
-async def load_embeddings(embedding_folder_list: list[str | Path], embedding_type: str = 'default'):
+async def load_embeddings(embedding_folder_list: list[str | Path], embedding_type: str = 'default', file_path_list: list[str | Path] | None = None):
     """
     Load embeddings from the specified folder.
     Adds a file_index metadata field to each document indicating which folder it came from.
@@ -550,7 +550,7 @@ async def load_embeddings(embedding_folder_list: list[str | Path], embedding_typ
             # Attempt to regenerate missing lite embeddings
             try:
                 logger.info("Starting regeneration process for missing lite embeddings...")
-                regenerated_folders = await regenerate_missing_lite_embeddings(invalid_folders, embedding_folder_list)
+                regenerated_folders = await regenerate_missing_lite_embeddings(invalid_folders, embedding_folder_list, file_path_list)
                 
                 if regenerated_folders:
                     logger.info(f"Successfully regenerated {len(regenerated_folders)} embedding folders")
@@ -638,7 +638,7 @@ async def load_embeddings(embedding_folder_list: list[str | Path], embedding_typ
     return db_merged
 
 
-async def regenerate_missing_lite_embeddings(invalid_folders: list[str | Path], embedding_folder_list: list[str | Path]) -> list[str | Path]:
+async def regenerate_missing_lite_embeddings(invalid_folders: list[str | Path], embedding_folder_list: list[str | Path], file_path_list: list[str | Path] | None) -> list[str | Path]:
     """
     Regenerate missing lite embeddings for invalid folders.
     
@@ -663,7 +663,7 @@ async def regenerate_missing_lite_embeddings(invalid_folders: list[str | Path], 
         try:
             logger.info(f"Attempting to regenerate embeddings for: {embedding_folder}")
             
-            # Extract the parent folder (should contain the original file)
+            # Extract the embedding folder and its parent dir
             embedding_folder_path = Path(embedding_folder)
             parent_folder = embedding_folder_path.parent
             
@@ -677,15 +677,31 @@ async def regenerate_missing_lite_embeddings(invalid_folders: list[str | Path], 
                     logger.warning(f"Could not clean up folder {embedding_folder}: {cleanup_error}")
                     # Continue anyway, the generation might still work
             
-            # Look for PDF files in the parent folder
-            pdf_files = list(parent_folder.glob("*.pdf"))
-            if not pdf_files:
-                logger.error(f"No PDF files found in {parent_folder} to regenerate embeddings")
-                continue
+            # Determine the source PDF path from provided file_path_list using index mapping
+            file_path = None
+            if file_path_list is not None:
+                try:
+                    # Map invalid embedding folder back to its index within the original list
+                    original_index = embedding_folder_list.index(embedding_folder)
+                    candidate_path = Path(str(file_path_list[original_index]))
+                    if candidate_path.suffix.lower() == ".pdf" and candidate_path.exists():
+                        file_path = str(candidate_path)
+                        logger.info(f"Resolved source PDF via file_path_list: {file_path}")
+                    else:
+                        logger.warning(f"Mapped file path is not an existing PDF: {candidate_path}")
+                except ValueError:
+                    logger.warning(f"Embedding folder not found in original list for index mapping: {embedding_folder}")
+                except Exception as map_err:
+                    logger.warning(f"Error mapping file path for {embedding_folder}: {map_err}")
             
-            # Use the first PDF file found (assuming one file per embedding folder)
-            file_path = str(pdf_files[0])
-            logger.info(f"Found PDF file for regeneration: {file_path}")
+            # Fallback: attempt to locate PDF in the parent folder if mapping failed
+            if file_path is None:
+                pdf_files = list(parent_folder.glob("*.pdf"))
+                if not pdf_files:
+                    logger.error(f"No PDF files found for regeneration. Parent folder checked: {parent_folder}")
+                    continue
+                file_path = str(pdf_files[0])
+                logger.info(f"Fallback to parent folder PDF for regeneration: {file_path}")
             
             # Open the PDF file using fitz (PyMuPDF)
             import fitz
@@ -735,7 +751,7 @@ async def regenerate_missing_lite_embeddings(invalid_folders: list[str | Path], 
     return regenerated_folders
 
 
-async def load_embeddings_with_regeneration(embedding_folder_list: list[str | Path], embedding_type: str = 'default', allow_regeneration: bool = True):
+async def load_embeddings_with_regeneration(embedding_folder_list: list[str | Path], embedding_type: str = 'default', allow_regeneration: bool = True, file_path_list: list[str | Path] | None = None):
     """
     Load embeddings from the specified folders with automatic regeneration of missing files.
     
@@ -757,4 +773,4 @@ async def load_embeddings_with_regeneration(embedding_folder_list: list[str | Pa
         logger.warning("Regeneration is disabled, but load_embeddings() will still validate and attempt regeneration for 'lite' type")
     
     # The main load_embeddings function now handles regeneration automatically
-    return await load_embeddings(embedding_folder_list, embedding_type)
+    return await load_embeddings(embedding_folder_list, embedding_type, file_path_list)

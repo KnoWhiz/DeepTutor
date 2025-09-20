@@ -99,12 +99,12 @@ def get_page_content_from_file(file_path_list, file_index, page_number):
 async def get_rag_context(chat_session: ChatSession, file_path_list, question: Question, chat_history, embedding_folder_list, deep_thinking = True, stream=False, context=""):
     """
     Retrieves and processes relevant document context for RAG (Retrieval-Augmented Generation) operations.
-    
+
     This function performs semantic similarity search across embedded document chunks to identify
     the most relevant content for answering user questions. It supports multiple chat modes
     (Basic, Advanced, Lite) with different embedding strategies and provides both chunk-level
     and page-level context formatting for optimal AI response generation.
-    
+
     Args:
         chat_session (ChatSession): Active chat session containing mode settings and context state
         file_path_list (List[str]): Paths to uploaded document files being queried
@@ -114,10 +114,10 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
         deep_thinking (bool, optional): Enable enhanced reasoning capabilities. Defaults to True
         stream (bool, optional): Enable streaming response mode. Defaults to False
         context (str, optional): Additional context to append to user input. Defaults to ""
-    
+
     Returns:
         Dict[str, Dict]: Formatted context dictionary mapping symbols to content chunks with scores
-        
+
     Processing Pipeline:
         1. Mode Detection & Embedding Loading:
            - Basic/Advanced: Loads markdown embeddings for rich document understanding
@@ -145,7 +145,7 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
         6. Session State Update:
            - Stores formatted_context in chat session for response generation
            - Stores page_formatted_context for enhanced document understanding
-    
+
     Context Format:
         {
             "[<1>]": {
@@ -162,17 +162,17 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
             },
             ...
         }
-        
+
     Indexing Convention:
         - page_num: 1-indexed page numbers for user-friendly display (page 1, 2, 3, ...)
         - source_index: 1-indexed file positions for user-friendly display (file 1, 2, 3, ...)
         - Internal metadata uses 0-indexed values, but output context uses 1-indexed for clarity
-    
+
     Error Handling:
         - Graceful fallback from markdown to default embeddings if loading fails
         - Empty page context fallback if page-based embedding creation fails
         - Comprehensive logging for debugging retrieval quality issues
-        
+
     Performance Considerations:
         - Configurable token limits prevent context overflow
         - Deduplication reduces redundant processing
@@ -189,21 +189,21 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
     if chat_session.mode == ChatMode.BASIC or chat_session.mode == ChatMode.ADVANCED:
         logger.info(f"Current mode is {chat_session.mode}")
         try:
-            logger.info(f"Loading markdown embeddings from {[os.path.join(embedding_folder, 'markdown', 'page_based_index') for embedding_folder in embedding_folder_list]}")
-            # Fix: Page-based embeddings are saved under markdown/page_based_index subfolder
-            pagebased_embedding_folder_list = [os.path.join(embedding_folder, 'markdown', 'page_based_index') for embedding_folder in embedding_folder_list]
-            db = await load_embeddings(pagebased_embedding_folder_list, 'default')
+            logger.info(f"Loading markdown embeddings from {[os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]}")
+            # Fix: Markdown embeddings are saved directly under markdown subfolder
+            pagebased_embedding_folder_list = [os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]
+            db = await load_embeddings(pagebased_embedding_folder_list, 'default', file_path_list)
         except Exception as e:
             logger.exception(f"Failed to load markdown embeddings for deep thinking mode: {str(e)}")
-            # Fallback to main embedding folder if page_based_index doesn't exist
-            db = await load_embeddings(embedding_folder_list, 'default')
+            # Fallback to main embedding folder if markdown embeddings don't exist
+            db = await load_embeddings(embedding_folder_list, 'default', file_path_list)
     # === STEP 2b: Lite Mode Handling ===
     # Handle Lite mode in other cases - uses lightweight embeddings
     else:
         logger.info(f"Current mode is {chat_session.mode}")
         actual_embedding_folder_list = [os.path.join(embedding_folder, 'lite_embedding') for embedding_folder in embedding_folder_list]
         logger.info(f"actual_embedding_folder_list in get_rag_context: {actual_embedding_folder_list}")
-        db = await load_embeddings_with_regeneration(actual_embedding_folder_list, 'lite', allow_regeneration=True)
+        db = await load_embeddings_with_regeneration(actual_embedding_folder_list, 'lite', allow_regeneration=True, file_path_list=file_path_list)
 
     # === STEP 3: Token Budget Configuration ===
     # Configure token limits based on chat mode for optimal context size
@@ -335,13 +335,13 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
         # Load page-based embeddings based on the current mode
         if chat_session.mode == ChatMode.BASIC or chat_session.mode == ChatMode.ADVANCED:
             logger.info(f"Loading page-based embeddings for {chat_session.mode} mode")
-            # Fix: Page-based embeddings are saved under markdown/page_based_index subfolder
-            page_embedding_folder_list = [os.path.join(embedding_folder, 'markdown', 'page_based_index') for embedding_folder in embedding_folder_list]
-            page_db = await load_embeddings(page_embedding_folder_list, 'default')
+            # Fix: Page-based embeddings are saved directly under markdown subfolder
+            page_embedding_folder_list = [os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]
+            page_db = await load_embeddings(page_embedding_folder_list, 'default', file_path_list)
         else:  # ChatMode.LITE
             logger.info(f"Loading page-based embeddings for {chat_session.mode} mode")
             page_embedding_folder_list = [os.path.join(embedding_folder, 'lite_embedding') for embedding_folder in embedding_folder_list]
-            page_db = await load_embeddings_with_regeneration(page_embedding_folder_list, 'lite', allow_regeneration=True)
+            page_db = await load_embeddings_with_regeneration(page_embedding_folder_list, 'lite', allow_regeneration=True, file_path_list=file_path_list)
         
         logger.info(f"Successfully loaded page-based embeddings from: {page_embedding_folder_list}")
         

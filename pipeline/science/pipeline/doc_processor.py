@@ -123,10 +123,18 @@ def _ocr_with_ocrmypdf(input_pdf: str, output_pdf: str, sidecar_txt: str, langua
     # Let stderr/stdout flow so you can see ocrmypdf messages in logs if desired
     subprocess.run(cmd, check=True)
     
-    # Upload the OCR result to Azure blob storage
+    # Upload the OCR result to Azure blob storage with two different names
     try:
+        # Upload with original file_id name
         azure_blob_helper.upload(output_pdf, blob_name, container_name)
         logger.info(f"Uploaded OCR result to Azure blob storage: {blob_name}")
+        
+        # Generate file_id for the OCR output file and upload with that name too
+        ocr_file_id = generate_file_id(output_pdf)
+        ocr_output_blob_name = f"pdf_ocr/{ocr_file_id}.pdf"
+        azure_blob_helper.upload(output_pdf, ocr_output_blob_name, container_name)
+        logger.info(f"Uploaded OCR result with OCR file_id to Azure blob storage: {ocr_output_blob_name}")
+        
     except Exception as e:
         logger.warning(f"Failed to upload OCR result to Azure blob storage: {e}")
         # Don't raise the exception as OCR was successful, just logging failed

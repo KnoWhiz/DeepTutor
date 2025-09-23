@@ -231,7 +231,7 @@ Give the response in a scientific and academic tone. Do not make up or assume an
 Case 1: If the answer can be answered with the context chunks, only use the information from the context chunks to answer the question. In that case, follow the format requirement below.
     Format requirement if question can be answered with the context chunks:
     1. Strictly ensure that for each sentence in the response, there is a corresponding context chunk to support the sentence, and cite the most relevant context chunk keys in the format "[<1>], [<2>], [<3>], [<4>], etc." at the end of the sentence after the period mark. If there are more than one context chunk keys, use the format "[<1>][<2>]...[<n>]" to cite all the context chunk keys. 
-    2. For each source citation key (like [<1>], [<2>], etc.), append the corresponding source content in one sentence (wrapped in brackets, quotes, and use italics) after the citation key. For example ("_...<one sentence from the source content, in italic format>..._")
+    2. For each source citation key (like [<1>], [<2>], etc.), append the corresponding source content in one sentence (wrapped in square brackets, quotes, and use italics) after the citation key. For example ["_...<one sentence from the source content, in italic format>..._"]
     3. Use bold or underline or bullet points in markdown syntax to emphasize the important information in the response and improve readability.
     4. Use markdown syntax for formatting the response to make it more clear and readable.
 

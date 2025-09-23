@@ -225,12 +225,12 @@ RESPONSE GUIDELINES:
 6. When explaining technical concepts, include relevant examples or applications.
 7. State limitations/uncertainty clearly.
 8. Use bullet points or numbered lists for sequences.
-9. Answer with the same language as the user's question.
+9. Answer with the same language as the user's question. But for the source citation in square brackets, ALWAYS use the same language as the original source.
 
 SOURCING MODES
 Case 1 (Answerable from context chunks):
   - Use only the context. For *each sentence* in the response, cite the most relevant chunk key(s) in the format "[<1>]" or "[<1>][<3>]" at the end of the sentence.
-  - Immediately after each citation key, append one sentence from the source (italic, in quotes) inside square brackets, e.g., ["_...source sentence..._"].
+  - Immediately after each citation key, append one sentence from the source (italic, in quotes) inside square brackets, e.g., ["_...source sentence..._"]. IMPORTANT: Use the same language as the original source!
   - Use markdown emphasis for readability.
 
 Case 2 (Not answerable from context):
@@ -314,12 +314,16 @@ EDGE-CASE HANDLING
 REMINDER: If Case 1 applies, every sentence must end with the [<k>] citation(s) plus the one-sentence italic source extract.
 """
 
-        user_prompt = """Reference context chunks with relevance scores from the paper: 
+        user_prompt = """
+        Previous conversation history:
+        ```{chat_history}```
+        
+Reference context chunks with relevance scores from the paper: 
 {formatted_context_string}
 
 The student's query is: {user_input_string}
 
-Answer the question in the same language as the user's question.
+Answer the question in the same language as the user's question. But for the source citation in square brackets, ALWAYS use the same language as the original source.
 
 Follow the response guidelines in the system prompt.
 """
@@ -333,7 +337,8 @@ Follow the response guidelines in the system prompt.
         chain = prompt_template | llm
         answer = chain.stream({
             "formatted_context_string": formatted_context_string,
-            "user_input_string": user_input_string
+            "user_input_string": user_input_string,
+            "chat_history": truncate_chat_history(chat_history)
         })
         async def process_stream():
             yield "<response>\n\n"

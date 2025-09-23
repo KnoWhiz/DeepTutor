@@ -25,7 +25,7 @@ from pipeline.science.pipeline.images_understanding import (
     analyze_image
 )
 from pipeline.science.pipeline.rag_agent import get_rag_context
-from pipeline.science.pipeline.claude_code_sdk import get_claude_code_response_async
+# from pipeline.science.pipeline.claude_code_sdk import get_claude_code_response, get_claude_code_response_async
 
 import logging
 logger = logging.getLogger("tutorpipeline.science.get_response")
@@ -193,7 +193,13 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         return await get_multiple_files_summary(file_path_list, embedding_folder_list, chat_session, stream)
     
     # Handle Lite mode first
-    if chat_session.mode == ChatMode.LITE or chat_session.mode == ChatMode.BASIC:
+    if chat_session.mode == ChatMode.LITE or chat_session.mode == ChatMode.BASIC or chat_session.mode == ChatMode.ADVANCED:
+        config = load_config()
+        token_limit = config["inference_token_limit"]
+        map_symbol_to_index = config["map_symbol_to_index"]
+        # Get the first 3 keys from map_symbol_to_index for examples in the prompt
+        first_keys = list(map_symbol_to_index.keys())[:3]
+        example_keys = ", or ".join(first_keys)
         logger.info(f"embedding_folder_list in get_response: {embedding_folder_list}")
         await get_rag_context(chat_session=chat_session,
                             file_path_list=file_path_list,
@@ -351,15 +357,15 @@ Follow the response guidelines in the system prompt.
             yield "\n\n</response>"
         return process_stream()
 
-    elif chat_session.mode == ChatMode.ADVANCED:
-        file_path_list_copy = file_path_list.copy()
-        # The folder should be the markdown folder
-        file_path_list_copy[0] = os.path.join(embedding_folder_list[0], "markdown")
-        logger.info(f"get_claude_code_response in folder: {file_path_list_copy[0]}")
-        # Convert chat_history to string format for Claude Code SDK
-        chat_history_string = truncate_chat_history(chat_history) if chat_history else ""
-        # Return the async generator directly for streaming
-        return get_claude_code_response_async(chat_session, file_path_list_copy, question, chat_history_string, embedding_folder_list, deep_thinking=True, stream=True)
+    # elif chat_session.mode == ChatMode.ADVANCED:
+    #     file_path_list_copy = file_path_list.copy()
+    #     # The folder should be the markdown folder
+    #     file_path_list_copy[0] = os.path.join(embedding_folder_list[0], "markdown")
+    #     logger.info(f"get_claude_code_response in folder: {file_path_list_copy[0]}")
+    #     # Convert chat_history to string format for Claude Code SDK
+    #     chat_history_string = truncate_chat_history(chat_history) if chat_history else ""
+    #     # Return the async generator directly for streaming
+    #     return get_claude_code_response_async(chat_session, file_path_list_copy, question, chat_history_string, embedding_folder_list, deep_thinking=True, stream=True)
 
 
 async def get_query_helper(chat_session: ChatSession, user_input, context_chat_history, embedding_folder_list):

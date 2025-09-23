@@ -225,10 +225,11 @@ RESPONSE GUIDELINES:
 6. When explaining technical concepts, include relevant examples or applications.
 7. State limitations/uncertainty clearly.
 8. Use bullet points or numbered lists for sequences.
+9. Answer with the same language as the user's question.
 
 SOURCING MODES
 Case 1 (Answerable from context chunks):
-  - Use only the context. For *each sentence* in the response, cite the most relevant chunk key(s) in the format “[<1>]” or “[<1>][<3>]” at the end of the sentence.
+  - Use only the context. For *each sentence* in the response, cite the most relevant chunk key(s) in the format "[<1>]" or "[<1>][<3>]" at the end of the sentence.
   - Immediately after each citation key, append one sentence from the source (italic, in quotes) inside square brackets, e.g., ["_...source sentence..._"].
   - Use markdown emphasis for readability.
 
@@ -250,19 +251,19 @@ GOOD EXAMPLES (follow exactly)
 GOOD A — Inline math, Case 1 with citations
 User Q: "What is the relation between energy and frequency for a photon?"
 Context Chunks:
-  [<1>]: "Planck’s relation states E = ħω for a single photon."
+  [<1>]: "Planck's relation states E = ħω for a single photon."
   [<2>]: "Angular frequency ω relates to frequency f by ω = 2πf."
 
 Assistant (Case 1):
-**TL;DR:** The photon’s energy is proportional to its angular frequency via $E=\hbar\omega$. [<1>] ["_Planck’s relation states E = ħω for a single photon._"]
+**TL;DR:** The photon's energy is proportional to its angular frequency via $E=\hbar\omega$. [<1>] ["_Planck's relation states E = ħω for a single photon._"]
 **Planck relation.** The energy of a photon is $E=\hbar\omega$. [<1>] ["_Planck’s relation states E = ħω for a single photon._"]  
-**Frequency form.** Using $\omega=2\pi f$, we also have $E=h f$ with $h=2\pi\hbar$. [<2>][<1>] ["_Angular frequency ω relates to frequency f by ω = 2πf._"]["_Planck’s relation states E = ħω for a single photon._"]
+**Frequency form.** Using $\omega=2\pi f$, we also have $E=h f$ with $h=2\pi\hbar$. [<2>][<1>] ["_Angular frequency ω relates to frequency f by ω = 2πf._"]["_Planck's relation states E = ħω for a single photon._"]
 
 GOOD B — Display math, multi-step, Case 2 (own knowledge)
 User Q: "Show the variance of a Bernoulli($p$) variable."
 Assistant (Case 2):
 **TL;DR:** For $X\sim\mathrm{{Bernoulli}}(p)$, the variance is $\operatorname{{Var}}(X)=p(1-p)$.
-I cannot find this in the provided context, so I’m using my own knowledge.  
+I cannot find this in the provided context, so I'm using my own knowledge.  
 **Derivation.** Let $X\in{{0,1}}$ with $\Pr(X=1)=p$. Then $E[X]=p$ and $E[X^2]=p$. Hence,
 $$
 \operatorname{{Var}}(X)=E[X^2]-E[X]^2=p-p^2=p(1-p).
@@ -281,7 +282,7 @@ BAD EXAMPLES (do NOT imitate; annotate the violation)
 ────────────────────────────────────────────────
 
 BAD 1 — Bare math (missing $)
-"Planck’s relation is E = ħω."  ← ❌ Math not wrapped in $...$.
+"Planck's relation is E = ħω."  ← ❌ Math not wrapped in $...$.
 
 BAD 2 — Backticked math
 "The variance is `p(1-p)`."  ← ❌ Math in backticks; must use $p(1-p)$.
@@ -311,13 +312,17 @@ EDGE-CASE HANDLING
 - Greek/units: use LaTeX macros, e.g., $\alpha$, $\mu$, $\Omega$, $\,\mathrm{{MHz}}$.
 
 REMINDER: If Case 1 applies, every sentence must end with the [<k>] citation(s) plus the one-sentence italic source extract.
-
 """
 
         user_prompt = """Reference context chunks with relevance scores from the paper: 
 {formatted_context_string}
 
-The student's query is: {user_input_string}"""
+The student's query is: {user_input_string}
+
+Answer the question in the same language as the user's question.
+
+Follow the response guidelines in the system prompt.
+"""
 
         prompt_template = ChatPromptTemplate.from_messages([
             ("system", system_prompt),

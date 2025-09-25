@@ -78,34 +78,55 @@ def stream_response_with_tags(**create_kwargs) -> Iterable[str]:
     """
     stream = client.responses.create(stream=True, **create_kwargs)
 
-    # Show a thinking container immediately
     thinking_open = True
     response_open = False
     yield "<thinking>"
 
     try:
         for event in stream:
-            t = event.type
+            t = event.type or ""
 
             # --- Reasoning summary stream ---
             if t == "response.reasoning_summary_text.delta":
-                yield _format_thinking_delta(event.delta)
+                yield _format_thinking_delta(getattr(event, "delta", "") or "")
 
             elif t == "response.reasoning_summary_text.done":
-                # keep <thinking> open for tool progress; we'll close when answer starts or at the very end
-                pass
+                pass  # keep <thinking> open for tool progress
 
-            # --- Tool progress (e.g., web_search) inside <thinking> ---
-            elif t == "response.tool_call.created":
-                tool_name = getattr(event.tool, "name", "tool")
-                yield f"[tool:start name={tool_name}]\n" # Never triggered
-            elif t == "response.tool_call.delta":
-                delta = getattr(event, "delta", "")
-                if delta:
-                    yield delta
-            elif t == "response.tool_call.completed":
-                tool_name = getattr(event.tool, "name", "tool")
-                yield f"\n[tool:done name={tool_name}]\n\n" # Never triggered
+            # --- Output item lifecycle (covers tools like web_search, file_search, image_generation, etc.) ---
+            elif t == "response.output_item.added":
+                item = getattr(event, "item", None) or getattr(event, "output_item", None)
+                item_type = getattr(item, "type", None) or getattr(event, "item_type", None)
+                if item_type:
+                    yield f"\n[tool:item-added type={item_type}]\n"
+
+            elif t == "response.output_item.done":
+                item = getattr(event, "item", None) or getattr(event, "output_item", None)
+                item_type = getattr(item, "type", None) or getattr(event, "item_type", None)
+                if item_type:
+                    yield f"[tool:item-done type={item_type}]\n\n"
+
+            # --- Built-in web_search progress stream ---
+            elif t.startswith("response.web_search_call."):
+                phase = t.split(".")[-1]  # e.g., 'in_progress', 'completed', possibly 'result'
+                q = getattr(event, "query", None)
+                if phase in ("created", "started", "searching", "in_progress"):
+                    yield f"[web_search:{phase}{' q='+q if q else ''}]\n"
+                elif phase == "result":
+                    title = getattr(event, "title", None)
+                    url = getattr(event, "url", None)
+                    if title or url:
+                        yield f"- {title or ''} {url or ''}\n"
+                elif phase == "completed":
+                    results = getattr(event, "results", None) or []
+                    n = getattr(event, "num_results", None) or (len(results) if isinstance(results, list) else None)
+                    yield f"[web_search:completed results={n if n is not None else 'unknown'}]\n\n"
+
+            # --- Function calling (your own tools) ---
+            elif t == "response.function_call_arguments.delta":
+                yield getattr(event, "delta", "") or ""
+            elif t == "response.function_call_arguments.done":
+                yield "\n[function_call:args_done]\n"
 
             # --- Main model answer text ---
             elif t == "response.output_text.delta":
@@ -115,9 +136,8 @@ def stream_response_with_tags(**create_kwargs) -> Iterable[str]:
                 if not response_open:
                     response_open = True
                     yield "<response>\n\n"
-                yield event.delta
+                yield getattr(event, "delta", "") or ""
 
-            # ✅ Close <response> as soon as the model finishes its text
             elif t == "response.output_text.done":
                 if response_open:
                     yield "\n\n</response>\n"
@@ -125,7 +145,6 @@ def stream_response_with_tags(**create_kwargs) -> Iterable[str]:
 
             # --- Finalization / errors ---
             elif t == "response.completed":
-                # We may already have closed </response>; just ensure well-formed
                 if thinking_open:
                     yield "\n</thinking>\n"
                     thinking_open = False
@@ -137,8 +156,11 @@ def stream_response_with_tags(**create_kwargs) -> Iterable[str]:
                 if response_open:
                     yield "\n</response>\n"
                     response_open = False
-                # Optionally surface the error:
-                # yield f"<!-- error: {event.error} -->"
+                err = getattr(event, "error", None)
+                msg = getattr(err, "message", None) if err else None
+                yield f"<!-- error: {msg or err or 'unknown'} -->"
+
+            # else: ignore other event types
 
     finally:
         try:

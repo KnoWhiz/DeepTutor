@@ -71,7 +71,7 @@ def _format_thinking_delta(delta: str) -> str:
 
     return delta
     
-def stream_response_with_tags(**create_kwargs) -> Iterable[str]:
+def stream_response_with_tags_detailed(**create_kwargs) -> Iterable[str]:
     """
     Yields a single XML-like stream:
       <thinking> ...reasoning summary + tool progress... </thinking><response> ...final answer... </response>
@@ -167,6 +167,9 @@ def stream_response_with_tags(**create_kwargs) -> Iterable[str]:
             stream.close()
         except Exception:
             pass
+
+
+
 
 
 # ------------------------------

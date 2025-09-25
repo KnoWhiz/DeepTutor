@@ -40,35 +40,24 @@ If you want, I can tailor a deeper dive on any of these threads (e.g., gate fide
 
 from openai import OpenAI
 from dotenv import load_dotenv
-import os, re
+import os
 from typing import Iterable
 
 load_dotenv(".env")
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-def _format_thinking_delta(delta: str) -> str:
-    """
-    Make bold step titles render as their own paragraphs.
-    Heuristic: whenever we see **...**, ensure there is a blank line
-    before and after the bold run.
-    """
-    # If a bold run appears without a leading newline, add blank line before.
-    # Then ensure a blank line after.
-    s = delta
-    s = re.sub(r'(?<!\n)\*\*([^*][^*]*?)\*\*', r'\n\n**\1**', s)  # ensure leading blank line
-    s = re.sub(r'\*\*([^*][^*]*?)\*\*(?!\n)', r'**\1**\n\n', s)   # ensure trailing blank line
-    return s
 
 def stream_response_with_tags(**create_kwargs) -> Iterable[str]:
     """
     Yields a single XML-like stream:
       <thinking> ...reasoning summary + tool progress... </thinking><response> ...final answer... </response>
     """
+    # Start the request
     stream = client.responses.create(stream=True, **create_kwargs)
 
-    # Show a thinking container immediately
+    # Emit <thinking> right away so the UI shows it immediately
     thinking_open = True
     response_open = False
+    yielded_any_thinking_text = False
     yield "<thinking>\n\n"
 
     try:
@@ -77,56 +66,60 @@ def stream_response_with_tags(**create_kwargs) -> Iterable[str]:
 
             # --- Reasoning summary stream ---
             if t == "response.reasoning_summary_text.delta":
-                yield _format_thinking_delta(event.delta)
+                yielded_any_thinking_text = True
+                yield event.delta
 
             elif t == "response.reasoning_summary_text.done":
-                # keep <thinking> open for tool progress; we'll close when answer starts or at the very end
+                # We'll close </thinking> either here or later (on first answer chunk),
+                # but leaving it open allows interleaving tool progress under <thinking>.
                 pass
 
-            # --- Tool progress (e.g., web_search) inside <thinking> ---
+            # --- Tool progress (e.g., web_search) ---
             elif t == "response.tool_call.created":
+                # Surface tool names inside <thinking> as progress markers
                 tool_name = getattr(event.tool, "name", "tool")
-                yield f"[tool:start name={tool_name}]\n"
+                yield f"\n\n[tool:start name={tool_name}]\n"
+
             elif t == "response.tool_call.delta":
+                # Arguments/queries often stream here
                 delta = getattr(event, "delta", "")
                 if delta:
                     yield delta
+
             elif t == "response.tool_call.completed":
                 tool_name = getattr(event.tool, "name", "tool")
                 yield f"\n[tool:done name={tool_name}]\n\n"
 
-            # --- Main model answer text ---
+            # --- Final model answer text ---
             elif t == "response.output_text.delta":
                 if thinking_open:
-                    yield "\n</thinking>\n\n"
+                    # Close thinking as soon as answer begins (if not closed already)
+                    yield "\n\n</thinking>\n\n"
                     thinking_open = False
                 if not response_open:
                     response_open = True
                     yield "<response>\n\n"
                 yield event.delta
 
-            # ✅ Close <response> as soon as the model finishes its text
-            elif t == "response.output_text.done":
-                if response_open:
-                    yield "\n\n</response>\n"
-                    response_open = False
-
-            # --- Finalization / errors ---
+            # --- Completion / errors ---
             elif t == "response.completed":
-                # We may already have closed </response>; just ensure well-formed
+                # Close any still-open tags
                 if thinking_open:
-                    yield "\n</thinking>\n"
+                    yield "\n\n</thinking>\n\n"
                     thinking_open = False
+                if response_open:
+                    yield "\n\n</response>\n\n"
+                    response_open = False
 
             elif t == "response.error":
+                # Keep XML well-formed even on error
                 if thinking_open:
-                    yield "\n</thinking>\n"
+                    yield "\n\n</thinking>\n\n"
                     thinking_open = False
                 if response_open:
-                    yield "\n</response>\n"
+                    yield "\n\n</response>\n\n"
                     response_open = False
-                # Optionally surface the error:
-                # yield f"<!-- error: {event.error} -->"
+                # Optionally surface the error: yield f"<!-- error: {event.error} -->"
 
     finally:
         try:
@@ -145,6 +138,7 @@ if __name__ == "__main__":
         tools=[{"type": "web_search"}],  # built-in tool
         instructions="Search the web as needed (multiple searches OK) and cite sources.",
         input="find bingran you in hartmut haeffner's group and review his google scholar page",
+        # tool_choice="auto",  # default
     )
 
     for chunk in stream_response_with_tags(**kwargs):

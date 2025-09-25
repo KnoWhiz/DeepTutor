@@ -363,7 +363,7 @@ if __name__ == "__main__":
         reasoning={"effort": "low", "summary": "auto"},
         tools=[{"type": "web_search"}],  # built-in tool
         instructions=f"{system_prompt}\n\n You should search the web as needed (multiple searches OK) and cite sources.",
-        input=f"Context from the paper: {context_from_paper}\n\nFind bingran you in hartmut haeffner's group and review his google scholar page",
+        input=f"Context from the paper: {context_from_paper}\n\n What is this paper mainly about? Do web search if needed to find related multiplexing papers and compare with this paper.",
     )
 
     for chunk in stream_response_with_tags(**kwargs):

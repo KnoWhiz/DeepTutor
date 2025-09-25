@@ -41,7 +41,7 @@ If you want, I can tailor a deeper dive on any of these threads (e.g., gate fide
 from openai import OpenAI
 from dotenv import load_dotenv
 import os
-from typing import Generator, Iterable
+from typing import Iterable
 
 load_dotenv(".env")
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -49,39 +49,59 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 def stream_response_with_tags(**create_kwargs) -> Iterable[str]:
     """
     Yields a single XML-like stream:
-      <thinking> ...reasoning summary stream... </thinking><response> ...final answer stream... </response>
+      <thinking> ...reasoning summary + tool progress... </thinking><response> ...final answer... </response>
     """
+    # Start the request
     stream = client.responses.create(stream=True, **create_kwargs)
-    thinking_open = False
+
+    # Emit <thinking> right away so the UI shows it immediately
+    thinking_open = True
     response_open = False
+    yielded_any_thinking_text = False
+    yield "<thinking>\n\n"
 
     try:
         for event in stream:
             t = event.type
 
-            # --- Reasoning summary (if requested via reasoning={"summary": ...}) ---
+            # --- Reasoning summary stream ---
             if t == "response.reasoning_summary_text.delta":
-                if not thinking_open:
-                    thinking_open = True
-                    yield "<thinking>\n\n"
+                yielded_any_thinking_text = True
                 yield event.delta
 
             elif t == "response.reasoning_summary_text.done":
+                # We'll close </thinking> either here or later (on first answer chunk),
+                # but leaving it open allows interleaving tool progress under <thinking>.
+                pass
+
+            # --- Tool progress (e.g., web_search) ---
+            elif t == "response.tool_call.created":
+                # Surface tool names inside <thinking> as progress markers
+                tool_name = getattr(event.tool, "name", "tool")
+                yield f"\n\n[tool:start name={tool_name}]\n"
+
+            elif t == "response.tool_call.delta":
+                # Arguments/queries often stream here
+                delta = getattr(event, "delta", "")
+                if delta:
+                    yield delta
+
+            elif t == "response.tool_call.completed":
+                tool_name = getattr(event.tool, "name", "tool")
+                yield f"\n[tool:done name={tool_name}]\n\n"
+
+            # --- Final model answer text ---
+            elif t == "response.output_text.delta":
                 if thinking_open:
+                    # Close thinking as soon as answer begins (if not closed already)
                     yield "\n\n</thinking>\n\n"
                     thinking_open = False
-
-            # --- Main model answer text ---
-            elif t == "response.output_text.delta":
                 if not response_open:
                     response_open = True
                     yield "<response>\n\n"
                 yield event.delta
 
-            # You can optionally surface tool calls/logs separately if you want, but
-            # they are not part of <thinking> or <response>. Ignored here.
-
-            # --- Finalization / errors ---
+            # --- Completion / errors ---
             elif t == "response.completed":
                 # Close any still-open tags
                 if thinking_open:
@@ -92,18 +112,16 @@ def stream_response_with_tags(**create_kwargs) -> Iterable[str]:
                     response_open = False
 
             elif t == "response.error":
-                # Close tags so the stream remains well-formed even on error
+                # Keep XML well-formed even on error
                 if thinking_open:
                     yield "\n\n</thinking>\n\n"
                     thinking_open = False
                 if response_open:
                     yield "\n\n</response>\n\n"
                     response_open = False
-                # You may also want to expose the error:
-                # yield f"\n<!-- error: {event.error} -->"
+                # Optionally surface the error: yield f"<!-- error: {event.error} -->"
 
     finally:
-        # Ensure the stream is cleaned up
         try:
             stream.close()
         except Exception:
@@ -117,11 +135,12 @@ if __name__ == "__main__":
     kwargs = dict(
         model="gpt-5",
         reasoning={"effort": "high", "summary": "detailed"},
-        tools=[{"type": "web_search"}],
+        tools=[{"type": "web_search"}],  # built-in tool
         instructions="Search the web as needed (multiple searches OK) and cite sources.",
         input="find bingran you in hartmut haeffner's group and review his google scholar page",
+        # tool_choice="auto",  # default
     )
 
     for chunk in stream_response_with_tags(**kwargs):
         print(chunk, end="", flush=True)
-    print()  # newline at end
+    print()

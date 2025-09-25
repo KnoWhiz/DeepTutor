@@ -75,6 +75,7 @@ def stream_response_with_tags_detailed(**create_kwargs) -> Iterable[str]:
     """
     Yields a single XML-like stream:
       <thinking> ...reasoning summary + tool progress... </thinking><response> ...final answer... </response>
+    With detailed tool calling updates inside <thinking>.
     """
     stream = client.responses.create(stream=True, **create_kwargs)
 
@@ -169,7 +170,69 @@ def stream_response_with_tags_detailed(**create_kwargs) -> Iterable[str]:
             pass
 
 
+def stream_response_with_tags(**create_kwargs) -> Iterable[str]:
+    """
+    Yields a single XML-like stream:
+      <thinking> ...reasoning summary + tool progress... </thinking><response> ...final answer... </response>
+    Without detailed tool calling updates inside <thinking>.
+    """
+    stream = client.responses.create(stream=True, **create_kwargs)
 
+    # Show a thinking container immediately
+    thinking_open = True
+    response_open = False
+    yield "<thinking>"
+
+    try:
+        for event in stream:
+            t = event.type
+
+            # --- Reasoning summary stream ---
+            if t == "response.reasoning_summary_text.delta":
+                yield _format_thinking_delta(event.delta)
+
+            elif t == "response.reasoning_summary_text.done":
+                # keep <thinking> open for tool progress; we'll close when answer starts or at the very end
+                pass
+
+            # --- Main model answer text ---
+            elif t == "response.output_text.delta":
+                if thinking_open:
+                    yield "\n</thinking>\n\n"
+                    thinking_open = False
+                if not response_open:
+                    response_open = True
+                    yield "<response>\n\n"
+                yield event.delta
+
+            # ✅ Close <response> as soon as the model finishes its text
+            elif t == "response.output_text.done":
+                if response_open:
+                    yield "\n\n</response>\n"
+                    response_open = False
+
+            # --- Finalization / errors ---
+            elif t == "response.completed":
+                # We may already have closed </response>; just ensure well-formed
+                if thinking_open:
+                    yield "\n</thinking>\n"
+                    thinking_open = False
+
+            elif t == "response.error":
+                if thinking_open:
+                    yield "\n</thinking>\n"
+                    thinking_open = False
+                if response_open:
+                    yield "\n</response>\n"
+                    response_open = False
+                # Optionally surface the error:
+                # yield f"<!-- error: {event.error} -->"
+
+    finally:
+        try:
+            stream.close()
+        except Exception:
+            pass
 
 
 # ------------------------------

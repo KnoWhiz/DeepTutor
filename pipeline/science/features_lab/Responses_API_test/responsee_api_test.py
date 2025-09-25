@@ -48,18 +48,26 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def _format_thinking_delta(delta: str) -> str:
     """
-    If this delta itself is a complete bold span (starts with '**' and ends with '**'
-    after trimming surrounding whitespace/newlines), add exactly one '\n' before and
-    two '\n\n' after. Otherwise, return as-is.
+    Only transform '**XXX' -> '\n\n**XXX'.
+    If the chunk is exactly '**', or starts with '**' followed by a newline
+    (e.g., '**\\n', '**\\r\\n') or only whitespace, treat it as a closing marker
+    and do nothing.
     """
     if not delta:
         return delta
 
-    # Match a whole-chunk bold span with optional surrounding whitespace/newlines.
-    m = re.fullmatch(r'\s*(\*\*.*?\*\*)\s*', delta, flags=re.DOTALL)
-    if m:
-        core = m.group(1)  # the **...** content
-        return f"\n{core}\n\n"
+    if delta == "**":
+        return delta
+
+    if delta.startswith("**"):
+        after = delta[2:]
+        # If the very next char is a newline, or there's only whitespace after '**',
+        # it's likely a closing '**' chunk -> leave unchanged.
+        if after[:1] in ("\n", "\r") or after.strip() == "":
+            return delta
+        # Otherwise it's an opening '**Title' chunk -> add two leading newlines
+        if not delta.startswith("\n\n**"):
+            return "\n\n" + delta
 
     return delta
     
@@ -73,7 +81,7 @@ def stream_response_with_tags(**create_kwargs) -> Iterable[str]:
     # Show a thinking container immediately
     thinking_open = True
     response_open = False
-    yield "<thinking>\n\n"
+    yield "<thinking>"
 
     try:
         for event in stream:
@@ -90,14 +98,14 @@ def stream_response_with_tags(**create_kwargs) -> Iterable[str]:
             # --- Tool progress (e.g., web_search) inside <thinking> ---
             elif t == "response.tool_call.created":
                 tool_name = getattr(event.tool, "name", "tool")
-                yield f"[tool:start name={tool_name}]\n"
+                yield f"[tool:start name={tool_name}]\n" # Never triggered
             elif t == "response.tool_call.delta":
                 delta = getattr(event, "delta", "")
                 if delta:
                     yield delta
             elif t == "response.tool_call.completed":
                 tool_name = getattr(event.tool, "name", "tool")
-                yield f"\n[tool:done name={tool_name}]\n\n"
+                yield f"\n[tool:done name={tool_name}]\n\n" # Never triggered
 
             # --- Main model answer text ---
             elif t == "response.output_text.delta":

@@ -48,17 +48,21 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def _format_thinking_delta(delta: str) -> str:
     """
-    Make bold step titles render as their own paragraphs.
-    Heuristic: whenever we see **...**, ensure there is a blank line
-    before and after the bold run.
+    If this delta itself is a complete bold span (starts with '**' and ends with '**'
+    after trimming surrounding whitespace/newlines), add exactly one '\n' before and
+    two '\n\n' after. Otherwise, return as-is.
     """
-    # If a bold run appears without a leading newline, add blank line before.
-    # Then ensure a blank line after.
-    s = delta
-    s = re.sub(r'(?<!\n)\*\*([^*][^*]*?)\*\*', r'\n\n**\1**', s)  # ensure leading blank line
-    s = re.sub(r'\*\*([^*][^*]*?)\*\*(?!\n)', r'**\1**\n\n', s)   # ensure trailing blank line
-    return s
+    if not delta:
+        return delta
 
+    # Match a whole-chunk bold span with optional surrounding whitespace/newlines.
+    m = re.fullmatch(r'\s*(\*\*.*?\*\*)\s*', delta, flags=re.DOTALL)
+    if m:
+        core = m.group(1)  # the **...** content
+        return f"\n{core}\n\n"
+
+    return delta
+    
 def stream_response_with_tags(**create_kwargs) -> Iterable[str]:
     """
     Yields a single XML-like stream:

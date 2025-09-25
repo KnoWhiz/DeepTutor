@@ -359,8 +359,8 @@ if __name__ == "__main__":
     kwargs = dict(
         model="gpt-5",
         # reasoning={"effort": "high", "summary": "detailed"},
-        # reasoning={"effort": "medium", "summary": "auto"},
-        reasoning={"effort": "low", "summary": "auto"},
+        reasoning={"effort": "medium", "summary": "auto"},
+        # reasoning={"effort": "low", "summary": "auto"},
         tools=[{"type": "web_search"}],  # built-in tool
         instructions=f"{system_prompt}\n\n You should search the web as needed (multiple searches OK) and cite sources.",
         input=f"Context from the paper: {context_from_paper}\n\n What is this paper mainly about? Do web search if needed to find related multiplexing papers and compare with this paper.",

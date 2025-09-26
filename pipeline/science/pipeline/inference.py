@@ -560,3 +560,221 @@ if __name__ == "__main__":
     stream_response = deep_inference_agent(user_prompt="what is 1+1? Explain it in detail and deep-thinking way", stream=True)
     for chunk in stream_response:
         print(chunk, end="", flush=True)
+
+
+from openai import OpenAI
+from dotenv import load_dotenv  
+from typing import Iterable
+# import os
+
+
+# load_dotenv(".env")
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+def _format_thinking_delta(delta: str) -> str:
+    """
+    Only transform '**XXX' -> '\n\n**XXX'.
+    If the chunk is exactly '**', or starts with '**' followed by a newline
+    (e.g., '**\\n', '**\\r\\n') or only whitespace, treat it as a closing marker
+    and do nothing.
+    """
+    if not delta:
+        return delta
+
+    if delta == "**":
+        return delta
+
+    if delta.startswith("**"):
+        after = delta[2:]
+        # If the very next char is a newline, or there's only whitespace after '**',
+        # it's likely a closing '**' chunk -> leave unchanged.
+        if after[:1] in ("\n", "\r") or after.strip() == "":
+            return delta
+        # Otherwise it's an opening '**Title' chunk -> add two leading newlines
+        if not delta.startswith("\n\n**"):
+            return "\n\n" + delta
+
+    return delta
+
+
+def stream_response_with_tags_detailed(**create_kwargs) -> Iterable[str]:
+    """
+    Yields a single XML-like stream:
+      <think> ...reasoning summary + tool progress... </think><response> ...final answer... </response>
+    With detailed tool calling updates inside <think>.
+    """
+    stream = client.responses.create(stream=True, **create_kwargs)
+
+    thinking_open = True
+    response_open = False
+    yield "<think>"
+
+    try:
+        for event in stream:
+            t = event.type or ""
+
+            # --- Reasoning summary stream ---
+            if t == "response.reasoning_summary_text.delta":
+                yield _format_thinking_delta(getattr(event, "delta", "") or "")
+
+            elif t == "response.reasoning_summary_text.done":
+                pass  # keep <think> open for tool progress
+
+            # --- Output item lifecycle (covers tools like web_search, file_search, image_generation, etc.) ---
+            elif t == "response.output_item.added":
+                item = getattr(event, "item", None) or getattr(event, "output_item", None)
+                item_type = getattr(item, "type", None) or getattr(event, "item_type", None)
+                if item_type:
+                    yield f"\n[tool:item-added type={item_type}]\n"
+
+            elif t == "response.output_item.done":
+                item = getattr(event, "item", None) or getattr(event, "output_item", None)
+                item_type = getattr(item, "type", None) or getattr(event, "item_type", None)
+                if item_type:
+                    yield f"[tool:item-done type={item_type}]\n\n"
+
+            # --- Built-in web_search progress stream ---
+            elif t.startswith("response.web_search_call."):
+                phase = t.split(".")[-1]  # e.g., 'in_progress', 'completed', possibly 'result'
+                q = getattr(event, "query", None)
+                if phase in ("created", "started", "searching", "in_progress"):
+                    yield f"[web_search:{phase}{' q='+q if q else ''}]\n"
+                elif phase == "result":
+                    title = getattr(event, "title", None)
+                    url = getattr(event, "url", None)
+                    if title or url:
+                        yield f"- {title or ''} {url or ''}\n"
+                elif phase == "completed":
+                    results = getattr(event, "results", None) or []
+                    n = getattr(event, "num_results", None) or (len(results) if isinstance(results, list) else None)
+                    yield f"[web_search:completed results={n if n is not None else 'unknown'}]\n\n"
+
+            # --- Function calling (your own tools) ---
+            elif t == "response.function_call_arguments.delta":
+                yield getattr(event, "delta", "") or ""
+            elif t == "response.function_call_arguments.done":
+                yield "\n[function_call:args_done]\n"
+
+            # --- Main model answer text ---
+            elif t == "response.output_text.delta":
+                if thinking_open:
+                    yield "\n</think>\n\n"
+                    thinking_open = False
+                if not response_open:
+                    response_open = True
+                    yield "<response>\n\n"
+                yield getattr(event, "delta", "") or ""
+
+            elif t == "response.output_text.done":
+                if response_open:
+                    yield "\n\n</response>\n"
+                    response_open = False
+
+            # --- Finalization / errors ---
+            elif t == "response.completed":
+                if thinking_open:
+                    yield "\n</think>\n"
+                    thinking_open = False
+
+            elif t == "response.error":
+                if thinking_open:
+                    yield "\n</think>\n"
+                    thinking_open = False
+                if response_open:
+                    yield "\n</response>\n"
+                    response_open = False
+                err = getattr(event, "error", None)
+                msg = getattr(err, "message", None) if err else None
+                yield f"<!-- error: {msg or err or 'unknown'} -->"
+
+            # else: ignore other event types
+
+    finally:
+        try:
+            stream.close()
+        except Exception:
+            pass
+
+
+def stream_response_with_tags(**create_kwargs) -> Iterable[str]:
+    """
+    Yields a single XML-like stream:
+      <think> ...reasoning summary + tool progress... </think><response> ...final answer... </response>
+    Without detailed tool calling updates inside <think>.
+    """
+    stream = client.responses.create(stream=True, **create_kwargs)
+
+    # Show a thinking container immediately
+    thinking_open = True
+    response_open = False
+    yield "<think>"
+
+    try:
+        for event in stream:
+            t = event.type
+
+            # --- Reasoning summary stream ---
+            if t == "response.reasoning_summary_text.delta":
+                yield _format_thinking_delta(event.delta)
+
+            elif t == "response.reasoning_summary_text.done":
+                # keep <think> open for tool progress; we'll close when answer starts or at the very end
+                pass
+
+            # --- Main model answer text ---
+            elif t == "response.output_text.delta":
+                if thinking_open:
+                    yield "\n</think>\n\n"
+                    thinking_open = False
+                if not response_open:
+                    response_open = True
+                    yield "<response>\n\n"
+                yield event.delta
+
+            # ✅ Close <response> as soon as the model finishes its text
+            elif t == "response.output_text.done":
+                if response_open:
+                    yield "\n\n</response>\n"
+                    response_open = False
+
+            # --- Finalization / errors ---
+            elif t == "response.completed":
+                # We may already have closed </response>; just ensure well-formed
+                if thinking_open:
+                    yield "\n</think>\n"
+                    thinking_open = False
+
+            elif t == "response.error":
+                if thinking_open:
+                    yield "\n</think>\n"
+                    thinking_open = False
+                if response_open:
+                    yield "\n</response>\n"
+                    response_open = False
+                # Optionally surface the error:
+                # yield f"<!-- error: {event.error} -->"
+
+    finally:
+        try:
+            stream.close()
+        except Exception:
+            pass
+
+
+# # ------------------------------
+# # Example usage
+# # ------------------------------
+# if __name__ == "__main__":
+#     kwargs = dict(
+#         model="gpt-5",
+#         # reasoning={"effort": "high", "summary": "detailed"},
+#         reasoning={"effort": "medium", "summary": "auto"},
+#         # reasoning={"effort": "low", "summary": "auto"},
+#         tools=[{"type": "web_search"}],  # built-in tool
+#         instructions=f"{system_prompt}\n\n You should search the web as needed (multiple searches OK) and cite sources.",
+#         input=f"Context from the paper: {context_from_paper}\n\n What is this paper mainly about? Do web search if needed to find related multiplexing papers and compare with this paper.",
+#     )
+
+#     for chunk in stream_response_with_tags(**kwargs):
+#         print(chunk, end="", flush=True)
+#     print()

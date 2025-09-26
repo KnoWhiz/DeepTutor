@@ -381,7 +381,12 @@ Follow the response guidelines in the system prompt.
                 instructions=f"{system_prompt}\n\n You should search the web as needed (multiple searches OK) and cite sources.",
                 input=user_prompt,
             )
-            return stream_response_with_tags(**kwargs)
+            # Convert regular generator to async generator
+            async def sync_to_async_generator():
+                for chunk in stream_response_with_tags(**kwargs):
+                    yield chunk
+            
+            return sync_to_async_generator()
 
     # elif chat_session.mode == ChatMode.ADVANCED:
     #     file_path_list_copy = file_path_list.copy()

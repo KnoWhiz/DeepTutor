@@ -359,6 +359,7 @@ Follow the response guidelines in the system prompt.
                 yield "\n\n</response>"
             return process_stream()
         else:
+            # For Basic mode and Advanced mode
             user_prompt = f"""
             Previous conversation history:
             ```{truncate_chat_history(chat_history)}```

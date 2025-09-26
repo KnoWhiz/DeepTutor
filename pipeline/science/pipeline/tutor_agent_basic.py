@@ -181,9 +181,6 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     time_tracking["basic_embedding_total"] = time.time() - basic_embedding_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
     logger.info("Markdown RAG embeddings ready ...")
-    # yield "\n\n**🔍 Markdown RAG embeddings ready ...**"
-    # yield "</thinking>"
-    # yield "\n\n**🧠 Loading response ...**\n\n"
 
     chat_history = chat_session.chat_history
     context_chat_history = chat_history
@@ -233,7 +230,6 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     
     time_tracking["pdf_content_loading"] = time.time() - pdf_content_loading_start
     logger.info(f"PDF content loading complete. Time: {format_time_tracking(time_tracking)}")
-    # yield "\n\n**📚 PDF content loading complete ...**\n\n"
     yield "</thinking>"
 
     # Handle initial welcome message when chat history is empty or summary is requested
@@ -242,9 +238,6 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         # Just pass the request through to get_response
         if user_input == config["summary_wording"] and len(file_path_list) > 1:
             logger.info("Handling multiple files summary request in basic mode")
-            # yield "\n\n**🧠 Analyzing multiple files and generating a comprehensive summary...**\n\n"
-            # yield "</thinking>"
-            # get_response will handle the multiple file summary generation
             response_start = time.time()
             question = Question(text=user_input, language=chat_session.current_language, question_type="global")
             response = await get_response(chat_session, file_path_list, question, context_chat_history, embedding_folder_list, deep_thinking=deep_thinking, stream=stream)
@@ -288,7 +281,6 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
             refined_user_input = f"{user_input}\n\nThis is the document content: {pdf_content}"
             question = Question(text=refined_user_input, language=chat_session.current_language, question_type="local")
     else:
-        # yield "</thinking>"
         refined_user_input = f"{user_input}\n\n{pdf_content}"
         # Regular chat flow - include PDF content in the user input
         question = Question(text=refined_user_input, language=chat_session.current_language, question_type="local")

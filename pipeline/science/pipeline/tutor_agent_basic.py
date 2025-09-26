@@ -1,41 +1,27 @@
 import os
-import json
 import time
-from typing import Dict, Generator
-import re
 
 from pipeline.science.pipeline.utils import (
     generate_file_id,
     format_time_tracking,
     clean_translation_prefix,
-    responses_refine,
-    extract_answer_content,
-    extract_lite_mode_content,
-    extract_basic_mode_content,
-    extract_advanced_mode_content,
     Question
 )
 from pipeline.science.pipeline.doc_processor import (
     save_file_txt_locally,
     process_pdf_file,
-    get_highlight_info,
     extract_document_from_file,
 )
 from pipeline.science.pipeline.content_translator import (
-    detect_language,
     translate_content
 )
-from pipeline.science.pipeline.session_manager import ChatSession, ChatMode
+from pipeline.science.pipeline.session_manager import ChatSession
 from pipeline.science.pipeline.helper.index_files_saving import (
     vectorrag_index_files_decompress,
     vectorrag_index_files_compress,
-    graphrag_index_files_decompress,
-    graphrag_index_files_compress,
-    literag_index_files_decompress,
 )
 from pipeline.science.pipeline.embeddings_agent import embeddings_agent
 from pipeline.science.pipeline.get_response import (
-    get_query_helper,
     get_response,
     generate_follow_up_questions,
 )
@@ -204,12 +190,12 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
             document = extract_document_from_file(file_path)
             logger.info(f"Extracted document from {file_path}")
             # Extract text from the document
-            logger.info(f"Extracting text from document")
+            logger.info("Extracting text from document")
             file_content = ""
             for doc in document:
                 if hasattr(doc, 'page_content') and doc.page_content:
                     file_content += doc.page_content.strip() + "\n"
-            logger.info(f"Extracted text from document")
+            logger.info("Extracted text from document")
             # Take only the words_per_file words from this file
             file_words = file_content.split()
             logger.info(f"Split text into {len(file_words)} words")
@@ -230,7 +216,6 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     
     time_tracking["pdf_content_loading"] = time.time() - pdf_content_loading_start
     logger.info(f"PDF content loading complete. Time: {format_time_tracking(time_tracking)}")
-    yield "</thinking>"
 
     # Handle initial welcome message when chat history is empty or summary is requested
     if user_input == config["summary_wording"] or not chat_history:
@@ -242,8 +227,30 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
             question = Question(text=user_input, language=chat_session.current_language, question_type="global")
             response = await get_response(chat_session, file_path_list, question, context_chat_history, embedding_folder_list, deep_thinking=deep_thinking, stream=stream)
             answer = response[0] if isinstance(response, tuple) else response
+            
+            # Monitor for <think> tags and place </thinking> appropriately
+            thinking_closed = False
+            has_think_tag = False
+            
             async for chunk in answer:
-                yield chunk
+                chunk_str = str(chunk)
+                
+                # Check if this chunk contains <think> tag
+                if "<think>" in chunk_str and not has_think_tag:
+                    has_think_tag = True
+                
+                # Check if this chunk contains </think> tag
+                if "</think>" in chunk_str and has_think_tag and not thinking_closed:
+                    yield chunk
+                    yield "</thinking>"
+                    thinking_closed = True
+                else:
+                    yield chunk
+            
+            # If no <think> tag was found, place </thinking> before the response
+            if not has_think_tag and not thinking_closed:
+                yield "</thinking>"
+            
             time_tracking["response_generation"] = time.time() - response_start
             
             # Handle appendix with follow-up questions
@@ -294,8 +301,30 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     response_start = time.time()
     response = await get_response(chat_session, file_path_list, question, context_chat_history, embedding_folder_list, deep_thinking=deep_thinking, stream=stream)
     answer = response[0] if isinstance(response, tuple) else response
+    
+    # Monitor for <think> tags and place </thinking> appropriately
+    thinking_closed = False
+    has_think_tag = False
+    
     async for chunk in answer:
-        yield chunk
+        chunk_str = str(chunk)
+        
+        # Check if this chunk contains <think> tag
+        if "<think>" in chunk_str and not has_think_tag:
+            has_think_tag = True
+        
+        # Check if this chunk contains </think> tag
+        if "</think>" in chunk_str and has_think_tag and not thinking_closed:
+            yield chunk
+            yield "</thinking>"
+            thinking_closed = True
+        else:
+            yield chunk
+    
+    # If no <think> tag was found, place </thinking> before the response
+    if not has_think_tag and not thinking_closed:
+        yield "</thinking>"
+    
     time_tracking["response_generation"] = time.time() - response_start
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 

@@ -25,6 +25,7 @@ from pipeline.science.pipeline.images_understanding import (
     analyze_image
 )
 from pipeline.science.pipeline.rag_agent import get_rag_context
+from pipeline.science.pipeline.inference import stream_response_with_tags
 # from pipeline.science.pipeline.claude_code_sdk import get_claude_code_response, get_claude_code_response_async
 
 import logging
@@ -334,28 +335,53 @@ Answer the question in the same language as the user's question. But for the sou
 Follow the response guidelines in the system prompt.
 """
 
-        prompt_template = ChatPromptTemplate.from_messages([
-            ("system", system_prompt),
-            ("human", user_prompt)
-        ])
-        
-        llm = get_llm('advanced', config['llm'])
-        chain = prompt_template | llm
-        answer = chain.stream({
-            "formatted_context_string": formatted_context_string,
-            "user_input_string": user_input_string,
-            "chat_history": truncate_chat_history(chat_history)
-        })
-        async def process_stream():
-            yield "<response>\n\n"
-            for chunk in answer:
-                # Convert AIMessageChunk to string
-                if hasattr(chunk, 'content'):
-                    yield chunk.content
-                else:
-                    yield str(chunk)
-            yield "\n\n</response>"
-        return process_stream()
+        if chat_session.mode == ChatMode.LITE:
+            prompt_template = ChatPromptTemplate.from_messages([
+                ("system", system_prompt),
+                ("human", user_prompt)
+            ])
+            
+            llm = get_llm('advanced', config['llm'])
+            chain = prompt_template | llm
+            answer = chain.stream({
+                "formatted_context_string": formatted_context_string,
+                "user_input_string": user_input_string,
+                "chat_history": truncate_chat_history(chat_history)
+            })
+            async def process_stream():
+                yield "<response>\n\n"
+                for chunk in answer:
+                    # Convert AIMessageChunk to string
+                    if hasattr(chunk, 'content'):
+                        yield chunk.content
+                    else:
+                        yield str(chunk)
+                yield "\n\n</response>"
+            return process_stream()
+        else:
+            user_prompt = f"""
+            Previous conversation history:
+            ```{truncate_chat_history(chat_history)}```
+            
+            Reference context chunks with relevance scores from the paper: 
+            {formatted_context_string}
+
+            The student's query is: {user_input_string}
+
+            Answer the question in the same language as the user's question. But for the source citation in square brackets, ALWAYS use the same language as the original source.
+
+            Follow the response guidelines in the system prompt.
+            """
+            kwargs = dict(
+                model="gpt-5",
+                # reasoning={"effort": "high", "summary": "detailed"},
+                reasoning={"effort": "medium", "summary": "auto"},
+                # reasoning={"effort": "low", "summary": "auto"},
+                tools=[{"type": "web_search"}],  # built-in tool
+                instructions=f"{system_prompt}\n\n You should search the web as needed (multiple searches OK) and cite sources.",
+                input=user_prompt,
+            )
+            return stream_response_with_tags(**kwargs)
 
     # elif chat_session.mode == ChatMode.ADVANCED:
     #     file_path_list_copy = file_path_list.copy()

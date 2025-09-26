@@ -58,8 +58,8 @@
     },
     "default_topics": ["Overview", "Methods", "Results", "Discussion"],
     "image_extensions": [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".webp", ".svg"],
-    "inference_token_limit": 900000,
-    "basic_token_limit": 900000,
+    "inference_token_limit": 500000,
+    "basic_token_limit": 500000,
     "stream": true,
     "summary_wording": "Based on the context provided, make a summary for the document. Begin with \"Summary\"",
     "map_symbol_to_index": {

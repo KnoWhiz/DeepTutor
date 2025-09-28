@@ -154,13 +154,18 @@ REMINDER: If Case 1 applies, every sentence must end with the [<k>] citation(s) 
 """
 
 
-from openai import OpenAI
+from openai import AzureOpenAI
 from dotenv import load_dotenv
 import os, re
 from typing import Iterable
 
 load_dotenv(".env")
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = AzureOpenAI(
+    api_key=os.getenv("AZURE_OPENAI_API_KEY_BACKUP"),
+    azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP"),
+    api_version="2025-03-01-preview",
+)
 
 def _format_thinking_delta(delta: str) -> str:
     """
@@ -186,106 +191,6 @@ def _format_thinking_delta(delta: str) -> str:
             return "\n\n" + delta
 
     return delta
-
-
-def stream_response_with_tags_detailed(**create_kwargs) -> Iterable[str]:
-    """
-    Yields a single XML-like stream:
-      <thinking> ...reasoning summary + tool progress... </thinking><response> ...final answer... </response>
-    With detailed tool calling updates inside <thinking>.
-    """
-    stream = client.responses.create(stream=True, **create_kwargs)
-
-    thinking_open = True
-    response_open = False
-    yield "<thinking>"
-
-    try:
-        for event in stream:
-            t = event.type or ""
-
-            # --- Reasoning summary stream ---
-            if t == "response.reasoning_summary_text.delta":
-                yield _format_thinking_delta(getattr(event, "delta", "") or "")
-
-            elif t == "response.reasoning_summary_text.done":
-                pass  # keep <thinking> open for tool progress
-
-            # --- Output item lifecycle (covers tools like web_search, file_search, image_generation, etc.) ---
-            elif t == "response.output_item.added":
-                item = getattr(event, "item", None) or getattr(event, "output_item", None)
-                item_type = getattr(item, "type", None) or getattr(event, "item_type", None)
-                if item_type:
-                    yield f"\n[tool:item-added type={item_type}]\n"
-
-            elif t == "response.output_item.done":
-                item = getattr(event, "item", None) or getattr(event, "output_item", None)
-                item_type = getattr(item, "type", None) or getattr(event, "item_type", None)
-                if item_type:
-                    yield f"[tool:item-done type={item_type}]\n\n"
-
-            # --- Built-in web_search progress stream ---
-            elif t.startswith("response.web_search_call."):
-                phase = t.split(".")[-1]  # e.g., 'in_progress', 'completed', possibly 'result'
-                q = getattr(event, "query", None)
-                if phase in ("created", "started", "searching", "in_progress"):
-                    yield f"[web_search:{phase}{' q='+q if q else ''}]\n"
-                elif phase == "result":
-                    title = getattr(event, "title", None)
-                    url = getattr(event, "url", None)
-                    if title or url:
-                        yield f"- {title or ''} {url or ''}\n"
-                elif phase == "completed":
-                    results = getattr(event, "results", None) or []
-                    n = getattr(event, "num_results", None) or (len(results) if isinstance(results, list) else None)
-                    yield f"[web_search:completed results={n if n is not None else 'unknown'}]\n\n"
-
-            # --- Function calling (your own tools) ---
-            elif t == "response.function_call_arguments.delta":
-                yield getattr(event, "delta", "") or ""
-            elif t == "response.function_call_arguments.done":
-                yield "\n[function_call:args_done]\n"
-
-            # --- Main model answer text ---
-            elif t == "response.output_text.delta":
-                if thinking_open:
-                    yield "\n</thinking>\n\n"
-                    thinking_open = False
-                if not response_open:
-                    response_open = True
-                    yield "<response>\n\n"
-                yield getattr(event, "delta", "") or ""
-
-            elif t == "response.output_text.done":
-                if response_open:
-                    yield "\n\n</response>\n"
-                    response_open = False
-
-            # --- Finalization / errors ---
-            elif t == "response.completed":
-                if thinking_open:
-                    yield "\n</thinking>\n"
-                    thinking_open = False
-
-            elif t == "response.error":
-                if thinking_open:
-                    yield "\n</thinking>\n"
-                    thinking_open = False
-                if response_open:
-                    yield "\n</response>\n"
-                    response_open = False
-                err = getattr(event, "error", None)
-                msg = getattr(err, "message", None) if err else None
-                yield f"<!-- error: {msg or err or 'unknown'} -->"
-
-            # else: ignore other event types
-
-    finally:
-        try:
-            stream.close()
-        except Exception:
-            pass
-
 
 def stream_response_with_tags(**create_kwargs) -> Iterable[str]:
     """
@@ -361,7 +266,8 @@ if __name__ == "__main__":
         # reasoning={"effort": "high", "summary": "detailed"},
         reasoning={"effort": "medium", "summary": "auto"},
         # reasoning={"effort": "low", "summary": "auto"},
-        tools=[{"type": "web_search"}],  # built-in tool
+        # tools=[{"type": "web_search"}],  # built-in tool
+        tools=[],  # built-in tool
         instructions=f"{system_prompt}\n\n You should search the web as needed (multiple searches OK) and cite sources.",
         input=f"Context from the paper: {context_from_paper}\n\n What is this paper mainly about? Do web search if needed to find related multiplexing papers and compare with this paper.",
     )

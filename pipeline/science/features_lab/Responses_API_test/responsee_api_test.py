@@ -22,12 +22,12 @@ Here’s what I found:
 
 - Membership: Bingran You is listed as a graduate student in Hartmut Häffner’s Ion and Electron Trap Group (UC Berkeley). ([ions.berkeley.edu](https://ions.berkeley.edu/members/))
 
-- Google Scholar page: I could not find a public Google Scholar author profile for “Bingran You” as of September 25, 2025. It’s possible he hasn’t created a public profile or it’s set to private (Google Scholar profiles are only visible if made public). ([scholar.google.com](https://scholar.google.com/intl/pt-PT/scholar/citations.html?utm_source=openai))
+- Google Scholar page: I could not find a public Google Scholar author profile for “Bingran You” as of September 25, 2025. It’s possible he hasn’t created a public profile or it’s set to private (Google Scholar profiles are only visible if made public). ([scholar.google.com](https://scholar.google.com/intl/pt-PT/scholar/citations.html))
 
 - Publications visible via scholarly indexes:
   - First‑author preprint: “Temporally multiplexed ion‑photon quantum interface via fast ion‑chain transport” (May 17, 2024), coauthored with members of the Häffner group and collaborators. This demonstrates a temporally multiplexed ion‑photon interface using rapid transport of a nine‑ion Ca+ chain, relevant to high‑rate remote entanglement for quantum networking. ([arxiv.org](https://arxiv.org/abs/2405.10501))
-  - Related conference talk: “Temporal multiplexing for improved ion‑photon interface,” presented at APS DAMOP 2024. ([meetings.aps.org](https://meetings.aps.org/Meeting/DAMOP24/Session/R06.6?utm_source=openai))
-  - Co‑authored preprint: “Scalable Trapped Ion Addressing with Adjoint‑optimized Multimode Photonic Circuits” (May 16, 2025), proposing integrated photonics for targeted, reconfigurable ion addressing. ([preprints.opticaopen.org](https://preprints.opticaopen.org/articles/preprint/Scalable_Trapped_Ion_Addressing_with_Adjoint-optimized_Multimode_Photonic_Circuits/29087921?utm_source=openai))
+  - Related conference talk: “Temporal multiplexing for improved ion‑photon interface,” presented at APS DAMOP 2024. ([meetings.aps.org](https://meetings.aps.org/Meeting/DAMOP24/Session/R06.6))
+  - Co‑authored preprint: “Scalable Trapped Ion Addressing with Adjoint‑optimized Multimode Photonic Circuits” (May 16, 2025), proposing integrated photonics for targeted, reconfigurable ion addressing. ([preprints.opticaopen.org](https://preprints.opticaopen.org/articles/preprint/Scalable_Trapped_Ion_Addressing_with_Adjoint-optimized_Multimode_Photonic_Circuits/29087921))
 
 If by “his Google Scholar page” you meant Hartmut Häffner’s profile, that does exist (linked from Berkeley’s faculty page); I can review it on request. ([vcresearch.berkeley.edu](https://vcresearch.berkeley.edu/faculty/hartmut-haeffner))
 
@@ -116,6 +116,33 @@ Assistant (Case 1):
 **TL;DR:** The reported Rabi frequency is $2.1\,\mathrm{{MHz}}$. [<1>] ["_The measured Rabi frequency was 2.1 MHz on the carrier._"]  
 **Result.** The experiment measured $\Omega=2.1\,\mathrm{{MHz}}$. [<1>] ["_The measured Rabi frequency was 2.1 MHz on the carrier._"]
 
+GOOD D - A mix of Case 1 and Case 2.
+User Q: "Context from the paper: {{context_from_paper}}\n\n What is this paper mainly about? Do web search if needed to find related multiplexing papers and compare with this paper."
+Assistant:
+**TL;DR:** The paper demonstrates a temporally multiplexed ion–photon interface by rapidly shuttling a nine-ion $^{{40}}\mathrm{{Ca}}^+$ chain through a focused addressing beam to produce single-photon trains with low crosstalk, verified by $g^{{(2)}}(0)=0.060(13)$, and it analyzes transport-induced motional excitation; compared with other multiplexing work, it trades cavity-enhanced efficiency for architectural simplicity and a path to higher attempt rates via fast transport. [<1>] ["_Here, we demonstrate a temporally multiplexed ion-photon interface via rapid transport of a chain of nine calcium ions across 74 µm within 86 µs._"]
+
+— What this paper is mainly about (from the provided text) —
+- **Goal and method.** The authors implement a temporally multiplexed ion–photon interface by transporting a nine-ion chain across the focus of an $866\,\mathrm{{nm}}$ addressing beam to sequentially generate on-demand $397\,\mathrm{{nm}}$ photons, aiming for a nearly nine-fold attempt-rate increase for nodes separated by $>100\,\mathrm{{km}}$. [<1>] ["_In our experiments, we generate on-demand single photons by shuttling a nine-ion chain across the focus of a single-ion addressing beam._"]["_This scheme is expected to lead to a nearly nine-fold increase in attempt rate of the entanglement generation for quantum repeater nodes separated by >100 km._"]
+- **Nonclassicality/crosstalk.** The single-photon character of the multiplexed output is verified by $g^{{(2)}}(0)=0.060(13)$ without background subtraction, with residual coincidences primarily from neighboring-ion excitation (addressing-beam crosstalk $\approx 0.99\%$ giving expected $g^{{(2)}}_{{\mathrm{{{{exp}}}}(0)=0.049(8)}}$). [<1>][<3>] ["_The non-classical nature of the multiplexed photons is verified by measuring the second-order correlation function with an average value of g(2)(0) = 0.060(13)._"]["_The residual correlation can be explained by excitation of neighboring ions, i.e., crosstalk of the addressing beam, which is separately characterized to be 0.99 % … corresponding to expected average g(2) exp(0) = 0.049(8)._"]
+- **Throughput achieved.** Over $40\,\mathrm{{min}}$ the system made $\sim 1.56\times 10^{{6}}$ whole-string attempts (attempt rate $39.0\,\mathrm{{kHz}}$), with average photon extraction efficiency $0.21\%$ and a single-photon count rate of $\sim 71\,\mathrm{{cps}}$. [<2>] ["_Data is accumulated for 40 min, during which around 1.56 × 10^6 attempts were made to the whole string, corresponding to attempt rate 39.0 kHz, an average photon extraction efficiency of 0.21 % and single photons count rate of around 71 cps._"]
+- **Transport-induced motion.** Fast shuttling coherently excites the axial center-of-mass mode to $\bar n_{{\alpha}}\!\approx\!110$ (at full speed), inferred via carrier Rabi flopping; the authors discuss mitigation via improved shuttling and possible cavity alignment. [<1>][<4>] ["_…coherently excited to as much as ¯nα ≈110 for the center-of-mass mode._"]["_The carrier Rabi flopping … matches with COM coherent state with ¯nα ≈110 (Fig. 4(c))._"]
+- **Upgrade path.** They argue that coupling to a single-mode fiber to suppress crosstalk and integrating a miniature cavity could raise photonic extraction substantially without reducing the generation rate. [<5>] ["_Once integrated with … photon collection with a single mode fiber, we expect a faster photon extraction rate … and negligible ion crosstalk while achieving high fidelity ion-photon entanglement._"]["_Our system can also be combined with a miniature cavity … for much higher photon extraction efficiency without sacrificing the photon generation rate._"]
+
+— How it compares to related multiplexing approaches (recent literature) —
+- **Trapped ions, cavity-enhanced static-node multiplexing (3 ions).** A three-ion node in an optical cavity generated a train of telecom-converted photons and showed improved remote entanglement rate over $101\,\mathrm{{km}}$, demonstrating multimode networking with a static register rather than transport. ([journals.aps.org](https://journals.aps.org/prxquantum/abstract/10.1103/PRXQuantum.5.020308))
+- **Trapped ions, scalable cavity multiplexing (10 ions).** A ten-ion cavity node sequentially brought individual ions into the cavity waist (by switching confinement) to entangle each ion with a photon, reporting average ion–photon Bell-state fidelity $92(1)\%$ and per-photon detection probability $9.1(8)\%$—substantially higher extraction than the transport-without-cavity approach here. ([arxiv.org](https://arxiv.org/abs/2406.09480))
+- **Neutral-atom arrays in a cavity (experiment).** Deterministic assembly of atoms in a cavity with single-atom addressing achieved multiplexed atom–photon entanglement with generation-to-detection efficiency approaching $90\%$, highlighting the collection-efficiency advantage of cavity-integrated platforms. ([science.org](https://www.science.org/doi/10.1126/science.ado6471))
+- **Neutral-atom arrays in a cavity (architecture/proposal).** A multiplexed telecommunication-band node using atom arrays is predicted to improve two-node entanglement rates by nearly two orders of magnitude and to enable repeater links over $\sim 1500\,\mathrm{{km}}$. ([journals.aps.org](https://journals.aps.org/prresearch/abstract/10.1103/PhysRevResearch.3.043154))
+- **Ensemble memories, spectral/time multiplexing.** AFC-based and related quantum memories demonstrated storage and feed-forward over up to $26$ spectral modes with high-fidelity mode mapping, and fiber-based interfaces that multiplex in time/frequency—mature on mode count but less suited to local, high-fidelity logic than single-emitter platforms. ([journals.aps.org](https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.113.053603))
+- **Photonic sources, time multiplexing background.** Time-multiplexed SPDC sources boost single-photon probability (e.g., to $\sim 39\%$ over $30$ time bins) and trace back to “pseudo-demand” single photons via storage loops—conceptually related multiplexing on the photonic side rather than the matter interface. ([tohoku.elsevierpure.com](https://tohoku.elsevierpure.com/en/publications/time-multiplexed-heralded-single-photon-source))
+
+— Bottom line —
+- **What’s new here.** Multiplexing by fast, free-space ion-chain transport concentrates emission from many ions into one spatial mode without a cavity, boosting the attempt rate by roughly the chain length while preserving single-photon statistics $g^{{(2)}}(0)\approx 0.06$. [<1>][<3>] ["_This scheme is expected to lead to a nearly nine-fold increase in attempt rate …_"]["_… corresponding to g(2)(0) = 0.060(13)._"]
+- **Primary tradeoffs today.** Compared with cavity-based nodes that report per-photon detection near $9$–$90\%$, this transport approach currently shows lower extraction ($0.21\%$) and introduces coherent motional excitation (COM $\bar n_{{\alpha}}\!\approx\!110$) that must be tamed for high-fidelity local gates. [<2>][<4>] ["_… average photon extraction efficiency of 0.21 % …_"]["_… matches with COM coherent state with ¯nα ≈110 …_"] ([arxiv.org](https://arxiv.org/abs/2406.09480))
+- **Outlook.** The paper argues that single-mode-fiber collection and cavity integration could mitigate crosstalk and raise efficiency substantially while keeping the high attempt rate enabled by transport. [<5>] ["_… single mode fiber, we expect a faster photon extraction rate … and negligible ion crosstalk …_"]["_… combined with a miniature cavity … for much higher photon extraction efficiency without sacrificing the photon generation rate._"]
+
+If you’d like, I can tabulate key metrics (platform, multiplexing method, per-attempt rate, detection efficiency, $g^{{(2)}}(0)$, telecom conversion, and demonstrated distance) and suggest concrete upgrade targets for this transport-based interface.
+
 ────────────────────────────────────────────────
 BAD EXAMPLES (do NOT imitate; annotate the violation)
 ────────────────────────────────────────────────
@@ -154,18 +181,10 @@ REMINDER: If Case 1 applies, every sentence must end with the [<k>] citation(s) 
 """
 
 
-from openai import AzureOpenAI
+from openai import AzureOpenAI, OpenAI
 from dotenv import load_dotenv
 import os, re
 from typing import Iterable
-
-load_dotenv(".env")
-# client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-client = AzureOpenAI(
-    api_key=os.getenv("AZURE_OPENAI_API_KEY_BACKUP"),
-    azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP"),
-    api_version="2025-03-01-preview",
-)
 
 def _format_thinking_delta(delta: str) -> str:
     """
@@ -198,6 +217,13 @@ def stream_response_with_tags(**create_kwargs) -> Iterable[str]:
       <thinking> ...reasoning summary + tool progress... </thinking><response> ...final answer... </response>
     Without detailed tool calling updates inside <thinking>.
     """
+    load_dotenv(".env")
+    # client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    client = AzureOpenAI(
+        api_key=os.getenv("AZURE_OPENAI_API_KEY_BACKUP"),
+        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP"),
+        api_version="2025-03-01-preview",
+    )
     stream = client.responses.create(stream=True, **create_kwargs)
 
     # Show a thinking container immediately
@@ -261,15 +287,26 @@ def stream_response_with_tags(**create_kwargs) -> Iterable[str]:
 # Example usage
 # ------------------------------
 if __name__ == "__main__":
+    load_dotenv(".env")
+    TAVILY_API_KEY=str(os.getenv("TAVILY_API_KEY"))
+    tools=[
+        {
+            "type": "mcp",
+            "server_label": "tavily",
+            "server_url": "https://mcp.tavily.com/mcp/?tavilyApiKey=" + TAVILY_API_KEY,
+            "require_approval": "never",
+        },
+    ]
     kwargs = dict(
         model="gpt-5",
         # reasoning={"effort": "high", "summary": "detailed"},
         reasoning={"effort": "medium", "summary": "auto"},
         # reasoning={"effort": "low", "summary": "auto"},
         # tools=[{"type": "web_search"}],  # built-in tool
-        tools=[],  # built-in tool
+        tools=tools,  # built-in tool
         instructions=f"{system_prompt}\n\n You should search the web as needed (multiple searches OK) and cite sources.",
-        input=f"Context from the paper: {context_from_paper}\n\n What is this paper mainly about? Do web search if needed to find related multiplexing papers and compare with this paper.",
+        # input=f"Context from the paper: {context_from_paper}\n\n What is this paper mainly about? Do web search if needed to find related multiplexing papers and compare with this paper.",
+        input="Who is Bingran You?",
     )
 
     for chunk in stream_response_with_tags(**kwargs):

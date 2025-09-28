@@ -366,9 +366,6 @@ from typing import Iterable
 # import os
 
 
-# load_dotenv(".env")
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
 def _format_thinking_delta(delta: str) -> str:
     """
     Only transform '**XXX' -> '\n\n**XXX'.
@@ -401,6 +398,8 @@ def stream_response_with_tags_detailed(**create_kwargs) -> Iterable[str]:
       <think> ...reasoning summary + tool progress... </think><response> ...final answer... </response>
     With detailed tool calling updates inside <think>.
     """
+    # load_dotenv(".env")
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     stream = client.responses.create(stream=True, **create_kwargs)
 
     thinking_open = True
@@ -500,6 +499,8 @@ def stream_response_with_tags(**create_kwargs) -> Iterable[str]:
       <think> ...reasoning summary + tool progress... </think><response> ...final answer... </response>
     Without detailed tool calling updates inside <think>.
     """
+    # load_dotenv(".env")
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     stream = client.responses.create(stream=True, **create_kwargs)
 
     # Show a thinking container immediately

@@ -360,7 +360,7 @@ if __name__ == "__main__":
         print(chunk, end="", flush=True)
 
 
-from openai import OpenAI
+from openai import OpenAI, AzureOpenAI
 from dotenv import load_dotenv  
 from typing import Iterable
 # import os
@@ -399,7 +399,14 @@ def stream_response_with_tags_detailed(**create_kwargs) -> Iterable[str]:
     With detailed tool calling updates inside <think>.
     """
     # load_dotenv(".env")
+    # If OpenAI API
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    # # If AzureOpenAI API
+    # client = AzureOpenAI(
+    #     api_key=os.getenv("AZURE_OPENAI_API_KEY_BACKUP"),
+    #     azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP"),
+    #     api_version="2025-03-01-preview",
+    # )
     stream = client.responses.create(stream=True, **create_kwargs)
 
     thinking_open = True
@@ -500,7 +507,14 @@ def stream_response_with_tags(**create_kwargs) -> Iterable[str]:
     Without detailed tool calling updates inside <think>.
     """
     # load_dotenv(".env")
+    # If OpenAI API
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    # # If AzureOpenAI API
+    # client = AzureOpenAI(
+    #     api_key=os.getenv("AZURE_OPENAI_API_KEY_BACKUP"),
+    #     azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP"),
+    #     api_version="2025-03-01-preview",
+    # )
     stream = client.responses.create(stream=True, **create_kwargs)
 
     # Show a thinking container immediately

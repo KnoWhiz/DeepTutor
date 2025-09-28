@@ -379,6 +379,7 @@ Follow the response guidelines in the system prompt.
                 reasoning={"effort": "medium", "summary": "auto"},
                 # reasoning={"effort": "low", "summary": "auto"},
                 tools=[{"type": "web_search"}],  # built-in tool
+                # tools=[],  # built-in tool
                 instructions=f"{system_prompt}\n\n You should search the web as needed (multiple searches OK) and cite sources.",
                 input=user_prompt,
             )

@@ -73,7 +73,7 @@ Case 1 (Answerable from context chunks):
   - Use markdown emphasis for readability.
 
 Case 2 (Not answerable from context):
-  - State clearly that you are using your own knowledge.
+  - Do web search (multiple runs if needed) to get reliable information sources to answer the question
   - Keep the same math and formatting rules.
 
 SELF-CHECK BEFORE SENDING (must pass all):
@@ -98,15 +98,25 @@ Assistant (Case 1):
 **Planck relation.** The energy of a photon is $E=\hbar\omega$. [<1>] ["_Planck’s relation states E = ħω for a single photon._"]  
 **Frequency form.** Using $\omega=2\pi f$, we also have $E=h f$ with $h=2\pi\hbar$. [<2>][<1>] ["_Angular frequency ω relates to frequency f by ω = 2πf._"]["_Planck's relation states E = ħω for a single photon._"]
 
-GOOD B — Display math, multi-step, Case 2 (own knowledge)
-User Q: "Show the variance of a Bernoulli($p$) variable."
+GOOD B — Display math, multi-step, Case 2 (web search)
+User Q: "What is Second law of thermodynamics , search Wikipedia to get answers"
 Assistant (Case 2):
-**TL;DR:** For $X\sim\mathrm{{Bernoulli}}(p)$, the variance is $\operatorname{{Var}}(X)=p(1-p)$.
-I cannot find this in the provided context, so I'm using my own knowledge.  
-**Derivation.** Let $X\in{{0,1}}$ with $\Pr(X=1)=p$. Then $E[X]=p$ and $E[X^2]=p$. Hence,
-$$
-\operatorname{{Var}}(X)=E[X^2]-E[X]^2=p-p^2=p(1-p).
-$$
+**TL;DR:** The second law of thermodynamics says entropy does not decrease for an isolated system, which gives natural processes a preferred direction and forbids perfect conversion of heat to work. ([en.wikipedia.org](https://en.wikipedia.org/wiki/Second_law_of_thermodynamics))
+
+- **Core idea (entropy increase).** In any spontaneous change, the total entropy of an isolated system satisfies $\Delta S \ge 0$, so systems evolve toward equilibrium with maximal entropy; this defines the “arrow of time.” ([en.wikipedia.org](https://en.wikipedia.org/wiki/Entropy))
+- **Classical statements (equivalent).**
+  - **Clausius:** Heat does not flow spontaneously from cold to hot; moving heat “uphill” requires external work (e.g., a refrigerator). ([en.wikipedia.org](https://en.wikipedia.org/wiki/Second_law_of_thermodynamics))
+  - **Kelvin–Planck (heat‑engine form):** No cyclic device can take heat from a single reservoir and convert it entirely into work (no perpetual motion of the second kind). ([en.wikipedia.org](https://en.wikipedia.org/wiki/Second_law_of_thermodynamics))
+  - These formulations are equivalent: violating one would violate the other. ([en.wikipedia.org](https://en.wikipedia.org/wiki/Second_law_of_thermodynamics))
+- **Quantitative formulations.**
+  - **Clausius inequality (cycle):** $\displaystyle \oint \frac{{\delta Q}}{{T}} \le 0$. ([en.wikipedia.org](https://en.wikipedia.org/wiki/Clausius_theorem))
+  - **General process (closed system):** $\displaystyle dS \ge \frac{{\delta Q}}{{T_{{\mathrm{{surr}}}}}}$, with equality for a reversible process where $\displaystyle dS=\frac{{\delta Q_{{\mathrm{{rev}}}}}}{{T}}$. ([en.wikipedia.org](https://en.wikipedia.org/wiki/Clausius_theorem))
+  - **Isolated system:** with $\delta Q=0$, entropy cannot decrease: $\Delta S \ge 0$. ([en.wikipedia.org](https://en.wikipedia.org/wiki/Entropy))
+- **Implications for engines.**
+  - The second law sets an upper bound (Carnot limit) on any heat engine’s efficiency, depending only on reservoir temperatures: $\displaystyle \eta_{{\max}}=1-\frac{{T_C}}{{T_H}}$. ([en.wikipedia.org](https://en.wikipedia.org/wiki/Thermal_efficiency))
+- **Microscopic/statistical view.** Entropy measures the number of microstates compatible with a macrostate; in statistical mechanics $S=k_B\ln\Omega$, making the second law a statement of overwhelmingly likely evolution toward more numerous (higher‑entropy) states. ([en.wikipedia.org](https://en.wikipedia.org/wiki/Entropy))
+
+If you want, I can derive the Clausius inequality step‑by‑step or work a concrete example (e.g., why a 600 K to 300 K engine is limited to $\eta_{{\max}}=50\%$).
 
 GOOD C — Units, vectors, subscripts; Case 1
 User Q: "What Rabi frequency did the experiment report?"
@@ -305,8 +315,8 @@ if __name__ == "__main__":
         # tools=[{"type": "web_search"}],  # built-in tool
         tools=tools,  # built-in tool
         instructions=f"{system_prompt}\n\n You should search the web as needed (multiple searches OK) and cite sources.",
-        # input=f"Context from the paper: {context_from_paper}\n\n What is this paper mainly about? Do web search if needed to find related multiplexing papers and compare with this paper.",
-        input="Who is Bingran You?",
+        input=f"Context from the paper: {context_from_paper}\n\n What is this paper mainly about? Do web search if needed to find related multiplexing papers and compare with this paper.",
+        # input="What is Second law of thermodynamics , search Wikipedia to get answers",
     )
 
     for chunk in stream_response_with_tags(**kwargs):

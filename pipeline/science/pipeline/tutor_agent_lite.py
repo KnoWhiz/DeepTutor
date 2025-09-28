@@ -260,7 +260,43 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
         else:
             # Regular summary for single file or initial message when no chat history
             # Include the PDF content in addition to user_input as refined_user_input
-            refined_user_input = f"{user_input}\n\nThis is the document content: {pdf_content}"
+            refined_user_input = f"""
+            Summarize this paper for a busy researcher in ≤180 words as a structured abstract. Use these exact headings: 
+            **TL;DR** (1–2 sentences); 
+            **Background & Objective** (what gap and goal); 
+            **Method** (core idea + data/setup, plain words); 
+            **Results** (2–4 key quantitative findings with numbers/units); 
+            **Conclusion/Significance** (who should care, why); 
+            **Limitations & Assumptions** (≤2 bullets); 
+            **Context vs Prior Work** (1–2 sentences on novelty); 
+            Avoid hype, define any jargon briefly
+
+            A good example (IMPORTANT: this is only for format reference. Do not relate this with the actual document content): **TL;DR**  
+Demonstrates a temporally multiplexed trapped-ion–photon interface by fast shuttling of a nine-ion chain, achieving low crosstalk single-photon generation and characterizing transport-induced motional excitation.  
+
+**Background & Objective**  
+Long-distance ion–photon entanglement rates are limited by photon travel time in probabilistic schemes. Multiplexing can raise attempt rates, but is hard to implement for single emitters. Goal: realize a scalable temporal multiplexing method for trapped-ion quantum networking.  
+
+**Method**  
+Nine $^{{40}}\mathrm{{Ca}}^+$ ions in a linear RF Paul trap are Doppler cooled, optically pumped, then shuttled $74\,\mu\mathrm{{m}}$ in $86\,\mu\mathrm{{s}}$ through a focused $866\,\mathrm{{nm}}$ beam to generate $397\,\mathrm{{nm}}$ photons. Photon arrival times and $g^{{(2)}}(0)$ are measured; motional excitation is probed via carrier Rabi flopping.  
+
+**Results**  
+- Attempt rate: $39.0\,\mathrm{{kHz}}$; photon extraction efficiency: $0.21\%$; count rate: $\sim71\,\mathrm{{cps}}$.  
+- Measured $g^{{(2)}}(0)=0.060(13)$ (shuttled chain), $0.010(6)$ (single ion).  
+- Crosstalk: $0.99\%$; expected $g^{{(2)}}_{{\mathrm{{exp}}}}(0)=0.049(8)$.  
+- Coherent COM mode excitation: $\bar{{n}}_\alpha\approx50$ (half speed), $\approx110$ (full speed).  
+
+**Conclusion/Significance**  
+Relevant to quantum network designers using trapped ions; offers a path to higher entanglement rates over $>100\,\mathrm{{km}}$ with manageable crosstalk and characterized motional effects.  
+
+**Limitations & Assumptions**  
+- COM mode dominant in motional excitation model; other modes neglected.  
+- Photon collection efficiency and transport speed not yet optimized.  
+
+**Context vs Prior Work**  
+Extends prior static-chain multiplexing to dynamic transport of multiple ions, leveraging quantum CCD concepts for nearly order-of-magnitude rate increase in ion–photon entanglement.
+
+            This is the document content: {pdf_content}"""
             question = Question(text=refined_user_input, language=chat_session.current_language, question_type="local")
     else:
         # yield "</thinking>"

@@ -237,7 +237,7 @@ RESPONSE GUIDELINES:
 SOURCING MODES
 Case 1 (Answerable from context chunks):
   - Use only the context. For *each sentence* in the response, cite the most relevant chunk key(s) in the format "[<1>]" or "[<1>][<3>]" at the end of the sentence.
-  - Immediately after each citation key, append one sentence from the source (italic, in quotes) inside square brackets, e.g., ["_...source sentence..._"]. IMPORTANT: Use the same language as the original source!
+  - Immediately after each citation key, append one sentence from the source (IMPORTANT: italic, in quotes) inside square brackets, e.g., ["_...source sentence..._"]. IMPORTANT: Use the same language as the original source!
   - Use markdown emphasis for readability.
 
 Case 2 (Not answerable from context):

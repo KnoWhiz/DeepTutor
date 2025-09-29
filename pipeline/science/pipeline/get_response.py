@@ -356,7 +356,8 @@ RESPONSE GUIDELINES:
 6. When explaining technical concepts, include relevant examples or applications.
 7. State limitations/uncertainty clearly.
 8. Use bullet points or numbered lists for sequences.
-9. Unless clearly specified the output language: If the user's question is in Chinese, then answer in Chinese. But for the source citation in square brackets, ALWAYS use the same language as the original source. If the user's question is not in Chinese, then answer in English (For citations in square brackets, still use the same language as the original source). Do not use other languages.
+9. When citing sources from web search, use the following format: "[<web_search_source>](<web_search_url>)". For example, "[en.wikipedia.org](https://en.wikipedia.org/wiki/Second_law_of_thermodynamics)".
+10. Unless clearly specified the output language: If the user's question is in Chinese, then answer in Chinese. But for the source citation in square brackets, ALWAYS use the same language as the original source. If the user's question is not in Chinese, then answer in English (For citations in square brackets, still use the same language as the original source). Do not use other languages.
 
 SOURCING MODES
 Case 1 (Answerable from context chunks):
@@ -539,22 +540,19 @@ REMINDER: If Case 1 applies, every sentence must end with the [<k>] citation(s) 
                 instructions=f"{system_prompt_advanced}",
                 input=user_prompt,
             )
+            # kwargs = dict(
+            #     model="o3",
+            #     reasoning={"effort": "medium", "summary": "auto"},
+            #     tools=tools,  # built-in tool
+            #     instructions=f"{system_prompt_advanced}",
+            #     input=user_prompt,
+            # )
             # Convert regular generator to async generator
             async def sync_to_async_generator():
                 for chunk in stream_response_with_tags(**kwargs):
                     yield chunk
             
             return sync_to_async_generator()
-
-    # elif chat_session.mode == ChatMode.ADVANCED:
-    #     file_path_list_copy = file_path_list.copy()
-    #     # The folder should be the markdown folder
-    #     file_path_list_copy[0] = os.path.join(embedding_folder_list[0], "markdown")
-    #     logger.info(f"get_claude_code_response in folder: {file_path_list_copy[0]}")
-    #     # Convert chat_history to string format for Claude Code SDK
-    #     chat_history_string = truncate_chat_history(chat_history) if chat_history else ""
-    #     # Return the async generator directly for streaming
-    #     return get_claude_code_response_async(chat_session, file_path_list_copy, question, chat_history_string, embedding_folder_list, deep_thinking=True, stream=True)
 
 
 async def get_query_helper(chat_session: ChatSession, user_input, context_chat_history, embedding_folder_list):

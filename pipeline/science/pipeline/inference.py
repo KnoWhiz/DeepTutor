@@ -510,11 +510,17 @@ def stream_response_with_tags(**create_kwargs) -> Iterable[str]:
     # If OpenAI API
     # client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     # If AzureOpenAI API
-    client = AzureOpenAI(
+    client = OpenAI(
         api_key=os.getenv("AZURE_OPENAI_API_KEY_BACKUP"),
-        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP"),
-        api_version="2025-03-01-preview",
+        # base_url="https://knowhiz-service-openai-backup-2.openai.azure.com/openai/v1/"
+        base_url=str(os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP")) + "openai/v1/"
     )
+    # client = AzureOpenAI(
+    #     api_key=os.getenv("AZURE_OPENAI_API_KEY_BACKUP"),
+    #     azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP"),
+    #     api_version="2025-04-01-preview",
+    #     # api_version="2025-06-10",
+    # )
     stream = client.responses.create(stream=True, **create_kwargs)
 
     # Show a thinking container immediately

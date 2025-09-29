@@ -28,6 +28,7 @@ from pipeline.science.pipeline.rag_agent import get_rag_context
 from pipeline.science.pipeline.inference import stream_response_with_tags
 # from pipeline.science.pipeline.claude_code_sdk import get_claude_code_response, get_claude_code_response_async
 from dotenv import load_dotenv
+load_dotenv()
 import logging
 logger = logging.getLogger("tutorpipeline.science.get_response")
 
@@ -215,7 +216,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         system_prompt = """You are a deep thinking tutor helping a student reading a paper.
 
 MATH RENDERING — HARD RULES (must follow):
-- Wrap ALL math in $...$ (inline) or $$...$$ (display). Never write bare math.
+- Wrap ALL math (include important numbers) in $...$ (inline) or $$...$$ (display). Never write bare math.
 - Do NOT use \( \) or \[ \]; only $...$ or $$...$$.
 - Do NOT put math in backticks. Backticks are for code only.
 - Balance every $ and $$ pair.
@@ -338,7 +339,7 @@ Follow the response guidelines in the system prompt.
         system_prompt_advanced = """You are a deep thinking tutor helping a student reading a paper.
 
 MATH RENDERING — HARD RULES (must follow):
-- Wrap ALL math in $...$ (inline) or $$...$$ (display). Never write bare math.
+- Wrap ALL math (include important numbers) in $...$ (inline) or $$...$$ (display). Never write bare math.
 - Do NOT use \( \) or \[ \]; only $...$ or $$...$$.
 - Do NOT put math in backticks. Backticks are for code only.
 - Balance every $ and $$ pair.
@@ -519,7 +520,6 @@ REMINDER: If Case 1 applies, every sentence must end with the [<k>] citation(s) 
 
             Follow the response guidelines in the system prompt.
             """
-            load_dotenv(".env")
             TAVILY_API_KEY=str(os.getenv("TAVILY_API_KEY"))
             tools=[
                 {

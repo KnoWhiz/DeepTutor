@@ -112,7 +112,7 @@ class ApiHandler:
     def load_models(self):
         llm_basic = self.get_models(api_key=self.azure_api_key_backup,
                                     temperature=self.para['temperature'],
-                                    deployment_name='gpt-4.1-mini',
+                                    deployment_name='gpt-4.1',
                                     endpoint=self.azure_endpoint_backup,
                                     api_version='2024-12-01-preview',
                                     host='azure',

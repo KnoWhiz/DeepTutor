@@ -823,7 +823,7 @@ async def get_query_helper(chat_session: ChatSession, user_input, context_chat_h
     yield (question)
 
 
-def generate_follow_up_questions(answer, chat_history):
+def generate_follow_up_questions(answer, chat_history, user_input=""):
     """
     Generate 3 relevant follow-up questions based on the assistant's response and chat history.
     """
@@ -847,6 +847,7 @@ def generate_follow_up_questions(answer, chat_history):
     - Engaging and thought-provoking
     - Not repetitive with previous questions
     - Written in a way that encourages critical thinking
+    - If the user's last question is in Chinese, then use Chinese to generate the follow-up questions. If the user's last question is not in Chinese, then use English to generate the follow-up questions. Do not use other languages.
 
     Organize your response in the following JSON format:
     ```json
@@ -861,8 +862,8 @@ def generate_follow_up_questions(answer, chat_history):
     """
 
     human_prompt = """
-    Previous conversation history:
-    ```{chat_history}```
+    Student's last question:
+    ```{user_input}```
 
     Tutor's last response:
     ```{answer}```
@@ -876,7 +877,8 @@ def generate_follow_up_questions(answer, chat_history):
     chain = prompt | llm | error_parser
     result = chain.invoke({
         "answer": answer,
-        "chat_history": truncate_chat_history(chat_history)
+        # "chat_history": truncate_chat_history(chat_history),
+        "user_input": user_input
     })
 
     logger.info(f"Generated follow-up questions: {result['questions']}")

@@ -261,7 +261,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
                 if isinstance(message_content, list) and len(message_content) > 0:
                     message_content = message_content[0]
                 
-                follow_up_questions = generate_follow_up_questions(message_content, [])
+                follow_up_questions = generate_follow_up_questions(message_content, [], user_input)
                 for i in range(len(follow_up_questions)):
                     follow_up_questions[i] = translate_content(
                         content=follow_up_questions[i],
@@ -440,7 +440,7 @@ Extends prior static-chain multiplexing to dynamic transport of multiple ions, l
     if isinstance(message_content, list) and len(message_content) > 0:
         message_content = message_content[0]
 
-    follow_up_questions = generate_follow_up_questions(message_content, [])
+    follow_up_questions = generate_follow_up_questions(message_content, [], user_input)
     for i in range(len(follow_up_questions)):
         follow_up_questions[i] = translate_content(
             content=follow_up_questions[i],

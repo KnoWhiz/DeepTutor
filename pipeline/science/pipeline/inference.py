@@ -152,138 +152,6 @@ def deep_inference_agent(
         return safe_stream_generator()
 
 
-# def deepseek_inference(
-#     prompt: str,
-#     system_message: str = "You are a professional deep thinking researcher reading a paper. Analyze the paper context content and answer the question. If the information is not provided in the paper, say you cannot find the answer in the paper but will try to answer based on your knowledge. For formulas, use LaTeX format with $...$ or \n$$...\n$$.",
-#     stream: bool = False,
-#     temperature: float = 0.6,
-#     top_p: float = 0.1,
-#     max_tokens: int = 2000,
-#     model: str = "DeepSeek-R1-Distill-Llama-70B",
-#     chat_session: ChatSession = None
-# ) -> Optional[str]:
-#     """
-#     Get completion from the DeepSeek model with optional streaming support.
-
-#     Args:
-#         prompt: The user's input prompt
-#         system_message: The system message to set the AI's behavior
-#         stream: Whether to stream the output or not
-#         temperature: Controls randomness (0.0 = deterministic, 1.0 = creative)
-#         top_p: Controls diversity via nucleus sampling
-#         max_tokens: Maximum number of tokens to generate
-
-#     Returns:
-#         The generated text if streaming is False, None if streaming is True
-#     """
-#     if chat_session is None:
-#         # Initialize the chat session
-#         chat_session = ChatSession()
-#     config = load_config()
-#     max_tokens = config["inference_token_limit"]
-#     if model == "DeepSeek-R1-Distill-Llama-70B":
-#         model = "DeepSeek-R1-Distill-Llama-70B"
-#         base_url = "https://api.sambanova.ai/v1"
-#         max_tokens *= 3
-#     elif model == "DeepSeek-R1":
-#         model = "DeepSeek-R1"
-#         base_url = "https://preview.snova.ai/v1"
-#         max_tokens *= 1
-#     else:
-#         model = "DeepSeek-R1-Distill-Llama-70B"
-#         base_url = "https://api.sambanova.ai/v1"
-#         max_tokens *= 10
-
-#     client = openai.OpenAI(
-#         api_key=os.environ.get("SAMBANOVA_API_KEY"),
-#         base_url=base_url
-#     )
-
-#     if stream is False:
-#         try:
-#             response = client.chat.completions.create(
-#                 model=model,
-#                 messages=[
-#                     {"role": "system", "content": system_message},
-#                     {"role": "user", "content": prompt}
-#                 ],
-#                 temperature=temperature,
-#                 top_p=top_p,
-#                 max_tokens=max_tokens,
-#                 stream=stream
-#             )
-
-#             # Return the complete response
-#             return response.choices[0].message.content
-
-#         except openai.APIError as e:
-#             logger.exception(f"API Error: {str(e)}")
-#             return None
-#         except Exception as e:
-#             logger.exception(f"An error occurred: {str(e)}")
-#             return None
-#     else:
-#         # If the response is streaming, process the streaming response. The response is a generator.
-#         logger.info("Streaming response from DeepSeek:")
-#         try:
-#             def deepseek_stream_response(chat_session, model, system_message, prompt, temperature, top_p, max_tokens, stream):
-#                 response = client.chat.completions.create(
-#                     model=model,
-#                     messages=[
-#                         {"role": "system", "content": system_message},
-#                         {"role": "user", "content": prompt}
-#                     ],
-#                     temperature=temperature,
-#                     top_p=top_p,
-#                     max_tokens=max_tokens,
-#                     stream=stream
-#                 )
-
-#                 # Process the streaming response
-#                 found_think_end = False
-#                 accumulated_text = ""
-
-#                 for chunk in response:
-#                     if chunk.choices[0].delta.content is not None:
-#                         chunk_content = chunk.choices[0].delta.content
-#                         accumulated_text += chunk_content
-
-#                         # Check if we just found the end of the thinking section
-#                         if "</think>" in accumulated_text and not found_think_end:
-#                             # Split the accumulated text at "</think>"
-#                             parts = accumulated_text.split("</think>", 1)
-#                             if len(parts) > 1:
-#                                 # Yield everything up to and including "</think>"
-#                                 yield parts[0] + "</think>"
-#                                 # chat_session.current_message += parts[0] + "</think>"
-#                                 # Yield the "<response>" tag
-#                                 yield "<response>"
-#                                 # chat_session.current_message += "<response>"
-#                                 # Yield the remainder of the text after "</think>"
-#                                 if parts[1]:
-#                                     yield parts[1]
-#                                 # Mark that we've found the end of thinking
-#                                 found_think_end = True
-#                                 # Reset accumulated text since we've processed it
-#                                 accumulated_text = ""
-#                         else:
-#                             # If we've already found the thinking end or haven't found it yet in this chunk
-#                             if found_think_end or "</think>" not in chunk_content:
-#                                 yield chunk_content
-
-#                 # Add the closing response tag at the end
-#                 yield "</response>"
-#                 # chat_session.current_message += "</response>"
-#             return deepseek_stream_response(chat_session, model, system_message, prompt, temperature, top_p, max_tokens, stream)
-
-#         except openai.APIError as e:
-#             logger.exception(f"API Error: {str(e)}")
-#             return None
-#         except Exception as e:
-#             logger.exception(f"An error occurred: {str(e)}")
-#             return None
-
-
 def deepseek_langchain_inference(
     prompt: str,
     system_message: str = "You are a professional deep thinking researcher reading a paper. Analyze the paper context content and answer the question. If the information is not provided in the paper, say you cannot find the answer in the paper but will try to answer based on your knowledge. For formulas, use LaTeX format with $...$ or \n$$...\n$$.",
@@ -465,76 +333,6 @@ def o3mini_inference(user_prompt: str,
         return response
 
 
-def o4mini_inference(user_prompt: str,
-                     system_prompt: str = "You are a professional deep thinking researcher reading a paper. Analyze the paper context content and answer the question. If the information is not provided in the paper, say you cannot find the answer in the paper but will try to answer based on your knowledge. For formulas, use LaTeX format with $...$ or \n$$...\n$$.",
-                     stream: bool = False,
-                     chat_session: ChatSession = None) -> Union[str, Iterator]:
-    """
-    Generate a response using Azure OpenAI through LangChain
-
-    Args:
-        system_prompt: The system instruction for the AI
-        user_prompt: The user's query or input
-        stream: Whether to stream the response (default: False)
-
-    Returns:
-        If stream = False: The text content of the model's response as a string
-        If stream = True: A streaming response iterator that can be iterated over
-    """
-    # Azure OpenAI credentials
-    endpoint = os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP")
-    deployment = "o4-mini"
-    subscription_key = os.getenv("AZURE_OPENAI_API_KEY_BACKUP")
-
-    # Initialize the Azure OpenAI model through LangChain
-    # Use model_kwargs to properly pass the max_completion_tokens parameter
-    model = AzureChatOpenAI(
-        azure_endpoint=endpoint,
-        api_key=subscription_key,
-        api_version="2024-12-01-preview",
-        deployment_name=deployment,
-        model_kwargs={"max_completion_tokens": 100000, "stream_options": {"include_usage": True}} if stream else {"max_completion_tokens": 100000},
-        streaming=stream
-    )
-
-    # Create prompt template for the chain
-    prompt_template = ChatPromptTemplate.from_messages([
-        ("system", system_prompt),
-        ("human", "{user_input}")
-    ])
-    
-    # Create a parser
-    parser = StrOutputParser()
-    
-    # Define the chain using LCEL
-    chain = prompt_template | model | parser
-
-    # Generate response - use different methods depending on streaming mode
-    if stream:
-        # Return the streaming response generator
-        def o4mini_stream_response(chain, user_prompt, stream):
-            yield "<think>"
-            first_token = True
-            stream_generator, cost_info = track_cost_and_stream(user_input=user_prompt, chain=chain)
-            for chunk in stream_generator:
-                if first_token:
-                    yield "</think>"
-                    yield "<response>"
-                    first_token = False
-                yield chunk
-            yield "</response>"
-            logger.info(f"Cost info dict: {cost_info}")
-            # Update the accumulated cost in chat_session
-            if chat_session is not None and "total_cost" in cost_info:
-                chat_session.update_cost(cost_info["total_cost"])
-                logger.info(f"Updated session cost: ${chat_session.get_accumulated_cost():.6f}")
-        return o4mini_stream_response(chain, user_prompt, stream)
-    else:
-        # Return just the content string from the complete response
-        response = chain.invoke({"user_input": user_prompt})
-        return response
-
-
 # Example usage
 if __name__ == "__main__":
     # # Example with DeepSeek streaming
@@ -562,14 +360,11 @@ if __name__ == "__main__":
         print(chunk, end="", flush=True)
 
 
-from openai import OpenAI
+from openai import OpenAI, AzureOpenAI
 from dotenv import load_dotenv  
 from typing import Iterable
 # import os
 
-
-# load_dotenv(".env")
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def _format_thinking_delta(delta: str) -> str:
     """
@@ -603,6 +398,15 @@ def stream_response_with_tags_detailed(**create_kwargs) -> Iterable[str]:
       <think> ...reasoning summary + tool progress... </think><response> ...final answer... </response>
     With detailed tool calling updates inside <think>.
     """
+    # load_dotenv(".env")
+    # If OpenAI API
+    # client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    # If AzureOpenAI API
+    client = AzureOpenAI(
+        api_key=os.getenv("AZURE_OPENAI_API_KEY_BACKUP"),
+        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP"),
+        api_version="2025-03-01-preview",
+    )
     stream = client.responses.create(stream=True, **create_kwargs)
 
     thinking_open = True
@@ -702,6 +506,21 @@ def stream_response_with_tags(**create_kwargs) -> Iterable[str]:
       <think> ...reasoning summary + tool progress... </think><response> ...final answer... </response>
     Without detailed tool calling updates inside <think>.
     """
+    # load_dotenv(".env")
+    # If OpenAI API
+    # client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    # If AzureOpenAI API
+    client = OpenAI(
+        api_key=os.getenv("AZURE_OPENAI_API_KEY_BACKUP"),
+        # base_url="https://knowhiz-service-openai-backup-2.openai.azure.com/openai/v1/"
+        base_url=str(os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP")) + "openai/v1/"
+    )
+    # client = AzureOpenAI(
+    #     api_key=os.getenv("AZURE_OPENAI_API_KEY_BACKUP"),
+    #     azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP"),
+    #     api_version="2025-04-01-preview",
+    #     # api_version="2025-06-10",
+    # )
     stream = client.responses.create(stream=True, **create_kwargs)
 
     # Show a thinking container immediately

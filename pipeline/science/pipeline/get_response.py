@@ -490,15 +490,15 @@ REMINDER: If Case 1 applies, every sentence must end with the [<k>] citation(s) 
                 # base_url="https://knowhiz-service-openai-backup-2.openai.azure.com/openai/v1/"
                 base_url=str(os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP")) + "openai/v1/"
             )
-            # TAVILY_API_KEY=str(os.getenv("TAVILY_API_KEY"))
-            # tools=[
-            #     {
-            #         "type": "mcp",
-            #         "server_label": "tavily",
-            #         "server_url": "https://mcp.tavily.com/mcp/?tavilyApiKey=" + TAVILY_API_KEY,
-            #         "require_approval": "never",
-            #     },
-            # ]
+            TAVILY_API_KEY=str(os.getenv("TAVILY_API_KEY"))
+            tools=[
+                {
+                    "type": "mcp",
+                    "server_label": "tavily",
+                    "server_url": "https://mcp.tavily.com/mcp/?tavilyApiKey=" + TAVILY_API_KEY,
+                    "require_approval": "never",
+                },
+            ]
             kwargs = dict(
                 model="gpt-5",
                 # reasoning={"effort": "high", "summary": "detailed"},

@@ -27,6 +27,7 @@ from pipeline.science.pipeline.images_understanding import (
 from pipeline.science.pipeline.rag_agent import get_rag_context
 from pipeline.science.pipeline.inference import stream_response_with_tags
 # from pipeline.science.pipeline.claude_code_sdk import get_claude_code_response, get_claude_code_response_async
+from openai import OpenAI, AzureOpenAI
 from dotenv import load_dotenv
 load_dotenv()
 import logging
@@ -322,9 +323,9 @@ EDGE-CASE HANDLING
 REMINDER: If Case 1 applies, every sentence must end with the [<k>] citation(s) plus the one-sentence italic source extract.
 """
 
-        user_prompt = """
+        user_prompt = f"""
         Previous conversation history:
-        ```{chat_history}```
+        ```{truncate_chat_history(chat_history)}```
         
 Reference context chunks with relevance scores from the paper: 
 {formatted_context_string}
@@ -484,28 +485,63 @@ REMINDER: If Case 1 applies, every sentence must end with the [<k>] citation(s) 
 """
 
         if chat_session.mode == ChatMode.LITE:
-            prompt_template = ChatPromptTemplate.from_messages([
-                ("system", system_prompt),
-                ("human", user_prompt)
-            ])
+            client = OpenAI(
+                api_key=os.getenv("AZURE_OPENAI_API_KEY_BACKUP"),
+                # base_url="https://knowhiz-service-openai-backup-2.openai.azure.com/openai/v1/"
+                base_url=str(os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP")) + "openai/v1/"
+            )
+            # TAVILY_API_KEY=str(os.getenv("TAVILY_API_KEY"))
+            # tools=[
+            #     {
+            #         "type": "mcp",
+            #         "server_label": "tavily",
+            #         "server_url": "https://mcp.tavily.com/mcp/?tavilyApiKey=" + TAVILY_API_KEY,
+            #         "require_approval": "never",
+            #     },
+            # ]
+            kwargs = dict(
+                model="gpt-5",
+                # reasoning={"effort": "high", "summary": "detailed"},
+                reasoning={"effort": "minimal", "summary": "auto"},
+                # reasoning={"effort": "low", "summary": "auto"},
+                # tools=[{"type": "web_search"}],  # built-in tool
+                # tools=tools,  # built-in tool
+                tools=[],
+                instructions=f"{system_prompt}",
+                input=user_prompt,
+            )
+            # stream = client.responses.create(stream=True, **kwargs)
+            stream = stream_response_with_tags(**kwargs)
+            # Convert regular generator to async generator
+            async def sync_to_async_generator():
+                # yield "<response>\n\n"
+                for chunk in stream:
+                    yield chunk
+                # yield "\n\n</response>"
+            return sync_to_async_generator()
+
+            # prompt_template = ChatPromptTemplate.from_messages([
+            #     ("system", system_prompt),
+            #     ("human", user_prompt)
+            # ])
             
-            llm = get_llm('advanced', config['llm'])
-            chain = prompt_template | llm
-            answer = chain.stream({
-                "formatted_context_string": formatted_context_string,
-                "user_input_string": user_input_string,
-                "chat_history": truncate_chat_history(chat_history)
-            })
-            async def process_stream():
-                yield "<response>\n\n"
-                for chunk in answer:
-                    # Convert AIMessageChunk to string
-                    if hasattr(chunk, 'content'):
-                        yield chunk.content
-                    else:
-                        yield str(chunk)
-                yield "\n\n</response>"
-            return process_stream()
+            # llm = get_llm('advanced', config['llm'])
+            # chain = prompt_template | llm
+            # answer = chain.stream({
+            #     "formatted_context_string": formatted_context_string,
+            #     "user_input_string": user_input_string,
+            #     "chat_history": truncate_chat_history(chat_history)
+            # })
+            # async def process_stream():
+            #     yield "<response>\n\n"
+            #     for chunk in answer:
+            #         # Convert AIMessageChunk to string
+            #         if hasattr(chunk, 'content'):
+            #             yield chunk.content
+            #         else:
+            #             yield str(chunk)
+            #     yield "\n\n</response>"
+            # return process_stream()
         else:
             # For Basic mode and Advanced mode
             user_prompt = f"""

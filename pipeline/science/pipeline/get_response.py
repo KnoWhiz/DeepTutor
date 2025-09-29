@@ -516,7 +516,10 @@ REMINDER: If Case 1 applies, every sentence must end with the [<k>] citation(s) 
             async def sync_to_async_generator():
                 # yield "<response>\n\n"
                 for chunk in stream:
-                    yield chunk
+                    if "<think>" in chunk or "</think>" in chunk:
+                        yield ""
+                    else:
+                        yield chunk
                 # yield "\n\n</response>"
             return sync_to_async_generator()
 

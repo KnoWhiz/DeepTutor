@@ -233,7 +233,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
         if isinstance(message_content, list) and len(message_content) > 0:
             message_content = message_content[0]
 
-        follow_up_questions = generate_follow_up_questions(message_content, [])
+        follow_up_questions = generate_follow_up_questions(message_content, [], user_input)
         for i in range(len(follow_up_questions)):
             follow_up_questions[i] = translate_content(
                 content=follow_up_questions[i],
@@ -445,7 +445,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
     # Generate follow-up questions
     yield "\n\n**💬 Loading follow-up questions ...**\n\n"
     followup_start = time.time()
-    follow_up_questions = generate_follow_up_questions(chat_session.current_message, chat_history)
+    follow_up_questions = generate_follow_up_questions(chat_session.current_message, chat_history, user_input)
     for i in range(len(follow_up_questions)):
         follow_up_questions[i] = translate_content(
             content=follow_up_questions[i],

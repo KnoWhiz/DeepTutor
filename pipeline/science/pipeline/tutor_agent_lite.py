@@ -236,7 +236,7 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
                 if isinstance(message_content, list) and len(message_content) > 0:
                     message_content = message_content[0]
                 
-                follow_up_questions = generate_follow_up_questions(message_content, [])
+                follow_up_questions = generate_follow_up_questions(message_content, [], user_input)
                 for i in range(len(follow_up_questions)):
                     follow_up_questions[i] = translate_content(
                         content=follow_up_questions[i],
@@ -261,14 +261,14 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
             # Regular summary for single file or initial message when no chat history
             # Include the PDF content in addition to user_input as refined_user_input
             refined_user_input = f"""
-            Summarize this paper for a busy researcher in ≤180 words as a structured abstract. Use these exact headings: 
+            Summarize this paper for a busy researcher as a structured abstract. Use these exact headings: 
             **TL;DR** (1–2 sentences); 
             **Background & Objective** (what gap and goal); 
             **Method** (core idea + data/setup, plain words); 
             **Results** (2–4 key quantitative findings with numbers/units); 
             **Conclusion/Significance** (who should care, why); 
-            **Limitations & Assumptions** (≤2 bullets); 
-            **Context vs Prior Work** (1–2 sentences on novelty); 
+            **Limitations & Assumptions** (explain the limitations after comparing with related works, do web search for the comparison); 
+            **Context vs Prior Work** (explain the novelty in the community, do web search for the comparison);
             Avoid hype, define any jargon briefly
 
             A good example (IMPORTANT: this is only for format reference. Do not relate this with the actual document content): **TL;DR**  
@@ -397,7 +397,7 @@ Extends prior static-chain multiplexing to dynamic transport of multiple ions, l
     if isinstance(message_content, list) and len(message_content) > 0:
         message_content = message_content[0]
 
-    follow_up_questions = generate_follow_up_questions(message_content, [])
+    follow_up_questions = generate_follow_up_questions(message_content, [], user_input)
     for i in range(len(follow_up_questions)):
         follow_up_questions[i] = translate_content(
             content=follow_up_questions[i],

@@ -238,7 +238,7 @@ RESPONSE GUIDELINES:
 
 SOURCING MODES
 Case 1 (Answerable from context chunks):
-  - Use only the context. For *each sentence* in the response, cite the most relevant chunk key(s) in the format "[<1>]" or "[<1>][<3>]" at the end of the sentence.
+  - Use only the context. For *each sentence* in the response, cite the most relevant chunk key (IMPORTANT: only **one** citation key after each sentence) in the format "[<1>]" or "[<3>]" at the end of the sentence.
   - Immediately after each citation key, append one sentence from the source (IMPORTANT: italic, in quotes) inside square brackets, e.g., ["_...source sentence..._"]. IMPORTANT: Use the same language as the original source!
   - Use markdown emphasis for readability.
 
@@ -264,9 +264,9 @@ Context Chunks:
   [<2>]: "Angular frequency ω relates to frequency f by ω = 2πf."
 
 Assistant (Case 1):
-**TL;DR:** The photon's energy is proportional to its angular frequency via $E=\hbar\omega$. [<1>] ["_Planck's relation states E = ħω for a single photon._"]
-**Planck relation.** The energy of a photon is $E=\hbar\omega$. [<1>] ["_Planck’s relation states E = ħω for a single photon._"]  
-**Frequency form.** Using $\omega=2\pi f$, we also have $E=h f$ with $h=2\pi\hbar$. [<2>][<1>] ["_Angular frequency ω relates to frequency f by ω = 2πf._"]["_Planck's relation states E = ħω for a single photon._"]
+**TL;DR:** The photon's energy is proportional to its angular frequency via $E=\hbar\omega$. [<1>]["_Planck's relation states E = ħω for a single photon._"]
+**Planck relation.** The energy of a photon is $E=\hbar\omega$. [<1>]["_Planck’s relation states E = ħω for a single photon._"]
+**Frequency form.** Using $\omega=2\pi f$, we also have $E=h f$ with $h=2\pi\hbar$. [<2>]["_Angular frequency ω relates to frequency f by ω = 2πf._"]
 
 GOOD B — Display math, multi-step, Case 2 (own knowledge)
 User Q: "Show the variance of a Bernoulli($p$) variable."
@@ -283,8 +283,8 @@ User Q: "What Rabi frequency did the experiment report?"
 Context:
   [<1>]: "The measured Rabi frequency was 2.1 MHz on the carrier."
 Assistant (Case 1):
-**TL;DR:** The reported Rabi frequency is $2.1\,\mathrm{{MHz}}$. [<1>] ["_The measured Rabi frequency was 2.1 MHz on the carrier._"]  
-**Result.** The experiment measured $\Omega=2.1\,\mathrm{{MHz}}$. [<1>] ["_The measured Rabi frequency was 2.1 MHz on the carrier._"]
+**TL;DR:** The reported Rabi frequency is $2.1\,\mathrm{{MHz}}$. [<1>]["_The measured Rabi frequency was 2.1 MHz on the carrier._"]  
+**Result.** The experiment measured $\Omega=2.1\,\mathrm{{MHz}}$. [<1>]["_The measured Rabi frequency was 2.1 MHz on the carrier._"]
 
 ────────────────────────────────────────────────
 BAD EXAMPLES (do NOT imitate; annotate the violation)
@@ -299,7 +299,7 @@ BAD 2 — Backticked math
 BAD 3 — Unbalanced dollar signs
 "The phase is $\phi = \omega t."  ← ❌ Opening $ without closing $.
 
-BAD 4 — Mixed delimiters
+BAD 4 — Forbidden delimiters
 "Use \(\alpha\) and \[ \int f \] for clarity."  ← ❌ Forbidden delimiters; must use $...$ or $$...$$ only.
 
 BAD 5 — Display math split across multiple $$ blocks
@@ -315,12 +315,10 @@ BAD 7 — Currency symbol misinterpreted as math
 ────────────────────────────────────────────────
 EDGE-CASE HANDLING
 ────────────────────────────────────────────────
-- Currency: write "USD 5" or "\$5" inside text; do not wrap in $...$.
-- Code vs math: algorithms/code stay in backticks or fenced code blocks; math symbols within code should be plain text unless you intentionally render math outside the code block.
 - Long derivations: prefer display math with $$...$$; keep each equation self-contained in a single block.
 - Greek/units: use LaTeX macros, e.g., $\alpha$, $\mu$, $\Omega$, $\,\mathrm{{MHz}}$.
 
-REMINDER: If Case 1 applies, every sentence must end with the [<k>] citation(s) plus the one-sentence italic source extract.
+REMINDER: When Case 1 applies, every sentence must end with only one [<k>] citation plus the one-sentence italic source extract.
 """
 
         user_prompt = f"""
@@ -362,8 +360,8 @@ RESPONSE GUIDELINES:
 
 SOURCING MODES
 Case 1 (Answerable from context chunks):
-  - Use only the context. For *each sentence* in the response, cite the most relevant chunk key(s) in the format "[<1>]" or "[<1>][<3>]" at the end of the sentence.
-  - Immediately after each citation key, append one sentence from the source (italic, in quotes) inside square brackets, e.g., ["_...source sentence..._"]. IMPORTANT: Use the same language as the original source!
+  - Use only the context. For *each sentence* in the response, cite the most relevant chunk key (IMPORTANT: only **one** citation key after each sentence) in the format "[<1>]" or "[<3>]" at the end of the sentence.
+  - Immediately after each citation key, append one sentence from the source (IMPORTANT: italic, in quotes) inside square brackets, e.g., ["_...source sentence..._"]. IMPORTANT: Use the same language as the original source!
   - Use markdown emphasis for readability.
 
 Case 2 (Not answerable from context):
@@ -388,9 +386,9 @@ Context Chunks:
   [<2>]: "Angular frequency ω relates to frequency f by ω = 2πf."
 
 Assistant (Case 1):
-**TL;DR:** The photon's energy is proportional to its angular frequency via $E=\hbar\omega$. [<1>] ["_Planck's relation states E = ħω for a single photon._"]
-**Planck relation.** The energy of a photon is $E=\hbar\omega$. [<1>] ["_Planck’s relation states E = ħω for a single photon._"]  
-**Frequency form.** Using $\omega=2\pi f$, we also have $E=h f$ with $h=2\pi\hbar$. [<2>][<1>] ["_Angular frequency ω relates to frequency f by ω = 2πf._"]["_Planck's relation states E = ħω for a single photon._"]
+**TL;DR:** The photon's energy is proportional to its angular frequency via $E=\hbar\omega$. [<1>]["_Planck's relation states E = ħω for a single photon._"]
+**Planck relation.** The energy of a photon is $E=\hbar\omega$. [<1>]["_Planck’s relation states E = ħω for a single photon._"]
+**Frequency form.** Using $\omega=2\pi f$, we also have $E=h f$ with $h=2\pi\hbar$. [<2>]["_Angular frequency ω relates to frequency f by ω = 2πf._"]
 
 GOOD B — Display math, multi-step, Case 2 (web search)
 User Q: "What is Second law of thermodynamics , search Wikipedia to get answers"
@@ -460,7 +458,7 @@ BAD 2 — Backticked math
 BAD 3 — Unbalanced dollar signs
 "The phase is $\phi = \omega t."  ← ❌ Opening $ without closing $.
 
-BAD 4 — Mixed delimiters
+BAD 4 — Forbidden delimiters
 "Use \(\alpha\) and \[ \int f \] for clarity."  ← ❌ Forbidden delimiters; must use $...$ or $$...$$ only.
 
 BAD 5 — Display math split across multiple $$ blocks
@@ -476,12 +474,10 @@ BAD 7 — Currency symbol misinterpreted as math
 ────────────────────────────────────────────────
 EDGE-CASE HANDLING
 ────────────────────────────────────────────────
-- Currency: write "USD 5" or "\$5" inside text; do not wrap in $...$.
-- Code vs math: algorithms/code stay in backticks or fenced code blocks; math symbols within code should be plain text unless you intentionally render math outside the code block.
 - Long derivations: prefer display math with $$...$$; keep each equation self-contained in a single block.
 - Greek/units: use LaTeX macros, e.g., $\alpha$, $\mu$, $\Omega$, $\,\mathrm{{MHz}}$.
 
-REMINDER: If Case 1 applies, every sentence must end with the [<k>] citation(s) plus the one-sentence italic source extract.
+REMINDER: When Case 1 applies, every sentence must end with only one [<k>] citation plus the one-sentence italic source extract.
 """
 
         if chat_session.mode == ChatMode.LITE:

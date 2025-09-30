@@ -283,13 +283,13 @@ $$
 ```
 
 GOOD C — Units, vectors, subscripts; Case 1
-User Q: "What Rabi frequency did the experiment report?"
+User Q: "What axial Rabi frequency did the experiment report?"
 Context:
-  [<1>]: "The measured Rabi frequency was 2.1 MHz on the carrier."
+  [<1>]: "This means the effective radial Rabi rate was in the range of roughly 330–400 kHz, depending on the exact optical alignment and beam balance across the ions. The note also highlights that after defocusing the beam, the radial Rabi frequency was about halved, consistent with reduced coupling strength. The measured axial Rabi frequency was 2.1 MHz on the carrier. According to a group meeting document from September 9, 2022, the experiment reported a radial Rabi frequency corresponding to 2.5–3 µs π-time, achieved with about 1.6 mW of 729 nm laser power focused to a beam waist of ~3 µm"
 Assistant (Case 1):
 ```
-**TL;DR:** The reported Rabi frequency is $2.1\,\mathrm{{MHz}}$. [<1>]["_The measured Rabi frequency was 2.1 MHz on the carrier._"]  
-**Result.** The experiment measured $\Omega=2.1\,\mathrm{{MHz}}$. [<1>]["_The measured Rabi frequency was 2.1 MHz on the carrier._"]
+**TL;DR:** The reported Rabi frequency is $2.1\,\mathrm{{MHz}}$. [<1>]["_...The measured Rabi frequency was 2.1 MHz on the carrier..._"]  
+**Result.** The experiment measured $\Omega=2.1\,\mathrm{{MHz}}$. [<1>]["_...The measured Rabi frequency was 2.1 MHz on the carrier..._"]
 ```
 
 ────────────────────────────────────────────────
@@ -421,13 +421,13 @@ If you want, I can derive the Clausius inequality step‑by‑step or work a con
 ```
 
 GOOD C — Units, vectors, subscripts; Case 1
-User Q: "What Rabi frequency did the experiment report?"
+User Q: "What axial Rabi frequency did the experiment report?"
 Context:
-  [<1>]: "The measured Rabi frequency was 2.1 MHz on the carrier."
+  [<1>]: "This means the effective radial Rabi rate was in the range of roughly 330–400 kHz, depending on the exact optical alignment and beam balance across the ions. The note also highlights that after defocusing the beam, the radial Rabi frequency was about halved, consistent with reduced coupling strength. The measured axial Rabi frequency was 2.1 MHz on the carrier. According to a group meeting document from September 9, 2022, the experiment reported a radial Rabi frequency corresponding to 2.5–3 µs π-time, achieved with about 1.6 mW of 729 nm laser power focused to a beam waist of ~3 µm"
 Assistant (Case 1):
 ```
-**TL;DR:** The reported Rabi frequency is $2.1\,\mathrm{{MHz}}$. [<1>]["_The measured Rabi frequency was 2.1 MHz on the carrier._"]  
-**Result.** The experiment measured $\Omega=2.1\,\mathrm{{MHz}}$. [<1>]["_The measured Rabi frequency was 2.1 MHz on the carrier._"]
+**TL;DR:** The reported Rabi frequency is $2.1\,\mathrm{{MHz}}$. [<1>]["_...The measured Rabi frequency was 2.1 MHz on the carrier..._"]  
+**Result.** The experiment measured $\Omega=2.1\,\mathrm{{MHz}}$. [<1>]["_...The measured Rabi frequency was 2.1 MHz on the carrier..._"]
 ```
 
 GOOD D - A mix of Case 1 and Case 2.

@@ -264,27 +264,33 @@ Context Chunks:
   [<2>]: "Angular frequency ω relates to frequency f by ω = 2πf."
 
 Assistant (Case 1):
+```
 **TL;DR:** The photon's energy is proportional to its angular frequency via $E=\hbar\omega$. [<1>]["_Planck's relation states E = ħω for a single photon._"]
 **Planck relation.** The energy of a photon is $E=\hbar\omega$. [<1>]["_Planck’s relation states E = ħω for a single photon._"]
 **Frequency form.** Using $\omega=2\pi f$, we also have $E=h f$ with $h=2\pi\hbar$. [<2>]["_Angular frequency ω relates to frequency f by ω = 2πf._"]
+```
 
 GOOD B — Display math, multi-step, Case 2 (own knowledge)
 User Q: "Show the variance of a Bernoulli($p$) variable."
 Assistant (Case 2):
+```
 **TL;DR:** For $X\sim\mathrm{{Bernoulli}}(p)$, the variance is $\operatorname{{Var}}(X)=p(1-p)$.
 I cannot find this in the provided context, so I'm using my own knowledge.  
 **Derivation.** Let $X\in{{0,1}}$ with $\Pr(X=1)=p$. Then $E[X]=p$ and $E[X^2]=p$. Hence,
 $$
 \operatorname{{Var}}(X)=E[X^2]-E[X]^2=p-p^2=p(1-p).
 $$
+```
 
 GOOD C — Units, vectors, subscripts; Case 1
 User Q: "What Rabi frequency did the experiment report?"
 Context:
   [<1>]: "The measured Rabi frequency was 2.1 MHz on the carrier."
 Assistant (Case 1):
+```
 **TL;DR:** The reported Rabi frequency is $2.1\,\mathrm{{MHz}}$. [<1>]["_The measured Rabi frequency was 2.1 MHz on the carrier._"]  
 **Result.** The experiment measured $\Omega=2.1\,\mathrm{{MHz}}$. [<1>]["_The measured Rabi frequency was 2.1 MHz on the carrier._"]
+```
 
 ────────────────────────────────────────────────
 BAD EXAMPLES (do NOT imitate; annotate the violation)
@@ -386,13 +392,16 @@ Context Chunks:
   [<2>]: "Angular frequency ω relates to frequency f by ω = 2πf."
 
 Assistant (Case 1):
+```
 **TL;DR:** The photon's energy is proportional to its angular frequency via $E=\hbar\omega$. [<1>]["_Planck's relation states E = ħω for a single photon._"]
 **Planck relation.** The energy of a photon is $E=\hbar\omega$. [<1>]["_Planck’s relation states E = ħω for a single photon._"]
 **Frequency form.** Using $\omega=2\pi f$, we also have $E=h f$ with $h=2\pi\hbar$. [<2>]["_Angular frequency ω relates to frequency f by ω = 2πf._"]
+```
 
 GOOD B — Display math, multi-step, Case 2 (web search)
 User Q: "What is Second law of thermodynamics , search Wikipedia to get answers"
 Assistant (Case 2):
+```
 **TL;DR:** The second law of thermodynamics says entropy does not decrease for an isolated system, which gives natural processes a preferred direction and forbids perfect conversion of heat to work. ([en.wikipedia.org](https://en.wikipedia.org/wiki/Second_law_of_thermodynamics))
 
 - **Core idea (entropy increase).** In any spontaneous change, the total entropy of an isolated system satisfies $\Delta S \ge 0$, so systems evolve toward equilibrium with maximal entropy; this defines the “arrow of time.” ([en.wikipedia.org](https://en.wikipedia.org/wiki/Entropy))
@@ -409,26 +418,30 @@ Assistant (Case 2):
 - **Microscopic/statistical view.** Entropy measures the number of microstates compatible with a macrostate; in statistical mechanics $S=k_B\ln\Omega$, making the second law a statement of overwhelmingly likely evolution toward more numerous (higher‑entropy) states. ([en.wikipedia.org](https://en.wikipedia.org/wiki/Entropy))
 
 If you want, I can derive the Clausius inequality step‑by‑step or work a concrete example (e.g., why a 600 K to 300 K engine is limited to $\eta_{{\max}}=50\%$).
+```
 
 GOOD C — Units, vectors, subscripts; Case 1
 User Q: "What Rabi frequency did the experiment report?"
 Context:
   [<1>]: "The measured Rabi frequency was 2.1 MHz on the carrier."
 Assistant (Case 1):
-**TL;DR:** The reported Rabi frequency is $2.1\,\mathrm{{MHz}}$. [<1>] ["_The measured Rabi frequency was 2.1 MHz on the carrier._"]  
-**Result.** The experiment measured $\Omega=2.1\,\mathrm{{MHz}}$. [<1>] ["_The measured Rabi frequency was 2.1 MHz on the carrier._"]
+```
+**TL;DR:** The reported Rabi frequency is $2.1\,\mathrm{{MHz}}$. [<1>]["_The measured Rabi frequency was 2.1 MHz on the carrier._"]  
+**Result.** The experiment measured $\Omega=2.1\,\mathrm{{MHz}}$. [<1>]["_The measured Rabi frequency was 2.1 MHz on the carrier._"]
+```
 
 GOOD D - A mix of Case 1 and Case 2.
 User Q: "Context from the paper: {{context_from_paper}}\n\n What is this paper mainly about? Do web search if needed to find related multiplexing papers and compare with this paper."
 Assistant:
-**TL;DR:** The paper demonstrates a temporally multiplexed ion–photon interface by rapidly shuttling a nine-ion $^{{40}}\mathrm{{Ca}}^+$ chain through a focused addressing beam to produce single-photon trains with low crosstalk, verified by $g^{{(2)}}(0)=0.060(13)$, and it analyzes transport-induced motional excitation; compared with other multiplexing work, it trades cavity-enhanced efficiency for architectural simplicity and a path to higher attempt rates via fast transport. [<1>] ["_Here, we demonstrate a temporally multiplexed ion-photon interface via rapid transport of a chain of nine calcium ions across 74 µm within 86 µs._"]
+```
+**TL;DR:** The paper demonstrates a temporally multiplexed ion–photon interface by rapidly shuttling a nine-ion $^{{40}}\mathrm{{Ca}}^+$ chain through a focused addressing beam to produce single-photon trains with low crosstalk, verified by $g^{{(2)}}(0)=0.060(13)$, and it analyzes transport-induced motional excitation; compared with other multiplexing work, it trades cavity-enhanced efficiency for architectural simplicity and a path to higher attempt rates via fast transport. [<1>]["_Here, we demonstrate a temporally multiplexed ion-photon interface via rapid transport of a chain of nine calcium ions across 74 µm within 86 µs._"]
 
 — What this paper is mainly about (from the provided text) —
-- **Goal and method.** The authors implement a temporally multiplexed ion–photon interface by transporting a nine-ion chain across the focus of an $866\,\mathrm{{nm}}$ addressing beam to sequentially generate on-demand $397\,\mathrm{{nm}}$ photons, aiming for a nearly nine-fold attempt-rate increase for nodes separated by $>100\,\mathrm{{km}}$. [<1>] ["_In our experiments, we generate on-demand single photons by shuttling a nine-ion chain across the focus of a single-ion addressing beam._"]["_This scheme is expected to lead to a nearly nine-fold increase in attempt rate of the entanglement generation for quantum repeater nodes separated by >100 km._"]
-- **Nonclassicality/crosstalk.** The single-photon character of the multiplexed output is verified by $g^{{(2)}}(0)=0.060(13)$ without background subtraction, with residual coincidences primarily from neighboring-ion excitation (addressing-beam crosstalk $\approx 0.99\%$ giving expected $g^{{(2)}}_{{\mathrm{{{{exp}}}}(0)=0.049(8)}}$). [<1>][<3>] ["_The non-classical nature of the multiplexed photons is verified by measuring the second-order correlation function with an average value of g(2)(0) = 0.060(13)._"]["_The residual correlation can be explained by excitation of neighboring ions, i.e., crosstalk of the addressing beam, which is separately characterized to be 0.99 % … corresponding to expected average g(2) exp(0) = 0.049(8)._"]
-- **Throughput achieved.** Over $40\,\mathrm{{min}}$ the system made $\sim 1.56\times 10^{{6}}$ whole-string attempts (attempt rate $39.0\,\mathrm{{kHz}}$), with average photon extraction efficiency $0.21\%$ and a single-photon count rate of $\sim 71\,\mathrm{{cps}}$. [<2>] ["_Data is accumulated for 40 min, during which around 1.56 × 10^6 attempts were made to the whole string, corresponding to attempt rate 39.0 kHz, an average photon extraction efficiency of 0.21 % and single photons count rate of around 71 cps._"]
-- **Transport-induced motion.** Fast shuttling coherently excites the axial center-of-mass mode to $\bar n_{{\alpha}}\!\approx\!110$ (at full speed), inferred via carrier Rabi flopping; the authors discuss mitigation via improved shuttling and possible cavity alignment. [<1>][<4>] ["_…coherently excited to as much as ¯nα ≈110 for the center-of-mass mode._"]["_The carrier Rabi flopping … matches with COM coherent state with ¯nα ≈110 (Fig. 4(c))._"]
-- **Upgrade path.** They argue that coupling to a single-mode fiber to suppress crosstalk and integrating a miniature cavity could raise photonic extraction substantially without reducing the generation rate. [<5>] ["_Once integrated with … photon collection with a single mode fiber, we expect a faster photon extraction rate … and negligible ion crosstalk while achieving high fidelity ion-photon entanglement._"]["_Our system can also be combined with a miniature cavity … for much higher photon extraction efficiency without sacrificing the photon generation rate._"]
+- **Goal and method.** The authors implement a temporally multiplexed ion–photon interface by transporting a nine-ion chain across the focus of an $866\,\mathrm{{nm}}$ addressing beam to sequentially generate on-demand $397\,\mathrm{{nm}}$ photons, aiming for a nearly nine-fold attempt-rate increase for nodes separated by $>100\,\mathrm{{km}}$. [<1>]["_In our experiments, we generate on-demand single photons by shuttling a nine-ion chain across the focus of a single-ion addressing beam._"]["_This scheme is expected to lead to a nearly nine-fold increase in attempt rate of the entanglement generation for quantum repeater nodes separated by >100 km._"]
+- **Nonclassicality/crosstalk.** The single-photon character of the multiplexed output is verified by $g^{{(2)}}(0)=0.060(13)$ without background subtraction, with residual coincidences primarily from neighboring-ion excitation (addressing-beam crosstalk $\approx 0.99\%$ giving expected $g^{{(2)}}_{{\mathrm{{{{exp}}}}(0)=0.049(8)}}$). [<3>]["_The residual correlation can be explained by excitation of neighboring ions, i.e., crosstalk of the addressing beam, which is separately characterized to be 0.99 % … corresponding to expected average g(2) exp(0) = 0.049(8)._"]
+- **Throughput achieved.** Over $40\,\mathrm{{min}}$ the system made $\sim 1.56\times 10^{{6}}$ whole-string attempts (attempt rate $39.0\,\mathrm{{kHz}}$), with average photon extraction efficiency $0.21\%$ and a single-photon count rate of $\sim 71\,\mathrm{{cps}}$. [<2>]["_Data is accumulated for 40 min, during which around 1.56 × 10^6 attempts were made to the whole string, corresponding to attempt rate 39.0 kHz, an average photon extraction efficiency of 0.21 % and single photons count rate of around 71 cps._"]
+- **Transport-induced motion.** Fast shuttling coherently excites the axial center-of-mass mode to $\bar n_{{\alpha}}\!\approx\!110$ (at full speed), inferred via carrier Rabi flopping; the authors discuss mitigation via improved shuttling and possible cavity alignment. [<4>]["_The carrier Rabi flopping … matches with COM coherent state with ¯nα ≈110 (Fig. 4(c))._"]
+- **Upgrade path.** They argue that coupling to a single-mode fiber to suppress crosstalk and integrating a miniature cavity could raise photonic extraction substantially without reducing the generation rate. [<5>]["_Once integrated with … photon collection with a single mode fiber, we expect a faster photon extraction rate … and negligible ion crosstalk while achieving high fidelity ion-photon entanglement._"]
 
 — How it compares to related multiplexing approaches (recent literature) —
 - **Trapped ions, cavity-enhanced static-node multiplexing (3 ions).** A three-ion node in an optical cavity generated a train of telecom-converted photons and showed improved remote entanglement rate over $101\,\mathrm{{km}}$, demonstrating multimode networking with a static register rather than transport. ([journals.aps.org](https://journals.aps.org/prxquantum/abstract/10.1103/PRXQuantum.5.020308))
@@ -439,11 +452,12 @@ Assistant:
 - **Photonic sources, time multiplexing background.** Time-multiplexed SPDC sources boost single-photon probability (e.g., to $\sim 39\%$ over $30$ time bins) and trace back to “pseudo-demand” single photons via storage loops—conceptually related multiplexing on the photonic side rather than the matter interface. ([tohoku.elsevierpure.com](https://tohoku.elsevierpure.com/en/publications/time-multiplexed-heralded-single-photon-source))
 
 — Bottom line —
-- **What’s new here.** Multiplexing by fast, free-space ion-chain transport concentrates emission from many ions into one spatial mode without a cavity, boosting the attempt rate by roughly the chain length while preserving single-photon statistics $g^{{(2)}}(0)\approx 0.06$. [<1>][<3>] ["_This scheme is expected to lead to a nearly nine-fold increase in attempt rate …_"]["_… corresponding to g(2)(0) = 0.060(13)._"]
-- **Primary tradeoffs today.** Compared with cavity-based nodes that report per-photon detection near $9$–$90\%$, this transport approach currently shows lower extraction ($0.21\%$) and introduces coherent motional excitation (COM $\bar n_{{\alpha}}\!\approx\!110$) that must be tamed for high-fidelity local gates. [<2>][<4>] ["_… average photon extraction efficiency of 0.21 % …_"]["_… matches with COM coherent state with ¯nα ≈110 …_"] ([arxiv.org](https://arxiv.org/abs/2406.09480))
-- **Outlook.** The paper argues that single-mode-fiber collection and cavity integration could mitigate crosstalk and raise efficiency substantially while keeping the high attempt rate enabled by transport. [<5>] ["_… single mode fiber, we expect a faster photon extraction rate … and negligible ion crosstalk …_"]["_… combined with a miniature cavity … for much higher photon extraction efficiency without sacrificing the photon generation rate._"]
+- **What’s new here.** Multiplexing by fast, free-space ion-chain transport concentrates emission from many ions into one spatial mode without a cavity, boosting the attempt rate by roughly the chain length while preserving single-photon statistics $g^{{(2)}}(0)\approx 0.06$. [<1>]["_This scheme is expected to lead to a nearly nine-fold increase in attempt rate …_"]
+- **Primary tradeoffs today.** Compared with cavity-based nodes that report per-photon detection near $9$–$90\%$, this transport approach currently shows lower extraction ($0.21\%$) and introduces coherent motional excitation (COM $\bar n_{{\alpha}}\!\approx\!110$) that must be tamed for high-fidelity local gates. [<4>]["_… matches with COM coherent state with ¯nα ≈110 …_"] ([arxiv.org](https://arxiv.org/abs/2406.09480))
+- **Outlook.** The paper argues that single-mode-fiber collection and cavity integration could mitigate crosstalk and raise efficiency substantially while keeping the high attempt rate enabled by transport. [<5>]["_… single mode fiber, we expect a faster photon extraction rate … and negligible ion crosstalk …_"]
 
 If you’d like, I can tabulate key metrics (platform, multiplexing method, per-attempt rate, detection efficiency, $g^{{(2)}}(0)$, telecom conversion, and demonstrated distance) and suggest concrete upgrade targets for this transport-based interface.
+```
 
 ────────────────────────────────────────────────
 BAD EXAMPLES (do NOT imitate; annotate the violation)

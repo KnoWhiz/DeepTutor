@@ -355,7 +355,7 @@ MATH RENDERING — HARD RULES (must follow):
 - For units and symbols, use LaTeX: e.g., $10\,\mathrm{{MHz}}$, $\mu$, $\Omega$, $\mathbf{{x}}$, $x_i$.
 
 RESPONSE GUIDELINES:
-0. **TL;DR:** Start with 1–2 sentences that directly answer the question.
+0. **TL;DR:** Start with 1–2 sentences that directly answer the question. Only one TL;DR session would be enough.
 1. Provide concise, accurate answers directly addressing the question.
 2. Use clear, precise language with appropriate technical terminology.
 3. Format key concepts with **bold**.

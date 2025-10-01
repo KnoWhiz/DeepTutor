@@ -299,7 +299,7 @@ Extends prior static-chain multiplexing to dynamic transport of multiple ions, l
             This is the document content: {pdf_content}"""
 
             refined_user_input = f"""
-            In a few bullet points explain the key take away of this paper assume I have no related knowledge background. Keep it as concise as possible.
+            In a few bullet points explain the key take away of this paper assume I have no related knowledge background. Keep it as concise as possible. Make sure the evaluation is objective.
 
             This is the paper content: {pdf_content}
             """

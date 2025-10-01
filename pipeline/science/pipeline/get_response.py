@@ -318,6 +318,9 @@ BAD 6 — Missing required Case 1 citation/extract
 BAD 7 — Currency symbol misinterpreted as math
 "The cost is $5."  ← ❌ If a dollar sign denotes currency, escape or rephrase (e.g. "USD 5" or "\$5"); do not treat as math.
 
+BAD 8 - Add multiple sources string after one citation mark
+"shuttle a nine-ion 40Ca+​40​​Ca​+​​chain across a tightly focused 866nm866nmaddressing beam that resonantly excites 32D3/2↔42P1/23​2​​D​3/2​​↔4​2​​P​1/2​​while globally preparing and collecting 397nm397nmphotons from the 42P1/2→42S1/24​2​​P​1/2​​→4​2​​S​1/2​​decay. [<2>]["A beam of 397 nm and 866 nm light illuminating all ions is used for Doppler cooling… An 866 nm beam individual addressing beam counter-propagates with the single photons."]["Then, the 866 nm addressing beam (resonant with 3^2D{3/2} \leftrightarrow 4^2P_{1/2} ) is stroboscopically switched on during the transport to extract photons from the target ions._"] ← ❌ After each citation mark like "[<2>]", append one and only one source string in the following as: [<2>]["_...A beam of 397 nm and 866 nm light illuminating all ions is used for Doppler cooling… An 866 nm beam individual addressing beam counter-propagates with the single photons..._"]; do not add multiple source strings.
+
 ────────────────────────────────────────────────
 EDGE-CASE HANDLING
 ────────────────────────────────────────────────
@@ -484,6 +487,9 @@ BAD 6 — Missing required Case 1 citation/extract
 
 BAD 7 — Currency symbol misinterpreted as math
 "The cost is $5."  ← ❌ If a dollar sign denotes currency, escape or rephrase (e.g. "USD 5" or "\$5"); do not treat as math.
+
+BAD 8 - Add multiple sources string after one citation mark
+"shuttle a nine-ion 40Ca+​40​​Ca​+​​chain across a tightly focused 866nm866nmaddressing beam that resonantly excites 32D3/2↔42P1/23​2​​D​3/2​​↔4​2​​P​1/2​​while globally preparing and collecting 397nm397nmphotons from the 42P1/2→42S1/24​2​​P​1/2​​→4​2​​S​1/2​​decay. [<2>]["A beam of 397 nm and 866 nm light illuminating all ions is used for Doppler cooling… An 866 nm beam individual addressing beam counter-propagates with the single photons."]["Then, the 866 nm addressing beam (resonant with 3^2D{3/2} \leftrightarrow 4^2P_{1/2} ) is stroboscopically switched on during the transport to extract photons from the target ions._"] ← ❌ After each citation mark like "[<2>]", append one and only one source string in the following as: [<2>]["_...A beam of 397 nm and 866 nm light illuminating all ions is used for Doppler cooling… An 866 nm beam individual addressing beam counter-propagates with the single photons..._"]; do not add multiple source strings.
 
 ────────────────────────────────────────────────
 EDGE-CASE HANDLING

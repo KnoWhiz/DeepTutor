@@ -321,6 +321,10 @@ Relevant to quantum network designers using trapped ions; offers a path to highe
 **Context vs Prior Work**  
 Extends prior static-chain multiplexing to dynamic transport of multiple ions, leveraging quantum CCD concepts for nearly order-of-magnitude rate increase in ion–photon entanglement.
             """
+
+            refined_user_input = """
+            In a few bullet points explain the key take away of this paper assume I have no related knowledge background. Keep it as concise as possible.
+            """
             question = Question(text=refined_user_input, language=chat_session.current_language, question_type="local")
     else:
         refined_user_input = f"{user_input}\n\n{pdf_content}"

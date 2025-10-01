@@ -8,5 +8,6 @@
     "amplify/backend/amplify-meta.json": true,
     "amplify/backend/awscloudformation": true
   },
-  "git.ignoreLimitWarning": true
+  "git.ignoreLimitWarning": true,
+  "chatgpt.openOnStartup": true
 }

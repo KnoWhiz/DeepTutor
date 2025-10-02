@@ -428,131 +428,50 @@ def get_response_source(chat_session: ChatSession, file_path_list, user_input, a
             ...
         }
     """
-    """Enhanced implementation that synchronizes source tags between the
-    rendered answer (``chat_session.current_message``) and the internal
-    ``formatted_context``.
-
-    Workflow (per tag occurrence in ``current_message``):
-
-    1. Detect the original tag ``[<k>]`` and the quoted sentence that
-       immediately follows (pattern: ``[<k>]["_..._"]``).
-    2. Locate the corresponding context entry in
-       ``chat_session.formatted_context`` using the original *k* to obtain
-       ``page_num``, ``source_index`` and ``score``.
-    3. Call :func:`find_most_relevant_chunk` with the *quoted sentence*
-       (`tag_string`) against the full source content (page text for
-       ``BASIC``/``ADVANCED`` or stored chunk for ``LITE``) to obtain a
-       stable *content* key.
-    4. Populate the four return dictionaries with that *content* as key
-       and (a) ``score``  (b) ``page_num`` (c) ``page_num`` again for
-       ``refined_source_pages`` (d) ``source_index-1`` for
-       ``refined_source_index``.
-    5. Replace the original tag in ``chat_session.current_message`` with
-       a new, sequential tag ``[<1>]``, ``[<2>]`` ... duplications of the
-       same *content* re‑use the same sequential id.
-    """
-
-    logger.info("Running enhanced get_response_source that parses current_message tags")
-
-    # ------------------------------------------------------------------
-    # Guard clauses – we rely on formatted_context for metadata and on
-    # current_message for tag placement. If either is missing we fall
-    # back to the legacy implementation (returns empty dicts).
-    # ------------------------------------------------------------------
-    if not (hasattr(chat_session, 'formatted_context') and chat_session.formatted_context):
-        logger.warning("No formatted_context available – returning empty results")
-        return {}, {}, {}, {}
-
-    if not (hasattr(chat_session, 'current_message') and chat_session.current_message):
-        logger.warning("No current_message available – returning empty results")
-        return {}, {}, {}, {}
-
-    formatted_ctx = chat_session.formatted_context  # shorthand
-
-    # Result dictionaries
-    sources_with_scores: dict = {}
-    source_pages: dict = {}
-    refined_source_pages: dict = {}
-    refined_source_index: dict = {}
-
-    # Mapping of *content* to newly assigned sequential tag numbers.
-    content_to_tagnum: dict = {}
-
-    # Regular expression to capture patterns like:
-    # [<3>]["_Some quoted sentence._"]
-    tag_pattern = re.compile(r"\[<(?P<tagnum>\d+)>\]\s*\[\"(?P<quote>.+?)\"\]", re.DOTALL)
-
-    original_message = chat_session.current_message
-    new_message_parts = []
-    last_idx = 0  # tracks end of last match when rebuilding message
-
-    for match in tag_pattern.finditer(original_message):
-        # Text between last match and current one remains unchanged
-        new_message_parts.append(original_message[last_idx:match.start()])
-
-        orig_tag_num = match.group("tagnum")
-        tag_string = match.group("quote")  # quoted sentence without outer quotes
-
-        # Look up metadata in formatted_context using the *original* tag
-        ctx_key = f"[<{orig_tag_num}>]"
-        ctx_data = formatted_ctx.get(ctx_key)
-        if ctx_data is None:
-            logger.warning(f"No context data found for tag {ctx_key}")
-            # Keep the original tag untouched and continue
-            new_message_parts.append(match.group(0))
-            last_idx = match.end()
-            continue
-
-        # ------------------------------------------------------------------
-        # Determine full_content for similarity search
-        # ------------------------------------------------------------------
-        if chat_session.mode == ChatMode.LITE:
-            full_content = ctx_data.get("content", "")
-        else:
-            # Determine the correct file path based on source_index (1‑indexed)
-            source_idx = ctx_data.get("source_index", 1)
-            try:
-                file_path = file_path_list[source_idx - 1]
-            except (IndexError, TypeError):
-                file_path = file_path_list[0] if file_path_list else ""
-            full_content = get_page_raw_text(file_path, ctx_data.get("page_num", 1))
-
-        # Use tag_string to locate the most relevant chunk inside full_content
-        content_key = find_most_relevant_chunk(tag_string, full_content, user_input=user_input, divider_number=4)
-
-        # Assign / reuse sequential tag numbers based on *content*
-        if content_key in content_to_tagnum:
-            new_tag_num = content_to_tagnum[content_key]
-        else:
-            new_tag_num = len(content_to_tagnum) + 1
-            content_to_tagnum[content_key] = new_tag_num
-
-        # Update dictionaries only the first time we encounter this content
-        if content_key not in sources_with_scores:
-            sources_with_scores[content_key] = float(ctx_data.get("score", 0.0))
-            page_num = ctx_data.get("page_num", 1)
-            source_pages[content_key] = page_num  # retain 1‑indexed as before
-            refined_source_pages[content_key] = page_num
-            refined_source_index[content_key] = ctx_data.get("source_index", 1) - 1  # convert to 0‑idx
-
-        # ------------------------------------------------------------------
-        # Rebuild the tag inside the answer with the new sequential id
-        # We keep the original quoted sentence part untouched.
-        # match.group(0) is something like: [<3>]["_text_"]
-        quoted_section = match.group(0)[match.group(0).find(']') + 1:]
-        new_tag = f"[<{new_tag_num}>]" + quoted_section
-        new_message_parts.append(new_tag)
-
-        last_idx = match.end()
-
-    # Append any trailing text after the last match
-    new_message_parts.append(original_message[last_idx:])
-
-    # Update current_message with re‑tagged content
-    chat_session.current_message = ''.join(new_message_parts)
-
-    logger.info(
-        f"Finished processing tags. Assigned {len(content_to_tagnum)} unique tags."
-    )
-
+    logger.info("Using simplified get_response_source with formatted_context")
+    
+    # Initialize result dictionaries
+    sources_with_scores = {}
+    source_pages = {}
+    refined_source_pages = {}
+    refined_source_index = {}
+    
+    # Extract information directly from formatted_context
+    if hasattr(chat_session, 'formatted_context') and chat_session.formatted_context:
+        for symbol, context_data in chat_session.formatted_context.items():
+            # content = context_data["content"][:100]
+            # content = context_data["content"]
+            if chat_session.mode == ChatMode.LITE:
+                full_content=context_data["content"]
+                content = find_most_relevant_chunk(answer, full_content, user_input=user_input, divider_number=4)
+            else:
+                full_content = get_page_raw_text(file_path_list[0], context_data["page_num"])
+                # logger.info(f"Full content: {full_content}")
+                if len(full_content) > 0:
+                    content = find_most_relevant_chunk(answer, full_content, user_input=user_input, divider_number=4)
+                else:
+                    content = context_data["content"]
+            score = context_data["score"]
+            page_num = context_data["page_num"]  # 1-indexed from context
+            source_index = context_data["source_index"]  # 1-indexed from context
+            
+            # Store the content as key with its score
+            sources_with_scores[content] = float(score)
+            
+            # Store 0-indexed page number for source_pages and refined_source_pages (no need to convert from 1-indexed)
+            source_pages[content] = page_num
+            refined_source_pages[content] = page_num
+            
+            # Store 0-indexed file index for refined_source_index (converting from 1-indexed)
+            # This matches the original behavior where refined_source_index uses the raw file_index
+            refined_source_index[content] = source_index - 1
+            
+        logger.info(f"Extracted {len(sources_with_scores)} sources from formatted_context")
+        logger.info(f"Sources with scores: {len(sources_with_scores)} items")
+        logger.info(f"Refined source pages: {len(refined_source_pages)} items")
+        logger.info(f"Refined source index: {len(refined_source_index)} items")
+        
+    else:
+        logger.warning("No formatted_context found in chat_session, returning empty results")
+    
     return sources_with_scores, source_pages, refined_source_pages, refined_source_index

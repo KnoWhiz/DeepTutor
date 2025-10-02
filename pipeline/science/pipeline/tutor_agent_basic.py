@@ -323,7 +323,7 @@ Extends prior static-chain multiplexing to dynamic transport of multiple ions, l
             """
 
             refined_user_input = """
-            In a few bullet points explain the key take away of this paper assume I have no related knowledge background. Keep it as concise as possible. Make sure the evaluation is objective."""
+            In a few bullet points explain the key take away of this paper assume I have no related knowledge background. Keep it as concise as possible. Make sure the evaluation is objective.            """
             question = Question(text=refined_user_input, language=chat_session.current_language, question_type="local")
     else:
         refined_user_input = f"{user_input}\n\n{pdf_content}"

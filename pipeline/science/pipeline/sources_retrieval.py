@@ -389,89 +389,173 @@ def find_most_relevant_chunk(answer: str,
     return chunks[best_idx]
 
 
-def get_response_source(chat_session: ChatSession, file_path_list, user_input, answer, chat_history, embedding_folder_list):
+def get_response_source(
+    chat_session: ChatSession,
+    file_path_list,
+    user_input,
+    answer,
+    chat_history,
+    embedding_folder_list,
+):
+    """Resolve source metadata for each citation tag in *current_message*.
+
+    The function now parses the **actual tags present in ``chat_session.current_message``**
+    (e.g. ``[<7>]``) instead of relying solely on a sequential numbering scheme. For every
+    tag encountered it:
+
+    1. Extracts the quoted *tag string* that follows the tag, e.g. the text inside the
+       array literal ``["…"]`` right after the tag.
+    2. Looks up the original ``page_num`` and ``source_index`` from
+       ``chat_session.formatted_context`` using the *original* tag symbol.
+    3. Calls :pyfunc:`find_most_relevant_chunk` with that *tag string* to obtain a stable
+       **content key**.
+    4. Populates the three result dictionaries – ``source_pages``,
+       ``refined_source_pages`` and ``refined_source_index`` – using the *content key*.
+    5. Rewrites the tag inside ``chat_session.current_message`` to a new compact index
+       ``[<1>]``, ``[<2>]``… while ensuring that **identical content keys share the same
+       new index** (duplicate tags therefore collapse onto the same number).
+
+    The function keeps the original return signature, so upstream callers do not need
+    to change.
     """
-    Simplified version that retrieves source references directly from chat_session.formatted_context.
-    
-    This function extracts source information from the pre-computed formatted_context stored in the
-    chat session, which contains chunks ordered by source_index and page_number with their metadata.
-    
-    Args:
-        chat_session (ChatSession): Active chat session containing formatted_context
-        file_path_list (List[str]): Paths to the uploaded document files being referenced
-        user_input (str): The original user query that prompted the response
-        answer (str): The AI-generated response content to find sources for
-        chat_history (List): Historical conversation context (unused in simplified version)
-        embedding_folder_list (List[str]): Paths to directories containing embeddings (unused in simplified version)
-    
-    Returns:
-        Tuple[Dict, Dict, Dict, Dict]: A 4-tuple containing:
-            - sources_with_scores: Dictionary mapping source content to relevance scores (0-1)
-            - source_pages: Dictionary mapping source content to 0-indexed page numbers
-            - refined_source_pages: Dictionary mapping sources to 1-indexed page numbers
-            - refined_source_index: Dictionary mapping sources to their corresponding file indices
-    
-    Context Format Expected:
-        chat_session.formatted_context = {
-            "[<1>]": {
-                "content": "relevant text chunk", 
-                "score": 0.85,
-                "page_num": 5,      # 1-indexed page number (page 5)
-                "source_index": 1   # 1-indexed file position (first file)
-            },
-            "[<2>]": {
-                "content": "another chunk", 
-                "score": 0.72,
-                "page_num": 12,     # 1-indexed page number (page 12)  
-                "source_index": 2   # 1-indexed file position (second file)
-            },
-            ...
-        }
-    """
-    logger.info("Using simplified get_response_source with formatted_context")
-    
-    # Initialize result dictionaries
-    sources_with_scores = {}
-    source_pages = {}
-    refined_source_pages = {}
-    refined_source_index = {}
-    
-    # Extract information directly from formatted_context
-    if hasattr(chat_session, 'formatted_context') and chat_session.formatted_context:
-        for symbol, context_data in chat_session.formatted_context.items():
-            # content = context_data["content"][:100]
-            # content = context_data["content"]
+
+    logger.info("Running updated get_response_source that parses current_message")
+
+    # ------------------------------------------------------------------
+    # Guard clauses & setup
+    # ------------------------------------------------------------------
+    if not hasattr(chat_session, "current_message") or not chat_session.current_message:
+        logger.warning("chat_session.current_message is missing – returning empty results")
+        return {}, {}, {}, {}
+
+    # Result dictionaries expected by the caller
+    sources_with_scores: dict = {}
+    source_pages: dict = {}
+    refined_source_pages: dict = {}
+    refined_source_index: dict = {}
+
+    # Internal helpers/mappings
+    content_to_new_idx: dict[str, int] = {}
+    new_idx_counter: int = 1
+
+    # Record mapping from *original* tag (e.g. "[<7>]") to *new* tag string
+    old_to_new_tag: dict[str, str] = {}
+
+    # Pre‑compile regexes for efficiency & clarity
+    tag_regex = re.compile(r"\[<(\d+)>]", flags=re.MULTILINE)
+    # Pattern to capture a quoted string immediately following the tag, e.g.  [" … "]
+    # It is relatively forgiving – it allows whitespace/newlines between components.
+    quoted_regex = re.compile(r"\[\s*\"([^\"]+?)\"\s*]", flags=re.DOTALL)
+
+    current_msg: str = chat_session.current_message
+
+    # Iterate through tags in *appearance order* so numbering is deterministic
+    for match in tag_regex.finditer(current_msg):
+        original_num = match.group(1)
+        original_tag_symbol = f"[<{original_num}>]"
+
+        # ------------------------------------------------------------------
+        # 1. Extract the *tag string* that appears right after the tag symbol
+        # ------------------------------------------------------------------
+        # Search in the substring starting right after the tag symbol
+        post_tag_substr = current_msg[match.end():]
+        tag_string_match = quoted_regex.search(post_tag_substr)
+        if not tag_string_match:
+            # If we cannot find a quoted string, skip – continue processing others
+            logger.debug(
+                "No quoted string found after tag %s – skipping this tag.",
+                original_tag_symbol,
+            )
+            continue
+        tag_string_raw: str = tag_string_match.group(1).strip()
+
+        # ------------------------------------------------------------------
+        # 2. Look up metadata from formatted_context using the *original* tag
+        # ------------------------------------------------------------------
+        page_num: int | None = None
+        source_index: int | None = None
+        score_val: float | None = None
+
+        if getattr(chat_session, "formatted_context", None):
+            ctx = chat_session.formatted_context.get(original_tag_symbol)
+            if ctx:
+                page_num = ctx.get("page_num")
+                source_index = ctx.get("source_index")
+                score_val = ctx.get("score")
+
+        # Fallback if metadata is missing
+        if page_num is None:
+            page_num = 1  # default to first page
+        if source_index is None:
+            source_index = 1
+        if score_val is None:
+            score_val = 0.0
+
+        # ------------------------------------------------------------------
+        # 3. Derive the *content key* via find_most_relevant_chunk
+        # ------------------------------------------------------------------
+        try:
             if chat_session.mode == ChatMode.LITE:
-                full_content=context_data["content"]
-                content = find_most_relevant_chunk(answer, full_content, user_input=user_input, divider_number=4)
+                # In LITE mode we already have the chunk text in ctx["content"]
+                full_content: str = ctx.get("content", "") if ctx else ""
             else:
-                full_content = get_page_raw_text(file_path_list[0], context_data["page_num"])
-                # logger.info(f"Full content: {full_content}")
-                if len(full_content) > 0:
-                    content = find_most_relevant_chunk(answer, full_content, user_input=user_input, divider_number=4)
-                else:
-                    content = context_data["content"]
-            score = context_data["score"]
-            page_num = context_data["page_num"]  # 1-indexed from context
-            source_index = context_data["source_index"]  # 1-indexed from context
-            
-            # Store the content as key with its score
-            sources_with_scores[content] = float(score)
-            
-            # Store 0-indexed page number for source_pages and refined_source_pages (no need to convert from 1-indexed)
-            source_pages[content] = page_num
-            refined_source_pages[content] = page_num
-            
-            # Store 0-indexed file index for refined_source_index (converting from 1-indexed)
-            # This matches the original behavior where refined_source_index uses the raw file_index
-            refined_source_index[content] = source_index - 1
-            
-        logger.info(f"Extracted {len(sources_with_scores)} sources from formatted_context")
-        logger.info(f"Sources with scores: {len(sources_with_scores)} items")
-        logger.info(f"Refined source pages: {len(refined_source_pages)} items")
-        logger.info(f"Refined source index: {len(refined_source_index)} items")
-        
-    else:
-        logger.warning("No formatted_context found in chat_session, returning empty results")
-    
-    return sources_with_scores, source_pages, refined_source_pages, refined_source_index
+                full_content = get_page_raw_text(file_path_list[0], page_num)
+        except Exception as e:
+            logger.exception("Failed retrieving full content for tag %s: %s", original_tag_symbol, e)
+            full_content = ""
+
+        content_key = find_most_relevant_chunk(
+            tag_string_raw,
+            full_content,
+            user_input=user_input,
+            divider_number=4,
+        )
+
+        # ------------------------------------------------------------------
+        # 4. Populate result dictionaries (deduplicating by content_key)
+        # ------------------------------------------------------------------
+        if content_key not in content_to_new_idx:
+            content_to_new_idx[content_key] = new_idx_counter
+            new_idx_counter += 1
+
+        new_idx = content_to_new_idx[content_key]
+        new_tag_symbol = f"[<{new_idx}>]"
+
+        # Map old → new so we can rewrite the message later
+        old_to_new_tag[original_tag_symbol] = new_tag_symbol
+
+        # Only update dicts once per unique *content key*
+        if content_key not in source_pages:
+            # Note: The previous implementation kept both source_pages & refined_source_pages
+            # identical (both 1‑indexed). We'll mirror that behaviour.
+            source_pages[content_key] = page_num
+            refined_source_pages[content_key] = page_num
+            # Convert source_index to 0‑indexed for refined_source_index (backwards‑compat)
+            refined_source_index[content_key] = max(0, int(source_index) - 1)
+            sources_with_scores[content_key] = float(score_val)
+
+    # ------------------------------------------------------------------
+    # 5. Rewrite the tags inside current_message so callers see the new indices
+    # ------------------------------------------------------------------
+    def _replace_tag(m: re.Match) -> str:  # noqa: D401 – simple helper
+        original_symbol = m.group(0)
+        return old_to_new_tag.get(original_symbol, original_symbol)
+
+    rewritten_message = tag_regex.sub(_replace_tag, current_msg)
+    chat_session.current_message = rewritten_message
+
+    # ------------------------------------------------------------------
+    # Logging & return
+    # ------------------------------------------------------------------
+    logger.info(
+        "Processed %d unique content keys, rewritten message has %d characters",
+        len(content_to_new_idx),
+        len(rewritten_message),
+    )
+
+    return (
+        sources_with_scores,
+        source_pages,
+        refined_source_pages,
+        refined_source_index,
+    )

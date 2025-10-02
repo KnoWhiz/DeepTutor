@@ -537,10 +537,27 @@ def get_response_source(
                 full_content = full_content_ctx  # fallback
 
         # Derive *content* key via find_most_relevant_chunk
+        # NOTE:
+        # ``find_most_relevant_chunk`` expects the *primary* search text to be
+        # provided via the ``user_input`` parameter.  Previously we were passing
+        # the quoted *tag_string* as the first positional argument (``answer``)
+        # and the actual end‑user question as ``user_input``.  Because the
+        # scoring inside the helper weighs ``user_input`` (75 %) significantly
+        # higher than ``answer`` (25 %), the tag text we are trying to locate
+        # was effectively treated as a secondary signal.  This caused
+        # unrelated chunks to be selected whenever the user question shared
+        # little lexical overlap with the reference text.
+
+        # To make the lookup deterministic we now feed *tag_string* into the
+        # high‑weight ``user_input`` slot and completely ignore the original
+        # user question for this internal matching step.  The first positional
+        # argument (``answer``) is left empty so it has no influence on the
+        # ranking.
+
         content_key = find_most_relevant_chunk(
-            tag_string,
+            "",                # answer – not used for tag resolution
             full_content,
-            user_input=user_input,
+            user_input=tag_string,
             divider_number=4,
         )
         logger.info(f"\n\nTag {original_tag_symbol} mapped to page {page_num}, index {source_index}, content length {len(content_key)}")

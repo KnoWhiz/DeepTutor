@@ -217,7 +217,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         system_prompt = """You are a deep thinking tutor helping a student reading a paper.
 
 MATH RENDERING — HARD RULES (must follow):
-- Wrap ALL math (include important numbers) in $...$ (inline) or $$...$$ (display). Never write bare math.
+- Wrap ALL math (except for any pure numbers) in $...$ (inline) or $$...$$ (display). Never write bare math.
 - Do NOT use \( \) or \[ \]; only $...$ or $$...$$.
 - Do NOT put math in backticks. Backticks are for code only.
 - Balance every $ and $$ pair.
@@ -347,7 +347,7 @@ Follow the response guidelines in the system prompt.
         system_prompt_advanced = """You are a deep thinking tutor helping a student reading a paper.
 
 MATH RENDERING — HARD RULES (must follow):
-- Wrap ALL math (include important numbers) in $...$ (inline) or $$...$$ (display). Never write bare math.
+- Wrap ALL math (except for any pure numbers) in $...$ (inline) or $$...$$ (display). Never write bare math.
 - Do NOT use \( \) or \[ \]; only $...$ or $$...$$.
 - Do NOT put math in backticks. Backticks are for code only.
 - Balance every $ and $$ pair.
@@ -578,12 +578,30 @@ REMINDER: When Case 1 applies, every sentence must end with only one [<k>] citat
             """
             TAVILY_API_KEY=str(os.getenv("TAVILY_API_KEY"))
             tools=[
+                # {
+                #     "type": "mcp",
+                #     "server_label": "tavily",
+                #     "server_url": "https://mcp.tavily.com/mcp/?tavilyApiKey=" + TAVILY_API_KEY,
+                #     "require_approval": "never",
+                # },
+                # {
+                #     "type": "mcp",
+                #     "server_label": "Semantic_Scholar",
+                #     "server_url": "https://server.smithery.ai/@hamid-vakilzadeh/mcpsemanticscholar/mcp?api_key=cf81892d-ebb6-490e-8ca4-ec7bee7f932c&profile=steep-skink-QCjOVT",
+                #     "require_approval": "never",
+                # },
                 {
                     "type": "mcp",
-                    "server_label": "tavily",
-                    "server_url": "https://mcp.tavily.com/mcp/?tavilyApiKey=" + TAVILY_API_KEY,
+                    "server_label": "arXiv",
+                    "server_url": "https://server.smithery.ai/@prashalruchiranga/arxiv-mcp-server/mcp?api_key=cf81892d-ebb6-490e-8ca4-ec7bee7f932c&profile=steep-skink-QCjOVT",
                     "require_approval": "never",
                 },
+                # {
+                #     "type": "mcp",
+                #     "server_label": "Google_Scholar",
+                #     "server_url": "https://server.smithery.ai/@JackKuo666/google-scholar-mcp-server/mcp?api_key=cf81892d-ebb6-490e-8ca4-ec7bee7f932c&profile=steep-skink-QCjOVT",
+                #     "require_approval": "never",
+                # },
             ]
             kwargs = dict(
                 model="gpt-5",

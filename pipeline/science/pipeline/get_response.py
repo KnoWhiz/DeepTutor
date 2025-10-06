@@ -595,6 +595,30 @@ REMINDER: When Case 1 applies, every sentence must end with only one [<k>] citat
                 instructions=f"{system_prompt_advanced}",
                 input=user_prompt,
             )
+            
+            # # o3 pro have no streaming capability yet
+            # kwargs = dict(
+            #     model="o3-pro",
+            #     # reasoning={"effort": "high", "summary": "detailed"},
+            #     # reasoning={"effort": "medium", "summary": "auto"},
+            #     # reasoning={"effort": "low", "summary": "auto"},
+            #     # tools=[{"type": "web_search"}],  # built-in tool
+            #     tools=tools,  # built-in tool
+            #     instructions=f"{system_prompt_advanced}",
+            #     input=user_prompt,
+            # )
+
+            # o3 have no thinking streaming yet
+            kwargs = dict(
+                model="o3",
+                # reasoning={"effort": "high", "summary": "detailed"},
+                reasoning={"effort": "medium", "summary": "auto"},
+                # reasoning={"effort": "low", "summary": "auto"},
+                # tools=[{"type": "web_search"}],  # built-in tool
+                tools=tools,  # built-in tool
+                instructions=f"{system_prompt_advanced}",
+                input=user_prompt,
+            )
             # kwargs = dict(
             #     model="o3",
             #     reasoning={"effort": "medium", "summary": "auto"},

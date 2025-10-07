@@ -212,7 +212,7 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     yield "</thinking>"
 
     # Handle initial welcome message when chat history is empty or summary is requested
-    if user_input == config["summary_wording"] or not chat_history:
+    if user_input == config["summary_wording"]:
         # If summary is requested and we have multiple files, get_response will handle it with the special function
         # Just pass the request through to get_response
         if user_input == config["summary_wording"] and len(file_path_list) > 1:

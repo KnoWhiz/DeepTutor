@@ -610,7 +610,8 @@ REMINDER: When Case 1 applies, every sentence must end with only one [<k>] citat
             kwargs = dict(
                 model="gpt-5",
                 # reasoning={"effort": "high", "summary": "detailed"},
-                reasoning={"effort": "medium", "summary": "auto"},
+                # reasoning={"effort": "medium", "summary": "auto"},
+                reasoning={"effort": "high", "summary": "auto"},
                 # reasoning={"effort": "low", "summary": "auto"},
                 # tools=[{"type": "web_search"}],  # built-in tool
                 tools=tools,  # built-in tool

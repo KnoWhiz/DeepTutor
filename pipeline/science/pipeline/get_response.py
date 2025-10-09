@@ -244,7 +244,7 @@ Case 1 (Answerable from context chunks):
 
 Case 2 (Not answerable from context):
   - You can use arXiv MCP tool to find relevant papers on arXiv to answer the question. or use your own knowledge to answer the question if needed.
-  - If you are using your own knowledge, state clearly that you are using your own knowledge; if you are using information from arXiv papers, cite the papers' arXiv links you used.
+  - If you are using your own knowledge, state clearly that you are using your own knowledge.
   - Keep the same math and formatting rules.
 
 SELF-CHECK BEFORE SENDING (must pass all):
@@ -276,7 +276,7 @@ User Q: "Show the variance of a Bernoulli($p$) variable."
 Assistant (Case 2):
 ```
 **TL;DR:** For $X\sim\mathrm{{Bernoulli}}(p)$, the variance is $\operatorname{{Var}}(X)=p(1-p)$.
-I'm using my own knowledge.  
+I cannot find this in the provided context, so I'm using my own knowledge.  
 **Derivation.** Let $X\in{{0,1}}$ with $\Pr(X=1)=p$. Then $E[X]=p$ and $E[X^2]=p$. Hence,
 $$
 \operatorname{{Var}}(X)=E[X^2]-E[X]^2=p-p^2=p(1-p).
@@ -291,22 +291,6 @@ Assistant (Case 1):
 ```
 **TL;DR:** The reported Rabi frequency is $2.1\,\mathrm{{MHz}}$. [<1>]["_...The measured Rabi frequency was 2.1 MHz on the carrier..._"]  
 **Result.** The experiment measured $\Omega=2.1\,\mathrm{{MHz}}$. [<1>]["_...The measured Rabi frequency was 2.1 MHz on the carrier..._"]
-```
-
-GOOD D - Case 2 - arXiv MCP tool
-User Q: "search arxiv to find the timperal multiplexing paper"
-Assistant (Case 2):
-```
-**TL;DR:** You likely mean “Temporally multiplexed ion–photon interface” work in trapped-ion networks; a recent arXiv paper is “Temporally multiplexed ion-photon quantum interface via fast ion-chain transport” (arXiv:2405.10501).
-
-- Candidate match:
-  - Title: Temporally multiplexed ion-photon quantum interface via fast ion-chain transport
-  - arXiv ID: 2405.10501
-  - Link: https://arxiv.org/abs/2405.10501
-  - Authors: Bingran You; Qiming Wu; David Miron; Wenjun Ke; Inder Monga; Erhan Saglamyurek; Hartmut Haeffner
-  - Summary: Demonstrates temporal multiplexing by rapidly transporting a multi-ion chain across a single interaction zone to generate sequential ion–photon emissions, enabling higher-rate trapped-ion networking.
-
-If this isn’t the one you had in mind, share any keywords (e.g., “cavity,” “microwave,” specific ion species like $\,\mathrm{{Ca^+}}$ or $\,\mathrm{{Yb^+}}$, or an author), and I will find the exact arXiv entry.
 ```
 
 ────────────────────────────────────────────────
@@ -539,7 +523,7 @@ REMINDER: When Case 1 applies, every sentence must end with only one [<k>] citat
                         { "type": "input_text", "text": user_prompt },
                         # {
                         #     "type": "input_file",
-                        #     "file_url": "https://knowhiztutorrag.blob.core.windows.net/knowhiztutorrag/papers_cache/Multiplexed_single_photon_source_arXiv__resubmit_.pdf"
+                        #     "file_url": "https://arxiv.org/pdf/2405.10501"
                         # }
                     ]
                 }

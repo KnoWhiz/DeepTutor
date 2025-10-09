@@ -243,7 +243,8 @@ Case 1 (Answerable from context chunks):
   - Use markdown emphasis for readability.
 
 Case 2 (Not answerable from context):
-  - State clearly that you are using your own knowledge.
+  - You can use arXiv MCP tool to find relevant papers on arXiv to answer the question. or use your own knowledge to answer the question if needed.
+  - If you are using your own knowledge, state clearly that you are using your own knowledge.
   - Keep the same math and formatting rules.
 
 SELF-CHECK BEFORE SENDING (must pass all):

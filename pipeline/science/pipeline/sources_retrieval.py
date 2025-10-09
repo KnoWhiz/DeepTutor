@@ -418,9 +418,11 @@ def get_response_source(
     3. While iterating through tags the function *renumbers* them so they become consecutive
        (``[<1>], [<2>], ...``).  When the same *content* string appears again the previously
        assigned number is reused instead of allocating a new one.  Tags that do **not** have a
-       following quoted string are removed from the message.  The updated message is written
-       back into ``chat_session.current_message`` so that downstream UI sees the cleaned
-       numbering.
+       following quoted string are removed from the message.  For tags **with** a quoted string,
+       that bracketed highlight (e.g. ``["_foo bar_"]``) is stripped from the final message
+       after it has been parsed – only the renumbered citation tag remains visible.  The updated
+       message is written back into ``chat_session.current_message`` so that downstream UI sees
+       the cleaned numbering.
 
     The original ``sources_with_scores`` dict is still returned unchanged – it now only contains
     the union of all *content* strings we extracted with their similarity scores from
@@ -573,13 +575,20 @@ def get_response_source(
             content_to_new_tag[content_key] = new_tag_id
             next_tag_id += 1
 
-        # Insert the *renumbered* tag into the message.  Everything *after* the original tag remains unchanged, so we
-        # simply replace the tag symbol.
+        # Insert the *renumbered* tag into the message.
         new_message_parts.append(f"[<{new_tag_id}>]")
 
-        # We only skip over the original tag itself; the remainder (including whitespace + quoted string) will be
-        # copied untouched in the next iteration when we set *last_idx* to the end of the original tag.
-        last_idx = end
+        # -----------------------------------------------------------------
+        # 2.e  Skip over the *highlight* bracket that immediately follows the
+        #      tag – we have already extracted the string for chunk matching
+        #      and do **not** want to show it in the final assistant message.
+        #
+        #      The matched ``quoted_pattern`` includes any leading whitespace
+        #      before the opening bracket so the slice below cleanly removes
+        #      the entire  ``[ "_ ... _" ]`` segment.
+        # -----------------------------------------------------------------
+
+        last_idx = end + quote_match.end()
 
         # -----------------------------------------------------------------
         # 2.d Populate dictionaries (only once per *content_key*)

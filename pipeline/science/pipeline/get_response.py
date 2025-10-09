@@ -508,12 +508,24 @@ REMINDER: When Case 1 applies, every sentence must end with only one [<k>] citat
             )
             TAVILY_API_KEY=str(os.getenv("TAVILY_API_KEY"))
             tools=[
+                # {
+                #     "type": "mcp",
+                #     "server_label": "arXiv",
+                #     "server_url": "https://server.smithery.ai/@prashalruchiranga/arxiv-mcp-server/mcp?api_key=cf81892d-ebb6-490e-8ca4-ec7bee7f932c&profile=steep-skink-QCjOVT",
+                #     "require_approval": "never",
+                # },
+            ]
+            input = [
                 {
-                    "type": "mcp",
-                    "server_label": "tavily",
-                    "server_url": "https://mcp.tavily.com/mcp/?tavilyApiKey=" + TAVILY_API_KEY,
-                    "require_approval": "never",
-                },
+                    "role": "user",
+                    "content": [
+                        { "type": "input_text", "text": user_prompt },
+                        # {
+                        #     "type": "input_file",
+                        #     "file_url": "https://arxiv.org/pdf/2405.10501"
+                        # }
+                    ]
+                }
             ]
             kwargs = dict(
                 model="gpt-5",
@@ -522,9 +534,9 @@ REMINDER: When Case 1 applies, every sentence must end with only one [<k>] citat
                 # reasoning={"effort": "low", "summary": "auto"},
                 # tools=[{"type": "web_search"}],  # built-in tool
                 # tools=tools,  # built-in tool
-                tools=[],
+                tools=tools,
                 instructions=f"{system_prompt}",
-                input=user_prompt,
+                input=input,
             )
             # stream = client.responses.create(stream=True, **kwargs)
             stream = stream_response_with_tags(**kwargs)

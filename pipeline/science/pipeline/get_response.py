@@ -508,12 +508,12 @@ REMINDER: When Case 1 applies, every sentence must end with only one [<k>] citat
             )
             TAVILY_API_KEY=str(os.getenv("TAVILY_API_KEY"))
             tools=[
-                # {
-                #     "type": "mcp",
-                #     "server_label": "arXiv",
-                #     "server_url": "https://server.smithery.ai/@prashalruchiranga/arxiv-mcp-server/mcp?api_key=cf81892d-ebb6-490e-8ca4-ec7bee7f932c&profile=steep-skink-QCjOVT",
-                #     "require_approval": "never",
-                # },
+                {
+                    "type": "mcp",
+                    "server_label": "arXiv",
+                    "server_url": "https://server.smithery.ai/@prashalruchiranga/arxiv-mcp-server/mcp?api_key=cf81892d-ebb6-490e-8ca4-ec7bee7f932c&profile=steep-skink-QCjOVT",
+                    "require_approval": "never",
+                },
             ]
             input = [
                 {

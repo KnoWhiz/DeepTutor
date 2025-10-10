@@ -461,8 +461,40 @@ async def generate_LiteRAG_embedding(_doc, file_path, embedding_folder):
                 ))
         
         if page_documents:
-            # Create FAISS database from page documents
-            db = FAISS.from_documents(page_documents, embeddings)
+            # Create FAISS database from page documents – retry with backup
+            try:
+                db = FAISS.from_documents(page_documents, embeddings)
+            except Exception as e:
+                logger.warning(
+                    "generate_LiteRAG_embedding: primary embedding attempt failed – %s."
+                    " Retrying with backup Azure endpoint.",
+                    repr(e),
+                )
+
+                from langchain_openai import AzureOpenAIEmbeddings
+
+                # Determine a reasonable deployment/model to mirror the requested one
+                # If the provided embeddings instance has a `model` attribute, reuse it.
+                model_name = getattr(embeddings, "model", "text-embedding-3-large")
+                deployment_name = getattr(embeddings, "deployment", model_name)
+
+                fallback_embeddings = AzureOpenAIEmbeddings(
+                    deployment=deployment_name,
+                    model=model_name,
+                    azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP"),
+                    openai_api_key=os.getenv("AZURE_OPENAI_API_KEY_BACKUP"),
+                    openai_api_type="azure",
+                    chunk_size=2000,
+                )
+
+                try:
+                    db = FAISS.from_documents(page_documents, fallback_embeddings)
+                except Exception as e2:
+                    logger.error(
+                        "generate_LiteRAG_embedding: fallback embedding attempt failed – %s.",
+                        repr(e2),
+                    )
+                    raise  # Re‑raise so upstream can handle
             # Create directory if it doesn't exist
             os.makedirs(lite_embedding_folder, exist_ok=True)
             # Save the embeddings
@@ -620,7 +652,37 @@ async def load_embeddings(embedding_folder_list: list[str | Path], embedding_typ
     
     # Create a new database with all the documents that have updated metadata
     logger.info(f"Creating merged database from {len(all_docs)} documents...")
-    db_merged = FAISS.from_documents(all_docs, embeddings)
+
+    try:
+        db_merged = FAISS.from_documents(all_docs, embeddings)
+    except Exception as e:
+        logger.warning(
+            "load_embeddings: primary FAISS build failed – %s. Retrying with backup Azure embeddings.",
+            repr(e),
+        )
+
+        from langchain_openai import AzureOpenAIEmbeddings
+
+        model_name = getattr(embeddings, "model", "text-embedding-3-large")
+        deployment_name = getattr(embeddings, "deployment", model_name)
+
+        fallback_embeddings = AzureOpenAIEmbeddings(
+            deployment=deployment_name,
+            model=model_name,
+            azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP"),
+            openai_api_key=os.getenv("AZURE_OPENAI_API_KEY_BACKUP"),
+            openai_api_type="azure",
+            chunk_size=2000,
+        )
+
+        try:
+            db_merged = FAISS.from_documents(all_docs, fallback_embeddings)
+        except Exception as e2:
+            logger.error(
+                "load_embeddings: fallback FAISS build failed – %s.",
+                repr(e2),
+            )
+            raise
     
     # Log summary information
     logger.info(f"Successfully created merged database:")

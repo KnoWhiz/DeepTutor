@@ -502,11 +502,11 @@ REMINDER: When Case 1 applies, every sentence must end with only one [<k>] citat
 """
 
         if chat_session.mode == ChatMode.LITE:
-            client = OpenAI(
-                api_key=os.getenv("AZURE_OPENAI_API_KEY_BACKUP"),
-                # base_url="https://knowhiz-service-openai-backup-2.openai.azure.com/openai/v1/"
-                base_url=str(os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP")) + "openai/v1/"
-            )
+            # client = OpenAI(
+            #     api_key=os.getenv("AZURE_OPENAI_API_KEY_BACKUP"),
+            #     # base_url="https://knowhiz-service-openai-backup-2.openai.azure.com/openai/v1/"
+            #     base_url=str(os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP")) + "openai/v1/"
+            # )
             # TAVILY_API_KEY=str(os.getenv("TAVILY_API_KEY"))
             # tools=[
             #     {
@@ -897,9 +897,10 @@ def generate_follow_up_questions(answer, chat_history, user_input=""):
     logger.info("Generating follow-up questions ...")
     config = load_config()
     para = config['llm']
-    llm = get_llm('basic', para)
+    # Build the primary ("backup") LLM first – this is the one that may fail
+    llm_primary = get_llm('basic', para)
     parser = JsonOutputParser()
-    error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
+    error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm_primary)
 
     system_prompt = """
     You are an expert at generating engaging follow-up questions based on a conversation between a tutor and a student.
@@ -941,12 +942,48 @@ def generate_follow_up_questions(answer, chat_history, user_input=""):
         ("human", human_prompt),
     ])
 
-    chain = prompt | llm | error_parser
-    result = chain.invoke({
-        "answer": answer,
-        # "chat_history": truncate_chat_history(chat_history),
-        "user_input": user_input
-    })
+    chain = prompt | llm_primary | error_parser
+
+    try:
+        result = chain.invoke({
+            "answer": answer,
+            # "chat_history": truncate_chat_history(chat_history),
+            "user_input": user_input
+        })
+    except Exception as e:
+        # Catch common auth/HTTP issues and retry with the default Azure resource
+        logger.warning(
+            "generate_follow_up_questions: primary attempt failed – %s. Retrying with fallback endpoint.",
+            repr(e),
+        )
+
+        from langchain_openai import AzureChatOpenAI  # Local import to avoid overhead
+        import os
+
+        try:
+            llm_fallback = AzureChatOpenAI(
+                api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+                azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+                openai_api_version="2024-12-01-preview",
+                azure_deployment="gpt-4.1",
+                temperature=para['temperature'],
+                streaming=False,
+                max_tokens=12768,
+            )
+
+            error_parser_fallback = OutputFixingParser.from_llm(parser=parser, llm=llm_fallback)
+            chain_fallback = prompt | llm_fallback | error_parser_fallback
+
+            result = chain_fallback.invoke({
+                "answer": answer,
+                "user_input": user_input
+            })
+        except Exception as e2:
+            logger.error(
+                "generate_follow_up_questions: fallback attempt failed – %s.",
+                repr(e2),
+            )
+            raise  # Propagate so upstream can handle
 
     logger.info(f"Generated follow-up questions: {result['questions']}")
     return result["questions"]

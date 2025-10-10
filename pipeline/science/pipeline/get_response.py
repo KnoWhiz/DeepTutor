@@ -243,7 +243,7 @@ Case 1 (Answerable from context chunks):
   - Use markdown emphasis for readability.
 
 Case 2 (Not answerable from context):
-  - You can use arXiv MCP tool to find relevant papers on arXiv to answer the question. or use your own knowledge to answer the question if needed.
+  - Use your own knowledge to answer the question if needed.
   - If you are using your own knowledge, state clearly that you are using your own knowledge.
   - Keep the same math and formatting rules.
 
@@ -507,15 +507,15 @@ REMINDER: When Case 1 applies, every sentence must end with only one [<k>] citat
                 # base_url="https://knowhiz-service-openai-backup-2.openai.azure.com/openai/v1/"
                 base_url=str(os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP")) + "openai/v1/"
             )
-            TAVILY_API_KEY=str(os.getenv("TAVILY_API_KEY"))
-            tools=[
-                {
-                    "type": "mcp",
-                    "server_label": "arXiv",
-                    "server_url": "https://server.smithery.ai/@prashalruchiranga/arxiv-mcp-server/mcp?api_key=cf81892d-ebb6-490e-8ca4-ec7bee7f932c&profile=steep-skink-QCjOVT",
-                    "require_approval": "never",
-                },
-            ]
+            # TAVILY_API_KEY=str(os.getenv("TAVILY_API_KEY"))
+            # tools=[
+            #     {
+            #         "type": "mcp",
+            #         "server_label": "arXiv",
+            #         "server_url": "https://server.smithery.ai/@prashalruchiranga/arxiv-mcp-server/mcp?api_key=cf81892d-ebb6-490e-8ca4-ec7bee7f932c&profile=steep-skink-QCjOVT",
+            #         "require_approval": "never",
+            #     },
+            # ]
             input = [
                 {
                     "role": "user",
@@ -535,7 +535,7 @@ REMINDER: When Case 1 applies, every sentence must end with only one [<k>] citat
                 # reasoning={"effort": "low", "summary": "auto"},
                 # tools=[{"type": "web_search"}],  # built-in tool
                 # tools=tools,  # built-in tool
-                tools=tools,
+                tools=[],
                 instructions=f"{system_prompt}",
                 input=input,
             )
@@ -603,16 +603,16 @@ REMINDER: When Case 1 applies, every sentence must end with only one [<k>] citat
                 },
                 # {
                 #     "type": "mcp",
+                #     "server_label": "arXiv",
+                #     "server_url": "https://server.smithery.ai/@prashalruchiranga/arxiv-mcp-server/mcp?api_key=cf81892d-ebb6-490e-8ca4-ec7bee7f932c&profile=steep-skink-QCjOVT",
+                #     "require_approval": "never",
+                # },
+                # {
+                #     "type": "mcp",
                 #     "server_label": "Semantic_Scholar",
                 #     "server_url": "https://server.smithery.ai/@hamid-vakilzadeh/mcpsemanticscholar/mcp?api_key=cf81892d-ebb6-490e-8ca4-ec7bee7f932c&profile=steep-skink-QCjOVT",
                 #     "require_approval": "never",
                 # },
-                {
-                    "type": "mcp",
-                    "server_label": "arXiv",
-                    "server_url": "https://server.smithery.ai/@prashalruchiranga/arxiv-mcp-server/mcp?api_key=cf81892d-ebb6-490e-8ca4-ec7bee7f932c&profile=steep-skink-QCjOVT",
-                    "require_approval": "never",
-                },
                 # {
                 #     "type": "mcp",
                 #     "server_label": "Google_Scholar",

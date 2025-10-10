@@ -510,18 +510,45 @@ def stream_response_with_tags(**create_kwargs) -> Iterable[str]:
     # If OpenAI API
     # client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     # If AzureOpenAI API
-    client = OpenAI(
-        api_key=os.getenv("AZURE_OPENAI_API_KEY_BACKUP"),
-        # base_url="https://knowhiz-service-openai-backup-2.openai.azure.com/openai/v1/"
-        base_url=str(os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP")) + "openai/v1/"
-    )
-    # client = AzureOpenAI(
-    #     api_key=os.getenv("AZURE_OPENAI_API_KEY_BACKUP"),
-    #     azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP"),
-    #     api_version="2025-04-01-preview",
-    #     # api_version="2025-06-10",
-    # )
-    stream = client.responses.create(stream=True, **create_kwargs)
+    # We first try the primary ("backup") Azure OpenAI resource defined in env vars
+    # `AZURE_OPENAI_API_KEY_BACKUP` / `AZURE_OPENAI_ENDPOINT_BACKUP`. If we hit any
+    # exception (e.g., 401 PermissionDenied when the key is rotated), we fall back
+    # to the default Azure resource (`AZURE_OPENAI_API_KEY` / `AZURE_OPENAI_ENDPOINT`).
+
+    def _make_azure_client(api_key_env: str, endpoint_env: str):
+        """Helper to create an `OpenAI` client from environment variables."""
+        return OpenAI(
+            api_key=os.getenv(api_key_env),
+            base_url=str(os.getenv(endpoint_env)) + "openai/v1/",
+        )
+
+    # Attempt order: backup first, then primary. Collect errors for logging.
+    client_attempts = [
+        ("AZURE_OPENAI_API_KEY_BACKUP", "AZURE_OPENAI_ENDPOINT_BACKUP"),
+        ("AZURE_OPENAI_API_KEY", "AZURE_OPENAI_ENDPOINT"),
+    ]
+
+    stream = None  # type: ignore
+    last_error: Optional[Exception] = None
+
+    for api_key_env, endpoint_env in client_attempts:
+        try:
+            client = _make_azure_client(api_key_env, endpoint_env)
+            stream = client.responses.create(stream=True, **create_kwargs)
+            break  # success → exit the retry loop
+        except Exception as exc:
+            last_error = exc
+            logger.warning(
+                "stream_response_with_tags: failed with %s/%s – %s",
+                api_key_env,
+                endpoint_env,
+                repr(exc),
+            )
+
+    if stream is None:
+        # All attempts failed – raise the last captured error so callers know.
+        logger.error("stream_response_with_tags: all client attempts failed")
+        raise last_error if last_error is not None else RuntimeError("Unknown error creating OpenAI stream")
 
     # Show a thinking container immediately
     thinking_open = True

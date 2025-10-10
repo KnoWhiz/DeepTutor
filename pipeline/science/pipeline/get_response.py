@@ -217,7 +217,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         system_prompt = """You are a deep thinking tutor helping a student reading a paper.
 
 MATH RENDERING — HARD RULES (must follow):
-- Wrap ALL math (include important numbers) in $...$ (inline) or $$...$$ (display). Never write bare math.
+- Wrap ALL math (except for any pure numbers) in $...$ (inline) or $$...$$ (display). Never write bare math.
 - Do NOT use \( \) or \[ \]; only $...$ or $$...$$.
 - Do NOT put math in backticks. Backticks are for code only.
 - Balance every $ and $$ pair.
@@ -239,11 +239,12 @@ RESPONSE GUIDELINES:
 SOURCING MODES
 Case 1 (Answerable from context chunks):
   - Use only the context. For *each sentence* in the response, cite the most relevant chunk key (IMPORTANT: only **one** citation key after each sentence) in the format "[<1>]" or "[<3>]" at the end of the sentence.
-  - Immediately after each citation key, append one sentence from the source (IMPORTANT: italic, in quotes) inside square brackets, e.g., ["_...source sentence..._"]. IMPORTANT: Use the same language as the original source!
+  - Immediately after each citation key, append one sentence from the source (IMPORTANT: italic, in quotes) inside square brackets, e.g., [<"_...source sentence..._">]. IMPORTANT: Use the same language as the original source!
   - Use markdown emphasis for readability.
 
 Case 2 (Not answerable from context):
-  - State clearly that you are using your own knowledge.
+  - Use your own knowledge to answer the question if needed.
+  - If you are using your own knowledge, state clearly that you are using your own knowledge.
   - Keep the same math and formatting rules.
 
 SELF-CHECK BEFORE SENDING (must pass all):
@@ -265,9 +266,9 @@ Context Chunks:
 
 Assistant (Case 1):
 ```
-**TL;DR:** The photon's energy is proportional to its angular frequency via $E=\hbar\omega$. [<1>]["_Planck's relation states E = ħω for a single photon._"]
-**Planck relation.** The energy of a photon is $E=\hbar\omega$. [<1>]["_Planck’s relation states E = ħω for a single photon._"]
-**Frequency form.** Using $\omega=2\pi f$, we also have $E=h f$ with $h=2\pi\hbar$. [<2>]["_Angular frequency ω relates to frequency f by ω = 2πf._"]
+**TL;DR:** The photon's energy is proportional to its angular frequency via $E=\hbar\omega$. [<1>][<"_Planck's relation states E = ħω for a single photon._">]
+**Planck relation.** The energy of a photon is $E=\hbar\omega$. [<1>][<"_Planck’s relation states E = ħω for a single photon._">]
+**Frequency form.** Using $\omega=2\pi f$, we also have $E=h f$ with $h=2\pi\hbar$. [<2>][<"_Angular frequency ω relates to frequency f by ω = 2πf._">]
 ```
 
 GOOD B — Display math, multi-step, Case 2 (own knowledge)
@@ -288,8 +289,8 @@ Context:
   [<1>]: "This means the effective radial Rabi rate was in the range of roughly 330–400 kHz, depending on the exact optical alignment and beam balance across the ions. The note also highlights that after defocusing the beam, the radial Rabi frequency was about halved, consistent with reduced coupling strength. The measured axial Rabi frequency was 2.1 MHz on the carrier. According to a group meeting document from September 9, 2022, the experiment reported a radial Rabi frequency corresponding to 2.5–3 µs π-time, achieved with about 1.6 mW of 729 nm laser power focused to a beam waist of ~3 µm"
 Assistant (Case 1):
 ```
-**TL;DR:** The reported Rabi frequency is $2.1\,\mathrm{{MHz}}$. [<1>]["_...The measured Rabi frequency was 2.1 MHz on the carrier..._"]  
-**Result.** The experiment measured $\Omega=2.1\,\mathrm{{MHz}}$. [<1>]["_...The measured Rabi frequency was 2.1 MHz on the carrier..._"]
+**TL;DR:** The reported Rabi frequency is $2.1\,\mathrm{{MHz}}$. [<1>][<"_...The measured Rabi frequency was 2.1 MHz on the carrier..._">]  
+**Result.** The experiment measured $\Omega=2.1\,\mathrm{{MHz}}$. [<1>][<"_...The measured Rabi frequency was 2.1 MHz on the carrier..._">]
 ```
 
 ────────────────────────────────────────────────
@@ -319,7 +320,7 @@ BAD 7 — Currency symbol misinterpreted as math
 "The cost is $5."  ← ❌ If a dollar sign denotes currency, escape or rephrase (e.g. "USD 5" or "\$5"); do not treat as math.
 
 BAD 8 - Add multiple sources string after one citation mark
-"shuttle a nine-ion 40Ca+​40​​Ca​+​​chain across a tightly focused 866nm866nmaddressing beam that resonantly excites 32D3/2↔42P1/23​2​​D​3/2​​↔4​2​​P​1/2​​while globally preparing and collecting 397nm397nmphotons from the 42P1/2→42S1/24​2​​P​1/2​​→4​2​​S​1/2​​decay. [<2>]["A beam of 397 nm and 866 nm light illuminating all ions is used for Doppler cooling… An 866 nm beam individual addressing beam counter-propagates with the single photons."]["Then, the 866 nm addressing beam (resonant with 3^2D{{3/2}} \leftrightarrow 4^2P_{{1/2}} ) is stroboscopically switched on during the transport to extract photons from the target ions._"] ← ❌ After each citation mark like "[<2>]", append one and only one source string in the following as: [<2>]["_...A beam of 397 nm and 866 nm light illuminating all ions is used for Doppler cooling… An 866 nm beam individual addressing beam counter-propagates with the single photons..._"]; do not add multiple source strings.
+"shuttle a nine-ion 40Ca+​40​​Ca​+​​chain across a tightly focused 866nm866nmaddressing beam that resonantly excites 32D3/2↔42P1/23​2​​D​3/2​​↔4​2​​P​1/2​​while globally preparing and collecting 397nm397nmphotons from the 42P1/2→42S1/24​2​​P​1/2​​→4​2​​S​1/2​​decay. [<2>][<"A beam of 397 nm and 866 nm light illuminating all ions is used for Doppler cooling… An 866 nm beam individual addressing beam counter-propagates with the single photons.">][<"Then, the 866 nm addressing beam (resonant with 3^2D{{3/2}} \leftrightarrow 4^2P_{{1/2}} ) is stroboscopically switched on during the transport to extract photons from the target ions._">] ← ❌ After each citation mark like "[<2>]", append one and only one source string in the following as: [<2>][<"_...A beam of 397 nm and 866 nm light illuminating all ions is used for Doppler cooling… An 866 nm beam individual addressing beam counter-propagates with the single photons..._">]; do not add multiple source strings.
 
 ────────────────────────────────────────────────
 EDGE-CASE HANDLING
@@ -347,7 +348,7 @@ Follow the response guidelines in the system prompt.
         system_prompt_advanced = """You are a deep thinking tutor helping a student reading a paper.
 
 MATH RENDERING — HARD RULES (must follow):
-- Wrap ALL math (include important numbers) in $...$ (inline) or $$...$$ (display). Never write bare math.
+- Wrap ALL math (except for any pure numbers) in $...$ (inline) or $$...$$ (display). Never write bare math.
 - Do NOT use \( \) or \[ \]; only $...$ or $$...$$.
 - Do NOT put math in backticks. Backticks are for code only.
 - Balance every $ and $$ pair.
@@ -370,7 +371,7 @@ RESPONSE GUIDELINES:
 SOURCING MODES
 Case 1 (Answerable from context chunks):
   - Use only the context. For *each sentence* in the response, cite the most relevant chunk key (IMPORTANT: only **one** citation key after each sentence) in the format "[<1>]" or "[<3>]" at the end of the sentence.
-  - Immediately after each citation key, append one sentence from the source (IMPORTANT: italic, in quotes) inside square brackets, e.g., ["_...source sentence..._"]. IMPORTANT: Use the same language as the original source!
+  - Immediately after each citation key, append one sentence from the source (IMPORTANT: italic, in quotes) inside square brackets, e.g., [<"_...source sentence..._">]. IMPORTANT: Use the same language as the original source!
   - Use markdown emphasis for readability.
 
 Case 2 (Not answerable from context):
@@ -396,9 +397,9 @@ Context Chunks:
 
 Assistant (Case 1):
 ```
-**TL;DR:** The photon's energy is proportional to its angular frequency via $E=\hbar\omega$. [<1>]["_Planck's relation states E = ħω for a single photon._"]
-**Planck relation.** The energy of a photon is $E=\hbar\omega$. [<1>]["_Planck’s relation states E = ħω for a single photon._"]
-**Frequency form.** Using $\omega=2\pi f$, we also have $E=h f$ with $h=2\pi\hbar$. [<2>]["_Angular frequency ω relates to frequency f by ω = 2πf._"]
+**TL;DR:** The photon's energy is proportional to its angular frequency via $E=\hbar\omega$. [<1>][<"_Planck's relation states E = ħω for a single photon._">]
+**Planck relation.** The energy of a photon is $E=\hbar\omega$. [<1>][<"_Planck’s relation states E = ħω for a single photon._">]
+**Frequency form.** Using $\omega=2\pi f$, we also have $E=h f$ with $h=2\pi\hbar$. [<2>][<"_Angular frequency ω relates to frequency f by ω = 2πf._">]
 ```
 
 GOOD B — Display math, multi-step, Case 2 (web search)
@@ -429,22 +430,22 @@ Context:
   [<1>]: "This means the effective radial Rabi rate was in the range of roughly 330–400 kHz, depending on the exact optical alignment and beam balance across the ions. The note also highlights that after defocusing the beam, the radial Rabi frequency was about halved, consistent with reduced coupling strength. The measured axial Rabi frequency was 2.1 MHz on the carrier. According to a group meeting document from September 9, 2022, the experiment reported a radial Rabi frequency corresponding to 2.5–3 µs π-time, achieved with about 1.6 mW of 729 nm laser power focused to a beam waist of ~3 µm"
 Assistant (Case 1):
 ```
-**TL;DR:** The reported Rabi frequency is $2.1\,\mathrm{{MHz}}$. [<1>]["_...The measured Rabi frequency was 2.1 MHz on the carrier..._"]  
-**Result.** The experiment measured $\Omega=2.1\,\mathrm{{MHz}}$. [<1>]["_...The measured Rabi frequency was 2.1 MHz on the carrier..._"]
+**TL;DR:** The reported Rabi frequency is $2.1\,\mathrm{{MHz}}$. [<1>][<"_...The measured Rabi frequency was 2.1 MHz on the carrier..._">]  
+**Result.** The experiment measured $\Omega=2.1\,\mathrm{{MHz}}$. [<1>][<"_...The measured Rabi frequency was 2.1 MHz on the carrier..._">]
 ```
 
 GOOD D - A mix of Case 1 and Case 2.
 User Q: "Context from the paper: {{context_from_paper}}\n\n What is this paper mainly about? Do web search if needed to find related multiplexing papers and compare with this paper."
 Assistant:
 ```
-**TL;DR:** The paper demonstrates a temporally multiplexed ion–photon interface by rapidly shuttling a nine-ion $^{{40}}\mathrm{{Ca}}^+$ chain through a focused addressing beam to produce single-photon trains with low crosstalk, verified by $g^{{(2)}}(0)=0.060(13)$, and it analyzes transport-induced motional excitation; compared with other multiplexing work, it trades cavity-enhanced efficiency for architectural simplicity and a path to higher attempt rates via fast transport. [<1>]["_...Here, we demonstrate a temporally multiplexed ion-photon interface via rapid transport of a chain of nine calcium ions across 74 µm within 86 µs..._"]
+**TL;DR:** The paper demonstrates a temporally multiplexed ion–photon interface by rapidly shuttling a nine-ion $^{{40}}\mathrm{{Ca}}^+$ chain through a focused addressing beam to produce single-photon trains with low crosstalk, verified by $g^{{(2)}}(0)=0.060(13)$, and it analyzes transport-induced motional excitation; compared with other multiplexing work, it trades cavity-enhanced efficiency for architectural simplicity and a path to higher attempt rates via fast transport. [<1>][<"_...Here, we demonstrate a temporally multiplexed ion-photon interface via rapid transport of a chain of nine calcium ions across 74 µm within 86 µs..._">]
 
 — What this paper is mainly about (from the provided text) —
-- **Goal and method.** The authors implement a temporally multiplexed ion–photon interface by transporting a nine-ion chain across the focus of an $866\,\mathrm{{nm}}$ addressing beam to sequentially generate on-demand $397\,\mathrm{{nm}}$ photons, aiming for a nearly nine-fold attempt-rate increase for nodes separated by $>100\,\mathrm{{km}}$. [<1>]["_In our experiments, we generate on-demand single photons by shuttling a nine-ion chain across the focus of a single-ion addressing beam._"]["_This scheme is expected to lead to a nearly nine-fold increase in attempt rate of the entanglement generation for quantum repeater nodes separated by >100 km._"]
-- **Nonclassicality/crosstalk.** The single-photon character of the multiplexed output is verified by $g^{{(2)}}(0)=0.060(13)$ without background subtraction, with residual coincidences primarily from neighboring-ion excitation (addressing-beam crosstalk $\approx 0.99\%$ giving expected $g^{{(2)}}_{{\mathrm{{{{exp}}}}(0)=0.049(8)}}$). [<3>]["_...The residual correlation can be explained by excitation of neighboring ions, i.e., crosstalk of the addressing beam, which is separately characterized to be 0.99 % … corresponding to expected average g(2) exp(0) = 0.049(8)._"]
-- **Throughput achieved.** Over $40\,\mathrm{{min}}$ the system made $\sim 1.56\times 10^{{6}}$ whole-string attempts (attempt rate $39.0\,\mathrm{{kHz}}$), with average photon extraction efficiency $0.21\%$ and a single-photon count rate of $\sim 71\,\mathrm{{cps}}$. [<2>]["_...Data is accumulated for 40 min, during which around 1.56 × 10^6 attempts were made to the whole string, corresponding to attempt rate 39.0 kHz, an average photon extraction efficiency of 0.21 % and single photons count rate of around 71 cps._"]
-- **Transport-induced motion.** Fast shuttling coherently excites the axial center-of-mass mode to $\bar n_{{\alpha}}\!\approx\!110$ (at full speed), inferred via carrier Rabi flopping; the authors discuss mitigation via improved shuttling and possible cavity alignment. [<4>]["_...The carrier Rabi flopping … matches with COM coherent state with ¯nα ≈110 (Fig. 4(c))..._"]
-- **Upgrade path.** They argue that coupling to a single-mode fiber to suppress crosstalk and integrating a miniature cavity could raise photonic extraction substantially without reducing the generation rate. [<5>]["_...Once integrated with … photon collection with a single mode fiber, we expect a faster photon extraction rate … and negligible ion crosstalk while achieving high fidelity ion-photon entanglement._"]
+- **Goal and method.** The authors implement a temporally multiplexed ion–photon interface by transporting a nine-ion chain across the focus of an $866\,\mathrm{{nm}}$ addressing beam to sequentially generate on-demand $397\,\mathrm{{nm}}$ photons, aiming for a nearly nine-fold attempt-rate increase for nodes separated by $>100\,\mathrm{{km}}$. [<1>][<"_In our experiments, we generate on-demand single photons by shuttling a nine-ion chain across the focus of a single-ion addressing beam._">][<"_This scheme is expected to lead to a nearly nine-fold increase in attempt rate of the entanglement generation for quantum repeater nodes separated by >100 km._">]
+- **Nonclassicality/crosstalk.** The single-photon character of the multiplexed output is verified by $g^{{(2)}}(0)=0.060(13)$ without background subtraction, with residual coincidences primarily from neighboring-ion excitation (addressing-beam crosstalk $\approx 0.99\%$ giving expected $g^{{(2)}}_{{\mathrm{{{{exp}}}}(0)=0.049(8)}}$). [<3>][<"_...The residual correlation can be explained by excitation of neighboring ions, i.e., crosstalk of the addressing beam, which is separately characterized to be 0.99 % … corresponding to expected average g(2) exp(0) = 0.049(8)._">]
+- **Throughput achieved.** Over $40\,\mathrm{{min}}$ the system made $\sim 1.56\times 10^{{6}}$ whole-string attempts (attempt rate $39.0\,\mathrm{{kHz}}$), with average photon extraction efficiency $0.21\%$ and a single-photon count rate of $\sim 71\,\mathrm{{cps}}$. [<2>][<"_...Data is accumulated for 40 min, during which around 1.56 × 10^6 attempts were made to the whole string, corresponding to attempt rate 39.0 kHz, an average photon extraction efficiency of 0.21 % and single photons count rate of around 71 cps._">]
+- **Transport-induced motion.** Fast shuttling coherently excites the axial center-of-mass mode to $\bar n_{{\alpha}}\!\approx\!110$ (at full speed), inferred via carrier Rabi flopping; the authors discuss mitigation via improved shuttling and possible cavity alignment. [<4>][<"_...The carrier Rabi flopping … matches with COM coherent state with ¯nα ≈110 (Fig. 4(c))..._">]
+- **Upgrade path.** They argue that coupling to a single-mode fiber to suppress crosstalk and integrating a miniature cavity could raise photonic extraction substantially without reducing the generation rate. [<5>][<"_...Once integrated with … photon collection with a single mode fiber, we expect a faster photon extraction rate … and negligible ion crosstalk while achieving high fidelity ion-photon entanglement._">]
 
 — How it compares to related multiplexing approaches (recent literature) —
 - **Trapped ions, cavity-enhanced static-node multiplexing (3 ions).** A three-ion node in an optical cavity generated a train of telecom-converted photons and showed improved remote entanglement rate over $101\,\mathrm{{km}}$, demonstrating multimode networking with a static register rather than transport. ([journals.aps.org](https://journals.aps.org/prxquantum/abstract/10.1103/PRXQuantum.5.020308))
@@ -455,9 +456,9 @@ Assistant:
 - **Photonic sources, time multiplexing background.** Time-multiplexed SPDC sources boost single-photon probability (e.g., to $\sim 39\%$ over $30$ time bins) and trace back to “pseudo-demand” single photons via storage loops—conceptually related multiplexing on the photonic side rather than the matter interface. ([tohoku.elsevierpure.com](https://tohoku.elsevierpure.com/en/publications/time-multiplexed-heralded-single-photon-source))
 
 — Bottom line —
-- **What’s new here.** Multiplexing by fast, free-space ion-chain transport concentrates emission from many ions into one spatial mode without a cavity, boosting the attempt rate by roughly the chain length while preserving single-photon statistics $g^{{(2)}}(0)\approx 0.06$. [<1>]["_...This scheme is expected to lead to a nearly nine-fold increase in attempt rate..._"]
-- **Primary tradeoffs today.** Compared with cavity-based nodes that report per-photon detection near $9$–$90\%$, this transport approach currently shows lower extraction ($0.21\%$) and introduces coherent motional excitation (COM $\bar n_{{\alpha}}\!\approx\!110$) that must be tamed for high-fidelity local gates. [<4>]["_...matches with COM coherent state with ¯nα ≈110..._"] ([arxiv.org](https://arxiv.org/abs/2406.09480))
-- **Outlook.** The paper argues that single-mode-fiber collection and cavity integration could mitigate crosstalk and raise efficiency substantially while keeping the high attempt rate enabled by transport. [<5>]["_...single mode fiber, we expect a faster photon extraction rate … and negligible ion crosstalk..._"]
+- **What’s new here.** Multiplexing by fast, free-space ion-chain transport concentrates emission from many ions into one spatial mode without a cavity, boosting the attempt rate by roughly the chain length while preserving single-photon statistics $g^{{(2)}}(0)\approx 0.06$. [<1>][<"_...This scheme is expected to lead to a nearly nine-fold increase in attempt rate..._">]
+- **Primary tradeoffs today.** Compared with cavity-based nodes that report per-photon detection near $9$–$90\%$, this transport approach currently shows lower extraction ($0.21\%$) and introduces coherent motional excitation (COM $\bar n_{{\alpha}}\!\approx\!110$) that must be tamed for high-fidelity local gates. [<4>][<"_...matches with COM coherent state with ¯nα ≈110..._">] ([arxiv.org](https://arxiv.org/abs/2406.09480))
+- **Outlook.** The paper argues that single-mode-fiber collection and cavity integration could mitigate crosstalk and raise efficiency substantially while keeping the high attempt rate enabled by transport. [<5>][<"_...single mode fiber, we expect a faster photon extraction rate … and negligible ion crosstalk..._">]
 
 If you’d like, I can tabulate key metrics (platform, multiplexing method, per-attempt rate, detection efficiency, $g^{{(2)}}(0)$, telecom conversion, and demonstrated distance) and suggest concrete upgrade targets for this transport-based interface.
 ```
@@ -489,7 +490,7 @@ BAD 7 — Currency symbol misinterpreted as math
 "The cost is $5."  ← ❌ If a dollar sign denotes currency, escape or rephrase (e.g. "USD 5" or "\$5"); do not treat as math.
 
 BAD 8 - Add multiple sources string after one citation mark
-"shuttle a nine-ion 40Ca+​40​​Ca​+​​chain across a tightly focused 866nm866nmaddressing beam that resonantly excites 32D3/2↔42P1/23​2​​D​3/2​​↔4​2​​P​1/2​​while globally preparing and collecting 397nm397nmphotons from the 42P1/2→42S1/24​2​​P​1/2​​→4​2​​S​1/2​​decay. [<2>]["A beam of 397 nm and 866 nm light illuminating all ions is used for Doppler cooling… An 866 nm beam individual addressing beam counter-propagates with the single photons."]["Then, the 866 nm addressing beam (resonant with 3^2D{{3/2}} \leftrightarrow 4^2P_{{1/2}} ) is stroboscopically switched on during the transport to extract photons from the target ions._"] ← ❌ After each citation mark like "[<2>]", append one and only one source string in the following as: [<2>]["_...A beam of 397 nm and 866 nm light illuminating all ions is used for Doppler cooling… An 866 nm beam individual addressing beam counter-propagates with the single photons..._"]; do not add multiple source strings.
+"shuttle a nine-ion 40Ca+​40​​Ca​+​​chain across a tightly focused 866nm866nmaddressing beam that resonantly excites 32D3/2↔42P1/23​2​​D​3/2​​↔4​2​​P​1/2​​while globally preparing and collecting 397nm397nmphotons from the 42P1/2→42S1/24​2​​P​1/2​​→4​2​​S​1/2​​decay. [<2>][<"A beam of 397 nm and 866 nm light illuminating all ions is used for Doppler cooling… An 866 nm beam individual addressing beam counter-propagates with the single photons.">][<"Then, the 866 nm addressing beam (resonant with 3^2D{{3/2}} \leftrightarrow 4^2P_{{1/2}} ) is stroboscopically switched on during the transport to extract photons from the target ions._">] ← ❌ After each citation mark like "[<2>]", append one and only one source string in the following as: [<2>][<"_...A beam of 397 nm and 866 nm light illuminating all ions is used for Doppler cooling… An 866 nm beam individual addressing beam counter-propagates with the single photons..._">]; do not add multiple source strings.
 
 ────────────────────────────────────────────────
 EDGE-CASE HANDLING
@@ -501,19 +502,31 @@ REMINDER: When Case 1 applies, every sentence must end with only one [<k>] citat
 """
 
         if chat_session.mode == ChatMode.LITE:
-            client = OpenAI(
-                api_key=os.getenv("AZURE_OPENAI_API_KEY_BACKUP"),
-                # base_url="https://knowhiz-service-openai-backup-2.openai.azure.com/openai/v1/"
-                base_url=str(os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP")) + "openai/v1/"
-            )
-            TAVILY_API_KEY=str(os.getenv("TAVILY_API_KEY"))
-            tools=[
+            # client = OpenAI(
+            #     api_key=os.getenv("AZURE_OPENAI_API_KEY_BACKUP"),
+            #     # base_url="https://knowhiz-service-openai-backup-2.openai.azure.com/openai/v1/"
+            #     base_url=str(os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP")) + "openai/v1/"
+            # )
+            # TAVILY_API_KEY=str(os.getenv("TAVILY_API_KEY"))
+            # tools=[
+            #     {
+            #         "type": "mcp",
+            #         "server_label": "arXiv",
+            #         "server_url": "https://server.smithery.ai/@prashalruchiranga/arxiv-mcp-server/mcp?api_key=cf81892d-ebb6-490e-8ca4-ec7bee7f932c&profile=steep-skink-QCjOVT",
+            #         "require_approval": "never",
+            #     },
+            # ]
+            input = [
                 {
-                    "type": "mcp",
-                    "server_label": "tavily",
-                    "server_url": "https://mcp.tavily.com/mcp/?tavilyApiKey=" + TAVILY_API_KEY,
-                    "require_approval": "never",
-                },
+                    "role": "user",
+                    "content": [
+                        { "type": "input_text", "text": user_prompt },
+                        # {
+                        #     "type": "input_file",
+                        #     "file_url": "https://arxiv.org/pdf/2405.10501"
+                        # }
+                    ]
+                }
             ]
             kwargs = dict(
                 model="gpt-5",
@@ -524,7 +537,7 @@ REMINDER: When Case 1 applies, every sentence must end with only one [<k>] citat
                 # tools=tools,  # built-in tool
                 tools=[],
                 instructions=f"{system_prompt}",
-                input=user_prompt,
+                input=input,
             )
             # stream = client.responses.create(stream=True, **kwargs)
             stream = stream_response_with_tags(**kwargs)
@@ -574,6 +587,9 @@ REMINDER: When Case 1 applies, every sentence must end with only one [<k>] citat
 
             Unless clearly specified the output language: If the user's question is in Chinese, then answer in Chinese. But for the source citation in square brackets, ALWAYS use the same language as the original source. If the user's question is not in Chinese, then answer in English (For citations in square brackets, still use the same language as the original source). Do not use other languages.
 
+            You have access to the following tool to help you find relevant information from the web and academic papers:
+            tavily mcp is a tool that allows you to search for academic papers and retrieve relevant information (powerful and flexible, suitable for all tasks).
+
             Follow the response guidelines in the system prompt.
             """
             TAVILY_API_KEY=str(os.getenv("TAVILY_API_KEY"))
@@ -584,25 +600,60 @@ REMINDER: When Case 1 applies, every sentence must end with only one [<k>] citat
                     "server_url": "https://mcp.tavily.com/mcp/?tavilyApiKey=" + TAVILY_API_KEY,
                     "require_approval": "never",
                 },
+                # {
+                #     "type": "mcp",
+                #     "server_label": "arXiv",
+                #     "server_url": "https://server.smithery.ai/@prashalruchiranga/arxiv-mcp-server/mcp?api_key=cf81892d-ebb6-490e-8ca4-ec7bee7f932c&profile=steep-skink-QCjOVT",
+                #     "require_approval": "never",
+                # },
+                # {
+                #     "type": "mcp",
+                #     "server_label": "Semantic_Scholar",
+                #     "server_url": "https://server.smithery.ai/@hamid-vakilzadeh/mcpsemanticscholar/mcp?api_key=cf81892d-ebb6-490e-8ca4-ec7bee7f932c&profile=steep-skink-QCjOVT",
+                #     "require_approval": "never",
+                # },
+                # {
+                #     "type": "mcp",
+                #     "server_label": "Google_Scholar",
+                #     "server_url": "https://server.smithery.ai/@JackKuo666/google-scholar-mcp-server/mcp?api_key=cf81892d-ebb6-490e-8ca4-ec7bee7f932c&profile=steep-skink-QCjOVT",
+                #     "require_approval": "never",
+                # },
             ]
             kwargs = dict(
                 model="gpt-5",
                 # reasoning={"effort": "high", "summary": "detailed"},
-                reasoning={"effort": "medium", "summary": "auto"},
+                # reasoning={"effort": "medium", "summary": "auto"},
+                reasoning={"effort": "high", "summary": "auto"},
                 # reasoning={"effort": "low", "summary": "auto"},
                 # tools=[{"type": "web_search"}],  # built-in tool
                 tools=tools,  # built-in tool
                 instructions=f"{system_prompt_advanced}",
                 input=user_prompt,
             )
+
+            # # o3 pro have no streaming capability yet
             # kwargs = dict(
-            #     model="o3",
-            #     reasoning={"effort": "medium", "summary": "auto"},
+            #     model="o3-pro",
+            #     # reasoning={"effort": "high", "summary": "detailed"},
+            #     # reasoning={"effort": "medium", "summary": "auto"},
+            #     # reasoning={"effort": "low", "summary": "auto"},
+            #     # tools=[{"type": "web_search"}],  # built-in tool
             #     tools=tools,  # built-in tool
             #     instructions=f"{system_prompt_advanced}",
             #     input=user_prompt,
             # )
-            # Convert regular generator to async generator
+
+            # # o3 have no thinking streaming yet
+            # kwargs = dict(
+            #     model="o3",
+            #     # reasoning={"effort": "high", "summary": "detailed"},
+            #     reasoning={"effort": "medium", "summary": "auto"},
+            #     # reasoning={"effort": "low", "summary": "auto"},
+            #     # tools=[{"type": "web_search"}],  # built-in tool
+            #     tools=tools,  # built-in tool
+            #     instructions=f"{system_prompt_advanced}",
+            #     input=user_prompt,
+            # )
             async def sync_to_async_generator():
                 for chunk in stream_response_with_tags(**kwargs):
                     yield chunk
@@ -716,13 +767,13 @@ async def get_query_helper(chat_session: ChatSession, user_input, context_chat_h
         ```json
         {{
             "user_intent": "<detailed analysis of what the user truly wants to know. based on the previous conversation history and the current question analyse what user already knows and what user doesn't know>",
-            "things_explained_already": ["<list of things that has been explained in the previous conversation and should not be repeated in detail in the answer>"],
-            "key_focus_areas": ["<list of specific topics/concepts that should be explained>"],
-            "information_to_include": ["<list of specific information points that should be included>"],
-            "information_to_exclude": ["<list of information that should be excluded - already known/redundant>"],
-            "answer_structure": ["<outline of how the answer should be structured>"],
+            "things_explained_already": [<"<list of things that has been explained in the previous conversation and should not be repeated in detail in the answer>">],
+            "key_focus_areas": [<"<list of specific topics/concepts that should be explained>">],
+            "information_to_include": [<"<list of specific information points that should be included>">],
+            "information_to_exclude": [<"<list of information that should be excluded - already known/redundant>">],
+            "answer_structure": [<"<outline of how the answer should be structured>">],
             "explanation_depth": "<assessment of how detailed the explanation should be (basic/intermediate/advanced)>",
-            "misconceptions_to_address": ["<potential misconceptions that should be corrected>"]
+            "misconceptions_to_address": [<"<potential misconceptions that should be corrected>">]
         }}
         ```
 
@@ -846,9 +897,10 @@ def generate_follow_up_questions(answer, chat_history, user_input=""):
     logger.info("Generating follow-up questions ...")
     config = load_config()
     para = config['llm']
-    llm = get_llm('basic', para)
+    # Build the primary ("backup") LLM first – this is the one that may fail
+    llm_primary = get_llm('basic', para)
     parser = JsonOutputParser()
-    error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
+    error_parser = OutputFixingParser.from_llm(parser=parser, llm=llm_primary)
 
     system_prompt = """
     You are an expert at generating engaging follow-up questions based on a conversation between a tutor and a student.
@@ -890,12 +942,48 @@ def generate_follow_up_questions(answer, chat_history, user_input=""):
         ("human", human_prompt),
     ])
 
-    chain = prompt | llm | error_parser
-    result = chain.invoke({
-        "answer": answer,
-        # "chat_history": truncate_chat_history(chat_history),
-        "user_input": user_input
-    })
+    chain = prompt | llm_primary | error_parser
+
+    try:
+        result = chain.invoke({
+            "answer": answer,
+            # "chat_history": truncate_chat_history(chat_history),
+            "user_input": user_input
+        })
+    except Exception as e:
+        # Catch common auth/HTTP issues and retry with the default Azure resource
+        logger.warning(
+            "generate_follow_up_questions: primary attempt failed – %s. Retrying with fallback endpoint.",
+            repr(e),
+        )
+
+        from langchain_openai import AzureChatOpenAI  # Local import to avoid overhead
+        import os
+
+        try:
+            llm_fallback = AzureChatOpenAI(
+                api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+                azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+                openai_api_version="2024-12-01-preview",
+                azure_deployment="gpt-4.1",
+                temperature=para['temperature'],
+                streaming=False,
+                max_tokens=12768,
+            )
+
+            error_parser_fallback = OutputFixingParser.from_llm(parser=parser, llm=llm_fallback)
+            chain_fallback = prompt | llm_fallback | error_parser_fallback
+
+            result = chain_fallback.invoke({
+                "answer": answer,
+                "user_input": user_input
+            })
+        except Exception as e2:
+            logger.error(
+                "generate_follow_up_questions: fallback attempt failed – %s.",
+                repr(e2),
+            )
+            raise  # Propagate so upstream can handle
 
     logger.info(f"Generated follow-up questions: {result['questions']}")
     return result["questions"]

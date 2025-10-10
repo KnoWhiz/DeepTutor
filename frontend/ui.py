@@ -13,7 +13,8 @@ from frontend.utils import (
     next_page,
     handle_follow_up_click,
     format_reasoning_response,
-    extract_content_after_generation
+    extract_content_after_generation,
+    format_response,
 )
 from frontend.forms.contact import contact_form
 from pipeline.science.pipeline.config import load_config
@@ -441,17 +442,35 @@ def show_chat_interface(doc, document, file_path, embedding_folder):
                     response_placeholder = st.chat_message("assistant", avatar=tutor_avatar)
                     with response_placeholder:
                         # Process the response stream first
-                        response_content = process_response_phase(response_placeholder, stream_response=answer_generator, mode=st.session_state.chat_session.mode, stream=stream)
+                        response_content = process_response_phase(
+                            response_placeholder,
+                            stream_response=answer_generator,
+                            mode=st.session_state.chat_session.mode,
+                            stream=stream,
+                        )
+                        # This is the content *as streamed* – the final tag indices may still
+                        # change when `get_response_source` rewrites `chat_session.current_message`.
                         answer_content = response_content
                         
                         # After consuming the generator, extract content from the chat session
-                        sources,\
-                        source_pages,\
-                        source_annotations,\
-                        refined_source_pages,\
-                        refined_source_index,\
-                        follow_up_questions,\
-                        thinking = extract_content_after_generation(st.session_state.chat_session)
+                        (
+                            sources,
+                            source_pages,
+                            source_annotations,
+                            refined_source_pages,
+                            refined_source_index,
+                            follow_up_questions,
+                            thinking,
+                        ) = extract_content_after_generation(st.session_state.chat_session)
+
+                        # ------------------------------------------------------------------
+                        # Refresh the assistant message to show *updated* tag numbering
+                        # ------------------------------------------------------------------
+                        latest_message = st.session_state.chat_session.current_message
+                        if latest_message and latest_message != answer_content:
+                            cleaned_latest = format_response(latest_message)
+                            response_placeholder.markdown(cleaned_latest)
+                            answer_content = cleaned_latest
 
                         logger.info(f"After generation, source_annotations: {source_annotations.values()}")
                         logger.info(f"After generation, refined_source_index: {refined_source_index.values()}")

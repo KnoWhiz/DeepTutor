@@ -389,89 +389,246 @@ def find_most_relevant_chunk(answer: str,
     return chunks[best_idx]
 
 
-def get_response_source(chat_session: ChatSession, file_path_list, user_input, answer, chat_history, embedding_folder_list):
+def get_response_source(
+    chat_session: ChatSession,
+    file_path_list,
+    user_input,
+    answer,
+    chat_history,
+    embedding_folder_list,
+):
+    """Re‑map source tags in *chat_session.current_message* and build lookup dicts.
+
+    The function now performs **three** responsibilities:
+
+    1. Scan *chat_session.current_message* for any tag formatted as ``[<k>]`` (``k`` is an
+       arbitrary integer, may repeat).  For every tag it tries to capture the *highlight* block
+       that immediately follows it – the new syntax is ``[< "Some text" >]`` (square bracket
+       plus angle bracket opener, **text**, then the matching ``>]`` closer).  Leading/trailing
+       underscores and quotes are optional.  If such a block is found, its inner text is used to
+       locate the most relevant chunk via
+       ``find_most_relevant_chunk``.
+
+    2. Using the original tag symbol (``[<k>]``) it looks up the *page_num* and *source_index*
+       from ``chat_session.formatted_context`` (same structure as before).  Those values are
+       stored in the three dictionaries returned to the caller:
+
+       - ``source_pages``          – ``content -> page_num`` (1‑indexed)
+       - ``refined_source_pages`` – alias of the above (kept for backward compatibility)
+       - ``refined_source_index`` – ``content -> (source_index - 1)`` (0‑indexed)
+
+    3. While iterating through tags the function *renumbers* them so they become consecutive
+       (``[<1>], [<2>], ...``).  When the same *content* string appears again the previously
+       assigned number is reused instead of allocating a new one.  Tags that do **not** have a
+       following quoted string are removed from the message.  For tags **with** a quoted string,
+       that bracketed highlight (e.g. ``[<"_foo bar_">]``) is stripped from the final message
+       after it has been parsed – only the renumbered citation tag remains visible.  The updated
+       message is written back into ``chat_session.current_message`` so that downstream UI sees
+       the cleaned numbering.
+
+    The original ``sources_with_scores`` dict is still returned unchanged – it now only contains
+    the union of all *content* strings we extracted with their similarity scores from
+    ``formatted_context``.
     """
-    Simplified version that retrieves source references directly from chat_session.formatted_context.
-    
-    This function extracts source information from the pre-computed formatted_context stored in the
-    chat session, which contains chunks ordered by source_index and page_number with their metadata.
-    
-    Args:
-        chat_session (ChatSession): Active chat session containing formatted_context
-        file_path_list (List[str]): Paths to the uploaded document files being referenced
-        user_input (str): The original user query that prompted the response
-        answer (str): The AI-generated response content to find sources for
-        chat_history (List): Historical conversation context (unused in simplified version)
-        embedding_folder_list (List[str]): Paths to directories containing embeddings (unused in simplified version)
-    
-    Returns:
-        Tuple[Dict, Dict, Dict, Dict]: A 4-tuple containing:
-            - sources_with_scores: Dictionary mapping source content to relevance scores (0-1)
-            - source_pages: Dictionary mapping source content to 0-indexed page numbers
-            - refined_source_pages: Dictionary mapping sources to 1-indexed page numbers
-            - refined_source_index: Dictionary mapping sources to their corresponding file indices
-    
-    Context Format Expected:
-        chat_session.formatted_context = {
-            "[<1>]": {
-                "content": "relevant text chunk", 
-                "score": 0.85,
-                "page_num": 5,      # 1-indexed page number (page 5)
-                "source_index": 1   # 1-indexed file position (first file)
-            },
-            "[<2>]": {
-                "content": "another chunk", 
-                "score": 0.72,
-                "page_num": 12,     # 1-indexed page number (page 12)  
-                "source_index": 2   # 1-indexed file position (second file)
-            },
-            ...
-        }
-    """
-    logger.info("Using simplified get_response_source with formatted_context")
-    
-    # Initialize result dictionaries
-    sources_with_scores = {}
-    source_pages = {}
-    refined_source_pages = {}
-    refined_source_index = {}
-    
-    # Extract information directly from formatted_context
-    if hasattr(chat_session, 'formatted_context') and chat_session.formatted_context:
-        for symbol, context_data in chat_session.formatted_context.items():
-            # content = context_data["content"][:100]
-            # content = context_data["content"]
-            if chat_session.mode == ChatMode.LITE:
-                full_content=context_data["content"]
-                content = find_most_relevant_chunk(answer, full_content, user_input=user_input, divider_number=4)
-            else:
-                full_content = get_page_raw_text(file_path_list[0], context_data["page_num"])
-                # logger.info(f"Full content: {full_content}")
-                if len(full_content) > 0:
-                    content = find_most_relevant_chunk(answer, full_content, user_input=user_input, divider_number=4)
-                else:
-                    content = context_data["content"]
-            score = context_data["score"]
-            page_num = context_data["page_num"]  # 1-indexed from context
-            source_index = context_data["source_index"]  # 1-indexed from context
-            
-            # Store the content as key with its score
-            sources_with_scores[content] = float(score)
-            
-            # Store 0-indexed page number for source_pages and refined_source_pages (no need to convert from 1-indexed)
-            source_pages[content] = page_num
-            refined_source_pages[content] = page_num
-            
-            # Store 0-indexed file index for refined_source_index (converting from 1-indexed)
-            # This matches the original behavior where refined_source_index uses the raw file_index
-            refined_source_index[content] = source_index - 1
-            
-        logger.info(f"Extracted {len(sources_with_scores)} sources from formatted_context")
-        logger.info(f"Sources with scores: {len(sources_with_scores)} items")
-        logger.info(f"Refined source pages: {len(refined_source_pages)} items")
-        logger.info(f"Refined source index: {len(refined_source_index)} items")
-        
-    else:
-        logger.warning("No formatted_context found in chat_session, returning empty results")
-    
+
+    logger.info("Running enhanced get_response_source – re‑numbering tags and building maps")
+
+    # ---------------------------------------------------------------------
+    # 0. Quick sanity checks & early exits
+    # ---------------------------------------------------------------------
+    if not hasattr(chat_session, "current_message") or not chat_session.current_message:
+        logger.warning("chat_session.current_message is empty – nothing to post‑process")
+        return {}, {}, {}, {}
+
+    if not hasattr(chat_session, "formatted_context") or not chat_session.formatted_context:
+        logger.warning("chat_session.formatted_context is empty – cannot resolve tags")
+        return {}, {}, {}, {}
+
+    # ---------------------------------------------------------------------
+    # 1. Pre‑compute helpers & containers
+    # ---------------------------------------------------------------------
+    sources_with_scores: dict[str, float] = {}
+    source_pages: dict[str, int] = {}
+    refined_source_pages: dict[str, int] = {}
+    refined_source_index: dict[str, int] = {}
+
+    # Maps *content* -> new_tag_number so we can de‑duplicate numbering.
+    content_to_new_tag: dict[str, int] = {}
+
+    # Mapping of original tag symbol to page/index – extracted once for speed.
+    tag_meta_cache: dict[str, tuple[int, int, float, str]] = {}
+    # (page_num, source_index, score, full_content)
+
+    for symbol, ctx in chat_session.formatted_context.items():
+        try:
+            tag_meta_cache[symbol] = (
+                int(ctx.get("page_num", 1)),
+                int(ctx.get("source_index", 1)),
+                float(ctx.get("score", 0.0)),
+                ctx.get("content", ""),
+            )
+        except Exception as e:
+            logger.warning(f"Malformed context entry for {symbol}: {e}")
+
+    # ---------------------------------------------------------------------
+    # 2. Regex to iterate through tags
+    # ---------------------------------------------------------------------
+    # Pattern explanation:
+    #   \[<(?P<num>\d+)>\]  – the tag itself, greedy captures number as group 'num'
+    #   \s*                  – optional whitespace
+    #   "?_?                 – optionally a leading quote and underscore ("_)
+    #   (?P<quote>.*?)       – lazily capture everything until the next underscore+quote ( _")
+    #   _?"?                 – closing underscore and optional quote
+    # If no quoted text follows we will handle it separately.
+
+    tag_pattern = re.compile(r"\[<(?P<num>\d+)>\]")
+    # Quoted/bracketed source pattern – evaluated via ``re.match`` on the *remainder* right after the tag.
+    #
+    # New syntax 2025‑04:
+    #   The *highlight* that immediately follows a citation tag is now written as
+    #   ``[<"some text">]`` instead of the previous ``["some text"]``.  This change
+    #   avoids collisions with other square‑bracket usage inside the assistant
+    #   answer.  We therefore need to match the literal *two‑character* tokens
+    #   "[<" (opening) and ">]" (closing) as an atomic pair – capturing anything
+    #   in‑between as the *inner* text.
+    #
+    #   Supported variants (optional leading underscore for italics and optional
+    #   surrounding quotes are both preserved):
+    #       [<"_text_">]
+    #       [<_text_>]
+    #       [<text>]
+    #
+    #   Regex breakdown:
+    #       \s*            – leading whitespace after the citation tag
+    #       \[<            – the exact opening sequence
+    #       \s*            – optional inner spacing
+    #       "?_?           – optional opening quote and/or underscore
+    #       (?P<inner>.*?) – lazily capture everything until the closing delimiter
+    #       _?"?           – optional closing underscore/quote (mirrors the opener)
+    #       \s*            – optional spacing
+    #       >\]            – the exact closing sequence
+    quoted_pattern = re.compile(r"\s*\[<\s*\"?_?(?P<inner>.*?)_?\"?\s*>\]")
+
+    message = chat_session.current_message
+    new_message_parts: list[str] = []
+    last_idx = 0  # end of last match
+    next_tag_id = 1
+
+    for m in tag_pattern.finditer(message):
+        start, end = m.span()
+
+        # Append text between previous tag and this one unmodified for now.
+        new_message_parts.append(message[last_idx:start])
+
+        original_tag_symbol = message[start:end]  # e.g. "[<12>]"
+
+        # -----------------------------------------------------------------
+        # 2.a Attempt to capture following quoted string "_ ... _"
+        # -----------------------------------------------------------------
+        remainder = message[end:]
+
+        quote_match = quoted_pattern.match(remainder)
+
+        if not quote_match:
+            # No quoted string – drop this tag entirely (skip adding anything)
+            logger.debug(f"Tag {original_tag_symbol} has no following quoted string – removed")
+            last_idx = end  # skip the tag, keep scanning
+            continue
+
+        # Extract inner quoted text and trim optional surrounding underscores
+        tag_string_raw = quote_match.group("inner")
+        tag_string = tag_string_raw.strip("_")
+
+        # -----------------------------------------------------------------
+        # 2.b Resolve page/index via formatted_context
+        # -----------------------------------------------------------------
+        if original_tag_symbol not in tag_meta_cache:
+            logger.debug(f"Tag {original_tag_symbol} not present in formatted_context – skipped")
+            last_idx = end  # but we still consumed tag itself
+            continue
+
+        page_num, source_index, score, full_content_ctx = tag_meta_cache[original_tag_symbol]
+
+        # Choose full_content depending on chat mode
+        if chat_session.mode == ChatMode.LITE:
+            full_content = full_content_ctx
+        else:
+            # Ensure file index is within range
+            file_idx = max(0, min(source_index - 1, len(file_path_list) - 1))
+            try:
+                full_content = get_page_raw_text(file_path_list[file_idx], page_num)
+            except Exception as e:
+                logger.warning(f"Failed to fetch page content for {file_path_list[file_idx]} p{page_num}: {e}")
+                full_content = full_content_ctx  # fallback
+
+        # Derive *content* key via find_most_relevant_chunk
+        # NOTE:
+        # ``find_most_relevant_chunk`` expects the *primary* search text to be
+        # provided via the ``user_input`` parameter.  Previously we were passing
+        # the quoted *tag_string* as the first positional argument (``answer``)
+        # and the actual end‑user question as ``user_input``.  Because the
+        # scoring inside the helper weighs ``user_input`` (75 %) significantly
+        # higher than ``answer`` (25 %), the tag text we are trying to locate
+        # was effectively treated as a secondary signal.  This caused
+        # unrelated chunks to be selected whenever the user question shared
+        # little lexical overlap with the reference text.
+
+        # To make the lookup deterministic we now feed *tag_string* into the
+        # high‑weight ``user_input`` slot and completely ignore the original
+        # user question for this internal matching step.  The first positional
+        # argument (``answer``) is left empty so it has no influence on the
+        # ranking.
+
+        content_key = find_most_relevant_chunk(
+            "",                # answer – not used for tag resolution
+            full_content,
+            user_input=tag_string,
+            divider_number=4,
+        )
+        logger.info(f"\n\nTag {original_tag_symbol} mapped to page {page_num}, index {source_index}, content length {len(content_key)}")
+        logger.info(f"original tag string: {tag_string}:\nmost relevant chunk:\n{content_key}\n---\n")
+
+        # -----------------------------------------------------------------
+        # 2.c Assign / reuse new tag id
+        # -----------------------------------------------------------------
+        if content_key in content_to_new_tag:
+            new_tag_id = content_to_new_tag[content_key]
+        else:
+            new_tag_id = next_tag_id
+            content_to_new_tag[content_key] = new_tag_id
+            next_tag_id += 1
+
+        # Insert the *renumbered* tag into the message.
+        new_message_parts.append(f"[<{new_tag_id}>]")
+
+        # -----------------------------------------------------------------
+        # 2.e  Skip over the *highlight* bracket that immediately follows the
+        #      tag – we have already extracted the string for chunk matching
+        #      and do **not** want to show it in the final assistant message.
+        #
+        #      The matched ``quoted_pattern`` includes any leading whitespace
+        #      before the opening bracket so the slice below cleanly removes
+        #      the entire  ``[ "_ ... _" ]`` segment.
+        # -----------------------------------------------------------------
+
+        last_idx = end + quote_match.end()
+
+        # -----------------------------------------------------------------
+        # 2.d Populate dictionaries (only once per *content_key*)
+        # -----------------------------------------------------------------
+        if content_key not in source_pages:
+            source_pages[content_key] = page_num
+            refined_source_pages[content_key] = page_num
+            refined_source_index[content_key] = source_index - 1  # 0‑indexed for internal use
+            sources_with_scores[content_key] = score
+
+    # Append the remainder of the message after the last tag
+    new_message_parts.append(message[last_idx:])
+
+    chat_session.current_message = "".join(new_message_parts)
+
+    logger.info(
+        f"Renumbered {len(content_to_new_tag)} unique tags – current_message length: {len(chat_session.current_message)}"
+    )
+
     return sources_with_scores, source_pages, refined_source_pages, refined_source_index

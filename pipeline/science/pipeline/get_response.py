@@ -587,9 +587,8 @@ REMINDER: When Case 1 applies, every sentence must end with only one [<k>] citat
 
             Unless clearly specified the output language: If the user's question is in Chinese, then answer in Chinese. But for the source citation in square brackets, ALWAYS use the same language as the original source. If the user's question is not in Chinese, then answer in English (For citations in square brackets, still use the same language as the original source). Do not use other languages.
 
-            You have access to the following tools to help you find relevant information from the web and academic papers.
-            1. arxiv mcp is a tool that allows you to search for academic papers on arxiv and retrieve relevant information (cheap and fast, great for searching papers and get paper content).
-            2. tavily mcp is a tool that allows you to search for academic papers and retrieve relevant information (powerful and flexible, suitable for all tasks).
+            You have access to the following tool to help you find relevant information from the web and academic papers:
+            tavily mcp is a tool that allows you to search for academic papers and retrieve relevant information (powerful and flexible, suitable for all tasks).
 
             Follow the response guidelines in the system prompt.
             """

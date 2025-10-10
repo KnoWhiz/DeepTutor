@@ -502,11 +502,11 @@ REMINDER: When Case 1 applies, every sentence must end with only one [<k>] citat
 """
 
         if chat_session.mode == ChatMode.LITE:
-            client = OpenAI(
-                api_key=os.getenv("AZURE_OPENAI_API_KEY_BACKUP"),
-                # base_url="https://knowhiz-service-openai-backup-2.openai.azure.com/openai/v1/"
-                base_url=str(os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP")) + "openai/v1/"
-            )
+            # client = OpenAI(
+            #     api_key=os.getenv("AZURE_OPENAI_API_KEY_BACKUP"),
+            #     # base_url="https://knowhiz-service-openai-backup-2.openai.azure.com/openai/v1/"
+            #     base_url=str(os.getenv("AZURE_OPENAI_ENDPOINT_BACKUP")) + "openai/v1/"
+            # )
             # TAVILY_API_KEY=str(os.getenv("TAVILY_API_KEY"))
             # tools=[
             #     {

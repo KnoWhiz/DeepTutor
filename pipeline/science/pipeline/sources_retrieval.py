@@ -402,9 +402,11 @@ def get_response_source(
     The function now performs **three** responsibilities:
 
     1. Scan *chat_session.current_message* for any tag formatted as ``[<k>]`` (``k`` is an
-       arbitrary integer, may repeat).  For every tag it tries to capture the *quoted* string
-       that immediately follows it, e.g. ``[<12>]"_Some text_"`` or ``[<12>] "_Some text_"``.
-       If the quoted string is found, it is used to locate the most relevant chunk via
+       arbitrary integer, may repeat).  For every tag it tries to capture the *highlight* block
+       that immediately follows it – the new syntax is ``[< "Some text" >]`` (square bracket
+       plus angle bracket opener, **text**, then the matching ``>]`` closer).  Leading/trailing
+       underscores and quotes are optional.  If such a block is found, its inner text is used to
+       locate the most relevant chunk via
        ``find_most_relevant_chunk``.
 
     2. Using the original tag symbol (``[<k>]``) it looks up the *page_num* and *source_index*
@@ -419,7 +421,7 @@ def get_response_source(
        (``[<1>], [<2>], ...``).  When the same *content* string appears again the previously
        assigned number is reused instead of allocating a new one.  Tags that do **not** have a
        following quoted string are removed from the message.  For tags **with** a quoted string,
-       that bracketed highlight (e.g. ``["_foo bar_"]``) is stripped from the final message
+       that bracketed highlight (e.g. ``[<"_foo bar_">]``) is stripped from the final message
        after it has been parsed – only the renumbered citation tag remains visible.  The updated
        message is written back into ``chat_session.current_message`` so that downstream UI sees
        the cleaned numbering.
@@ -481,10 +483,31 @@ def get_response_source(
 
     tag_pattern = re.compile(r"\[<(?P<num>\d+)>\]")
     # Quoted/bracketed source pattern – evaluated via ``re.match`` on the *remainder* right after the tag.
-    # Handles variants like:
-    #   ["_text_"] , ["text"], or [text]
-    # We capture the inner text (without surrounding brackets) in group ``inner``.
-    quoted_pattern = re.compile(r"\s*\[\s*\"?(?P<inner>[^\]]+?)\"?\s*\]")
+    #
+    # New syntax 2025‑04:
+    #   The *highlight* that immediately follows a citation tag is now written as
+    #   ``[<"some text">]`` instead of the previous ``["some text"]``.  This change
+    #   avoids collisions with other square‑bracket usage inside the assistant
+    #   answer.  We therefore need to match the literal *two‑character* tokens
+    #   "[<" (opening) and ">]" (closing) as an atomic pair – capturing anything
+    #   in‑between as the *inner* text.
+    #
+    #   Supported variants (optional leading underscore for italics and optional
+    #   surrounding quotes are both preserved):
+    #       [<"_text_">]
+    #       [<_text_>]
+    #       [<text>]
+    #
+    #   Regex breakdown:
+    #       \s*            – leading whitespace after the citation tag
+    #       \[<            – the exact opening sequence
+    #       \s*            – optional inner spacing
+    #       "?_?           – optional opening quote and/or underscore
+    #       (?P<inner>.*?) – lazily capture everything until the closing delimiter
+    #       _?"?           – optional closing underscore/quote (mirrors the opener)
+    #       \s*            – optional spacing
+    #       >\]            – the exact closing sequence
+    quoted_pattern = re.compile(r"\s*\[<\s*\"?_?(?P<inner>.*?)_?\"?\s*>\]")
 
     message = chat_session.current_message
     new_message_parts: list[str] = []

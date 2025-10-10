@@ -79,16 +79,35 @@ load_dotenv()
 
 from sambanova import SambaNova
 
-client = SambaNova(
+# client = SambaNova(
+#     api_key=os.environ.get("SAMBANOVA_API_KEY"),
+#     base_url="https://api.sambanova.ai/v1",
+# )
+
+# response = client.chat.completions.create(
+#     model="DeepSeek-R1-0528",
+#     messages=[{"role":"system","content":"You are a helpful assistant"},{"role":"user","content":"Hello"}],
+#     temperature=0.0,
+#     top_p=0.1
+# )
+
+# print(response.choices[0].message.content)
+
+client = openai.OpenAI(
     api_key=os.environ.get("SAMBANOVA_API_KEY"),
-    base_url="https://api.sambanova.ai/v1",
+    base_url=os.environ.get("SAMBANOVA_API_ENDPOINT"),
 )
 
 response = client.chat.completions.create(
-    model="DeepSeek-R1-0528",
+    model="DeepSeek-R1",
     messages=[{"role":"system","content":"You are a helpful assistant"},{"role":"user","content":"Hello"}],
     temperature=0.0,
-    top_p=0.1
+    top_p=0.1,
+    # max_tokens=10000,
+    stream=True
 )
 
-print(response.choices[0].message.content)
+for chunk in response:
+    if chunk.choices[0].delta.content is not None:
+        print(chunk.choices[0].delta.content, end="", flush=True)
+print()  # Add a newline at the end

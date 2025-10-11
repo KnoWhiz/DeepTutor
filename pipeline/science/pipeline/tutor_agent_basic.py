@@ -251,7 +251,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
             if not has_think_tag and not thinking_closed:
                 yield "</thinking>"
             
-            time_tracking["response_generation"] = time.time() - response_start
+            # time_tracking["response_generation"] = time.time() - response_start
             
             # Handle appendix with follow-up questions
             yield "<appendix>"
@@ -281,6 +281,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
                 yield "\n\n**💬 Loading follow-up questions done ...**\n\n"
 
             yield "</appendix>"
+            time_tracking["response_generation"] = time.time() - response_start
             return
         else:
             # Regular summary for single file or initial message when no chat history

@@ -522,26 +522,110 @@ def stream_response_with_tags(**create_kwargs) -> Iterable[str]:
             base_url=str(os.getenv(endpoint_env)) + "openai/v1/",
         )
 
-    # Attempt order: backup first, then primary. Collect errors for logging.
+    # Attempt order:
+    #   1. Azure *backup* resource (fastest to rotate during outages)
+    #   2. DeepSeek‑R1 served from SambaNova endpoint (second backup requested)
+    #   3. Default / primary Azure resource (last resort)
+    # We collect any exceptions so that, if *all* fail, the last error can be
+    # surfaced to the caller for debugging.
+
     client_attempts = [
-        ("AZURE_OPENAI_API_KEY_BACKUP", "AZURE_OPENAI_ENDPOINT_BACKUP"),
-        ("AZURE_OPENAI_API_KEY", "AZURE_OPENAI_ENDPOINT"),
+        ("AZURE_OPENAI_API_KEY_BACKUP", "AZURE_OPENAI_ENDPOINT_BACKUP", "azure"),
+        ("AZURE_OPENAI_API_KEY", "AZURE_OPENAI_ENDPOINT", "azure"),
+        ("SAMBANOVA_API_KEY", "SAMBANOVA_API_ENDPOINT", "deepseek"),
     ]
 
     stream = None  # type: ignore
     last_error: Optional[Exception] = None
 
-    for api_key_env, endpoint_env in client_attempts:
+    for api_key_env, endpoint_env, kind in client_attempts:
         try:
-            client = _make_azure_client(api_key_env, endpoint_env)
-            stream = client.responses.create(stream=True, **create_kwargs)
-            break  # success → exit the retry loop
+            if kind == "azure":
+                client = _make_azure_client(api_key_env, endpoint_env)
+                stream = client.responses.create(stream=True, **create_kwargs)
+            elif kind == "deepseek":
+                # DeepSeek‑R1 served via SambaNova "OpenAI‑compatible" endpoint.
+                # We need to translate the kwargs expected by `responses.create` to
+                # a standard chat completion call. If the caller already provided
+                # an explicit `messages` argument, we forward it as‑is; otherwise
+                # we build a minimal messages list from `instructions` + `input`.
+
+                import copy, openai as _openai  # local import to avoid unused when not needed
+
+                ds_client = _openai.OpenAI(
+                    api_key=os.getenv(api_key_env),
+                    base_url=os.getenv(endpoint_env),
+                )
+
+                ds_kwargs = copy.deepcopy(create_kwargs)
+
+                # DeepSeek endpoint does not understand `responses` parameters
+                # such as `reasoning` or `tools`. Remove any unsupported keys.
+                for k in ["reasoning", "tools"]:
+                    ds_kwargs.pop(k, None)
+
+                if "messages" not in ds_kwargs:
+                    instructions = ds_kwargs.pop("instructions", None)
+                    user_input = ds_kwargs.pop("input", None)
+                    # model = ds_kwargs.get("model", "DeepSeek-R1")
+                    messages = []
+                    if instructions:
+                        messages.append({"role": "system", "content": instructions})
+                    if user_input:
+                        # The `input` field can be either a string or a list of
+                        # rich content blocks (as used by the Responses API).
+                        # DeepSeek’s OpenAI‑compatible endpoint only accepts a
+                        # plain string for the `content` field, so we need to
+                        # down‑convert anything richer.
+
+                        def _normalise_user_content(raw):  # local helper
+                            if isinstance(raw, str):
+                                return raw
+                            if isinstance(raw, list):
+                                parts = []
+                                for item in raw:
+                                    if isinstance(item, dict):
+                                        # Prefer the "text" key if present (most
+                                        # common), otherwise stringify the dict.
+                                        txt = item.get("text") or item.get("content")
+                                        if txt is None:
+                                            # file_url or other rich types – keep
+                                            # the JSON so that the user sees the
+                                            # reference in the text form.
+                                            txt = str(item)
+                                        parts.append(str(txt))
+                                    else:
+                                        parts.append(str(item))
+                                return "\n".join(parts)
+                            # Fallback – stringify anything else
+                            return str(raw)
+
+                        messages.append({
+                            "role": "user",
+                            "content": _normalise_user_content(user_input),
+                        })
+                    ds_kwargs["messages"] = messages
+                    ds_kwargs["model"] = "DeepSeek-R1"
+
+                # Ensure streaming requested
+                ds_kwargs["stream"] = True
+
+                stream = ds_client.chat.completions.create(**ds_kwargs)
+            else:
+                raise RuntimeError(f"Unknown client kind '{kind}'")
+
+            # Successfully created a stream – exit retry loop
+            stream_kind = kind  # remember which client succeeded
+            break
         except Exception as exc:
             last_error = exc
+            if kind == "deepseek":
+                tag = "DeepSeek/SambaNova"
+            else:
+                tag = f"{api_key_env}/{endpoint_env}"
             logger.warning(
-                "stream_response_with_tags: failed with %s/%s – %s",
-                api_key_env,
-                endpoint_env,
+                "stream_response_with_tags: failed with %s – %s",
+                tag,
                 repr(exc),
             )
 
@@ -550,55 +634,111 @@ def stream_response_with_tags(**create_kwargs) -> Iterable[str]:
         logger.error("stream_response_with_tags: all client attempts failed")
         raise last_error if last_error is not None else RuntimeError("Unknown error creating OpenAI stream")
 
-    # Show a thinking container immediately
+    # Display a thinking container immediately for all streams so that the
+    # caller can render a visual placeholder while we wait for the first
+    # content tokens.
     thinking_open = True
     response_open = False
     yield "<think>"
 
     try:
-        for event in stream:
-            t = event.type
+        if stream_kind == "azure":
+            # Original event‑style streaming handling
+            for event in stream:
+                t = event.type
 
-            # --- Reasoning summary stream ---
-            if t == "response.reasoning_summary_text.delta":
-                yield _format_thinking_delta(event.delta)
+                # --- Reasoning summary stream ---
+                if t == "response.reasoning_summary_text.delta":
+                    yield _format_thinking_delta(event.delta)
 
-            elif t == "response.reasoning_summary_text.done":
-                # keep <think> open for tool progress; we'll close when answer starts or at the very end
-                pass
+                elif t == "response.reasoning_summary_text.done":
+                    pass  # keep <think> open for tool progress
 
-            # --- Main model answer text ---
-            elif t == "response.output_text.delta":
-                if thinking_open:
-                    yield "\n</think>\n\n"
-                    thinking_open = False
-                if not response_open:
-                    response_open = True
-                    yield "<response>\n\n"
-                yield event.delta
+                # --- Main model answer text ---
+                elif t == "response.output_text.delta":
+                    if thinking_open:
+                        yield "\n</think>\n\n"
+                        thinking_open = False
+                    if not response_open:
+                        response_open = True
+                        yield "<response>\n\n"
+                    yield event.delta
 
-            # ✅ Close <response> as soon as the model finishes its text
-            elif t == "response.output_text.done":
-                if response_open:
-                    yield "\n\n</response>\n"
-                    response_open = False
+                elif t == "response.output_text.done":
+                    if response_open:
+                        yield "\n\n</response>\n"
+                        response_open = False
 
-            # --- Finalization / errors ---
-            elif t == "response.completed":
-                # We may already have closed </response>; just ensure well-formed
-                if thinking_open:
-                    yield "\n</think>\n"
-                    thinking_open = False
+                # --- Finalization / errors ---
+                elif t == "response.completed":
+                    if thinking_open:
+                        yield "\n</think>\n"
+                        thinking_open = False
 
-            elif t == "response.error":
-                if thinking_open:
-                    yield "\n</think>\n"
-                    thinking_open = False
-                if response_open:
-                    yield "\n</response>\n"
-                    response_open = False
-                # Optionally surface the error:
-                # yield f"<!-- error: {event.error} -->"
+                elif t == "response.error":
+                    if thinking_open:
+                        yield "\n</think>\n"
+                        thinking_open = False
+                    if response_open:
+                        yield "\n</response>\n"
+                        response_open = False
+
+        elif stream_kind == "deepseek":
+            # DeepSeek streams plain text that already embeds its own <think>
+            # reasoning block followed by the final answer. We adapt it to the
+            # unified schema expected by the front‑end:
+            #   1. Keep the *content* inside the model‑generated <think>…</think>
+            #      tags, but do *not* relay the leading <think> because we have
+            #      already emitted one.
+            #   2. When we hit the closing </think>, we emit it ourselves (to
+            #      close the container we opened earlier) and immediately open
+            #      <response> before streaming the remaining answer tokens.
+
+            buffer = ""
+
+            for chunk in stream:
+                if not (chunk and chunk.choices and chunk.choices[0].delta):
+                    continue
+                piece = chunk.choices[0].delta.content or ""
+                if not piece:
+                    continue
+
+                buffer += piece
+
+                while buffer:
+                    if thinking_open:
+                        # Remove a possible leading <think> tag first
+                        if buffer.startswith("<think>"):
+                            buffer = buffer[len("<think>"):]
+                            continue
+
+                        end_tag_pos = buffer.find("</think>")
+                        if end_tag_pos == -1:
+                            # No closing tag yet – emit everything and wait
+                            yield buffer
+                            buffer = ""
+                        else:
+                            # Emit content up to </think>
+                            yield buffer[:end_tag_pos]
+                            # Close our thinking container and open response
+                            yield "</think>\n\n<response>\n\n"
+                            thinking_open = False
+                            response_open = True
+                            buffer = buffer[end_tag_pos + len("</think>") :]
+                            # loop continues to handle any leftover after tag
+                    else:
+                        # Already in <response> mode – just emit
+                        yield buffer
+                        buffer = ""
+
+            # Stream finished – close any residual containers
+            if thinking_open:
+                yield "</think>\n"
+            if response_open:
+                yield "\n</response>\n"
+
+        else:
+            raise RuntimeError(f"Unhandled stream kind '{stream_kind}'")
 
     finally:
         try:

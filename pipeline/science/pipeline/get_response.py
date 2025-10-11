@@ -191,13 +191,13 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
     # user_input_string = str(user_input + "\n\n" + question.special_context)
     user_input_string = str(user_input)
     # logger.info("\n")
-    logger.info("=" * 100)
+    logger.info("Start of basic info for this request" + "=" * 200)
     logger.info(f"user_question for generating response: {user_input_string}")
     logger.info(f"file_path_list for generating response: {file_path_list}")
     logger.info(f"length_chat_history for generating response: {len(chat_history)}")
     logger.info(f"embedding_folder_list for generating response: {embedding_folder_list}")
     logger.info(f"chat_session.mode for generating response: {chat_session.mode}")
-    logger.info("=" * 100)
+    logger.info("End of basic info for this request" + "=" * 200)
     
     # Check if this is a summary request for multiple files. If so, return a generator from get_multiple_files_summary
     if len(file_path_list) > 1 and user_input == config["summary_wording"]:

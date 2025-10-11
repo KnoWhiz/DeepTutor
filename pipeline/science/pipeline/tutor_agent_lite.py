@@ -430,7 +430,7 @@ Extends prior static-chain multiplexing to dynamic transport of multiple ions, l
         source_page_number = source_pages.get(source)
         annotations = locate_chunk_in_pdf(source, source_page_number, file_path_list[refined_source_index[source]])
         source_annotations[source] = annotations
-        logger.info(f"For source number {i}, the annotations extraction is: {annotations}")
+        # logger.info(f"For source number {i}, the annotations extraction is: {annotations}")
         i += 1
     # yield "\n\n**🔍 Retrieving source annotations done ...**\n\n"
     # logger.info(f"source_annotations: {source_annotations}")

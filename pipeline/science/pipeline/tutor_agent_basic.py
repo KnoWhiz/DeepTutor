@@ -428,7 +428,7 @@ Extends prior static-chain multiplexing to dynamic transport of multiple ions, l
         source_page_number = source_pages.get(source)
         annotations = locate_chunk_in_pdf(source, source_page_number, file_path_list[refined_source_index[source]])
         source_annotations[source] = annotations
-        logger.info(f"For source number {i}, the annotations extraction is: {annotations}")
+        # logger.info(f"For source number {i}, the annotations extraction is: {annotations}")
         i += 1
     # yield "\n\n**🔍 Retrieving source annotations done ...**\n\n"
     # logger.info(f"source_annotations: {source_annotations}")
@@ -439,9 +439,9 @@ Extends prior static-chain multiplexing to dynamic transport of multiple ions, l
         yield "{" + str(source_annotations_value) + "}"
         yield "</source_annotations>"
 
-    logger.info(f"TEST: file_path_list: {file_path_list}")
-    logger.info(f"TEST: config['summary_file_limit']: {config['summary_file_limit']}")
-    logger.info(f"TEST: len(file_path_list) <= config['summary_file_limit']: {len(file_path_list) <= config['summary_file_limit']}")
+    logger.info(f"file_path_list: {file_path_list}")
+    # logger.info(f"TEST: config['summary_file_limit']: {config['summary_file_limit']}")
+    # logger.info(f"TEST: len(file_path_list) <= config['summary_file_limit']: {len(file_path_list) <= config['summary_file_limit']}")
     
     # For Basic mode, we have minimal sources and follow-up questions
     yield "\n\n**💬 Loading follow-up questions ...**\n\n"

@@ -41,7 +41,7 @@ def extract_content_after_generation(chat_session):
         extract_content_func = extract_advanced_mode_content
     
     # Now the current_message should be populated
-    logger.info(f"Extracting content from message: {chat_session.current_message}")
+    # logger.info(f"Extracting content from message: {chat_session.current_message}")
     answer, sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions, thinking = extract_content_func(chat_session.current_message)
     return sources, source_pages, source_annotations, refined_source_pages, refined_source_index, follow_up_questions, thinking
 
@@ -95,7 +95,7 @@ def process_response_phase(response_placeholder, stream_response: Generator, mod
     else:
         response_placeholder.write(stream_response)
         response_content = stream_response
-    logger.info(f"Final whole response content: {response_content}")
+    # logger.info(f"Final whole response content: {response_content}")
     return response_content
 
 

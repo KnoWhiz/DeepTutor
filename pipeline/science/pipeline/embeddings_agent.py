@@ -109,7 +109,7 @@ async def embeddings_agent(
     """
     # yield "\n\n**Loading embeddings ...**"
     file_id = generate_file_id(file_path)
-    logger.info(f"Current mode: {_mode}")
+    # logger.info(f"Current mode: {_mode}")
     if _mode == ChatMode.ADVANCED:
         # GraphRAG is implemented in the following code
         logger.info("Mode: ChatMode.ADVANCED. Generating GraphRAG embeddings...")

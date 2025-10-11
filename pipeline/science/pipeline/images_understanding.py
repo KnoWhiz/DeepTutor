@@ -884,10 +884,10 @@ if __name__ == "__main__":
         for i, chunk in enumerate(embedding_chunks):
             # Truncate long texts for display
             display_text = chunk["text"][:200] + "..." if len(chunk["text"]) > 200 else chunk["text"]
-            print(f"Sample Chunk {i+1}:")
-            print(f"Text: {display_text}")
-            print(f"Metadata: {json.dumps(chunk['metadata'], indent=2)}")
-            print("")
+            # print(f"Sample Chunk {i+1}:")
+            # print(f"Text: {display_text}")
+            # print(f"Metadata: {json.dumps(chunk['metadata'], indent=2)}")
+            # print("")
     except Exception as e:
         print(f"Error testing create_image_context_embeddings_text: {str(e)}")
 
@@ -902,11 +902,11 @@ if __name__ == "__main__":
             test_query = "Image 3"
             results = db.similarity_search(test_query, k=1)
             print(f"\nSample similarity search results for query: '{test_query}'")
-            for i, doc in enumerate(results):
-                print(f"Result {i+1}:")
-                print(f"Content: {doc.page_content[:100]}..." if len(doc.page_content) > 100 else doc.page_content)
-                print(f"Metadata: {doc.metadata}")
-                print("")
+            # for i, doc in enumerate(results):
+            #     print(f"Result {i+1}:")
+            #     print(f"Content: {doc.page_content[:100]}..." if len(doc.page_content) > 100 else doc.page_content)
+            #     print(f"Metadata: {doc.metadata}")
+            #     print("")
     except Exception as e:
         print(f"Error testing create_image_context_embeddings_db: {str(e)}")
 
@@ -918,16 +918,16 @@ if __name__ == "__main__":
         if db:
             # Create a truncated version
             truncated_db = create_truncated_db(db)
-            print(f"Created truncated FAISS database with first 3 sentences of each chunk")
+            # print(f"Created truncated FAISS database with first 3 sentences of each chunk")
             
             # Test a simple similarity search on the truncated database
             test_query = "Image 3"
             results = truncated_db.similarity_search(test_query, k=1)
             print(f"\nSample similarity search results for query: '{test_query}' on truncated database")
-            for i, doc in enumerate(results):
-                print(f"Result {i+1}:")
-                print(f"Content: {doc.page_content[:100]}..." if len(doc.page_content) > 100 else doc.page_content)
-                print(f"Metadata: {doc.metadata}")
-                print("")
+            # for i, doc in enumerate(results):
+            #     print(f"Result {i+1}:")
+            #     print(f"Content: {doc.page_content[:100]}..." if len(doc.page_content) > 100 else doc.page_content)
+            #     print(f"Metadata: {doc.metadata}")
+            #     print("")
     except Exception as e:
         print(f"Error testing create_truncated_db: {str(e)}")

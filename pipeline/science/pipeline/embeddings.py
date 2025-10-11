@@ -569,7 +569,7 @@ async def load_embeddings(embedding_folder_list: list[str | Path], embedding_typ
     embeddings = get_embedding_models(embedding_type, para)
     
     # Validate all embedding folders before attempting to load
-    logger.info(f"Validating {len(embedding_folder_list)} embedding folders...")
+    # logger.info(f"Validating {len(embedding_folder_list)} embedding folders...")
     valid_folders, invalid_folders = validate_embedding_index_files(embedding_folder_list, embedding_type)
     
     # If there are invalid folders, attempt to regenerate them immediately
@@ -633,7 +633,7 @@ async def load_embeddings(embedding_folder_list: list[str | Path], embedding_typ
                 doc.metadata["embedding_folder"] = str(embedding_folder)
                 all_docs.append(doc)
                 
-            logger.info(f"Successfully loaded {len(docs)} documents from {embedding_folder}")
+            logger.info(f"Successfully loaded {len(docs)} pages of documents from {embedding_folder}")
             successfully_loaded += 1
             
         except Exception as e:
@@ -650,8 +650,8 @@ async def load_embeddings(embedding_folder_list: list[str | Path], embedding_typ
         logger.error(error_msg)
         raise RuntimeError(error_msg)
     
-    # Create a new database with all the documents that have updated metadata
-    logger.info(f"Creating merged database from {len(all_docs)} documents...")
+    # # Create a new database with all the documents that have updated metadata
+    # logger.info(f"Creating merged database from {len(all_docs)} documents...")
 
     try:
         db_merged = FAISS.from_documents(all_docs, embeddings)
@@ -684,18 +684,18 @@ async def load_embeddings(embedding_folder_list: list[str | Path], embedding_typ
             )
             raise
     
-    # Log summary information
-    logger.info(f"Successfully created merged database:")
-    logger.info(f"  - Total chunks: {len(all_docs)}")
-    logger.info(f"  - Successfully loaded folders: {successfully_loaded}")
-    logger.info(f"  - Total folders requested: {len(embedding_folder_list)}")
+    # # Log summary information
+    # logger.info(f"Successfully created merged database:")
+    # logger.info(f"  - Total chunks: {len(all_docs)}")
+    # logger.info(f"  - Successfully loaded folders: {successfully_loaded}")
+    # logger.info(f"  - Total folders requested: {len(embedding_folder_list)}")
     
-    # Log the first 5 chunks for testing
-    for i, doc in enumerate(all_docs[:5]):
-        logger.info(f"Chunk {i+1} - Content preview: {doc.page_content[:50]}...")
-        logger.info(f"Chunk {i+1} - Metadata: {doc.metadata}")
-        if doc.metadata['file_index'] < len(embedding_folder_list):
-            logger.info(f"Chunk {i+1} - From embedding folder index: {doc.metadata['file_index']} (corresponds to {embedding_folder_list[doc.metadata['file_index']]})")
+    # # Log the first 5 chunks for testing
+    # for i, doc in enumerate(all_docs[:5]):
+    #     logger.info(f"Chunk {i+1} - Content preview: {doc.page_content[:50]}...")
+    #     logger.info(f"Chunk {i+1} - Metadata: {doc.metadata}")
+    #     if doc.metadata['file_index'] < len(embedding_folder_list):
+    #         logger.info(f"Chunk {i+1} - From embedding folder index: {doc.metadata['file_index']} (corresponds to {embedding_folder_list[doc.metadata['file_index']]})")
     
     return db_merged
 

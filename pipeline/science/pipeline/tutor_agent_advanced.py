@@ -430,7 +430,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
         source_page_number = source_pages.get(source)
         annotations = locate_chunk_in_pdf(source, source_page_number, file_path_list[refined_source_index[source]])
         source_annotations[source] = annotations
-        logger.info(f"For source number {i}, the annotations extraction is: {annotations}")
+        # logger.info(f"For source number {i}, the annotations extraction is: {annotations}")
         i += 1
     time_tracking["annotations"] = time.time() - annotations_start
     # logger.info(f"source_annotations: {source_annotations}")

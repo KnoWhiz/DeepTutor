@@ -333,8 +333,8 @@ Extends prior static-chain multiplexing to dynamic transport of multiple ions, l
             question = Question(text=refined_user_input, language=chat_session.current_language, question_type="local")
     else:
         # yield "</thinking>"
-        refined_user_input = f"{user_input}\n\n{pdf_content}"
-        # Regular chat flow - include PDF content in the user input
+        # In lite mode rely on retrieved context instead of injecting truncated PDF excerpts
+        refined_user_input = user_input
         question = Question(text=refined_user_input, language=chat_session.current_language, question_type="local")
 
     # logger.info(f"Refined user input created with PDF content: {refined_user_input}")

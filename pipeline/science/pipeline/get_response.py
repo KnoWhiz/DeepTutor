@@ -621,6 +621,7 @@ REMINDER: When Case 1 applies, every sentence must end with only one [<k>] citat
                 # },
             ]
             kwargs = dict(
+                # model="gpt-5-pro",
                 model="gpt-5",
                 # reasoning={"effort": "high", "summary": "detailed"},
                 # reasoning={"effort": "medium", "summary": "auto"},

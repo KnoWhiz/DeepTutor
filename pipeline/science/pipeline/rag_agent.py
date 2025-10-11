@@ -182,7 +182,7 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
     
     # === STEP 1: Query Enhancement ===
     # Combine user question with additional context to improve retrieval quality
-    user_input = question.text + "\n\n" + context
+    user_input = question.text #+ "\n\n" + context
 
     # === STEP 2: Mode-Specific Embedding Loading ===
     # Handle Basic mode and Advanced mode
@@ -213,8 +213,10 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
     else:
         token_limit = config["inference_token_limit"]
     chat_history_string = truncate_chat_history(chat_history, token_limit=token_limit)
-    user_input_string = str(user_input + "\n\n" + question.special_context)
-    rag_user_input_string = str(user_input + "\n\n" + question.special_context + "\n\n" + str(question.answer_planning))
+    # user_input_string = str(user_input + "\n\n" + question.special_context)
+    user_input_string = str(user_input)
+    # rag_user_input_string = str(user_input + "\n\n" + question.special_context + "\n\n" + str(question.answer_planning))
+    rag_user_input_string = str(user_input)
     logger.info(f"rag_user_input_string: {rag_user_input_string}")
     # === STEP 4: Semantic Similarity Search ===
     # Retrieve document chunks most similar to the enhanced user query

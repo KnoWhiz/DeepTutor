@@ -545,10 +545,11 @@ REMINDER: When Case 1 applies, every sentence must end with only one [<k>] citat
             async def sync_to_async_generator():
                 # yield "<response>\n\n"
                 for chunk in stream:
-                    if "<think>" in chunk or "</think>" in chunk:
-                        yield ""
-                    else:
-                        yield chunk
+                    # if "<think>" in chunk or "</think>" in chunk:
+                    #     yield ""
+                    # else:
+                    #     yield chunk
+                    yield chunk
                 # yield "\n\n</response>"
             return sync_to_async_generator()
 

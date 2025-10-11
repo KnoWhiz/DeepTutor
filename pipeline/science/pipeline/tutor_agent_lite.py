@@ -194,7 +194,7 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
             if len(file_words) > words_per_file:
                 file_words = file_words[:words_per_file]
             file_excerpt = " ".join(file_words)
-            logger.info(f"Joined {len(file_words)} words into {file_excerpt}")
+            logger.info(f"Joined {len(file_words)} words into file_excerpt")
             pdf_content += f"\n\n--- Related content ---\n{file_excerpt}\n"
             logger.info(f"Added {len(file_words)} words from {file_path}")
         except Exception as e:
@@ -337,7 +337,7 @@ Extends prior static-chain multiplexing to dynamic transport of multiple ions, l
         # Regular chat flow - include PDF content in the user input
         question = Question(text=refined_user_input, language=chat_session.current_language, question_type="local")
 
-    logger.info(f"Refined user input created with PDF content: {refined_user_input}")
+    # logger.info(f"Refined user input created with PDF content: {refined_user_input}")
 
     # time_tracking["summary_message"] = time.time() - initial_message_start_time
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")

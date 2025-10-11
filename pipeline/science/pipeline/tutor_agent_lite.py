@@ -208,8 +208,10 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
     
     time_tracking["pdf_content_loading"] = time.time() - pdf_content_loading_start
     logger.info(f"PDF content loading complete. Time: {format_time_tracking(time_tracking)}")
-    # yield "\n\n**📚 PDF content loading complete ...**\n\n"
-    yield "</thinking>"
+    # Note: Do NOT close the <thinking> tag here. We will close it later once we
+    # have streamed the model's <think> reasoning content (if any). Closing it
+    # prematurely results in the reasoning stream being placed outside the
+    # <thinking> container, which breaks the expected XML structure.
 
     # Handle initial welcome message when chat history is empty or summary is requested
     if user_input == config["summary_wording"]:
@@ -224,9 +226,33 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
             question = Question(text=user_input, language=chat_session.current_language, question_type="global")
             response = await get_response(chat_session, file_path_list, question, context_chat_history, embedding_folder_list, deep_thinking=deep_thinking, stream=stream)
             answer = response[0] if isinstance(response, tuple) else response
+
+            # Monitor for <think> tags and place </thinking> appropriately
+            thinking_closed = False
+            has_think_tag = False
+
             async for chunk in answer:
-                yield chunk
-            time_tracking["response_generation"] = time.time() - response_start
+                chunk_str = str(chunk)
+
+                # Detect the opening <think> tag
+                if "<think>" in chunk_str and not has_think_tag:
+                    has_think_tag = True
+
+                # Detect the closing </think> tag and close our outer <thinking>
+                if "</think>" in chunk_str and has_think_tag and not thinking_closed:
+                    # First yield the current chunk so the </think> is emitted
+                    yield chunk
+                    # Now close the outer container
+                    yield "</thinking>"
+                    thinking_closed = True
+                else:
+                    yield chunk
+
+            # If the model never produced any <think> block, close <thinking>
+            if not has_think_tag and not thinking_closed:
+                yield "</thinking>"
+
+            # time_tracking["response_generation"] = time.time() - response_start
             
             # Handle appendix with follow-up questions
             yield "<appendix>"
@@ -256,6 +282,7 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
                 yield "\n\n**💬 Loading follow-up questions done ...**\n\n"
 
             yield "</appendix>"
+            time_tracking["response_generation"] = time.time() - response_start
             return
         else:
             # Regular summary for single file or initial message when no chat history
@@ -319,8 +346,29 @@ Extends prior static-chain multiplexing to dynamic transport of multiple ions, l
     response_start = time.time()
     response = await get_response(chat_session, file_path_list, question, context_chat_history, embedding_folder_list, deep_thinking=deep_thinking, stream=stream)
     answer = response[0] if isinstance(response, tuple) else response
+
+    # Monitor for <think> tags and close </thinking> appropriately
+    thinking_closed = False
+    has_think_tag = False
+
     async for chunk in answer:
-        yield chunk
+        chunk_str = str(chunk)
+
+        # Detect opening <think>
+        if "<think>" in chunk_str and not has_think_tag:
+            has_think_tag = True
+
+        # Detect closing </think>
+        if "</think>" in chunk_str and has_think_tag and not thinking_closed:
+            yield chunk
+            yield "</thinking>"
+            thinking_closed = True
+        else:
+            yield chunk
+
+    # If the model never produced <think>, close </thinking> now
+    if not has_think_tag and not thinking_closed:
+        yield "</thinking>"
     time_tracking["response_generation"] = time.time() - response_start
     logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
 

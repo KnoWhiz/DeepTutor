@@ -1,4 +1,14 @@
 import os
+# -----------------------------------------------------------
+# Prevent duplicate OpenMP runtime crash on macOS.
+# When multiple Python wheels bundle their own `libomp.dylib` (e.g.,
+# `numpy` + `onnxruntime`), the OpenMP runtime aborts with:
+#   "OMP: Error #15: Initializing libomp.dylib, but found libomp.dylib already initialized."
+# Setting this env variable before any OpenMP‑linked library is imported
+# instructs `libomp` to allow duplication and continue execution.
+# -----------------------------------------------------------
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
+
 import logging
 import streamlit as st
 from pipeline.science.pipeline.logging_config import setup_logging

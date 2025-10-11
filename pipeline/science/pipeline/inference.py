@@ -515,37 +515,15 @@ def stream_response_with_tags(**create_kwargs) -> Iterable[str]:
     # exception (e.g., 401 PermissionDenied when the key is rotated), we fall back
     # to the default Azure resource (`AZURE_OPENAI_API_KEY` / `AZURE_OPENAI_ENDPOINT`).
 
-    def _make_client(api_key_env: str, endpoint_env: str):
-        """Helper to create an `OpenAI` client from environment variables.
-
-        For Azure resources, the REST endpoint requires the suffix `openai/v1/` while
-        for standard OpenAI‑compatible endpoints (e.g., Sambanova/DeepSeek) the
-        raw endpoint should be used as‑is. We detect Azure by the ENV var name
-        convention – anything starting with `AZURE_` – otherwise treat it as a
-        vanilla endpoint.
-        """
-
-        base_url = os.getenv(endpoint_env)
-        if base_url is None:
-            base_url = ""
-
-        # Append the Azure specific path only for Azure endpoints (identified by
-        # the AZURE_* env names).
-        if endpoint_env.startswith("AZURE_"):
-            # Ensure we don't double append if the user already added the path
-            if not base_url.endswith("openai/v1/"):
-                if not base_url.endswith("/"):
-                    base_url += "/"
-                base_url += "openai/v1/"
-
+    def _make_azure_client(api_key_env: str, endpoint_env: str):
+        """Helper to create an `OpenAI` client from environment variables."""
         return OpenAI(
             api_key=os.getenv(api_key_env),
-            base_url=base_url,
+            base_url=str(os.getenv(endpoint_env)) + "openai/v1/",
         )
 
     # Attempt order: backup first, then primary. Collect errors for logging.
     client_attempts = [
-        ("SAMBANOVA_API_KEY", "SAMBANOVA_API_ENDPOINT"),
         ("AZURE_OPENAI_API_KEY_BACKUP", "AZURE_OPENAI_ENDPOINT_BACKUP"),
         ("AZURE_OPENAI_API_KEY", "AZURE_OPENAI_ENDPOINT"),
     ]
@@ -555,37 +533,8 @@ def stream_response_with_tags(**create_kwargs) -> Iterable[str]:
 
     for api_key_env, endpoint_env in client_attempts:
         try:
-            client = _make_client(api_key_env, endpoint_env)
-
-            if api_key_env.startswith("SAMBANOVA_"):
-                # Map `responses` kwargs → chat.completions params expected by DeepSeek
-                # We expect `instructions` (system) and `input` (user) in kwargs.
-                # Fall back gracefully if not provided.
-                system_msg = create_kwargs.get("instructions", "You are a helpful assistant")
-                raw_user_msg = create_kwargs.get("input", "")
-
-                # If the original payload used the newer `input` schema which can be
-                # a list/dict (e.g., `[{'role': 'user', 'content': [...]}]`), fall
-                # back to a simple `str()` representation.
-                if isinstance(raw_user_msg, (list, dict)):
-                    user_msg_content = str(raw_user_msg)
-                else:
-                    user_msg_content = raw_user_msg  # assume str already
-
-                stream = client.chat.completions.create(
-                    model="DeepSeek-R1",
-                    messages=[
-                        {"role": "system", "content": system_msg},
-                        {"role": "user", "content": user_msg_content},
-                    ],
-                    temperature=create_kwargs.get("temperature", 0.0),
-                    top_p=create_kwargs.get("top_p", 0.1),
-                    stream=True,
-                )
-            else:
-                # Azure / default OpenAI response endpoint
-                stream = client.responses.create(stream=True, **create_kwargs)
-
+            client = _make_azure_client(api_key_env, endpoint_env)
+            stream = client.responses.create(stream=True, **create_kwargs)
             break  # success → exit the retry loop
         except Exception as exc:
             last_error = exc
@@ -608,82 +557,52 @@ def stream_response_with_tags(**create_kwargs) -> Iterable[str]:
 
     try:
         for event in stream:
-            # For OpenAI `responses` events we have `.type`; DeepSeek chunks don't.
-            t = getattr(event, "type", None)
+            t = event.type
 
-            # For Azure/OpenAI "responses" events
-            # ------------------------------------------------------------
-            if t is not None:
-                # --- Reasoning summary stream ---
-                if t == "response.reasoning_summary_text.delta":
-                    yield _format_thinking_delta(event.delta)
+            # --- Reasoning summary stream ---
+            if t == "response.reasoning_summary_text.delta":
+                yield _format_thinking_delta(event.delta)
 
-                elif t == "response.reasoning_summary_text.done":
-                    # keep <think> open for tool progress; we'll close when answer starts or at the very end
-                    pass
+            elif t == "response.reasoning_summary_text.done":
+                # keep <think> open for tool progress; we'll close when answer starts or at the very end
+                pass
 
-                # --- Main model answer text ---
-                elif t == "response.output_text.delta":
-                    if thinking_open:
-                        yield "\n</think>\n\n"
-                        thinking_open = False
-                    if not response_open:
-                        response_open = True
-                        yield "<response>\n\n"
-                    yield event.delta
+            # --- Main model answer text ---
+            elif t == "response.output_text.delta":
+                if thinking_open:
+                    yield "\n</think>\n\n"
+                    thinking_open = False
+                if not response_open:
+                    response_open = True
+                    yield "<response>\n\n"
+                yield event.delta
 
-                # ✅ Close <response> as soon as the model finishes its text
-                elif t == "response.output_text.done":
-                    if response_open:
-                        yield "\n\n</response>\n"
-                        response_open = False
+            # ✅ Close <response> as soon as the model finishes its text
+            elif t == "response.output_text.done":
+                if response_open:
+                    yield "\n\n</response>\n"
+                    response_open = False
 
-                # --- Finalization / errors ---
-                elif t == "response.completed":
-                    # We may already have closed </response>; just ensure well-formed
-                    if thinking_open:
-                        yield "\n</think>\n"
-                        thinking_open = False
+            # --- Finalization / errors ---
+            elif t == "response.completed":
+                # We may already have closed </response>; just ensure well-formed
+                if thinking_open:
+                    yield "\n</think>\n"
+                    thinking_open = False
 
-                elif t == "response.error":
-                    if thinking_open:
-                        yield "\n</think>\n"
-                        thinking_open = False
-                    if response_open:
-                        yield "\n</response>\n"
-                        response_open = False
-                    # Optionally surface the error:
-                    # yield f"<!-- error: {event.error} -->"
-            else:
-                # --------------------------------------------------------
-                # DeepSeek / plain ChatCompletion streaming branch
-                # --------------------------------------------------------
-                try:
-                    delta_content = event.choices[0].delta.content
-                except Exception:
-                    delta_content = None
-
-                if delta_content:
-                    if thinking_open:
-                        yield "\n</think>\n\n"
-                        thinking_open = False
-                    if not response_open:
-                        response_open = True
-                        yield "<response>\n\n"
-                    yield delta_content
-
-        # End of stream – ensure we close any still‑open tags (mainly for DeepSeek branch)
-        if response_open:
-            yield "\n\n</response>\n"
-            response_open = False
-        if thinking_open:
-            yield "\n</think>\n"
-            thinking_open = False
+            elif t == "response.error":
+                if thinking_open:
+                    yield "\n</think>\n"
+                    thinking_open = False
+                if response_open:
+                    yield "\n</response>\n"
+                    response_open = False
+                # Optionally surface the error:
+                # yield f"<!-- error: {event.error} -->"
 
     finally:
         try:
-            if hasattr(stream, "close"):
-                stream.close()
+            stream.close()
         except Exception:
             pass
 

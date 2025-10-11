@@ -286,7 +286,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         else:
             # Regular summary for single file or initial message when no chat history
             # Include the PDF content in addition to user_input as refined_user_input
-            refined_user_input = """
+            refined_user_input = r"""
             Summarize this paper for a busy researcher as a structured abstract. Use these exact headings: 
             **TL;DR** (1–2 sentences); 
             **Background & Objective** (what gap and goal); 

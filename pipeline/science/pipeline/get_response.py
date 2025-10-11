@@ -214,7 +214,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                             context="")
         formatted_context_string = chat_session.formatted_context
         # Create proper ChatPromptTemplate with system and user messages
-        system_prompt = """You are a deep thinking tutor helping a student reading a paper.
+        system_prompt = r"""You are a deep thinking tutor helping a student reading a paper.
 
 MATH RENDERING — HARD RULES (must follow):
 - Wrap ALL math (except for any pure numbers) in $...$ (inline) or $$...$$ (display). Never write bare math.
@@ -345,7 +345,7 @@ Unless clearly specified the output language: If the user's question is in Chine
 Follow the response guidelines in the system prompt.
 """
 
-        system_prompt_advanced = """You are a deep thinking tutor helping a student reading a paper.
+        system_prompt_advanced = r"""You are a deep thinking tutor helping a student reading a paper.
 
 MATH RENDERING — HARD RULES (must follow):
 - Wrap ALL math (except for any pure numbers) in $...$ (inline) or $$...$$ (display). Never write bare math.

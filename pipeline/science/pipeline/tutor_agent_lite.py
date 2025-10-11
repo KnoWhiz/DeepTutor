@@ -287,7 +287,7 @@ async def tutor_agent_lite_streaming(chat_session: ChatSession, file_path_list, 
         else:
             # Regular summary for single file or initial message when no chat history
             # Include the PDF content in addition to user_input as refined_user_input
-            refined_user_input = f"""
+            refined_user_input = fr"""
             Summarize this paper for a busy researcher as a structured abstract. Use these exact headings: 
             **TL;DR** (1–2 sentences); 
             **Background & Objective** (what gap and goal); 
@@ -325,7 +325,7 @@ Extends prior static-chain multiplexing to dynamic transport of multiple ions, l
 
             This is the document content: {pdf_content}"""
 
-            refined_user_input = f"""
+            refined_user_input = fr"""
             In a few bullet points explain the key take away of this paper assume I have no related knowledge background. Keep it as concise as possible. Make sure the evaluation is objective.
 
             This is the paper content: {pdf_content}

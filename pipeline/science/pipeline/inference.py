@@ -531,8 +531,8 @@ def stream_response_with_tags(**create_kwargs) -> Iterable[str]:
 
     client_attempts = [
         ("AZURE_OPENAI_API_KEY_BACKUP", "AZURE_OPENAI_ENDPOINT_BACKUP", "azure"),
-        ("AZURE_OPENAI_API_KEY", "AZURE_OPENAI_ENDPOINT", "azure"),
         ("SAMBANOVA_API_KEY", "SAMBANOVA_API_ENDPOINT", "deepseek"),
+        ("AZURE_OPENAI_API_KEY", "AZURE_OPENAI_ENDPOINT", "azure"),
     ]
 
     stream = None  # type: ignore

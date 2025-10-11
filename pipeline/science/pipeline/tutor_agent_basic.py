@@ -327,9 +327,14 @@ Extends prior static-chain multiplexing to dynamic transport of multiple ions, l
             In a few bullet points explain the key take away of this paper assume I have no related knowledge background. Keep it as concise as possible. Make sure the evaluation is objective.            """
             question = Question(text=refined_user_input, language=chat_session.current_language, question_type="local")
     else:
-        refined_user_input = f"{user_input}\n\n{pdf_content}"
-        # Regular chat flow - include PDF content in the user input
-        question = Question(text=refined_user_input, language=chat_session.current_language, question_type="local")
+        refined_user_input = user_input
+        # Regular chat flow - keep PDF excerpts in special_context so question text stays clean
+        question = Question(
+            text=refined_user_input,
+            language=chat_session.current_language,
+            question_type="local",
+            special_context=pdf_content
+        )
 
     # logger.info(f"Refined user input created with PDF content: {refined_user_input}")
 

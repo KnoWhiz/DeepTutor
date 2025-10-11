@@ -102,6 +102,9 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     if time_tracking is None:
         time_tracking = {}
 
+    overall_start_time = time.time()
+    time_tracking["followup_generation"] = 0.0
+
     config = load_config()
 
     # Compute hashed ID and prepare embedding folder
@@ -124,7 +127,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         if not os.path.exists(embedding_folder):
             os.makedirs(embedding_folder)
     time_tracking["file_hashing_setup_dirs"] = time.time() - hashing_start_time
-    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    logger.info("file_hashing_setup_dirs completed in %.2fs", time_tracking["file_hashing_setup_dirs"])
 
     # Save the file txt content locally
     save_file_start_time = time.time()
@@ -132,7 +135,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
     for file_path, filename in zip(file_path_list, filename_list):
         save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
     time_tracking["file_loading_save_text"] = time.time() - save_file_start_time
-    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    logger.info("file_loading_save_text completed in %.2fs", time_tracking["file_loading_save_text"])
     # yield "\n\n**📙 Loading documents done ...**\n\n"
 
     # Process Markdown RAG embeddings
@@ -150,7 +153,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
             # await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
             async for chunk in embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder):
                 yield chunk
-            logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+            logger.info(f"Markdown RAG embedding completed for {file_id}")
             if vectorrag_index_files_compress(embedding_folder):
                 logger.info(f"Markdown RAG index files for {file_id} are ready and uploaded to Azure Blob Storage.")
             else:
@@ -159,13 +162,13 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
                 # await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
                 async for chunk in embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder):
                     yield chunk
-                logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+                logger.info(f"Markdown RAG embedding retry completed for {file_id}")
                 if vectorrag_index_files_compress(embedding_folder):
                     logger.info(f"Markdown RAG index files for {file_id} are ready and uploaded to Azure Blob Storage.")
                 else:
                     logger.info(f"Error compressing and uploading Markdown RAG index files for {file_id} to Azure Blob Storage.")
     time_tracking["basic_embedding_total"] = time.time() - basic_embedding_start_time
-    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    logger.info("basic_embedding_total completed in %.2fs", time_tracking["basic_embedding_total"])
     logger.info("Markdown RAG embeddings ready ...")
 
     chat_history = chat_session.chat_history
@@ -215,7 +218,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
         pdf_content = ""
     
     time_tracking["pdf_content_loading"] = time.time() - pdf_content_loading_start
-    logger.info(f"PDF content loading complete. Time: {format_time_tracking(time_tracking)}")
+    logger.info("pdf_content_loading completed in %.2fs", time_tracking["pdf_content_loading"])
 
     # Handle initial welcome message when chat history is empty or summary is requested
     if user_input == config["summary_wording"]:
@@ -261,6 +264,7 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
                 if isinstance(message_content, list) and len(message_content) > 0:
                     message_content = message_content[0]
                 
+                followup_start = time.time()
                 follow_up_questions = generate_follow_up_questions(message_content, [], user_input)
                 for i in range(len(follow_up_questions)):
                     follow_up_questions[i] = translate_content(
@@ -270,6 +274,9 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
                     )
                     # Clean up translation prefixes - apply before including in XML
                     follow_up_questions[i] = clean_translation_prefix(follow_up_questions[i])
+
+                time_tracking["followup_generation"] = time.time() - followup_start
+                logger.info("followup_generation completed in %.2fs", time_tracking["followup_generation"])
 
                 for chunk in follow_up_questions:
                     # Ensure the chunk is properly cleaned and formatted before wrapping in XML
@@ -282,6 +289,8 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
 
             yield "</appendix>"
             time_tracking["response_generation"] = time.time() - response_start
+            time_tracking["total_time"] = time.time() - overall_start_time
+            logger.info("Time tracking:\n%s", format_time_tracking(time_tracking))
             return
         else:
             # Regular summary for single file or initial message when no chat history
@@ -338,9 +347,6 @@ Extends prior static-chain multiplexing to dynamic transport of multiple ions, l
 
     # logger.info(f"Refined user input created with PDF content: {refined_user_input}")
 
-    # time_tracking["summary_message"] = time.time() - initial_message_start_time
-    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
-
     # Get response
     response_start = time.time()
     response = await get_response(chat_session, file_path_list, question, context_chat_history, embedding_folder_list, deep_thinking=deep_thinking, stream=stream)
@@ -370,7 +376,7 @@ Extends prior static-chain multiplexing to dynamic transport of multiple ions, l
         yield "</thinking>"
     
     time_tracking["response_generation"] = time.time() - response_start
-    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    logger.info("response_generation completed in %.2fs", time_tracking["response_generation"])
 
     yield "<appendix>"
 
@@ -417,7 +423,7 @@ Extends prior static-chain multiplexing to dynamic transport of multiple ions, l
 
     time_tracking["source_retrieval"] = time.time() - sources_start
     # yield "\n\n**🔍 Retrieving sources done ...**\n\n"
-    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    logger.info("source_retrieval completed in %.2fs", time_tracking["source_retrieval"])
 
     source_annotations = {}
     i = 0
@@ -449,6 +455,7 @@ Extends prior static-chain multiplexing to dynamic transport of multiple ions, l
     if isinstance(message_content, list) and len(message_content) > 0:
         message_content = message_content[0]
 
+    followup_start = time.time()
     follow_up_questions = generate_follow_up_questions(message_content, [], user_input)
     for i in range(len(follow_up_questions)):
         follow_up_questions[i] = translate_content(
@@ -458,6 +465,9 @@ Extends prior static-chain multiplexing to dynamic transport of multiple ions, l
         )
         # Clean up translation prefixes - apply before including in XML
         follow_up_questions[i] = clean_translation_prefix(follow_up_questions[i])
+
+    time_tracking["followup_generation"] = time.time() - followup_start
+    logger.info("followup_generation completed in %.2fs", time_tracking["followup_generation"])
 
     for chunk in follow_up_questions:
         # Ensure the chunk is properly cleaned and formatted before wrapping in XML
@@ -469,6 +479,9 @@ Extends prior static-chain multiplexing to dynamic transport of multiple ions, l
     yield "\n\n**💬 Loading follow-up questions done ...**\n\n"
 
     yield "</appendix>"
+
+    time_tracking["total_time"] = time.time() - overall_start_time
+    logger.info("Time tracking:\n%s", format_time_tracking(time_tracking))
 
     # Memory clean up
     _document = None

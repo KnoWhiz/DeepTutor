@@ -114,6 +114,9 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
     if time_tracking is None:
         time_tracking = {}
 
+    overall_start_time = time.time()
+    time_tracking["followup_generation"] = 0.0
+
     config = load_config()
 
     # Compute hashed ID and prepare embedding folder
@@ -131,7 +134,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
         if not os.path.exists(embedding_folder):
             os.makedirs(embedding_folder)
     time_tracking["file_hashing_setup_dirs"] = time.time() - hashing_start_time
-    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    logger.info("file_hashing_setup_dirs completed in %.2fs", time_tracking["file_hashing_setup_dirs"])
 
     # Save the file txt content locally
     save_file_start_time = time.time()
@@ -139,7 +142,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
     for file_path, filename in zip(file_path_list, filename_list):
         save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
     time_tracking["file_loading_save_text"] = time.time() - save_file_start_time
-    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    logger.info("file_loading_save_text completed in %.2fs", time_tracking["file_loading_save_text"])
     # yield "\n\n**📙 Loading documents done ...**\n\n"
 
     # Process GraphRAG embeddings
@@ -159,7 +162,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
             # await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
             async for chunk in embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder):
                 yield chunk
-            logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+            logger.info(f"GraphRAG embeddings completed for {file_id}")
             if graphrag_index_files_compress(embedding_folder):
                 logger.info(f"GraphRAG index files for {file_id} are ready and uploaded to Azure Blob Storage.")
             else:
@@ -169,7 +172,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
                 # await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
                 async for chunk in embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder):
                     yield chunk
-                logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+                logger.info(f"GraphRAG embeddings retry completed for {file_id}")
                 if graphrag_index_files_compress(embedding_folder):
                     logger.info(f"GraphRAG index files for {file_id} are ready and uploaded to Azure Blob Storage.")
                     # yield f"\n\n**GraphRAG index files for {file_id} are ready and uploaded to Azure Blob Storage.**\n\n"
@@ -177,7 +180,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
                     logger.info(f"Error compressing and uploading GraphRAG index files for {file_id} to Azure Blob Storage.")
                     # yield f"\n\n**Error compressing and uploading GraphRAG index files for {file_id} to Azure Blob Storage.**\n\n"
     time_tracking["graphrag_generate_embedding_total"] = time.time() - graphrag_start_time
-    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    logger.info("graphrag_generate_embedding_total completed in %.2fs", time_tracking["graphrag_generate_embedding_total"])
     yield "\n\n**🗺️ Loading GraphRAG embeddings done ...**\n\n"
 
     chat_history = chat_session.chat_history
@@ -233,6 +236,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
         if isinstance(message_content, list) and len(message_content) > 0:
             message_content = message_content[0]
 
+        followup_start = time.time()
         follow_up_questions = generate_follow_up_questions(message_content, [], user_input)
         for i in range(len(follow_up_questions)):
             follow_up_questions[i] = translate_content(
@@ -242,6 +246,9 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
             )
             # Clean up translation prefixes
             follow_up_questions[i] = clean_translation_prefix(follow_up_questions[i])
+
+        time_tracking["followup_generation"] = time.time() - followup_start
+        logger.info("followup_generation completed in %.2fs", time_tracking["followup_generation"])
 
         for chunk in follow_up_questions:
             # Ensure the chunk is properly cleaned and formatted before wrapping in XML
@@ -254,10 +261,12 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
         yield "\n\n**💬 Loading follow-up questions done ...**\n\n"
 
         yield "</appendix>"
+        time_tracking["total_time"] = time.time() - overall_start_time
+        logger.info("Time tracking:\n%s", format_time_tracking(time_tracking))
         return
 
     # time_tracking["summary_message"] = time.time() - initial_message_start_time
-    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    logger.info("Initial setup completed for files: %s", file_id_list)
 
     # Regular chat flow
     # Refine user input
@@ -277,7 +286,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
     logger.info(f"Refined user input: {refined_user_input}")
     time_tracking["query_refinement"] = time.time() - query_start
     yield "\n\n**🧠 Understanding the user input done ...**\n\n"
-    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    logger.info("query_refinement completed in %.2fs", time_tracking["query_refinement"])
     # yield "</thinking>"
     # yield "\n\n**Loading the response ...**\n\n"
 
@@ -330,7 +339,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
                     translation_response = True
     time_tracking["response_generation"] = time.time() - response_start
     # yield "\n\n**Loading the response done ...**\n\n"
-    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    logger.info("response_generation completed in %.2fs", time_tracking["response_generation"])
 
     # Refine and translate the answer to the selected language
     content=extract_advanced_mode_content(chat_session.current_message)[0]
@@ -354,7 +363,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
         yield "</response>"
         # yield "\n\n**💡 Loading the response done ...**\n\n"
         time_tracking["translation"] = time.time() - translation_start
-        logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+        logger.info("translation completed in %.2fs", time_tracking["translation"])
 
     # Get sources
     yield "<appendix>"
@@ -396,7 +405,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
 
     time_tracking["source_retrieval"] = time.time() - sources_start
     # yield "\n\n**🔍 Retrieving sources done ...**\n\n"
-    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    logger.info("source_retrieval completed in %.2fs", time_tracking["source_retrieval"])
 
     # Process image sources
     # yield "\n\n**📊 Processing image sources ...**\n\n"
@@ -409,7 +418,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
             image_url_list.append(image_url)
     time_tracking["image_processing"] = time.time() - images_processing_start
     # yield "\n\n**📊 Processing image sources done ...**\n\n"
-    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    logger.info("image_processing completed in %.2fs", time_tracking["image_processing"])
 
     # Append images URL in markdown format to the end of the answer
     annotations_start = time.time()
@@ -434,7 +443,7 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
         i += 1
     time_tracking["annotations"] = time.time() - annotations_start
     # logger.info(f"source_annotations: {source_annotations}")
-    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    logger.info("annotations completed in %.2fs", time_tracking["annotations"])
 
     for source_annotations_key, source_annotations_value in source_annotations.items():
         yield "<source_annotations>"
@@ -462,10 +471,12 @@ async def tutor_agent_advanced_streaming(chat_session: ChatSession, file_path_li
             yield "<followup_question>"
             yield f"{cleaned_chunk}"
             yield "</followup_question>\n\n"
-    time_tracking["followup_questions"] = time.time() - followup_start
+    time_tracking["followup_generation"] = time.time() - followup_start
+    logger.info("followup_generation completed in %.2fs", time_tracking["followup_generation"])
     yield "\n\n**💬 Loading follow-up questions done ...**\n\n"
     yield "</appendix>"
-    logger.info(f"List of file ids: {file_id_list}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    time_tracking["total_time"] = time.time() - overall_start_time
+    logger.info("Time tracking:\n%s", format_time_tracking(time_tracking))
 
     # Memory clean up
     _document = None

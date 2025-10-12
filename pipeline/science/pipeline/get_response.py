@@ -188,7 +188,16 @@ Format your summary with a friendly welcome message at the beginning and a closi
 async def get_response(chat_session: ChatSession, file_path_list, question: Question, chat_history, embedding_folder_list, deep_thinking = True, stream=True):
     config = load_config()
     user_input = question.text
-    user_input_string = str(user_input + "\n\n" + question.special_context)
+    # user_input_string = str(user_input + "\n\n" + question.special_context)
+    user_input_string = str(user_input)
+    # logger.info("\n")
+    logger.info("Start of basic info for this request" + "=" * 200)
+    logger.info(f"user_question for generating response: {user_input_string}")
+    logger.info(f"file_path_list for generating response: {file_path_list}")
+    logger.info(f"length_chat_history for generating response: {len(chat_history)}")
+    logger.info(f"embedding_folder_list for generating response: {embedding_folder_list}")
+    logger.info(f"chat_session.mode for generating response: {chat_session.mode}")
+    logger.info("End of basic info for this request" + "=" * 200)
     
     # Check if this is a summary request for multiple files. If so, return a generator from get_multiple_files_summary
     if len(file_path_list) > 1 and user_input == config["summary_wording"]:
@@ -203,7 +212,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
         # Get the first 3 keys from map_symbol_to_index for examples in the prompt
         first_keys = list(map_symbol_to_index.keys())[:3]
         example_keys = ", or ".join(first_keys)
-        logger.info(f"embedding_folder_list in get_response: {embedding_folder_list}")
+        # logger.info(f"embedding_folder_list in get_response: {embedding_folder_list}")
         await get_rag_context(chat_session=chat_session,
                             file_path_list=file_path_list,
                             question=question,
@@ -214,7 +223,7 @@ async def get_response(chat_session: ChatSession, file_path_list, question: Ques
                             context="")
         formatted_context_string = chat_session.formatted_context
         # Create proper ChatPromptTemplate with system and user messages
-        system_prompt = """You are a deep thinking tutor helping a student reading a paper.
+        system_prompt = r"""You are a deep thinking tutor helping a student reading a paper.
 
 MATH RENDERING — HARD RULES (must follow):
 - Wrap ALL math (except for any pure numbers) in $...$ (inline) or $$...$$ (display). Never write bare math.
@@ -345,7 +354,7 @@ Unless clearly specified the output language: If the user's question is in Chine
 Follow the response guidelines in the system prompt.
 """
 
-        system_prompt_advanced = """You are a deep thinking tutor helping a student reading a paper.
+        system_prompt_advanced = r"""You are a deep thinking tutor helping a student reading a paper.
 
 MATH RENDERING — HARD RULES (must follow):
 - Wrap ALL math (except for any pure numbers) in $...$ (inline) or $$...$$ (display). Never write bare math.
@@ -621,6 +630,7 @@ REMINDER: When Case 1 applies, every sentence must end with only one [<k>] citat
                 # },
             ]
             kwargs = dict(
+                # model="gpt-5-pro",
                 model="gpt-5",
                 # reasoning={"effort": "high", "summary": "detailed"},
                 # reasoning={"effort": "medium", "summary": "auto"},
@@ -666,7 +676,7 @@ async def get_query_helper(chat_session: ChatSession, user_input, context_chat_h
     # Replace LaTeX formulas in the format \( formula \) with $ formula $
     user_input = replace_latex_formulas(user_input)
 
-    logger.info(f"TEST: user_input: {user_input}")
+    # logger.info(f"TEST: user_input: {user_input}")
     # yield f"\n\n**💬 User input: {user_input}**"
     # If we have "documents_summary" in the embedding folder, we can use it to speed up the search
     document_summary_path_list = [os.path.join(embedding_folder, "documents_summary.txt") for embedding_folder in embedding_folder_list]

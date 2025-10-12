@@ -42,7 +42,7 @@ def count_tokens(text, model_name='gpt-4o'):
         encoding = tiktoken.encoding_for_model(model_name)
         tokens = encoding.encode(text, disallowed_special=(encoding.special_tokens_set - {'<|endoftext|>'}))
         length = len(tokens)
-        logger.info(f"Length of tokens: {length}")
+        # logger.info(f"Length of tokens: {length}")
         return length
     except Exception as e:
         logger.exception(f"Error counting tokens: {str(e)}")

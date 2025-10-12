@@ -224,7 +224,7 @@ def count_tokens(text, model_name='gpt-4o'):
         # tokens = encoding.encode(text)
         tokens = encoding.encode(text, disallowed_special=(encoding.special_tokens_set - {'<|endoftext|>'}))
         length = len(tokens)
-        logger.info(f"Length of tokens: {length}")
+        # logger.info(f"Length of tokens: {length}")
         return length
     except Exception as e:
         logger.exception(f"Error counting tokens: {str(e)}")
@@ -247,7 +247,7 @@ def truncate_chat_history(chat_history, model_name='gpt-4o', token_limit=None):
     else:
         max_tokens = token_limit / 3
 
-    logger.info(f"max_tokens: {max_tokens}")
+    logger.info(f"In truncate_chat_history, max_tokens based on model's context window: {max_tokens}")
     
     total_tokens = 0
     truncated_history = []
@@ -760,8 +760,8 @@ def extract_answer_content(message_content):
             text_content = source_annotation_content[:last_separator_index].strip()
             # Extract metadata string (everything after the last "}{" plus an opening brace)
             metadata_str = "{" + source_annotation_content[last_separator_index+1:].strip()
-            logger.info(f"Extracted text content (first 50 chars): {text_content[:50]}...")
-            logger.info(f"Extracted metadata string: {metadata_str[:100]}...")
+            # logger.info(f"Extracted text content (first 50 chars): {text_content[:50]}...")
+            # logger.info(f"Extracted metadata string: {metadata_str[:100]}...")
             
             try:
                 # Clean up any potential trailing/leading characters for JSON parsing
@@ -772,7 +772,7 @@ def extract_answer_content(message_content):
                 # Convert the metadata string to a dictionary
                 metadata = json.loads(metadata_str)
                 source_annotations[text_content] = metadata
-                logger.info(f"Successfully parsed metadata: page_num={metadata.get('page_num', 'N/A')}, success={metadata.get('success', False)}, similarity={metadata.get('similarity', 0)}")
+                # logger.info(f"Successfully parsed metadata: page_num={metadata.get('page_num', 'N/A')}, success={metadata.get('success', False)}, similarity={metadata.get('similarity', 0)}")
                 
                 # Also extract page information for source_pages if successful
                 if 'page_num' in metadata and metadata.get('success', False) and metadata.get('similarity', 0) > 0:
@@ -782,17 +782,17 @@ def extract_answer_content(message_content):
                         page_key = f"page_{page_num + 1}"
                         source_pages[page_key] = metadata['similarity']
                         logger.info(f"Added to source_pages: {page_key} with similarity {metadata['similarity']}")
-                    else:
-                        logger.warning(f"Skipped invalid page_num: {page_num}")
+                    # else:
+                    #     logger.warning(f"Skipped invalid page_num: {page_num}")
             except json.JSONDecodeError as e:
                 # If JSON parsing fails, log it and store the raw string
                 # logger.info(f"Failed to parse source annotation metadata: {e}")
-                logger.info(f"Problematic JSON string: {metadata_str}")
+                # logger.info(f"Problematic JSON string: {metadata_str}")
                 source_annotations[text_content] = metadata_str
-        else:
-            logger.info(f"Could not find text/metadata separator in annotation: {source_annotation_content[:50]}...")
+        # else:
+        #     logger.info(f"Could not find text/metadata separator in annotation: {source_annotation_content[:50]}...")
     
-    logger.info(f"Completed source annotations extraction. Found {annotation_count} annotations, extracted {len(source_annotations)} valid entries")
+    # logger.info(f"Completed source annotations extraction. Found {annotation_count} annotations, extracted {len(source_annotations)} valid entries")
 
     # Extract source annotations (content between <source_annotations> tags)
     source_annotation_matches = re.finditer(r'<source_annotations>(.*?)</source_annotations>', message_content, re.DOTALL)

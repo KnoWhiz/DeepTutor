@@ -39,12 +39,12 @@ def load_embeddings(embedding_folder_list: list[str | Path], embedding_type: str
     # Create a new database with all the documents that have updated metadata
     db_merged = FAISS.from_documents(all_docs, embeddings)
     
-    # Log the first 5 chunks for testing
-    logger.info(f"Total chunks in merged database: {len(all_docs)}")
-    for i, doc in enumerate(all_docs[:5]):
-        logger.info(f"Chunk {i+1} - Content preview: {doc.page_content[:50]}...")
-        logger.info(f"Chunk {i+1} - Metadata: {doc.metadata}")
-        logger.info(f"Chunk {i+1} - From embedding folder index: {doc.metadata['file_index']} (corresponds to {embedding_folder_list[doc.metadata['file_index']]})")
+    # # Log the first 5 chunks for testing
+    # logger.info(f"Total chunks in merged database: {len(all_docs)}")
+    # for i, doc in enumerate(all_docs[:5]):
+    #     logger.info(f"Chunk {i+1} - Content preview: {doc.page_content[:50]}...")
+    #     logger.info(f"Chunk {i+1} - Metadata: {doc.metadata}")
+    #     logger.info(f"Chunk {i+1} - From embedding folder index: {doc.metadata['file_index']} (corresponds to {embedding_folder_list[doc.metadata['file_index']]})")
     
     return db_merged
 
@@ -55,14 +55,14 @@ def list_all_chunks(db):
     Args:
         db: FAISS database containing the documents
     """
-    logger.info("=== LISTING ALL CHUNKS IN DATABASE ===")
+    # logger.info("=== LISTING ALL CHUNKS IN DATABASE ===")
     all_docs = list(db.docstore._dict.values())
-    for i, doc in enumerate(all_docs):
-        logger.info(f"Chunk {i+1}/{len(all_docs)}")
-        logger.info(f"Content: {doc.page_content}")
-        logger.info(f"Metadata: {doc.metadata}")
-        logger.info("-" * 50)
-    logger.info(f"Total chunks: {len(all_docs)}")
+    # for i, doc in enumerate(all_docs):
+    #     logger.info(f"Chunk {i+1}/{len(all_docs)}")
+    #     logger.info(f"Content: {doc.page_content}")
+    #     logger.info(f"Metadata: {doc.metadata}")
+    #     logger.info("-" * 50)
+    # logger.info(f"Total chunks: {len(all_docs)}")
     return all_docs
 
 def test_load_embeddings():

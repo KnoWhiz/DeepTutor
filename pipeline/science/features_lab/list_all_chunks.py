@@ -62,11 +62,11 @@ def list_all_chunks(docs, output_file=None):
         }
         chunks_data.append(chunk_info)
         
-        # Print to console
-        logger.info(f"Chunk {i+1}/{len(docs)}:")
-        logger.info(f"Content: {doc.page_content[:100]}...")
-        logger.info(f"Metadata: {doc.metadata}")
-        logger.info("-" * 50)
+        # # Print to console
+        # logger.info(f"Chunk {i+1}/{len(docs)}:")
+        # logger.info(f"Content: {doc.page_content[:100]}...")
+        # logger.info(f"Metadata: {doc.metadata}")
+        # logger.info("-" * 50)
     
     # Save to file if specified
     if output_file:

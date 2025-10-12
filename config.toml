@@ -1,0 +1,13 @@
+projects = { "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor" = { trust_level = "trusted" } , "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/pipeline/science/features_lab/Gemini_CLI_integration_test/Gemini-CLI-UI-main-Streamlit" = { trust_level = "trusted" } , "/Users/bingran_you/Documents/GitHub_MacBook/Multiplexing" = { trust_level = "trusted" } , "/Users/bingran_you/.codex" = { trust_level = "trusted" } , "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutorDesktop" = { trust_level = "trusted" } , "/Users/bingran_you/Zotero/deeptutor_storage" = { trust_level = "trusted" } }
+# IMPORTANT: Use your Azure *deployment name* here (e.g., "gpt5codex-prod")
+model = "gpt-5-pro"
+model_provider = "azure"
+model_reasoning_effort = "high"
+
+[model_providers.azure]
+name = "Azure OpenAI"
+# Use your resource endpoint and include /openai/v1
+base_url = "https://knowhiz-service-openai-backup-2.openai.azure.com/openai/v1"
+# This is the ENV VAR NAME, not the key:
+env_key = "AZURE_OPENAI_API_KEY"
+wire_api = "responses"

@@ -70,7 +70,7 @@ def _is_pdf_image_only(pdf_path: str) -> bool:
             logger.info(f"PDF appears to be image-only: {pdf_path}")
             return True
         
-        logger.info(f"PDF contains extractable text: {pdf_path}")
+        # logger.info(f"PDF contains extractable text: {pdf_path}")
         return False
         
     except Exception as e:
@@ -165,7 +165,7 @@ def extract_document_from_file(file_path: str, ocr_and_overwrite: bool = True, l
         raise FileNotFoundError(f"PDF not found: {file_path}")
 
     image_only = _is_pdf_image_only(file_path)
-    logger.info(f"Image only: {image_only}")
+    # logger.info(f"Image only: {image_only}")
 
     if not image_only:
         # Normal path: no OCR required

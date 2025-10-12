@@ -182,12 +182,12 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
     
     # === STEP 1: Query Enhancement ===
     # Combine user question with additional context to improve retrieval quality
-    user_input = question.text + "\n\n" + context
+    user_input = question.text #+ "\n\n" + context
 
     # === STEP 2: Mode-Specific Embedding Loading ===
     # Handle Basic mode and Advanced mode
     if chat_session.mode == ChatMode.BASIC or chat_session.mode == ChatMode.ADVANCED:
-        logger.info(f"Current mode is {chat_session.mode}")
+        # logger.info(f"Current mode is {chat_session.mode}")
         try:
             logger.info(f"Loading markdown embeddings from {[os.path.join(embedding_folder, 'markdown') for embedding_folder in embedding_folder_list]}")
             # Fix: Markdown embeddings are saved directly under markdown subfolder
@@ -200,7 +200,7 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
     # === STEP 2b: Lite Mode Handling ===
     # Handle Lite mode in other cases - uses lightweight embeddings
     else:
-        logger.info(f"Current mode is {chat_session.mode}")
+        # logger.info(f"Current mode is {chat_session.mode}")
         actual_embedding_folder_list = [os.path.join(embedding_folder, 'lite_embedding') for embedding_folder in embedding_folder_list]
         logger.info(f"actual_embedding_folder_list in get_rag_context: {actual_embedding_folder_list}")
         db = await load_embeddings_with_regeneration(actual_embedding_folder_list, 'lite', allow_regeneration=True, file_path_list=file_path_list)
@@ -213,9 +213,11 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
     else:
         token_limit = config["inference_token_limit"]
     chat_history_string = truncate_chat_history(chat_history, token_limit=token_limit)
-    user_input_string = str(user_input + "\n\n" + question.special_context)
-    rag_user_input_string = str(user_input + "\n\n" + question.special_context + "\n\n" + str(question.answer_planning))
-    logger.info(f"rag_user_input_string: {rag_user_input_string}")
+    # user_input_string = str(user_input + "\n\n" + question.special_context)
+    user_input_string = str(user_input)
+    # rag_user_input_string = str(user_input + "\n\n" + question.special_context + "\n\n" + str(question.answer_planning))
+    rag_user_input_string = str(user_input)
+    # logger.info(f"rag_user_input_string: {rag_user_input_string}")
     # === STEP 4: Semantic Similarity Search ===
     # Retrieve document chunks most similar to the enhanced user query
     # Fetch 2x more candidates than needed to ensure sufficient quality chunks after filtering
@@ -308,23 +310,24 @@ async def get_rag_context(chat_session: ChatSession, file_path_list, question: Q
             new_symbol = map_index_to_symbol[new_index]
             formatted_context[new_symbol] = context_data
     
-    logger.info(f"For {chat_session.mode} model, user_input_string: {user_input_string}")
+    # logger.info(f"For {chat_session.mode} model, user_input_string: {user_input_string}")
     logger.info(f"For {chat_session.mode} model, user_input_string tokens: {count_tokens(user_input_string)}")
-    logger.info(f"For {chat_session.mode} model, chat_history_string: {chat_history_string}")
+    # logger.info(f"For {chat_session.mode} model, chat_history_string: {chat_history_string}")
     logger.info(f"For {chat_session.mode} model, chat_history_string tokens: {count_tokens(chat_history_string)}")
-    logger.info(f"For {chat_session.mode} model, context: {str(formatted_context)}")
-    for index, (chunk, score) in enumerate(zip(context_chunks, context_scores)):
-        logger.info(f"For {chat_session.mode} model, context chunk number: {index}")
+    # logger.info(f"For {chat_session.mode} model, formatted_rag_context: {str(formatted_context)}")
+    logger.info(f"For {chat_session.mode} model, formatted_rag_context items: {len(formatted_context)}")
+    # for index, (chunk, score) in enumerate(zip(context_chunks, context_scores)):
+        # logger.info(f"For {chat_session.mode} model, context chunk number: {index}")
         # logger.info(f"For inference model, context chunk: {chunk}")
-        logger.info(f"For {chat_session.mode} model, context chunk tokens: {count_tokens(chunk)}")
-        logger.info(f"For {chat_session.mode} model, context chunk score: {score}")
+        # logger.info(f"For {chat_session.mode} model, context chunk tokens: {count_tokens(chunk)}")
+        # logger.info(f"For {chat_session.mode} model, context chunk score: {score}")
     logger.info(f"For {chat_session.mode} model, context tokens: {count_tokens(str(formatted_context))}")
     
     # Log formatted context with metadata
     for symbol, context_data in formatted_context.items():
         logger.info(f"Context {symbol}: tokens={count_tokens(context_data['content'])}, score={context_data['score']:.3f}, page={context_data['page_num']}, source={context_data['source_index']}")
     
-    logger.info("before deep_inference_agent ...")
+    # logger.info("before deep_inference_agent ...")
 
     # Store chunk-level context in session for response generation
     chat_session.formatted_context = formatted_context

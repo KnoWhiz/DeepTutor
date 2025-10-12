@@ -2,7 +2,7 @@ import os
 import json
 import time
 import fitz
-from typing import Dict
+from typing import Dict, Optional
 from dotenv import load_dotenv
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
@@ -10,7 +10,6 @@ from langchain_core.documents import Document
 from pipeline.science.pipeline.config import load_config
 from pipeline.science.pipeline.utils import (
     create_searchable_chunks,
-    format_time_tracking,
     generate_file_id,
 )
 from pipeline.science.pipeline.images_understanding import initialize_image_files
@@ -95,7 +94,7 @@ async def embeddings_agent(
     _doc: "fitz.Document",
     file_path: str,
     embedding_folder: str,
-    time_tracking: Dict[str, float] = {},
+    time_tracking: Optional[Dict[str, float]] = None,
     chat_session: ChatSession = None
 ):
     """
@@ -109,7 +108,9 @@ async def embeddings_agent(
     """
     # yield "\n\n**Loading embeddings ...**"
     file_id = generate_file_id(file_path)
-    logger.info(f"Current mode: {_mode}")
+    if time_tracking is None:
+        time_tracking = {}
+    # logger.info(f"Current mode: {_mode}")
     if _mode == ChatMode.ADVANCED:
         # GraphRAG is implemented in the following code
         logger.info("Mode: ChatMode.ADVANCED. Generating GraphRAG embeddings...")
@@ -125,7 +126,7 @@ async def embeddings_agent(
         lite_embedding_start_time = time.time()
         await generate_LiteRAG_embedding(_doc, file_path, embedding_folder)
         time_tracking['lite_embedding_total'] = time.time() - lite_embedding_start_time
-        logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+        logger.info("lite_embedding_total for %s completed in %.2fs", file_id, time_tracking['lite_embedding_total'])
 
         # Memory cleanup
         db = None
@@ -227,7 +228,7 @@ async def embeddings_agent(
                 md_path, saved_images, md_document = extract_pdf_content_to_markdown(file_path, markdown_dir)
                 doc_processor.set_md_document(md_document)
             time_tracking['markdown_extraction'] = time.time() - markdown_extraction_start_time
-            logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+            logger.info("markdown_extraction for %s completed in %.2fs", file_id, time_tracking['markdown_extraction'])
         except Exception as e:
             logger.exception(f"Error extracting content to markdown, using _doc to extract searchable content as save as markdown file: {e}")
             yield "\n\n**❌ Error extracting content to markdown, using _doc to extract searchable content as save as markdown file...**"
@@ -273,7 +274,7 @@ async def embeddings_agent(
             logger.info(f"Number of pages processed: {len(texts)}")
             # yield f"\n\n**Number of pages processed: {len(texts)}**"
             time_tracking['fake_markdown_extraction'] = time.time() - fake_markdown_extraction_start_time
-            logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+            logger.info("fake_markdown_extraction for %s completed in %.2fs", file_id, time_tracking['fake_markdown_extraction'])
         else:
             # Split the document into chunks when markdown extraction succeeded
             # yield "\n\n**📑 Splitting document into chunks ...**"
@@ -341,7 +342,7 @@ async def embeddings_agent(
                     yield "\n\n**⚠️ PDF has no pages, cannot process as image-only PDF**"
             
             time_tracking['create_searchable_chunks'] = time.time() - create_searchable_chunks_start_time
-            logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+            logger.info("create_searchable_chunks for %s completed in %.2fs", file_id, time_tracking['create_searchable_chunks'])
 
         # Initialize image files and try to append image context to texts with error handling
         process_image_files_start_time = time.time()
@@ -417,7 +418,7 @@ async def embeddings_agent(
             logger.info("Continuing without image context...")
             yield "\n\n**❌ Continuing without image context...**"
         time_tracking['process_image_files'] = time.time() - process_image_files_start_time
-        logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+        logger.info("process_image_files for %s completed in %.2fs", file_id, time_tracking['process_image_files'])
 
         # Create the vector store to use as the index
         create_vector_store_start_time = time.time()
@@ -470,7 +471,7 @@ async def embeddings_agent(
                     raise ValueError(f"Failed to create vector store with all embedding models: {e3}")
         
         time_tracking['vectorrag_create_vector_store'] = time.time() - create_vector_store_start_time
-        logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+        logger.info("vectorrag_create_vector_store for %s completed in %.2fs", file_id, time_tracking['vectorrag_create_vector_store'])
 
         # Save the markdown embeddings to the specified folder
         create_markdown_embeddings_start_time = time.time()
@@ -483,7 +484,7 @@ async def embeddings_agent(
             page_stats=page_stats  # Pass page statistics for accurate page attribution
         )
         time_tracking['vectorrag_create_markdown_embeddings'] = time.time() - create_markdown_embeddings_start_time
-        logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+        logger.info("vectorrag_create_markdown_embeddings for %s completed in %.2fs", file_id, time_tracking['vectorrag_create_markdown_embeddings'])
 
         try:
             # Generate and save document summary using the texts we created
@@ -493,7 +494,7 @@ async def embeddings_agent(
             # By default, use the markdown document to generate the summary
             await generate_document_summary(texts, embedding_folder, doc_processor.get_md_document())
             time_tracking['generate_document_summary'] = time.time() - generate_document_summary_start_time
-            logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+            logger.info("generate_document_summary for %s completed in %.2fs", file_id, time_tracking['generate_document_summary'])
             logger.info("Document summary generated and saved successfully ...")
             # yield "\n\n**📚 Document summary generated and saved successfully ...**"
         except Exception as e:
@@ -513,7 +514,7 @@ async def embeddings_agent(
         async for chunk in generate_GraphRAG_embedding(embedding_folder, time_tracking):
             yield chunk
     time_tracking['graphrag_generate_embedding'] = time.time() - graphrag_start_time
-    logger.info(f"File id: {file_id}\nTime tracking:\n{format_time_tracking(time_tracking)}")
+    logger.info("graphrag_generate_embedding for %s completed in %.2fs", file_id, time_tracking['graphrag_generate_embedding'])
 
     # Memory cleanup
     db = None

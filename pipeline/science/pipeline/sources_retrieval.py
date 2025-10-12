@@ -585,8 +585,8 @@ def get_response_source(
             user_input=tag_string,
             divider_number=4,
         )
-        logger.info(f"\n\nTag {original_tag_symbol} mapped to page {page_num}, index {source_index}, content length {len(content_key)}")
-        logger.info(f"original tag string: {tag_string}:\nmost relevant chunk:\n{content_key}\n---\n")
+        # logger.info(f"\n\nTag {original_tag_symbol} mapped to page {page_num}, index {source_index}, content length {len(content_key)}")
+        # logger.info(f"original tag string: {tag_string}:\nmost relevant chunk:\n{content_key}\n---\n")
 
         # -----------------------------------------------------------------
         # 2.c Assign / reuse new tag id

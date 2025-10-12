@@ -1,22 +1,28 @@
 from azure.storage.blob import BlobServiceClient
 from dotenv import load_dotenv
 import os
+import logging
+
 load_dotenv()
 
-import logging
 logger = logging.getLogger("tutorpipeline.science.helper.azure_blob")
+# Silence Azure's HTTP policy logger to avoid verbose request/response dumps.
+logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(logging.WARNING)
 
 
 class AzureBlobHelper(object):
     def __init__(self):
         connection_string = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
-        self.blob_service_client = BlobServiceClient.from_connection_string(connection_string)
+        self.blob_service_client = BlobServiceClient.from_connection_string(
+            connection_string,
+            logging_enable=False
+        )
 
     def download(self, blob_name: str, output_name: str, container_name: str):
         try:
             blob_client = self.blob_service_client.get_blob_client(container=container_name, blob=blob_name)
             with open(output_name, "wb") as download_file:
-                download_file.write(blob_client.download_blob().readall())
+                download_file.write(blob_client.download_blob(logging_enable=False).readall())
             logger.info(f"Downloaded {blob_name} to {output_name}")
             return f"https://{self.blob_service_client.account_name}.blob.core.windows.net/{container_name}/{blob_name}"
         except Exception as e:
@@ -27,7 +33,7 @@ class AzureBlobHelper(object):
         try:
             blob_client = self.blob_service_client.get_blob_client(container=container_name, blob=blob_name)
             with open(file_path, "rb") as data:
-                blob_client.upload_blob(data, overwrite=True)
+                blob_client.upload_blob(data, overwrite=True, logging_enable=False)
             logger.info(f"Uploaded {file_path} as {blob_name} to container {container_name}")
             logger.info(f"https://{self.blob_service_client.account_name}.blob.core.windows.net/{container_name}/{blob_name}")
         except Exception as e:
@@ -43,7 +49,7 @@ class AzureBlobHelper(object):
         """
         try:
             blob_client = self.blob_service_client.get_blob_client(container=container_name, blob=blob_name)
-            blob_client.get_blob_properties()
+            blob_client.get_blob_properties(logging_enable=False)
             logger.info(f"Blob {blob_name} exists in container {container_name}")
             return True
         except Exception as e:

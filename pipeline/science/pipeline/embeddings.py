@@ -312,9 +312,9 @@ def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_s
                     overflow_size = int(chunk_size_actual * 0.1)
                     start_pos = max(0, estimated_start - overflow_size)
                     end_pos = min(len(md_document), estimated_end + overflow_size)
-                    logger.info(f"=== EMBEDDINGS DEBUG: start_pos = {start_pos}, end_pos = {end_pos} ===")
-                    logger.info(f"=== EMBEDDINGS DEBUG: char_proportion = {char_proportion} ===")
-                    logger.info(f"=== EMBEDDINGS DEBUG: cum_prop = {cum_prop} ===")
+                    # logger.info(f"=== EMBEDDINGS DEBUG: start_pos = {start_pos}, end_pos = {end_pos} ===")
+                    # logger.info(f"=== EMBEDDINGS DEBUG: char_proportion = {char_proportion} ===")
+                    # logger.info(f"=== EMBEDDINGS DEBUG: cum_prop = {cum_prop} ===")
                     
                     # Graceful bounds checking
                     if start_pos >= len(md_document):
@@ -329,7 +329,7 @@ def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_s
                     if clean_text:
                         clean_text = clean_text.replace('<|endoftext|>', '')
                         clean_text = " ".join(clean_text.split())
-                        logger.info(f"=== EMBEDDINGS DEBUG: clean_text = {clean_text} and page_stat['page_num'] = {page_stat['page_num']} ===")
+                        # logger.info(f"=== EMBEDDINGS DEBUG: clean_text = {clean_text} and page_stat['page_num'] = {page_stat['page_num']} ===")
                         # Only add if we have meaningful content
                         if len(clean_text) > 10:  # Minimum content threshold
                             page_documents.append(Document(
@@ -385,19 +385,19 @@ def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_s
             
             if page_documents:
                 # Create FAISS database from page documents
-                logger.info(f"=== EMBEDDINGS DEBUG: page_documents count = {len(page_documents)} ===")
+                # logger.info(f"=== EMBEDDINGS DEBUG: page_documents count = {len(page_documents)} ===")
                 
-                # Debug: Show detailed content of page_documents
-                for i, doc in enumerate(page_documents):
-                    logger.info(f"=== EMBEDDINGS DEBUG: Document {i+1}/{len(page_documents)} ===")
-                    logger.info(f"=== EMBEDDINGS DEBUG: Content preview = {doc.page_content[:200]}... ===")
-                    logger.info(f"=== EMBEDDINGS DEBUG: Metadata = {doc.metadata} ===")
+                # # Debug: Show detailed content of page_documents
+                # for i, doc in enumerate(page_documents):
+                #     logger.info(f"=== EMBEDDINGS DEBUG: Document {i+1}/{len(page_documents)} ===")
+                #     logger.info(f"=== EMBEDDINGS DEBUG: Content preview = {doc.page_content[:200]}... ===")
+                #     logger.info(f"=== EMBEDDINGS DEBUG: Metadata = {doc.metadata} ===")
                 
-                # Show sample of first 2 documents for quick overview
-                if len(page_documents) > 0:
-                    logger.info(f"=== EMBEDDINGS DEBUG: First document content = {page_documents[0].page_content[:300]}... ===")
-                    if len(page_documents) > 1:
-                        logger.info(f"=== EMBEDDINGS DEBUG: Second document content = {page_documents[1].page_content[:300]}... ===")
+                # # Show sample of first 2 documents for quick overview
+                # if len(page_documents) > 0:
+                #     logger.info(f"=== EMBEDDINGS DEBUG: First document content = {page_documents[0].page_content[:300]}... ===")
+                #     if len(page_documents) > 1:
+                #         logger.info(f"=== EMBEDDINGS DEBUG: Second document content = {page_documents[1].page_content[:300]}... ===")
                 
                 page_db = FAISS.from_documents(page_documents, embeddings)
                 # Create directory if it doesn't exist
@@ -405,10 +405,10 @@ def create_markdown_embeddings(md_document: str, output_dir: str | Path, chunk_s
                 # Save the page-based embeddings to BOTH locations (unified approach)
                 page_db.save_local(page_based_embedding_folder)
                 page_db.save_local(output_dir)  # Save to main output_dir as well
-                logger.info(f"=== EMBEDDINGS DEBUG: Saved {len(page_documents)} unified page-based documents ===")
-                logger.info(f"=== EMBEDDINGS DEBUG: Saved to {page_based_embedding_folder} and {output_dir} ===")
-            else:
-                logger.warning("=== EMBEDDINGS DEBUG: No page_documents found - page_documents is empty ===")
+                # logger.info(f"=== EMBEDDINGS DEBUG: Saved {len(page_documents)} unified page-based documents ===")
+                # logger.info(f"=== EMBEDDINGS DEBUG: Saved to {page_based_embedding_folder} and {output_dir} ===")
+            # else:
+            #     logger.warning("=== EMBEDDINGS DEBUG: No page_documents found - page_documents is empty ===")
     else:
         logger.info("No markdown content available to create markdown embeddings")
 
@@ -569,7 +569,7 @@ async def load_embeddings(embedding_folder_list: list[str | Path], embedding_typ
     embeddings = get_embedding_models(embedding_type, para)
     
     # Validate all embedding folders before attempting to load
-    logger.info(f"Validating {len(embedding_folder_list)} embedding folders...")
+    # logger.info(f"Validating {len(embedding_folder_list)} embedding folders...")
     valid_folders, invalid_folders = validate_embedding_index_files(embedding_folder_list, embedding_type)
     
     # If there are invalid folders, attempt to regenerate them immediately
@@ -633,7 +633,7 @@ async def load_embeddings(embedding_folder_list: list[str | Path], embedding_typ
                 doc.metadata["embedding_folder"] = str(embedding_folder)
                 all_docs.append(doc)
                 
-            logger.info(f"Successfully loaded {len(docs)} documents from {embedding_folder}")
+            logger.info(f"Successfully loaded {len(docs)} pages of documents from {embedding_folder}")
             successfully_loaded += 1
             
         except Exception as e:
@@ -650,8 +650,8 @@ async def load_embeddings(embedding_folder_list: list[str | Path], embedding_typ
         logger.error(error_msg)
         raise RuntimeError(error_msg)
     
-    # Create a new database with all the documents that have updated metadata
-    logger.info(f"Creating merged database from {len(all_docs)} documents...")
+    # # Create a new database with all the documents that have updated metadata
+    # logger.info(f"Creating merged database from {len(all_docs)} documents...")
 
     try:
         db_merged = FAISS.from_documents(all_docs, embeddings)
@@ -684,18 +684,18 @@ async def load_embeddings(embedding_folder_list: list[str | Path], embedding_typ
             )
             raise
     
-    # Log summary information
-    logger.info(f"Successfully created merged database:")
-    logger.info(f"  - Total chunks: {len(all_docs)}")
-    logger.info(f"  - Successfully loaded folders: {successfully_loaded}")
-    logger.info(f"  - Total folders requested: {len(embedding_folder_list)}")
+    # # Log summary information
+    # logger.info(f"Successfully created merged database:")
+    # logger.info(f"  - Total chunks: {len(all_docs)}")
+    # logger.info(f"  - Successfully loaded folders: {successfully_loaded}")
+    # logger.info(f"  - Total folders requested: {len(embedding_folder_list)}")
     
-    # Log the first 5 chunks for testing
-    for i, doc in enumerate(all_docs[:5]):
-        logger.info(f"Chunk {i+1} - Content preview: {doc.page_content[:50]}...")
-        logger.info(f"Chunk {i+1} - Metadata: {doc.metadata}")
-        if doc.metadata['file_index'] < len(embedding_folder_list):
-            logger.info(f"Chunk {i+1} - From embedding folder index: {doc.metadata['file_index']} (corresponds to {embedding_folder_list[doc.metadata['file_index']]})")
+    # # Log the first 5 chunks for testing
+    # for i, doc in enumerate(all_docs[:5]):
+    #     logger.info(f"Chunk {i+1} - Content preview: {doc.page_content[:50]}...")
+    #     logger.info(f"Chunk {i+1} - Metadata: {doc.metadata}")
+    #     if doc.metadata['file_index'] < len(embedding_folder_list):
+    #         logger.info(f"Chunk {i+1} - From embedding folder index: {doc.metadata['file_index']} (corresponds to {embedding_folder_list[doc.metadata['file_index']]})")
     
     return db_merged
 

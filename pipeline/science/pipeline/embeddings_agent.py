@@ -2,7 +2,7 @@ import os
 import json
 import time
 import fitz
-from typing import Dict
+from typing import Dict, Optional
 from dotenv import load_dotenv
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
@@ -94,7 +94,7 @@ async def embeddings_agent(
     _doc: "fitz.Document",
     file_path: str,
     embedding_folder: str,
-    time_tracking: Dict[str, float] = {},
+    time_tracking: Optional[Dict[str, float]] = None,
     chat_session: ChatSession = None
 ):
     """
@@ -108,6 +108,8 @@ async def embeddings_agent(
     """
     # yield "\n\n**Loading embeddings ...**"
     file_id = generate_file_id(file_path)
+    if time_tracking is None:
+        time_tracking = {}
     # logger.info(f"Current mode: {_mode}")
     if _mode == ChatMode.ADVANCED:
         # GraphRAG is implemented in the following code

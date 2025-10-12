@@ -147,12 +147,20 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
             logger.info(f"Markdown RAG index files for {file_id} are ready.")
         else:
             # Files are missing and have been cleaned up
+            doc_processing_start = time.time()
             _document, _doc = process_pdf_file(file_path)
+            doc_elapsed = time.time() - doc_processing_start
+            time_tracking["doc_processing"] = time_tracking.get("doc_processing", 0.0) + doc_elapsed
+            logger.info("doc_processing for %s completed in %.2fs", file_id, doc_elapsed)
             save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
             logger.info(f"Markdown RAG embedding for {file_id} ...")
             # await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
-            async for chunk in embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder):
+            embedding_generation_start = time.time()
+            async for chunk in embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking):
                 yield chunk
+            embedding_elapsed = time.time() - embedding_generation_start
+            time_tracking["embedding_generation"] = time_tracking.get("embedding_generation", 0.0) + embedding_elapsed
+            logger.info("embedding_generation for %s completed in %.2fs", file_id, embedding_elapsed)
             logger.info(f"Markdown RAG embedding completed for {file_id}")
             if vectorrag_index_files_compress(embedding_folder):
                 logger.info(f"Markdown RAG index files for {file_id} are ready and uploaded to Azure Blob Storage.")
@@ -160,8 +168,12 @@ async def tutor_agent_basic_streaming(chat_session: ChatSession, file_path_list,
                 # Retry once if first attempt fails
                 save_file_txt_locally(file_path, filename=filename, embedding_folder=embedding_folder, chat_session=chat_session)
                 # await embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking)
-                async for chunk in embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder):
+                embedding_generation_start = time.time()
+                async for chunk in embeddings_agent(chat_session.mode, _document, _doc, file_path, embedding_folder=embedding_folder, time_tracking=time_tracking):
                     yield chunk
+                embedding_elapsed = time.time() - embedding_generation_start
+                time_tracking["embedding_generation"] = time_tracking.get("embedding_generation", 0.0) + embedding_elapsed
+                logger.info("embedding_generation retry for %s completed in %.2fs", file_id, embedding_elapsed)
                 logger.info(f"Markdown RAG embedding retry completed for {file_id}")
                 if vectorrag_index_files_compress(embedding_folder):
                     logger.info(f"Markdown RAG index files for {file_id} are ready and uploaded to Azure Blob Storage.")

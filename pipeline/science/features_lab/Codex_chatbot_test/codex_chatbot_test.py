@@ -1,44 +1,11 @@
 # -*- coding: utf-8 -*-
-"""pipeline.science.features_lab.Codex_chatbot_test.codex_chatbot_test
--------------------------------------------------------------------------------
-Utility script that demos how to call the **Codex CLI** from Python and expose
-the output as a *streaming* generator – mirroring the behaviour of
-`pipeline.science.pipeline.get_response` where the caller receives chunks that
-can be forwarded directly to a web‑socket / Streamlit component.
-
-The script intentionally keeps **all** Codex interaction behind a subprocess
-so that:
-
-1.  We do **not** import Codex as a library – we simply rely on the installed
-    command‑line binary (`codex exec …`).
-2.  Authentication is delegated to the CLI which, in turn, picks up the
-    `AZURE_OPENAI_API_KEY_BACKUP` / `AZURE_OPENAI_ENDPOINT_BACKUP` values that
-    we load from the local `.env` file.
-3.  We override Codex’ default *env_key* so that it uses the **backup** key
-    (per the user instruction – “do **not** use `AZURE_OPENAI_API_KEY`).
-
-Running the file directly will:
-
-1.  Ask Codex to summarise a sample PDF
-   (``tmp/tutor_pipeline/input_files/2503.16408v1_RoboFactory_Exploring_Embodied_Agent_Collaboration_with_Compositional_Constraints.pdf``)
-2.  Print the response incrementally to the terminal.
-
-The *public* interface exposed for reuse by other modules is:
-
-``get_codex_response(question: str, stream: bool = True) -> AsyncGenerator[str, None]``
-
-It returns an **async** generator yielding text chunks, wrapped in
-`<response> … </response>` tags – exactly the contract expected by the rest of
-the tutoring pipeline.
-"""
-
 from __future__ import annotations
 
 import asyncio
+import json
 import os
-import sys
 from pathlib import Path
-from typing import AsyncGenerator, List
+from typing import AsyncGenerator, AsyncIterator, List
 
 from dotenv import load_dotenv
 
@@ -68,6 +35,7 @@ def _build_codex_cmd(prompt: str, model: str = "o3-pro") -> List[str]:
     return [
         "codex",
         "exec",
+        "--json",
         "-m",
         model,
         # Override the env_key inside the azure provider section so Codex will
@@ -84,65 +52,151 @@ def _build_codex_cmd(prompt: str, model: str = "o3-pro") -> List[str]:
 # ---------------------------------------------------------------------------
 
 
+async def _iter_codex_events(question: str, model: str) -> AsyncIterator[dict]:
+    """Yield JSON events emitted by the Codex CLI for *question*."""
+
+    process = await asyncio.create_subprocess_exec(
+        *_build_codex_cmd(question, model),
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.STDOUT,
+        env=os.environ.copy(),
+    )
+
+    if process.stdout is None:  # pragma: no cover – defensive guard
+        raise RuntimeError("Failed to open subprocess stdout pipe.")
+
+    try:
+        while True:
+            raw_line = await process.stdout.readline()
+            if not raw_line:
+                break
+
+            line = raw_line.decode("utf-8", errors="ignore").strip()
+            if not line:
+                continue
+
+            try:
+                yield json.loads(line)
+            except json.JSONDecodeError:
+                continue  # Ignore malformed lines – Codex may interleave notices.
+    finally:
+        try:
+            await process.wait()
+        except Exception:  # pragma: no cover – best-effort cleanup
+            pass
+
+
+async def _format_codex_events(question: str, model: str) -> AsyncGenerator[str, None]:
+    """Stream formatted text chunks built from Codex JSON events."""
+
+    think_open = True
+    response_open = False
+
+    yield "<think>\n"
+
+    async for event in _iter_codex_events(question, model):
+        event_type = event.get("type")
+
+        if not event_type:
+            continue
+
+        if event_type.startswith("item."):
+            item = event.get("item", {})
+            item_type = item.get("type")
+
+            if event_type == "item.started" and item_type == "command_execution":
+                command = item.get("command")
+                if command:
+                    yield f"exec\n{command}\n"
+                continue
+
+            if event_type == "item.delta":
+                delta = event.get("delta", {})
+                text_fragment = (
+                    delta.get("text")
+                    or delta.get("aggregated_output")
+                    or delta.get("output")
+                )
+
+                if not text_fragment:
+                    for value in delta.values():
+                        if isinstance(value, str):
+                            text_fragment = value
+                            break
+
+                if not text_fragment:
+                    continue
+
+                if item_type == "agent_message":
+                    if think_open:
+                        yield "</think>\n"
+                        think_open = False
+                    if not response_open:
+                        yield "<response>\n"
+                        response_open = True
+
+                if not text_fragment.endswith("\n"):
+                    text_fragment += "\n"
+                yield text_fragment
+                continue
+
+            if event_type == "item.completed":
+                if item_type == "command_execution":
+                    output = item.get("aggregated_output") or ""
+                    if output and not output.endswith("\n"):
+                        output += "\n"
+                    if output:
+                        yield output
+                    continue
+
+                if item_type == "reasoning":
+                    text = item.get("text") or ""
+                    if text and not text.endswith("\n"):
+                        text += "\n"
+                    if text:
+                        yield text
+                    continue
+
+                if item_type == "agent_message":
+                    if think_open:
+                        yield "</think>\n"
+                        think_open = False
+                    if not response_open:
+                        yield "<response>\n"
+                        response_open = True
+                    text = item.get("text") or ""
+                    yield text
+                    if text and not text.endswith("\n"):
+                        yield "\n"
+                    continue
+
+    if think_open:
+        yield "</think>\n"
+
+    if response_open:
+        yield "</response>"
+    else:
+        yield "<response>\n</response>"
+
+
 async def get_codex_response(question: str, stream: bool = True) -> AsyncGenerator[str, None]:
     """Call Codex with *question* and yield the response.
 
     The generator yields **strings** that can be forwarded directly to the
-    client.  The very first chunk is ``"<response>\n\n"`` and the very last
-    chunk is ``"\n\n</response>"`` so that the format matches
-    *tutorpipeline* conventions.
+    client. Output is wrapped in ``<think>`` and ``<response>`` sections so
+    callers can expose intermediate tool usage separately from the final
+    answer.
     """
 
     if not stream:
-        # Non‑streaming mode: capture the full output then yield once.
-        import subprocess
-
-        completed = subprocess.run(
-            _build_codex_cmd(question), capture_output=True, text=True, check=True
-        )
-        yield "<response>\n\n"
-        yield completed.stdout
-        yield "\n\n</response>"
+        buffered: List[str] = []
+        async for chunk in _format_codex_events(question, model="o3-pro"):
+            buffered.append(chunk)
+        yield "".join(buffered)
         return
 
-    # --- Streaming path -----------------------------------------------------
-
-    # We use *asyncio.create_subprocess_exec* so that we can await reads without
-    # blocking the event‑loop. Codex prints tokens (or small chunks) separated
-    # by **newlines**, so we read line‑by‑line and forward immediately.
-
-    process = await asyncio.create_subprocess_exec(
-        *_build_codex_cmd(question),
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.STDOUT,
-        # Inherit the current env so the backup credentials are visible.
-        env=os.environ.copy(),
-    )
-
-    if process.stdout is None:  # pragma: no cover – safety guard
-        raise RuntimeError("Failed to open subprocess stdout pipe.")
-
-    # Emit opening tag
-    yield "<response>\n\n"
-
-    try:
-        # Iterate until EOF. We purposely use *read(1)* instead of readline to
-        # propagate the output as soon as possible (Codex prints without
-        # guaranteed newlines between tokens).
-        while True:
-            chunk = await process.stdout.read(1)
-            if not chunk:
-                break  # EOF
-            yield chunk.decode(errors="ignore")
-    finally:
-        # Make sure the subprocess has terminated.
-        try:
-            await process.wait()
-        except Exception:  # pragma: no cover – best‑effort cleanup
-            pass
-
-    # Emit closing tag
-    yield "\n\n</response>"
+    async for chunk in _format_codex_events(question, model="o3-pro"):
+        yield chunk
 
 
 # ---------------------------------------------------------------------------

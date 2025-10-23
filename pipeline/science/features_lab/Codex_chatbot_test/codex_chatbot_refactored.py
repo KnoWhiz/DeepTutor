@@ -314,3 +314,44 @@ async def stream_codex_answer(
     async for chunk in format_events():
         yield chunk
 
+
+# ---------------------------------------------------------------------------
+# CLI helper for quick manual checks ----------------------------------------
+# ---------------------------------------------------------------------------
+
+
+def main() -> None:  # pragma: no cover – developer convenience entry‑point
+    """Simple sanity‑check using a hard‑coded PDF and question.
+
+    This helper mirrors the request from the IDE context so that developers can
+    run the file directly to validate end‑to‑end behaviour without crafting
+    bespoke scripts each time::
+
+        python -m pipeline.science.features_lab.Codex_chatbot_test.codex_chatbot_refactored
+    """
+
+    # 1. Prepare workspace -----------------------------------------------------
+    pdf_path = (
+        "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/"
+        "tmp/tutor_pipeline/input_files/"
+        "e54b39fed418d7d27ae2761e7ca2d459.pdf"
+    )
+
+    workspace = pdfs_to_markdown_workspace([pdf_path])
+
+    # 2. Ask Codex -------------------------------------------------------------
+    question = "what is the main idea of this paper"
+
+    async def _runner() -> None:
+        async for token in stream_codex_answer(workspace, question):
+            print(token, end="", flush=True)
+
+    try:
+        asyncio.run(_runner())
+    except KeyboardInterrupt:
+        print("\nInterrupted by user – exiting.")
+
+
+if __name__ == "__main__":
+    main()
+

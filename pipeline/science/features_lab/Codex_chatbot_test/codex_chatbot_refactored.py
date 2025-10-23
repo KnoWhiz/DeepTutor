@@ -331,13 +331,13 @@ def main() -> None:  # pragma: no cover – developer convenience entry‑point
     """
 
     # 1. Prepare workspace -----------------------------------------------------
-    pdf_path = (
-        "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/"
-        "tmp/tutor_pipeline/input_files/"
-        "e54b39fed418d7d27ae2761e7ca2d459.pdf"
-    )
+    pdf_path_1 = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/pipeline/science/features_lab/(Benchmarks and evals, safety vs. capabilities, machine ethics) DecodingTrust A Comprehensive Assessment of Trustworthiness in GPT Models.pdf"
+    pdf_path_2 = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/pipeline/science/features_lab/(Benchmarks and evals, safety vs. capabilities, machine ethics) Do the Rewards Justify the Means Measuring Trade-Offs Between Rewards and Ethical Behavior in the MACHIAVELLI Benchmark.pdf"
+    pdf_path_3 = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/pipeline/science/features_lab/(Chichi Thesis - Toroidal Half-Wave (λ2) Resonator - 2021 Da An) Electric-field noise scaling and wire-mediated ion-ion energy exchange in a novel elevator surface trap.pdf"
+    pdf_path_4 = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/pipeline/science/features_lab/(Half-wave Resonator - 2017 Gorman) Noise sensing and quantum simulation with trapped atomic ions.pdf"
+    pdf_path_5 = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/pipeline/science/features_lab/(Helical Resonator - 2012 Sussex) On the application of radio frequency voltages to ion traps via helical resonators.pdf"
 
-    workspace = pdfs_to_markdown_workspace([pdf_path])
+    workspace = pdfs_to_markdown_workspace([pdf_path_1, pdf_path_2, pdf_path_3, pdf_path_4, pdf_path_5])
 
     # 2. Ask Codex -------------------------------------------------------------
     question = "what is the main idea of this paper"

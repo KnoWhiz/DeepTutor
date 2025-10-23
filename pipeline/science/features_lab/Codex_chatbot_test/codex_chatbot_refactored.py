@@ -248,6 +248,15 @@ async def stream_codex_answer(
 
                 # Incremental delta updates for agent_message / reasoning / etc.
                 if etype == "item.delta":
+                    # For command_execution items or other noisy outputs Codex
+                    # may stream the full file contents (e.g. when `cat`‑ing a
+                    # PDF/markdown). To keep the client output concise we only
+                    # forward deltas originating from *agent_message* or
+                    # *reasoning* items – everything else is discarded.
+
+                    if itype not in {"agent_message", "reasoning"}:
+                        continue
+
                     delta = event.get("delta", {})
                     fragment = (
                         delta.get("text")
@@ -273,12 +282,10 @@ async def stream_codex_answer(
 
                 # Completed items – flush any remaining buffered output
                 if etype == "item.completed":
+                    # Skip full command_execution outputs for the same reason
+                    # we ignore their deltas above – they often include the
+                    # entire file content which would bloat the stream.
                     if itype == "command_execution":
-                        output = item.get("aggregated_output") or ""
-                        if output:
-                            if not output.endswith("\n"):
-                                output += "\n"
-                            yield output
                         continue
 
                     if itype == "reasoning":
@@ -338,9 +345,9 @@ def main() -> None:  # pragma: no cover – developer convenience entry‑point
     pdf_path_5 = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/pipeline/science/features_lab/(Helical Resonator - 2012 Sussex) On the application of radio frequency voltages to ion traps via helical resonators.pdf"
 
     workspace = pdfs_to_markdown_workspace([pdf_path_1, pdf_path_2, pdf_path_3, pdf_path_4, pdf_path_5])
-
+    
     # 2. Ask Codex -------------------------------------------------------------
-    question = "what is the main idea of this paper"
+    question = "review all the papers and give me a comparesion table"
 
     async def _runner() -> None:
         async for token in stream_codex_answer(workspace, question):
@@ -354,4 +361,3 @@ def main() -> None:  # pragma: no cover – developer convenience entry‑point
 
 if __name__ == "__main__":
     main()
-

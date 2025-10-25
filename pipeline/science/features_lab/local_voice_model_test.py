@@ -1,152 +1,117 @@
-# app.py
-# Streamlit demo for a local LIRA Whisper server
-# Usage:
-#   streamlit run app.py
-#
-# Defaults assume you started LIRA like:
-#   lira serve --backend openai --model whisper-base --device cpu --host 127.0.0.1 --port 5000
-#
-# The OpenAI-compatible endpoint is:
-#   POST http://127.0.0.1:5000/v1/audio/transcriptions
-#
-# References:
-# - OpenAI audio transcription endpoint format (/v1/audio/transcriptions)
-# - Streamlit file uploader + audio player
+# app.py (additions marked ==== DIAGNOSTICS ====)
+import io, json, time, inspect, requests, streamlit as st
+import wave, contextlib
+import numpy as np
 
-import io
-import json
-import mimetypes
-import requests
-import streamlit as st
-
-st.set_page_config(page_title="LIRA Whisper Demo", page_icon="🎙️", layout="centered")
-
-st.title("🎙️ LIRA Whisper (local) — Streamlit Demo")
-st.caption("Upload an audio file, send it to your local LIRA server, and view the transcript.")
+st.set_page_config(page_title="🎙️ Voice → LIRA Transcribe", page_icon="🎙️", layout="centered")
+st.title("🎙️ Record • Stop • Transcribe (LIRA local server)")
 
 with st.sidebar:
-    st.header("Server & Params")
-    server_url = st.text_input(
-        "Server URL",
-        value="http://127.0.0.1:5000",
-        help="Base URL of your LIRA server.",
-    )
+    st.header("Server & options")
+    base_url = st.text_input("Server URL", "http://127.0.0.1:5000")
+    endpoint = st.text_input("Endpoint", "/v1/audio/transcriptions")
+    model = st.text_input("model (form field)", "whisper-onnx")
+    language = st.text_input("language (optional)", value="", placeholder="e.g. en, zh, de")
+    response_format = st.selectbox("response_format", ["json", "verbose_json", "text"], index=0)
+    temperature = st.number_input("temperature", 0.0, 1.0, 0.0, 0.1)
+    auto = st.toggle("Auto-transcribe when recording finishes", value=True)
 
-    endpoint = st.text_input(
-        "Transcriptions endpoint",
-        value="/v1/audio/transcriptions",
-        help="OpenAI-compatible transcription route.",
-    )
+st.write("Press the microphone to **start**, then press again to **stop**. We'll transcribe automatically or when you click **Transcribe**.")
 
-    # Your LIRA run showed curl using `-F model=whisper-onnx`
-    # Keep this editable in case your server expects a different value (e.g., whisper-base).
-    model = st.text_input(
-        "model (form field)",
-        value="whisper-onnx",
-        help="Model name sent as a form field. Try 'whisper-onnx' or 'whisper-base'."
-    )
+# Safe audio_input across Streamlit versions
+audio_kwargs = {"key": "mic"}
+try:
+    if "sample_rate" in inspect.signature(st.audio_input).parameters:
+        audio_kwargs["sample_rate"] = 16000
+except Exception:
+    pass
 
-    language = st.text_input(
-        "language (optional)",
-        value="",
-        placeholder="e.g. en, zh, de",
-        help="ISO language hint. Leave blank to let model auto-detect."
-    )
+audio_file = st.audio_input("Record a voice message", **audio_kwargs)
 
-    temperature = st.number_input(
-        "temperature (optional)",
-        min_value=0.0, max_value=1.0, value=0.0, step=0.1,
-        help="Sampling temperature (0 = deterministic)."
-    )
+def transcribe(bytes_data: bytes, filename: str = "recording.wav"):
+    url = base_url.rstrip("/") + endpoint
+    files = {"file": (filename, io.BytesIO(bytes_data), "audio/wav")}
+    data = {"model": model, "response_format": response_format, "temperature": str(temperature)}
+    if language.strip(): data["language"] = language.strip()
+    with st.status("Transcribing…", expanded=False) as status:
+        resp = requests.post(url, data=data, files=files, timeout=180)
+        status.update(label="Received response", state="complete")
+    if resp.status_code != 200:
+        st.error(f"HTTP {resp.status_code}\n{resp.text[:2000]}")
+        return
+    ct = resp.headers.get("content-type", "")
+    if "application/json" in ct or response_format in ("json", "verbose_json"):
+        payload = resp.json()
+        text = payload.get("text") if isinstance(payload, dict) else None
+        st.subheader("Transcript" if text is not None else "Raw JSON")
+        st.write(text) if text is not None else st.code(json.dumps(payload, ensure_ascii=False, indent=2))
+        if isinstance(payload, dict) and "segments" in payload:
+            with st.expander("Segments"):
+                st.code(json.dumps(payload["segments"], ensure_ascii=False, indent=2))
+    else:
+        st.subheader("Transcript (text)")
+        st.write(resp.text)
 
-    response_format = st.selectbox(
-        "response_format",
-        options=["json", "verbose_json", "text"],
-        index=0,
-        help="Most servers return JSON. 'verbose_json' may include segments if implemented."
-    )
+def _diagnose_wav(bytes_data: bytes):
+    # ==== DIAGNOSTICS ====
+    try:
+        bio = io.BytesIO(bytes_data)
+        with contextlib.closing(wave.open(bio, "rb")) as wf:
+            fr = wf.getframerate()
+            ch = wf.getnchannels()
+            sw = wf.getsampwidth()
+            n = wf.getnframes()
+            duration = n / float(fr) if fr else 0.0
+            wf.rewind()
+            raw = wf.readframes(n)
+        # convert to numpy for a simple RMS (normalized)
+        dtype = {1: np.int8, 2: np.int16, 3: np.int32, 4: np.int32}.get(sw, np.int16)
+        audio_np = np.frombuffer(raw, dtype=dtype).astype(np.float32)
+        # scale based on sample width (approx)
+        max_val = float(2 ** (8*sw - 1))
+        rms = float(np.sqrt(np.mean(np.square(audio_np / max_val)))) if audio_np.size else 0.0
+        return {"duration_s": duration, "samplerate": fr, "channels": ch, "samplewidth": sw, "rms": rms}
+    except Exception as e:
+        return {"error": str(e)}
 
-st.divider()
+if audio_file is not None:
+    bytes_data = audio_file.getvalue()
+    st.audio(bytes_data, format="audio/wav")
 
-def guess_mime(filename: str, default: str = "application/octet-stream") -> str:
-    # Good enough for common audio types
-    mtype, _ = mimetypes.guess_type(filename)
-    return mtype or default
+    # ==== DIAGNOSTICS UI ====
+    diag = _diagnose_wav(bytes_data)
+    if "error" in diag:
+        st.warning(f"Could not parse WAV header: {diag['error']}")
+    else:
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Duration (s)", f"{diag['duration_s']:.2f}")
+        col2.metric("Sample rate", f"{diag['samplerate']} Hz")
+        col3.metric("Channels", str(diag['channels']))
+        col4.metric("Loudness (RMS)", f"{diag['rms']:.3f}")
+        if diag["duration_s"] < 0.3 or diag["rms"] < 0.005:
+            st.info("It looks like this recording is either very short or nearly silent. "
+                    "Check your mic device & gain in the browser’s site settings and macOS Sound input.")
 
-uploaded = st.file_uploader(
-    "Upload audio",
-    type=["wav", "mp3", "m4a", "flac", "ogg", "webm"],
-    accept_multiple_files=False,
-    help="Max size depends on Streamlit config; WAV/MP3/M4A/FLAC/OGG/WEBM supported."
-)
+    st.caption(f"{getattr(audio_file, 'name', 'recording.wav')} · {len(bytes_data)/1_000_000:.2f} MB")
+    st.download_button("Download WAV", bytes_data, file_name="recording.wav", mime="audio/wav")
 
-if uploaded:
-    file_bytes = uploaded.getvalue()
-    # Try to show a player
-    fmt = guess_mime(uploaded.name)
-    st.audio(file_bytes, format=fmt)
-
-    st.caption(f"File: {uploaded.name} · {len(file_bytes)/1_000_000:.2f} MB · MIME: {fmt}")
+    if auto and not st.session_state.get("did_auto", False) and ("error" not in diag):
+        time.sleep(0.15)
+        transcribe(bytes_data, getattr(audio_file, "name", "recording.wav"))
+        st.session_state["did_auto"] = True
 
     if st.button("Transcribe", type="primary"):
-        try:
-            url = server_url.rstrip("/") + endpoint
-            # Build the multipart/form-data request:
-            # - 'file' goes in the `files` dict
-            # - other fields can go in `data`
-            files = {
-                "file": (uploaded.name, io.BytesIO(file_bytes), fmt),
-            }
-            data = {
-                "model": model,
-                "response_format": response_format,
-            }
-            if language.strip():
-                data["language"] = language.strip()
-            # Temperature often supported by Whisper-style servers
-            if temperature is not None:
-                data["temperature"] = str(temperature)
+        transcribe(bytes_data, getattr(audio_file, "name", "recording.wav"))
+        st.session_state["did_auto"] = True
 
-            with st.status("Sending to server…", expanded=False) as status:
-                resp = requests.post(url, data=data, files=files, timeout=120)
-                status.update(label="Received response", state="complete")
+if audio_file is None and st.session_state.get("did_auto"):
+    st.session_state["did_auto"] = False
 
-            if resp.status_code != 200:
-                st.error(f"HTTP {resp.status_code}: {resp.text[:2000]}")
-            else:
-                # Try flexible parsing depending on response_format
-                content_type = resp.headers.get("content-type", "")
-                if "application/json" in content_type or response_format in ("json", "verbose_json"):
-                    payload = resp.json()
-                    # Common OpenAI-style field is 'text'
-                    text = None
-                    if isinstance(payload, dict):
-                        text = payload.get("text")
-                    if text is not None:
-                        st.subheader("Transcript")
-                        st.write(text)
-                    else:
-                        st.subheader("Raw JSON")
-                        st.code(json.dumps(payload, ensure_ascii=False, indent=2))
-                        # If segments exist, show them
-                        segs = payload.get("segments") if isinstance(payload, dict) else None
-                        if segs:
-                            with st.expander("Segments"):
-                                st.code(json.dumps(segs, ensure_ascii=False, indent=2))
-                else:
-                    # Some servers may return plain text when response_format='text'
-                    st.subheader("Transcript (text)")
-                    st.write(resp.text)
-
-        except requests.exceptions.RequestException as e:
-            st.error(f"Request error: {e}")
-
-with st.expander("Show sample cURL (matches this app)"):
-    curl_url = (server_url.rstrip("/") + endpoint)
-    example = f"""curl -X POST "{curl_url}" \\
+with st.expander("Show equivalent cURL"):
+    curl = f"""curl -X POST "{base_url.rstrip('/') + endpoint}" \\
   -H "accept: application/json" \\
   -H "Content-Type: multipart/form-data" \\
-  -F "file=@{uploaded.name if uploaded else 'path/to/audio.wav'}" \\
+  -F "file=@recording.wav" \\
   -F "model={model}" \\
-  -F "response_format={response_format}"{f' \\\n  -F "language={language.strip()}"' if language.strip() else ""}{f' \\\n  -F "temperature={temperature}"' if temperature is not None else ""}"""
-    st.code(example)
+  -F "response_format={response_format}"{f' \\\\\n  -F "language={language.strip()}"' if language.strip() else ""}{f' \\\\\n  -F "temperature={temperature}"' if temperature is not None else ""}"""
+    st.code(curl)

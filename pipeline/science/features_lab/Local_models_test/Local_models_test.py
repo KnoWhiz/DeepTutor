@@ -1,18 +1,39 @@
+# from openai import OpenAI
+
+# # Initialize the client to use Lemonade Server
+# client = OpenAI(
+#     base_url="http://localhost:8000/api/v1",
+#     api_key="lemonade"  # required but unused
+# )
+
+# # Create a chat completion
+# completion = client.chat.completions.create(
+#     model="DeepSeek-Qwen3-8B-GGUF",  # or any other available model
+#     messages=[
+#         {"role": "user", "content": "What is the capital of France?"}
+#     ]
+# )
+
+# # Print the response
+# print(completion.choices[0].message.content)
+
 from openai import OpenAI
 
-# Initialize the client to use Lemonade Server
+# Lemonade runs at http://localhost:8000/api/v1 by default
 client = OpenAI(
     base_url="http://localhost:8000/api/v1",
-    api_key="lemonade"  # required but unused
+    api_key="lemonade",  # required by the client but unused by Lemonade
 )
 
-# Create a chat completion
-completion = client.chat.completions.create(
-    model="DeepSeek-Qwen3-8B-GGUF",  # or any other available model
-    messages=[
-        {"role": "user", "content": "What is the capital of France?"}
-    ]
+texts = [
+    "search_query: multiplexed ion–photon interfaces",
+    "document: temporally multiplexed ion transport in a linear Paul trap",
+]
+
+resp = client.embeddings.create(
+    model="nomic-embed-text-v1-GGUF",  # Lemonade model name you pulled
+    input=texts,
 )
 
-# Print the response
-print(completion.choices[0].message.content)
+vectors = [item.embedding for item in resp.data]
+print(len(vectors), "embeddings,", "dim =", len(vectors[0]))

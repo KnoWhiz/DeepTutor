@@ -493,21 +493,21 @@ def get_response_source(
     #   in‑between as the *inner* text.
     #
     #   Supported variants (optional leading underscore for italics and optional
-    #   surrounding quotes are both preserved):
-    #       [<"_text_">]
-    #       [<_text_>]
-    #       [<text>]
+    #   surrounding quotes are both preserved).  We keep backwards compatibility
+    #   with historical formats by trying them in order:
+    #       1. [<"_text_">] / [<_text_>] / [<text>]
+    #       2. ["_text_"]
+    #       3. [_text_]\n
+    #       4. [_text_]
     #
-    #   Regex breakdown:
-    #       \s*            – leading whitespace after the citation tag
-    #       \[<            – the exact opening sequence
-    #       \s*            – optional inner spacing
-    #       "?_?           – optional opening quote and/or underscore
-    #       (?P<inner>.*?) – lazily capture everything until the closing delimiter
-    #       _?"?           – optional closing underscore/quote (mirrors the opener)
-    #       \s*            – optional spacing
-    #       >\]            – the exact closing sequence
-    quoted_pattern = re.compile(r"\s*\[<\s*\"?_?(?P<inner>.*?)_?\"?\s*>\]")
+    #   The first pattern is the preferred modern syntax.  If it fails to match
+    #   we fall back to legacy forms without the angle‑bracket wrapper.
+    quoted_patterns = [
+        re.compile(r"\s*\[<\s*\"?_?(?P<inner>.*?)_?\"?\s*>\]"),
+        re.compile(r'\s*\[\s*"(?P<inner>_[^"]*_)"\s*\]'),
+        re.compile(r'\s*\[\s*(?P<inner>_[^\]]*_)\s*\]\n'),
+        re.compile(r'\s*\[\s*(?P<inner>_[^\]]*_)\s*\]'),
+    ]
 
     message = chat_session.current_message
     new_message_parts: list[str] = []
@@ -527,13 +527,25 @@ def get_response_source(
         # -----------------------------------------------------------------
         remainder = message[end:]
 
-        quote_match = quoted_pattern.match(remainder)
+        quote_match = None
+        matched_pattern_idx = None
+
+        for idx, pattern in enumerate(quoted_patterns):
+            quote_match = pattern.match(remainder)
+            if quote_match:
+                matched_pattern_idx = idx
+                break
 
         if not quote_match:
             # No quoted string – drop this tag entirely (skip adding anything)
             logger.debug(f"Tag {original_tag_symbol} has no following quoted string – removed")
             last_idx = end  # skip the tag, keep scanning
             continue
+
+        if matched_pattern_idx is not None and matched_pattern_idx > 0:
+            logger.debug(
+                f"Tag {original_tag_symbol} matched legacy quote pattern index {matched_pattern_idx + 1}"
+            )
 
         # Extract inner quoted text and trim optional surrounding underscores
         tag_string_raw = quote_match.group("inner")

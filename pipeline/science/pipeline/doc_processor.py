@@ -493,7 +493,8 @@ def extract_pdf_content_to_markdown_via_api(
     try:
         config = load_config()
         chunk_size = config["embedding"]["chunk_size"]
-        extract_image_context(output_dir, file_path=file_path)
+        # FIXME: Blocking images extraction for now
+        # extract_image_context(output_dir, file_path=file_path)
     except Exception as e:
         logger.exception(f"Error extracting image context: {e}")
         raise Exception(f"Error extracting image context: {e}")
@@ -667,8 +668,9 @@ async def extract_pdf_content_to_markdown_via_api_streaming(
         logger.info("Extracting image context...")
         config = load_config()
         chunk_size = config["embedding"]["chunk_size"]
-        for chunk in extract_image_context(output_dir, file_path=file_path):
-            yield chunk
+        # FIXME: Blocking images extraction for now
+        # for chunk in extract_image_context(output_dir, file_path=file_path):
+        #     yield chunk
     except Exception as e:
         logger.exception(f"Error extracting image context: {e}")
         yield f"\n\n**📑 PDF parsing progress: Error extracting image context: {str(e)}**"
@@ -765,7 +767,8 @@ def extract_pdf_content_to_markdown(
         try:
             config = load_config()
             chunk_size = config['embedding']['chunk_size']
-            extract_image_context(output_dir, file_path=file_path)
+            # FIXME: Blocking images extraction for now
+            # extract_image_context(output_dir, file_path=file_path)
         except Exception as e:
             logger.exception(f"Error extracting image context: {e}")
             raise Exception(f"Error extracting image context: {e}")

@@ -411,7 +411,7 @@ async def embeddings_agent(
 
             else:
                 logger.info("No image context found to process")
-                yield "\n\n**❌ No image context found to process**"
+                # yield "\n\n**❌ No image context found to process**"
         except Exception as e:
             logger.exception(f"Error processing image context: {e}")
             yield "\n\n**❌ Error processing image context: {e}**"

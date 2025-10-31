@@ -533,6 +533,7 @@ def get_response_source(
 
         quote_match = None
         matched_pattern_idx = None
+        trailing_suffix = ""
 
         for idx, pattern in enumerate(quoted_patterns):
             quote_match = pattern.match(remainder)
@@ -545,6 +546,11 @@ def get_response_source(
             logger.debug(f"Tag {original_tag_symbol} has no following quoted string – removed")
             last_idx = end  # skip the tag, keep scanning
             continue
+
+        matched_segment = remainder[:quote_match.end()]
+        suffix_match = re.search(r"(\s*\r?\n)$", matched_segment)
+        if suffix_match:
+            trailing_suffix = suffix_match.group(1)
 
         if matched_pattern_idx is not None and matched_pattern_idx > 0:
             logger.debug(
@@ -616,6 +622,9 @@ def get_response_source(
 
         # Insert the *renumbered* tag into the message.
         new_message_parts.append(f"[<{new_tag_id}>]")
+        if trailing_suffix:
+            # Restore any trailing newline that was attached to the highlight block.
+            new_message_parts.append(trailing_suffix)
 
         # -----------------------------------------------------------------
         # 2.e  Skip over the *highlight* bracket that immediately follows the

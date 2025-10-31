@@ -496,17 +496,21 @@ def get_response_source(
     #   surrounding quotes are both preserved).  We keep backwards compatibility
     #   with historical formats by trying them in order:
     #       1. [<"_text_">] / [<_text_>] / [<text>]
-    #       2. ["_text_"]
-    #       3. [_text_]\n
-    #       4. [_text_]
+    #       2. ["_text_"] (quoted legacy highlight, underscores optional)
+    #       3. [_text_]\n  (legacy italic block ending with newline)
+    #       4. [_text_]    (legacy italic block)
+    #       5. [text]\n    (plain block ending with newline)
+    #       6. [text]      (plain block)
     #
     #   The first pattern is the preferred modern syntax.  If it fails to match
     #   we fall back to legacy forms without the angle‑bracket wrapper.
     quoted_patterns = [
         re.compile(r"\s*\[<\s*\"?_?(?P<inner>.*?)_?\"?\s*>\]"),
-        re.compile(r'\s*\[\s*"(?P<inner>_[^"]*_)"\s*\]'),
-        re.compile(r'\s*\[\s*(?P<inner>_[^\]]*_)\s*\]\n'),
+        re.compile(r'\s*\[\s*"(?P<inner>[^"]+)"\s*\]'),
+        re.compile(r'\s*\[\s*(?P<inner>_[^\]]*_)\s*\]\s*(?:\r?\n)'),
         re.compile(r'\s*\[\s*(?P<inner>_[^\]]*_)\s*\]'),
+        re.compile(r'\s*\[\s*(?P<inner>[^\]]+)\s*\]\s*(?:\r?\n)'),
+        re.compile(r'\s*\[\s*(?P<inner>[^\]]+)\s*\]'),
     ]
 
     message = chat_session.current_message

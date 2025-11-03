@@ -37,23 +37,23 @@ for chunk in stream:
 
 print()  # final newline
 
-# from openai import OpenAI
+from openai import OpenAI
 
-# # Lemonade runs at http://localhost:8000/api/v1 by default
-# client = OpenAI(
-#     base_url="http://localhost:8000/api/v1",
-#     api_key="lemonade",  # required by the client but unused by Lemonade
-# )
+# Lemonade runs at http://localhost:8000/api/v1 by default
+client = OpenAI(
+    base_url="http://localhost:8000/api/v1",
+    api_key="lemonade",  # required by the client but unused by Lemonade
+)
 
-# texts = [
-#     "search_query: multiplexed ion–photon interfaces",
-#     "document: temporally multiplexed ion transport in a linear Paul trap",
-# ]
+texts = [
+    "search_query: multiplexed ion–photon interfaces",
+    "document: temporally multiplexed ion transport in a linear Paul trap",
+]
 
-# resp = client.embeddings.create(
-#     model="nomic-embed-text-v1-GGUF",  # Lemonade model name you pulled
-#     input=texts,
-# )
+resp = client.embeddings.create(
+    model="nomic-embed-text-v1-GGUF",  # Lemonade model name you pulled
+    input=texts,
+)
 
-# vectors = [item.embedding for item in resp.data]
-# print(len(vectors), "embeddings,", "dim =", len(vectors[0]))
+vectors = [item.embedding for item in resp.data]
+print(len(vectors), "embeddings,", "dim =", len(vectors[0]))

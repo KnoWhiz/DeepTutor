@@ -69,7 +69,8 @@ DEFAULT_API_KEY = os.getenv("LEMONADE_API_KEY", "lemonade")
 DEFAULT_EMBED_MODEL = os.getenv("LEMONADE_EMBED_MODEL", "nomic-embed-text-v1-GGUF")
 DEFAULT_CHAT_MODEL = os.getenv("LEMONADE_CHAT_MODEL", "DeepSeek-Qwen3-8B-GGUF")
 DEFAULT_CACHE_ROOT = PROJECT_ROOT / "tmp" / "local_rag_cache"
-MAX_EMBED_CHARS = int(os.getenv("LEMONADE_EMBED_MAX_CHARS", "1800"))
+MAX_EMBED_CHARS = int(os.getenv("LEMONADE_EMBED_MAX_CHARS", "512"))
+DEFAULT_EMBED_BATCH = int(os.getenv("LEMONADE_EMBED_BATCH", "1"))
 DEFAULT_DEMO_PATHS = [
     PROJECT_ROOT
     / "pipeline"
@@ -139,7 +140,7 @@ def _page_documents_from_pdf(pdf_path: Path) -> List[Document]:
     documents: List[Document] = []
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=MAX_EMBED_CHARS,
-        chunk_overlap=min(200, MAX_EMBED_CHARS // 5),
+        chunk_overlap=min(120, max(20, MAX_EMBED_CHARS // 5)),
         separators=["\n\n", "\n", " ", ""],
     )
 
@@ -257,7 +258,7 @@ class LocalRAGPipeline:
         embedding_model: str = DEFAULT_EMBED_MODEL,
         chat_model: str = DEFAULT_CHAT_MODEL,
         cache_root: Path | str = DEFAULT_CACHE_ROOT,
-        embeddings_batch_size: int = 8,
+        embeddings_batch_size: int = DEFAULT_EMBED_BATCH,
     ) -> None:
         self.pdf_paths = _discover_pdfs(pdf_paths)
         self.base_url = base_url
@@ -420,7 +421,7 @@ def stream_local_rag_answer(
     cache_root: Path | str = DEFAULT_CACHE_ROOT,
     top_k: int = 10,
     temperature: float = 0.2,
-    embeddings_batch_size: int = 8,
+    embeddings_batch_size: int = DEFAULT_EMBED_BATCH,
 ) -> Generator[str, None, None]:
     """Convenience wrapper returning the streaming generator directly."""
     pipeline = LocalRAGPipeline(

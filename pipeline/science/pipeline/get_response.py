@@ -882,10 +882,14 @@ async def get_query_helper(chat_session: ChatSession, user_input, context_chat_h
                 logger.info(f"Setting image URL in question: {highest_score_url}")
 
         if question.image_url:
-            # Get the images understanding from the image url about the question
-            question.special_context = """
-            Here is the context and visual understanding of the corresponding image:
-            """ + analyze_image(question.image_url, f"The user's question is: {question.text}", f"The user's question is: {question.text}", stream=False)
+            # FIXME: Blocking images extraction for now
+            if chat_session.mode in (ChatMode.BASIC, ChatMode.ADVANCED):
+                logger.info(f"Skipping image understanding for mode {chat_session.mode}")
+            else:
+                # Get the images understanding from the image url about the question
+                question.special_context = """
+                Here is the context and visual understanding of the corresponding image:
+                """ + analyze_image(question.image_url, f"The user's question is: {question.text}", f"The user's question is: {question.text}", stream=False)
 
         logger.info(f"TEST: question.special_context: {question.special_context}")
     elif question_type == "local":

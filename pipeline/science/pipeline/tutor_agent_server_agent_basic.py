@@ -1,3 +1,4 @@
+import shutil
 import time
 from typing import AsyncGenerator, Dict, Iterable, Optional, Union
 
@@ -118,6 +119,21 @@ async def tutor_agent_server_agent_basic_streaming(
         logger.info("Server Agent Basic time tracking:\n%s", format_time_tracking(time_tracking))
         return
 
+    codex_binary = shutil.which("codex")
+    if not codex_binary:
+        logger.error("Codex CLI binary not found on PATH.")
+        yield "</thinking>"
+        yield (
+            "<response>\n\n"
+            "⚠️ The Codex CLI (`codex`) is not available on this system. "
+            "Install the CLI or ensure it is on the PATH, then retry Server Agent Basic mode.\n\n"
+            "</response>"
+        )
+        yield "<appendix>\n\n</appendix>"
+        time_tracking["total_time"] = time.time() - overall_start
+        logger.info("Server Agent Basic time tracking:\n%s", format_time_tracking(time_tracking))
+        return
+
     try:
         workspace_start = time.time()
         workspace_dir = pdfs_to_markdown_workspace(file_path_list)
@@ -139,6 +155,8 @@ async def tutor_agent_server_agent_basic_streaming(
 
     thinking_closed = False
     saw_think_block = False
+    response_started = False
+    response_closed = False
     response_start = time.time()
 
     try:
@@ -147,6 +165,12 @@ async def tutor_agent_server_agent_basic_streaming(
 
             if "<think>" in chunk_str and not saw_think_block:
                 saw_think_block = True
+
+            if "<response>" in chunk_str:
+                response_started = True
+                response_closed = "</response>" in chunk_str
+            elif "</response>" in chunk_str:
+                response_closed = True
 
             if "</think>" in chunk_str and saw_think_block and not thinking_closed:
                 yield chunk_str
@@ -159,12 +183,20 @@ async def tutor_agent_server_agent_basic_streaming(
         if not thinking_closed:
             yield "</thinking>"
             thinking_closed = True
-        yield (
-            "<response>\n\n"
+        error_message = (
             "⚠️ Codex CLI encountered an error while generating the answer. "
-            f"Details: {exc}\n\n"
-            "</response>"
+            f"Details: {exc}\n"
         )
+        if response_started and not response_closed:
+            yield error_message
+            yield "</response>"
+            response_closed = True
+        else:
+            yield (
+                "<response>\n\n"
+                f"{error_message}\n"
+                "</response>"
+            )
     else:
         if not thinking_closed:
             yield "</thinking>"

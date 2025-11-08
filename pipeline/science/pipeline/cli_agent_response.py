@@ -35,10 +35,11 @@ import asyncio
 import hashlib
 import json
 import os
+import logging
 import subprocess
 import sys
 from pathlib import Path
-from typing import AsyncGenerator, AsyncIterator, Iterable, List, Sequence
+from typing import AsyncGenerator, AsyncIterator, Iterable, List, Sequence, Set
 
 # Project‑local helper for reproducible file hashing
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
@@ -160,6 +161,8 @@ def pdfs_to_markdown_workspace(pdf_paths: Sequence[str | Path]) -> Path:
 # Public API – 2) Codex Q&A
 # ---------------------------------------------------------------------------
 
+logger = logging.getLogger("tutorpipeline.science.cli_agent_response")
+
 
 async def stream_codex_answer(
     workspace_dir: str | Path,
@@ -189,6 +192,7 @@ async def stream_codex_answer(
             "codex",
             "exec",
             "--json",
+            "--skip-git-repo-check",
             "-m",
             model,
             # Ensure Codex reads from the backup Azure key
@@ -202,7 +206,12 @@ async def stream_codex_answer(
     # ------------------------------------------------------------------
     # Spawn Codex CLI as an async subprocess and stream JSON events
     # ------------------------------------------------------------------
+    raw_logs: List[str] = []
+    seen_event = False
+    max_log_lines = 20
+
     async def iter_events() -> AsyncIterator[dict]:
+        nonlocal seen_event, raw_logs
         proc = await asyncio.create_subprocess_exec(
             *build_cmd(question),
             stdout=asyncio.subprocess.PIPE,
@@ -213,14 +222,34 @@ async def stream_codex_answer(
         assert proc.stdout is not None  # mypy: ignore[assert]
 
         async for raw in proc.stdout:  # type: ignore[attr-defined]
+            line = raw.decode(errors="ignore")
             try:
-                payload = json.loads(raw.decode(errors="ignore"))
+                payload = json.loads(line)
             except json.JSONDecodeError:
                 # Codex sometimes emits non‑JSON logs; skip them
+                stripped = line.strip()
+                if stripped:
+                    raw_logs.append(stripped)
+                    if len(raw_logs) > max_log_lines:
+                        raw_logs = raw_logs[-max_log_lines:]
+                    logger.debug("Codex CLI raw stdout: %s", stripped)
                 continue
+            seen_event = True
             yield payload
 
-        await proc.wait()
+        returncode = await proc.wait()
+        if returncode != 0:
+            tail = "\n".join(raw_logs[-5:])
+            raise RuntimeError(
+                f"Codex CLI exited with code {returncode}. "
+                f"Last output:\n{tail or 'No additional output captured.'}"
+            )
+        if not seen_event:
+            tail = "\n".join(raw_logs[-5:])
+            raise RuntimeError(
+                "Codex CLI produced no JSON events. "
+                f"Last output:\n{tail or 'No additional output captured.'}"
+            )
 
     # ------------------------------------------------------------------
     # Transform events -> contiguous text stream with tags
@@ -228,12 +257,15 @@ async def stream_codex_answer(
     async def format_events() -> AsyncGenerator[str, None]:
         think_open = True
         response_open = False
+        produced_text = False
+        event_types: Set[str] = set()
         yield "<think>\n"
 
         async for event in iter_events():
             etype = event.get("type")
             if not etype:
                 continue
+            event_types.add(etype)
 
             if etype.startswith("item."):
                 item = event.get("item", {})
@@ -248,13 +280,7 @@ async def stream_codex_answer(
 
                 # Incremental delta updates for agent_message / reasoning / etc.
                 if etype == "item.delta":
-                    # For command_execution items or other noisy outputs Codex
-                    # may stream the full file contents (e.g. when `cat`‑ing a
-                    # PDF/markdown). To keep the client output concise we only
-                    # forward deltas originating from *agent_message* or
-                    # *reasoning* items – everything else is discarded.
-
-                    if itype not in {"agent_message", "reasoning"}:
+                    if itype == "command_execution":
                         continue
 
                     delta = event.get("delta", {})
@@ -277,6 +303,8 @@ async def stream_codex_answer(
 
                     if not fragment.endswith("\n"):
                         fragment += "\n"
+                    if fragment.strip():
+                        produced_text = True
                     yield fragment
                     continue
 
@@ -305,17 +333,88 @@ async def stream_codex_answer(
                             response_open = True
                         text = item.get("text") or ""
                         if text:
+                            produced_text = produced_text or bool(text.strip())
                             yield text
                             if not text.endswith("\n"):
                                 yield "\n"
+                        continue
+
+                    # For unhandled item types, attempt to forward any text content
+                    fallback_text = item.get("text")
+                    if fallback_text:
+                        if think_open:
+                            yield "</think>\n"
+                            think_open = False
+                        if not response_open:
+                            yield "<response>\n"
+                            response_open = True
+                        produced_text = produced_text or bool(fallback_text.strip())
+                        yield fallback_text
+                        if not fallback_text.endswith("\n"):
+                            yield "\n"
+                    continue
+
+            # Handle non-item events that still carry text payloads
+            if etype.endswith(".delta"):
+                delta = event.get("delta", {})
+                fragment = (
+                    delta.get("text")
+                    or delta.get("output")
+                    or next((v for v in delta.values() if isinstance(v, str)), "")
+                )
+                if not fragment:
+                    continue
+                if think_open:
+                    yield "</think>\n"
+                    think_open = False
+                if not response_open:
+                    yield "<response>\n"
+                    response_open = True
+                if not fragment.endswith("\n"):
+                    fragment += "\n"
+                if fragment.strip():
+                    produced_text = True
+                yield fragment
+                continue
+
+            if etype.endswith(".completed"):
+                text = event.get("text") or ""
+                if not text:
+                    continue
+                if think_open:
+                    yield "</think>\n"
+                    think_open = False
+                if not response_open:
+                    yield "<response>\n"
+                    response_open = True
+                produced_text = produced_text or bool(text.strip())
+                yield text
+                if not text.endswith("\n"):
+                    yield "\n"
+                continue
 
         if think_open:
             yield "</think>\n"
 
         if response_open:
+            if not produced_text:
+                tail = "\n".join(raw_logs[-5:])
+                raise RuntimeError(
+                    "Codex CLI completed without emitting assistant content. "
+                    f"Event types observed: {sorted(event_types)}. "
+                    f"Last output:\n{tail or 'No additional output captured.'}"
+                )
             yield "</response>"
         else:
-            yield "<response>\n</response>"
+            if produced_text:
+                yield "<response>\n</response>"
+            else:
+                tail = "\n".join(raw_logs[-5:])
+                raise RuntimeError(
+                    "Codex CLI did not emit any response text. "
+                    f"Event types observed: {sorted(event_types)}. "
+                    f"Last output:\n{tail or 'No additional output captured.'}"
+                )
 
     # Finally, stream the formatted output to the caller
     async for chunk in format_events():

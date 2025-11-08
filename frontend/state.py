@@ -32,11 +32,13 @@ def initialize_session_state(embedding_folder=None):
     
     if 'mode' not in st.session_state:
         st.session_state.mode = "Basic"
-        st.session_state.chat_session.set_mode(ChatMode.BASIC)
-    elif st.session_state.mode == "Advanced":
+
+    if st.session_state.mode == "Advanced":
         st.session_state.chat_session.set_mode(ChatMode.ADVANCED)
     elif st.session_state.mode == "Lite":
         st.session_state.chat_session.set_mode(ChatMode.LITE)
+    elif st.session_state.mode == "Server Agent Basic":
+        st.session_state.chat_session.set_mode(ChatMode.SERVER_AGENT_BASIC)
     else:
         st.session_state.chat_session.set_mode(ChatMode.BASIC)
     
@@ -78,6 +80,8 @@ def handle_file_change():
             st.session_state.chat_session.set_mode(ChatMode.ADVANCED)
         elif st.session_state.mode == "Lite":
             st.session_state.chat_session.set_mode(ChatMode.LITE)
+        elif st.session_state.mode == "Server Agent Basic":
+            st.session_state.chat_session.set_mode(ChatMode.SERVER_AGENT_BASIC)
         else:
             st.session_state.chat_session.set_mode(ChatMode.BASIC)
     

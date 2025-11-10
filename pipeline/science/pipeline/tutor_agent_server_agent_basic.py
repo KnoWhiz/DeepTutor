@@ -6,8 +6,10 @@ from pipeline.science.pipeline.cli_agent_response import (
     pdfs_to_markdown_workspace,
     stream_codex_answer,
 )
+from pipeline.science.pipeline.content_translator import translate_content
+from pipeline.science.pipeline.get_response import generate_follow_up_questions
 from pipeline.science.pipeline.session_manager import ChatSession
-from pipeline.science.pipeline.utils import format_time_tracking
+from pipeline.science.pipeline.utils import clean_translation_prefix, format_time_tracking
 
 import logging
 
@@ -203,10 +205,41 @@ async def tutor_agent_server_agent_basic_streaming(
     finally:
         time_tracking["response_generation"] = time.time() - response_start
 
+    follow_up_questions = []
+    try:
+        message_content = chat_session.current_message or ""
+        if isinstance(message_content, list) and message_content:
+            message_content = message_content[0]
+        follow_up_questions = generate_follow_up_questions(
+            message_content,
+            [],
+            user_input or "",
+        )
+        for idx, question in enumerate(follow_up_questions):
+            translated = translate_content(
+                content=question,
+                target_lang=chat_session.current_language or "English",
+                stream=False,
+            )
+            follow_up_questions[idx] = clean_translation_prefix(translated).strip()
+    except Exception as exc:
+        logger.warning("Failed to generate follow-up questions: %s", exc)
+
+    yield "<appendix>\n\n"
+
+    if follow_up_questions:
+        yield "**💬 Suggested follow-up questions:**\n\n"
+        for question in follow_up_questions:
+            cleaned = question.strip()
+            if not cleaned:
+                continue
+            yield "<followup_question>"
+            yield cleaned
+            yield "</followup_question>\n\n"
+
     yield (
-        "<appendix>\n\n"
         "**ℹ️ Server Agent Basic mode currently provides Codex-powered answers "
-        "without DeepTutor source extraction or follow-up questions.**\n\n"
+        "without DeepTutor source extraction.**\n\n"
         "</appendix>"
     )
 

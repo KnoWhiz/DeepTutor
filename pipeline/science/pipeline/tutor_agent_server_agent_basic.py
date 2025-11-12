@@ -22,8 +22,28 @@ logger = logging.getLogger("tutorpipeline.science.tutor_agent_server_agent_basic
 StreamChunk = Union[str, bytes]
 
 
+def _locate_raw_doc_folder(base_dir: Path) -> Path:
+    """Locate the RawDocData directory inside *base_dir*.
+
+    The function prefers the shallowest occurrence to guard against nested
+    matches introduced by accidental double-archiving.
+    """
+
+    if not base_dir.exists():
+        raise FileNotFoundError(f"Workspace directory missing: {base_dir}")
+
+    candidates = [candidate for candidate in base_dir.rglob("RawDocData") if candidate.is_dir()]
+    if not candidates:
+        raise FileNotFoundError(
+            "Zip archive does not contain a RawDocData directory required by the Codex workspace format."
+        )
+
+    candidates.sort(key=lambda path: len(path.relative_to(base_dir).parts))
+    return candidates[0]
+
+
 def prepare_codex_workspace_from_zip(zip_file_path: str) -> Path:
-    """Extract *zip_file_path* into a deterministic Codex workspace directory."""
+    """Extract *zip_file_path* into a deterministic Codex workspace directory and return RawDocData."""
 
     archive_path = Path(zip_file_path).expanduser().resolve()
     if not archive_path.exists() or not archive_path.is_file():
@@ -33,7 +53,7 @@ def prepare_codex_workspace_from_zip(zip_file_path: str) -> Path:
     workspace_dir = workspace_root / generate_file_id(archive_path)
 
     if workspace_dir.exists():
-        return workspace_dir
+        return _locate_raw_doc_folder(workspace_dir)
 
     workspace_dir.mkdir(parents=True, exist_ok=True)
 
@@ -51,7 +71,7 @@ def prepare_codex_workspace_from_zip(zip_file_path: str) -> Path:
     except zipfile.BadZipFile as exc:
         raise ValueError(f"Invalid zip archive: {archive_path}") from exc
 
-    return workspace_dir
+    return _locate_raw_doc_folder(workspace_dir)
 
 
 async def tutor_agent_server_agent_basic(

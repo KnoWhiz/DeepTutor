@@ -85,7 +85,7 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
         chat_session.mode = ChatMode.LITE
 
     # If the document number is 1 and its page number is more than 50, set the mode to LITE
-    if len(file_path_list) == 1:
+    if len(file_path_list) == 1 and chat_session.mode != ChatMode.SERVER_AGENT_BASIC:
         try:
             # Get the page count of the single document
             from pipeline.science.pipeline.doc_processor import process_pdf_file
@@ -108,7 +108,15 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
     elif chat_session.mode == ChatMode.ADVANCED:
         return await tutor_agent_advanced(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream)
     elif chat_session.mode == ChatMode.SERVER_AGENT_BASIC:
-        return await tutor_agent_server_agent_basic(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream)
+        zip_file_path = file_path_list[0] if file_path_list else None
+        return await tutor_agent_server_agent_basic(
+            chat_session,
+            zip_file_path,
+            user_input,
+            time_tracking,
+            deep_thinking,
+            stream,
+        )
     else:
         logger.error(f"Invalid chat mode: {chat_session.mode}")
         error_message = "Error: Invalid chat mode."

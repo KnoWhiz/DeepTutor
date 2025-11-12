@@ -48,6 +48,13 @@ from frontend.auth import show_auth
 from frontend.state import SKIP_AUTH
 
 
+SERVER_AGENT_PLACEHOLDER_PDF = (
+    "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/pipeline/science/"
+    "features_lab/(Benchmarks and evals, safety vs. capabilities, machine ethics) "
+    "DecodingTrust A Comprehensive Assessment of Trustworthiness in GPT Models.pdf"
+)
+
+
 if 'isAuth' not in st.session_state:
     st.session_state['isAuth'] = SKIP_AUTH
 
@@ -161,67 +168,98 @@ if st.session_state['isAuth']:
                         show_pdf_viewer(file_path_list)
                 
         else:
-            # Original single file handling
-            # This is a safety check, though the outer if should prevent this
-            if st.session_state.uploaded_file is None:
-                st.info("Please upload a PDF file.")
+            # Original single file handling for Basic/Advanced/Server Agent modes
+            uploaded_file = st.session_state.uploaded_file
+            if uploaded_file is None:
+                st.info("Please upload a file to get started.")
                 st.stop()
-                
-            file_size = st.session_state.uploaded_file.size
+
+            file_size = uploaded_file.size
             max_file_size = 50 * 1024 * 1024  # 50 MB
             if file_size > max_file_size:
                 st.error("File size exceeds the 50 MB limit. Please upload a smaller file.")
             else:
-                # Save the file locally
-                file = st.session_state.uploaded_file.read()
+                file_bytes = uploaded_file.read()
                 path_prefix = os.getenv("FILE_PATH_PREFIX")
                 input_dir = os.path.join(path_prefix, 'input_files')
                 if not os.path.exists(input_dir):
                     os.makedirs(input_dir)
-                file_path = os.path.join(input_dir, st.session_state.uploaded_file.name)
-                with open(file_path, 'wb') as f:
-                    f.write(file)
 
-                document, doc = state_process_pdf_file(file_path)
-                path_prefix = os.getenv("FILE_PATH_PREFIX")
-                embedded_content_path = os.path.join(path_prefix, 'embedded_content')
-                embedding_folder = os.path.join(embedded_content_path, generate_file_id(file_path))
+                saved_file_path = os.path.join(input_dir, uploaded_file.name)
+                with open(saved_file_path, 'wb') as f:
+                    f.write(file_bytes)
 
-                if len(document) > 1200:
-                    st.error("File contains more than 1200 pages. Please upload a shorter document.")
-                    st.stop()
+                current_mode = st.session_state.get('mode', 'Basic')
 
-                # Initialize state
-                initialize_session_state(embedding_folder=embedding_folder)
-                
-                # Store single file path as a list for consistency
-                st.session_state.file_path_list = [file_path]
+                if current_mode == "Server Agent Basic":
+                    initialize_session_state()
 
-                # If document are found, proceed to show chat interface and PDF viewer
-                if document:
-                    outer_columns = st.columns([1, 1])
+                    document, doc = state_process_pdf_file(SERVER_AGENT_PLACEHOLDER_PDF)
+                    st.session_state.file_path_list = [saved_file_path]
+                    placeholder_path = SERVER_AGENT_PLACEHOLDER_PDF
 
-                if len(st.session_state.chat_session.chat_history) == 0:
-                    with outer_columns[0]:
-                        show_pdf_viewer(file_path)
-                        
-                    with outer_columns[1]:
-                        show_chat_interface(
-                            doc=doc,
-                            document=document,
-                            file_path=file_path,
-                            embedding_folder=embedding_folder,
-                        )
+                    if document:
+                        outer_columns = st.columns([1, 1])
+
+                        if len(st.session_state.chat_session.chat_history) == 0:
+                            with outer_columns[0]:
+                                show_pdf_viewer(placeholder_path)
+
+                            with outer_columns[1]:
+                                show_chat_interface(
+                                    doc=doc,
+                                    document=document,
+                                    file_path=saved_file_path,
+                                    embedding_folder=None,
+                                )
+                        else:
+                            with outer_columns[1]:
+                                show_chat_interface(
+                                    doc=doc,
+                                    document=document,
+                                    file_path=saved_file_path,
+                                    embedding_folder=None,
+                                )
+                            with outer_columns[0]:
+                                show_pdf_viewer(placeholder_path)
+
                 else:
-                    with outer_columns[1]:
-                        show_chat_interface(
-                            doc=doc,
-                            document=document,
-                            file_path=file_path,
-                            embedding_folder=embedding_folder,
-                        )
-                    with outer_columns[0]:
-                        show_pdf_viewer(file_path)
+                    document, doc = state_process_pdf_file(saved_file_path)
+                    path_prefix = os.getenv("FILE_PATH_PREFIX")
+                    embedded_content_path = os.path.join(path_prefix, 'embedded_content')
+                    embedding_folder = os.path.join(embedded_content_path, generate_file_id(saved_file_path))
+
+                    if len(document) > 1200:
+                        st.error("File contains more than 1200 pages. Please upload a shorter document.")
+                        st.stop()
+
+                    initialize_session_state(embedding_folder=embedding_folder)
+                    st.session_state.file_path_list = [saved_file_path]
+
+                    if document:
+                        outer_columns = st.columns([1, 1])
+
+                    if len(st.session_state.chat_session.chat_history) == 0:
+                        with outer_columns[0]:
+                            show_pdf_viewer(saved_file_path)
+
+                        with outer_columns[1]:
+                            show_chat_interface(
+                                doc=doc,
+                                document=document,
+                                file_path=saved_file_path,
+                                embedding_folder=embedding_folder,
+                            )
+                    else:
+                        with outer_columns[1]:
+                            show_chat_interface(
+                                doc=doc,
+                                document=document,
+                                file_path=saved_file_path,
+                                embedding_folder=embedding_folder,
+                            )
+                        with outer_columns[0]:
+                            show_pdf_viewer(saved_file_path)
 
             logger.info(f"st.session_state.current_page is {st.session_state.current_page}")
 

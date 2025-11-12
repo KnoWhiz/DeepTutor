@@ -237,11 +237,13 @@ async def tutor_agent_server_agent_basic_streaming(
             yield cleaned
             yield "</followup_question>\n\n"
 
-    yield (
-        "**ℹ️ Server Agent Basic mode currently provides Codex-powered answers "
-        "without DeepTutor source extraction.**\n\n"
-        "</appendix>"
-    )
+    yield "</appendix>"
+
+    # yield (
+    #     # "**ℹ️ Server Agent Basic mode currently provides Codex-powered answers "
+    #     # "without DeepTutor source extraction.**\n\n"
+    #     "</appendix>"
+    # )
 
     time_tracking["total_time"] = time.time() - overall_start
     logger.info("Server Agent Basic time tracking:\n%s", format_time_tracking(time_tracking))

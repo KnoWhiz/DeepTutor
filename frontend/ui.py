@@ -90,14 +90,19 @@ def show_header():
 # Function to display the response mode options
 def show_mode_option():
     with st.sidebar:
-        mode_index = 1
+        mode_options = ["Lite", "Basic", "Advanced", "Server Agent Basic"]
+        try:
+            mode_index = mode_options.index(st.session_state.get("mode", "Basic"))
+        except ValueError:
+            mode_index = mode_options.index("Basic")
         current_mode = st.radio(
             "Choose a mode:",
-            options=["Lite", "Basic", "Advanced"],
+            options=mode_options,
             help="""
             - Lite: Process raw text only (fastest)
             - Basic: Agentic processing with Markdown extraction, image understanding, DeepSeek R1 deep thinking, and document summarization (standard)
             - Advanced: In addition to Basic, add enhanced GraphRAG for better document understanding (slower but more accurate)
+            - Server Agent Basic: Use the Codex CLI agent to answer questions over documents converted to markdown
             """,
             index=mode_index
         )
@@ -107,8 +112,10 @@ def show_mode_option():
                 st.session_state.chat_session.set_mode(ChatMode.ADVANCED)
             elif current_mode == "Basic":
                 st.session_state.chat_session.set_mode(ChatMode.BASIC)
-            else:
+            elif current_mode == "Lite":
                 st.session_state.chat_session.set_mode(ChatMode.LITE)
+            else:
+                st.session_state.chat_session.set_mode(ChatMode.SERVER_AGENT_BASIC)
 
 
 # Function to display the file uploader

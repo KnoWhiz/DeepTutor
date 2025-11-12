@@ -45,6 +45,9 @@ from pipeline.science.pipeline.config import load_config
 from pipeline.science.pipeline.tutor_agent_lite import tutor_agent_lite, tutor_agent_lite_streaming_tracking
 from pipeline.science.pipeline.tutor_agent_basic import tutor_agent_basic, tutor_agent_basic_streaming_tracking
 from pipeline.science.pipeline.tutor_agent_advanced import tutor_agent_advanced, tutor_agent_advanced_streaming_tracking
+from pipeline.science.pipeline.tutor_agent_server_agent_basic import (
+    tutor_agent_server_agent_basic,
+)
 
 import logging
 logger = logging.getLogger("tutorpipeline.science.tutor_agent")
@@ -78,7 +81,7 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
     config = load_config()
     stream = config["stream"]
 
-    if len(file_path_list) > 1:
+    if len(file_path_list) > 1 and chat_session.mode != ChatMode.SERVER_AGENT_BASIC:
         chat_session.mode = ChatMode.LITE
 
     # If the document number is 1 and its page number is more than 50, set the mode to LITE
@@ -90,7 +93,7 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
             page_count = len(doc)
             doc.close()
             
-            if page_count > 50:
+            if page_count > 50 and chat_session.mode != ChatMode.SERVER_AGENT_BASIC:
                 chat_session.mode = ChatMode.LITE
                 logger.info(f"Document has {page_count} pages (>50), switching to LITE mode")
         except Exception as e:
@@ -104,6 +107,8 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
         return await tutor_agent_basic(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream)
     elif chat_session.mode == ChatMode.ADVANCED:
         return await tutor_agent_advanced(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream)
+    elif chat_session.mode == ChatMode.SERVER_AGENT_BASIC:
+        return await tutor_agent_server_agent_basic(chat_session, file_path_list, user_input, time_tracking, deep_thinking, stream)
     else:
         logger.error(f"Invalid chat mode: {chat_session.mode}")
         error_message = "Error: Invalid chat mode."

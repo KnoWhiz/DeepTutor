@@ -39,6 +39,10 @@ def extract_content_after_generation(chat_session):
         extract_content_func = extract_basic_mode_content
     elif chat_session.mode == ChatMode.ADVANCED:
         extract_content_func = extract_advanced_mode_content
+    elif chat_session.mode == ChatMode.SERVER_AGENT_BASIC:
+        extract_content_func = extract_basic_mode_content
+    else:
+        extract_content_func = extract_basic_mode_content
     
     # Now the current_message should be populated
     # logger.info(f"Extracting content from message: {chat_session.current_message}")

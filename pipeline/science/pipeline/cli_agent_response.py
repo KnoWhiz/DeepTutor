@@ -38,8 +38,12 @@ import os
 import logging
 import subprocess
 import sys
+import re
+from functools import lru_cache
 from pathlib import Path
-from typing import AsyncGenerator, AsyncIterator, Iterable, List, Sequence, Set
+from typing import AsyncGenerator, AsyncIterator, List, Sequence, Set
+
+from dotenv import load_dotenv
 
 # Project‑local helper for reproducible file hashing
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
@@ -60,6 +64,116 @@ except Exception:  # pragma: no cover – fallback if dependency graph changes
             for chunk in iter(lambda: stream.read(8192), b""):
                 digest.update(chunk)
         return digest.hexdigest()
+
+
+CODEX_CONFIG_BLOCK_TEMPLATE = """# IMPORTANT: Use your Azure *deployment name* here (e.g., "gpt5codex-prod")
+model = "{model_name}"
+model_provider = "azure"
+model_reasoning_effort = "high"
+
+[model_providers.azure]
+name = "Azure OpenAI"
+# Use your resource endpoint and include /openai/v1
+base_url = "https://knowhiz-service-openai-backup-2.openai.azure.com/openai/v1"
+# This is the ENV VAR NAME, not the key:
+env_key = "AZURE_OPENAI_API_KEY_BACKUP"
+wire_api = "responses"
+"""
+
+
+@lru_cache(maxsize=1)
+def _load_env_sources() -> None:
+    """Load .env files once so we can reuse the resolved API keys."""
+    load_dotenv()
+    env_path = PROJECT_ROOT / ".env"
+    if env_path.exists():
+        load_dotenv(env_path)
+
+
+def _ensure_codex_config(model_name: str) -> None:
+    """Ensure Codex CLI config.toml contains the desired Azure settings."""
+
+    config_path = Path.home() / ".codex" / "config.toml"
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+
+    block = CODEX_CONFIG_BLOCK_TEMPLATE.format(model_name=model_name).strip()
+
+    if config_path.exists():
+        existing = config_path.read_text(encoding="utf-8")
+    else:
+        existing = ""
+
+    pattern = re.compile(
+        r"# IMPORTANT: Use your Azure \*deployment name\* here.*?wire_api = \"responses\"",
+        re.DOTALL,
+    )
+
+    if pattern.search(existing):
+        updated = pattern.sub(block, existing)
+    else:
+        updated = existing.rstrip()
+        if updated:
+            updated += "\n\n"
+        updated += block
+
+    updated = updated.rstrip() + "\n"
+    config_path.write_text(updated, encoding="utf-8")
+
+
+def _run_npm_install(env: dict[str, str]) -> None:
+    """Run the Codex CLI installation check before invoking the agent."""
+    try:
+        result = subprocess.run(
+            ["npm", "i", "-g", "@openai/codex"],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            env=env,
+        )
+    except FileNotFoundError as exc:  # pragma: no cover - unlikely in prod env
+        raise RuntimeError(
+            "npm is required to install the Codex CLI. "
+            "Please install Node.js and npm before using server-side agent mode."
+        ) from exc
+
+    if result.returncode != 0:
+        payload = (result.stdout or "").strip()
+        logger.warning("npm install returned %s: %s", result.returncode, payload)
+
+
+def _prepare_codex_runtime(workspace: Path, model_name: str) -> dict[str, str]:
+    """Prepare environment variables and config prior to Codex CLI invocation."""
+
+    _load_env_sources()
+    api_key = os.getenv("AZURE_OPENAI_API_KEY_BACKUP")
+    if not api_key:
+        raise RuntimeError(
+            "AZURE_OPENAI_API_KEY_BACKUP is not set. "
+            "Add it to your .env file before running server-side agent mode."
+        )
+
+    env = os.environ.copy()
+    env["AZURE_OPENAI_API_KEY_BACKUP"] = api_key
+
+    _run_npm_install(env)
+    _ensure_codex_config(model_name)
+
+    export_script = f'export AZURE_OPENAI_API_KEY_BACKUP="{api_key}"'
+    try:
+        subprocess.run(
+            ["bash", "-lc", export_script],
+            check=False,
+            cwd=str(workspace),
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+    except FileNotFoundError:
+        logger.debug("Skipping export command because bash is not available on PATH.")
+
+    return env
 
 
 # ---------------------------------------------------------------------------
@@ -184,6 +298,8 @@ async def stream_codex_answer(
     if not workspace.exists() or not workspace.is_dir():
         raise FileNotFoundError(f"Workspace directory not found: {workspace}")
 
+    command_env = _prepare_codex_runtime(workspace, model)
+
     # ---------------------------------------------------------------------
     # Helper: build CLI command
     # ---------------------------------------------------------------------
@@ -216,7 +332,8 @@ async def stream_codex_answer(
             *build_cmd(question),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
-            env=os.environ.copy(),
+            env=command_env,
+            cwd=str(workspace),
         )
 
         assert proc.stdout is not None  # mypy: ignore[assert]

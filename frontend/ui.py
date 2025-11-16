@@ -126,6 +126,7 @@ def show_file_upload(on_change=None):
         # Get current mode to decide if multiple uploads are allowed
         current_mode = st.session_state.get('mode', 'Basic')
         allow_multiple = current_mode == "Lite"
+        is_server_agent = current_mode == "Server Agent Basic"
         
         # Use the appropriate file uploader based on mode
         if allow_multiple:
@@ -138,9 +139,17 @@ def show_file_upload(on_change=None):
             if current_file and len(current_file) > 0:
                 st.success(f"{len(current_file)} documents uploaded. Select a document from the dropdown in the document view.")
         else:
-            current_file = st.file_uploader("Upload a document no more than **1200 pages** to get started.", 
-                                          type="pdf", 
-                                          on_change=on_change)
+            if is_server_agent:
+                upload_label = "Upload a Codex workspace zip archive to get started."
+                file_types = ["zip"]
+            else:
+                upload_label = "Upload a document no more than **1200 pages** to get started."
+                file_types = ["pdf"]
+            current_file = st.file_uploader(
+                upload_label,
+                type=file_types,
+                on_change=on_change,
+            )
         
         # Check if file has changed
         if previous_file is not None and current_file is not None:

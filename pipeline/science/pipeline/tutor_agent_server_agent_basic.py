@@ -1,15 +1,18 @@
 import shutil
 import time
-from typing import AsyncGenerator, Dict, Iterable, Optional, Union
+import zipfile
+from pathlib import Path
+from typing import AsyncGenerator, Dict, Optional, Union
 
-from pipeline.science.pipeline.cli_agent_response import (
-    pdfs_to_markdown_workspace,
-    stream_codex_answer,
-)
+from pipeline.science.pipeline.cli_agent_response import stream_codex_answer
 from pipeline.science.pipeline.content_translator import translate_content
 from pipeline.science.pipeline.get_response import generate_follow_up_questions
 from pipeline.science.pipeline.session_manager import ChatSession
-from pipeline.science.pipeline.utils import clean_translation_prefix, format_time_tracking
+from pipeline.science.pipeline.utils import (
+    clean_translation_prefix,
+    format_time_tracking,
+    generate_file_id,
+)
 
 import logging
 
@@ -19,9 +22,72 @@ logger = logging.getLogger("tutorpipeline.science.tutor_agent_server_agent_basic
 StreamChunk = Union[str, bytes]
 
 
+def _reset_workspace_dir(workspace_dir: Path) -> None:
+    """Ensure *workspace_dir* is a fresh directory for the current extraction."""
+
+    if workspace_dir.exists():
+        try:
+            shutil.rmtree(workspace_dir)
+            logger.info("Removed existing Codex workspace directory: %s", workspace_dir)
+        except Exception as exc:  # pragma: no cover - defensive logging
+            raise RuntimeError(f"Failed to reset Codex workspace directory {workspace_dir}: {exc}") from exc
+
+    workspace_dir.mkdir(parents=True, exist_ok=True)
+
+
+def _locate_raw_doc_folder(base_dir: Path) -> Path:
+    """Locate the OrganizedDocData directory inside *base_dir*.
+
+    The function prefers the shallowest occurrence to guard against nested
+    matches introduced by accidental double-archiving.
+    """
+
+    if not base_dir.exists():
+        raise FileNotFoundError(f"Workspace directory missing: {base_dir}")
+
+    candidates = [candidate for candidate in base_dir.rglob("OrganizedDocData") if candidate.is_dir()]
+    if not candidates:
+        raise FileNotFoundError(
+            "Zip archive does not contain a OrganizedDocData directory required by the Codex workspace format."
+        )
+
+    candidates.sort(key=lambda path: len(path.relative_to(base_dir).parts))
+    return candidates[0]
+
+
+def prepare_codex_workspace_from_zip(zip_file_path: str) -> Path:
+    """Extract *zip_file_path* into a deterministic Codex workspace directory and return OrganizedDocData."""
+
+    archive_path = Path(zip_file_path).expanduser().resolve()
+    if not archive_path.exists() or not archive_path.is_file():
+        raise FileNotFoundError(f"Zip archive not found: {archive_path}")
+
+    workspace_root = Path(__file__).resolve().parents[4] / "tmp" / "codex_zip_workspaces"
+    workspace_root.mkdir(parents=True, exist_ok=True)
+    workspace_dir = workspace_root / generate_file_id(archive_path)
+
+    _reset_workspace_dir(workspace_dir)
+
+    try:
+        with zipfile.ZipFile(archive_path, "r") as archive:
+            target_root = workspace_dir.resolve()
+            for member in archive.infolist():
+                member_path = Path(member.filename)
+                if member_path.is_absolute():
+                    raise ValueError("Zip archive contains absolute paths which are not supported.")
+                resolved_member = (target_root / member_path).resolve()
+                if not str(resolved_member).startswith(str(target_root)):
+                    raise ValueError("Zip archive attempts to write outside the workspace directory.")
+            archive.extractall(target_root)
+    except zipfile.BadZipFile as exc:
+        raise ValueError(f"Invalid zip archive: {archive_path}") from exc
+
+    return _locate_raw_doc_folder(workspace_dir)
+
+
 async def tutor_agent_server_agent_basic(
     chat_session: ChatSession,
-    file_path_list: Iterable[str],
+    zip_file_path: Optional[str],
     user_input: Optional[str],
     time_tracking: Optional[Dict[str, float]] = None,
     deep_thinking: bool = True,
@@ -36,7 +102,7 @@ async def tutor_agent_server_agent_basic(
 
     return tutor_agent_server_agent_basic_streaming_tracking(
         chat_session=chat_session,
-        file_path_list=file_path_list,
+        zip_file_path=zip_file_path,
         user_input=user_input,
         time_tracking=time_tracking,
         deep_thinking=deep_thinking,
@@ -46,7 +112,7 @@ async def tutor_agent_server_agent_basic(
 
 async def tutor_agent_server_agent_basic_streaming_tracking(
     chat_session: ChatSession,
-    file_path_list: Iterable[str],
+    zip_file_path: Optional[str],
     user_input: Optional[str],
     time_tracking: Optional[Dict[str, float]] = None,
     deep_thinking: bool = True,
@@ -58,7 +124,7 @@ async def tutor_agent_server_agent_basic_streaming_tracking(
 
     async for chunk in tutor_agent_server_agent_basic_streaming(
         chat_session=chat_session,
-        file_path_list=file_path_list,
+        zip_file_path=zip_file_path,
         user_input=user_input,
         time_tracking=time_tracking,
         deep_thinking=deep_thinking,
@@ -76,7 +142,7 @@ async def tutor_agent_server_agent_basic_streaming_tracking(
 
 async def tutor_agent_server_agent_basic_streaming(
     chat_session: ChatSession,
-    file_path_list: Iterable[str],
+    zip_file_path: Optional[str],
     user_input: Optional[str],
     time_tracking: Optional[Dict[str, float]] = None,
     deep_thinking: bool = True,
@@ -107,12 +173,12 @@ async def tutor_agent_server_agent_basic_streaming(
         logger.info("Server Agent Basic time tracking:\n%s", format_time_tracking(time_tracking))
         return
 
-    if not file_path_list:
-        logger.warning("SERVER_AGENT_BASIC requires at least one document but none were provided.")
+    if not zip_file_path:
+        logger.warning("SERVER_AGENT_BASIC requires a zip workspace but none was provided.")
         yield "</thinking>"
         yield (
             "<response>\n\n"
-            "⚠️ Server Agent Basic mode requires at least one PDF document. "
+            "⚠️ Server Agent Basic mode requires a zip archive containing the Codex workspace. "
             "Upload a file and try again.\n\n"
             "</response>"
         )
@@ -138,7 +204,7 @@ async def tutor_agent_server_agent_basic_streaming(
 
     try:
         workspace_start = time.time()
-        workspace_dir = pdfs_to_markdown_workspace(file_path_list)
+        workspace_dir = prepare_codex_workspace_from_zip(zip_file_path)
         time_tracking["workspace_preparation"] = time.time() - workspace_start
         logger.info("Server Agent Basic workspace prepared at %s", workspace_dir)
     except Exception as exc:

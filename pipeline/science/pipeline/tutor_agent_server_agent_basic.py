@@ -22,8 +22,21 @@ logger = logging.getLogger("tutorpipeline.science.tutor_agent_server_agent_basic
 StreamChunk = Union[str, bytes]
 
 
+def _reset_workspace_dir(workspace_dir: Path) -> None:
+    """Ensure *workspace_dir* is a fresh directory for the current extraction."""
+
+    if workspace_dir.exists():
+        try:
+            shutil.rmtree(workspace_dir)
+            logger.info("Removed existing Codex workspace directory: %s", workspace_dir)
+        except Exception as exc:  # pragma: no cover - defensive logging
+            raise RuntimeError(f"Failed to reset Codex workspace directory {workspace_dir}: {exc}") from exc
+
+    workspace_dir.mkdir(parents=True, exist_ok=True)
+
+
 def _locate_raw_doc_folder(base_dir: Path) -> Path:
-    """Locate the RawDocData directory inside *base_dir*.
+    """Locate the OrganizedDocData directory inside *base_dir*.
 
     The function prefers the shallowest occurrence to guard against nested
     matches introduced by accidental double-archiving.
@@ -32,10 +45,10 @@ def _locate_raw_doc_folder(base_dir: Path) -> Path:
     if not base_dir.exists():
         raise FileNotFoundError(f"Workspace directory missing: {base_dir}")
 
-    candidates = [candidate for candidate in base_dir.rglob("RawDocData") if candidate.is_dir()]
+    candidates = [candidate for candidate in base_dir.rglob("OrganizedDocData") if candidate.is_dir()]
     if not candidates:
         raise FileNotFoundError(
-            "Zip archive does not contain a RawDocData directory required by the Codex workspace format."
+            "Zip archive does not contain a OrganizedDocData directory required by the Codex workspace format."
         )
 
     candidates.sort(key=lambda path: len(path.relative_to(base_dir).parts))
@@ -43,19 +56,17 @@ def _locate_raw_doc_folder(base_dir: Path) -> Path:
 
 
 def prepare_codex_workspace_from_zip(zip_file_path: str) -> Path:
-    """Extract *zip_file_path* into a deterministic Codex workspace directory and return RawDocData."""
+    """Extract *zip_file_path* into a deterministic Codex workspace directory and return OrganizedDocData."""
 
     archive_path = Path(zip_file_path).expanduser().resolve()
     if not archive_path.exists() or not archive_path.is_file():
         raise FileNotFoundError(f"Zip archive not found: {archive_path}")
 
     workspace_root = Path(__file__).resolve().parents[4] / "tmp" / "codex_zip_workspaces"
+    workspace_root.mkdir(parents=True, exist_ok=True)
     workspace_dir = workspace_root / generate_file_id(archive_path)
 
-    if workspace_dir.exists():
-        return _locate_raw_doc_folder(workspace_dir)
-
-    workspace_dir.mkdir(parents=True, exist_ok=True)
+    _reset_workspace_dir(workspace_dir)
 
     try:
         with zipfile.ZipFile(archive_path, "r") as archive:

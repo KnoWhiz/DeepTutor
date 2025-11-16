@@ -282,7 +282,7 @@ async def stream_codex_answer(
     workspace_dir: str | Path,
     question: str,
     *,
-    model: str = "gpt-5-codex",
+    model: str = "gpt-5.1-codex",
 ) -> AsyncGenerator[str, None]:
     """Yield a streaming Codex answer for *question* over *workspace_dir*.
 
@@ -300,6 +300,20 @@ async def stream_codex_answer(
 
     command_env = _prepare_codex_runtime(workspace, model)
 
+    question_refined = question.replace("@", "file_path: ")
+
+    system_instruction = (
+        """SYSTEM: You are the DeepTutor CLI agent. Provide accurate, concise answers grounded in the workspace context.
+
+        Make sure in the response every the context files are cited with @filename.md / @filedirectory as references whenever needed. If same file shows up multiple times, attach the shorted file path to that file.
+
+        Format the response in Markdown format and make the content structured and easy to understand. Use bold, italics, bullet points, underlines, and numbered lists where appropriate (all in markdown syntax).
+
+        For math formulas do NOT use \( \) or \[ \]; only $...$ or $$...$$.
+        """
+    )
+    prompt = f"""{system_instruction}\n\n{question.lstrip()}"""
+
     # ---------------------------------------------------------------------
     # Helper: build CLI command
     # ---------------------------------------------------------------------
@@ -309,13 +323,14 @@ async def stream_codex_answer(
             "exec",
             "--json",
             "--skip-git-repo-check",
-            "-m",
-            model,
-            # Ensure Codex reads from the backup Azure key
-            "-c",
-            "model_providers.azure.env_key=\"AZURE_OPENAI_API_KEY_BACKUP\"",
-            "-C",
-            str(workspace),
+            "-m", model,
+            "-c", 'model_providers.azure.env_key="AZURE_OPENAI_API_KEY_BACKUP"',
+            # "-C", str(workspace),
+            "--cd", str(workspace),
+
+            # Match Agent (full access): no approvals, no sandbox, network allowed
+            "--dangerously-bypass-approvals-and-sandbox",
+
             prompt,
         ]
 
@@ -329,7 +344,7 @@ async def stream_codex_answer(
     async def iter_events() -> AsyncIterator[dict]:
         nonlocal seen_event, raw_logs
         proc = await asyncio.create_subprocess_exec(
-            *build_cmd(question),
+            *build_cmd(prompt),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
             env=command_env,
@@ -338,21 +353,54 @@ async def stream_codex_answer(
 
         assert proc.stdout is not None  # mypy: ignore[assert]
 
-        async for raw in proc.stdout:  # type: ignore[attr-defined]
-            line = raw.decode(errors="ignore")
+        # Read raw chunks to avoid asyncio's 64 KiB per-line StreamReader limit.
+        buffer = bytearray()
+
+        def handle_line(line: str) -> dict | None:
+            """Process a full stdout line from Codex."""
+            nonlocal seen_event
             try:
                 payload = json.loads(line)
             except json.JSONDecodeError:
-                # Codex sometimes emits non‑JSON logs; skip them
                 stripped = line.strip()
                 if stripped:
                     raw_logs.append(stripped)
                     if len(raw_logs) > max_log_lines:
-                        raw_logs = raw_logs[-max_log_lines:]
+                        del raw_logs[:-max_log_lines]
                     logger.debug("Codex CLI raw stdout: %s", stripped)
-                continue
+                return None
+
             seen_event = True
-            yield payload
+            return payload
+
+        while True:
+            chunk = await proc.stdout.read(65536)
+            if not chunk:
+                if buffer:
+                    line_bytes = bytes(buffer)
+                    buffer.clear()
+                    line = line_bytes.decode(errors="ignore")
+                    payload = handle_line(line)
+                    if payload is not None:
+                        yield payload
+                break
+
+            buffer.extend(chunk)
+
+            while True:
+                newline_index = buffer.find(b"\n")
+                if newline_index == -1:
+                    break
+
+                line_bytes = buffer[:newline_index]
+                del buffer[:newline_index + 1]
+
+                line = line_bytes.decode(errors="ignore")
+                payload = handle_line(line)
+                if payload is None:
+                    continue
+
+                yield payload
 
         returncode = await proc.wait()
         if returncode != 0:
@@ -376,7 +424,32 @@ async def stream_codex_answer(
         response_open = False
         produced_text = False
         event_types: Set[str] = set()
-        yield "<think>\n"
+
+        last_chunk_category = "init"
+        last_chunk_ended_newline = True
+
+        def prepare_chunk(chunk: str, *, category: str = "generic") -> str:
+            nonlocal last_chunk_category, last_chunk_ended_newline
+            if category == "command_execution":
+                if not chunk.endswith("\n"):
+                    chunk += "\n"
+                if not chunk.endswith("\n\n"):
+                    chunk += "\n"
+            elif category == "reasoning":
+                if (
+                    chunk
+                    and not chunk.startswith("\n")
+                    and last_chunk_ended_newline
+                    and last_chunk_category not in {"reasoning", "think_open"}
+                ):
+                    chunk = "\n" + chunk
+                if not chunk.endswith("\n"):
+                    chunk += "\n"
+            last_chunk_category = category
+            last_chunk_ended_newline = chunk.endswith("\n")
+            return chunk
+
+        yield prepare_chunk("<think>\n", category="think_open")
 
         async for event in iter_events():
             etype = event.get("type")
@@ -392,7 +465,7 @@ async def stream_codex_answer(
                 if etype == "item.started" and itype == "command_execution":
                     cmd = item.get("command")
                     if cmd:
-                        yield f"exec\n{cmd}\n"
+                        yield prepare_chunk(f"exec\n{cmd}\n", category="command_execution")
                     continue
 
                 # Incremental delta updates for agent_message / reasoning / etc.
@@ -409,20 +482,24 @@ async def stream_codex_answer(
                     )
                     if not fragment:
                         continue
+                    category = "generic"
 
                     if itype == "agent_message":
                         if think_open:
-                            yield "</think>\n"
+                            yield prepare_chunk("</think>\n", category="think_close")
                             think_open = False
                         if not response_open:
-                            yield "<response>\n"
+                            yield prepare_chunk("<response>\n", category="response_open")
                             response_open = True
+                        category = "agent_message"
+                    elif itype == "reasoning":
+                        category = "reasoning"
 
-                    if not fragment.endswith("\n"):
+                    if category != "reasoning" and not fragment.endswith("\n"):
                         fragment += "\n"
                     if fragment.strip():
                         produced_text = True
-                    yield fragment
+                    yield prepare_chunk(fragment, category=category)
                     continue
 
                 # Completed items – flush any remaining buffered output
@@ -436,39 +513,37 @@ async def stream_codex_answer(
                     if itype == "reasoning":
                         text = item.get("text") or ""
                         if text:
-                            if not text.endswith("\n"):
-                                text += "\n"
-                            yield text
+                            yield prepare_chunk(text, category="reasoning")
                         continue
 
                     if itype == "agent_message":
                         if think_open:
-                            yield "</think>\n"
+                            yield prepare_chunk("</think>\n", category="think_close")
                             think_open = False
                         if not response_open:
-                            yield "<response>\n"
+                            yield prepare_chunk("<response>\n", category="response_open")
                             response_open = True
                         text = item.get("text") or ""
                         if text:
                             produced_text = produced_text or bool(text.strip())
-                            yield text
                             if not text.endswith("\n"):
-                                yield "\n"
+                                text += "\n"
+                            yield prepare_chunk(text, category="agent_message")
                         continue
 
                     # For unhandled item types, attempt to forward any text content
                     fallback_text = item.get("text")
                     if fallback_text:
                         if think_open:
-                            yield "</think>\n"
+                            yield prepare_chunk("</think>\n", category="think_close")
                             think_open = False
                         if not response_open:
-                            yield "<response>\n"
+                            yield prepare_chunk("<response>\n", category="response_open")
                             response_open = True
                         produced_text = produced_text or bool(fallback_text.strip())
-                        yield fallback_text
                         if not fallback_text.endswith("\n"):
-                            yield "\n"
+                            fallback_text += "\n"
+                        yield prepare_chunk(fallback_text, category="agent_message")
                     continue
 
             # Handle non-item events that still carry text payloads
@@ -482,16 +557,16 @@ async def stream_codex_answer(
                 if not fragment:
                     continue
                 if think_open:
-                    yield "</think>\n"
+                    yield prepare_chunk("</think>\n", category="think_close")
                     think_open = False
                 if not response_open:
-                    yield "<response>\n"
+                    yield prepare_chunk("<response>\n", category="response_open")
                     response_open = True
                 if not fragment.endswith("\n"):
                     fragment += "\n"
                 if fragment.strip():
                     produced_text = True
-                yield fragment
+                yield prepare_chunk(fragment, category="agent_message")
                 continue
 
             if etype.endswith(".completed"):
@@ -499,19 +574,19 @@ async def stream_codex_answer(
                 if not text:
                     continue
                 if think_open:
-                    yield "</think>\n"
+                    yield prepare_chunk("</think>\n", category="think_close")
                     think_open = False
                 if not response_open:
-                    yield "<response>\n"
+                    yield prepare_chunk("<response>\n", category="response_open")
                     response_open = True
                 produced_text = produced_text or bool(text.strip())
-                yield text
                 if not text.endswith("\n"):
-                    yield "\n"
+                    text += "\n"
+                yield prepare_chunk(text, category="agent_message")
                 continue
 
         if think_open:
-            yield "</think>\n"
+            yield prepare_chunk("</think>\n", category="think_close")
 
         if response_open:
             if not produced_text:
@@ -521,10 +596,10 @@ async def stream_codex_answer(
                     f"Event types observed: {sorted(event_types)}. "
                     f"Last output:\n{tail or 'No additional output captured.'}"
                 )
-            yield "</response>"
+            yield prepare_chunk("</response>", category="response_close")
         else:
             if produced_text:
-                yield "<response>\n</response>"
+                yield prepare_chunk("<response>\n</response>", category="response_empty")
             else:
                 tail = "\n".join(raw_logs[-5:])
                 raise RuntimeError(
@@ -536,47 +611,3 @@ async def stream_codex_answer(
     # Finally, stream the formatted output to the caller
     async for chunk in format_events():
         yield chunk
-
-
-# ---------------------------------------------------------------------------
-# CLI helper for quick manual checks ----------------------------------------
-# ---------------------------------------------------------------------------
-
-
-def main() -> None:  # pragma: no cover – developer convenience entry‑point
-    """Simple sanity‑check using a hard‑coded PDF and question.
-
-    This helper mirrors the request from the IDE context so that developers can
-    run the file directly to validate end‑to‑end behaviour without crafting
-    bespoke scripts each time::
-
-        python -m pipeline.science.features_lab.Codex_chatbot_test.codex_chatbot_refactored
-    """
-
-    # 1. Prepare workspace -----------------------------------------------------
-    pdf_path_1 = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/pipeline/science/features_lab/(Benchmarks and evals, safety vs. capabilities, machine ethics) DecodingTrust A Comprehensive Assessment of Trustworthiness in GPT Models.pdf"
-    pdf_path_2 = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/pipeline/science/features_lab/(Benchmarks and evals, safety vs. capabilities, machine ethics) DecodingTrust A Comprehensive Assessment of Trustworthiness in GPT Models.pdf"
-    pdf_path_3 = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/pipeline/science/features_lab/(Benchmarks and evals, safety vs. capabilities, machine ethics) DecodingTrust A Comprehensive Assessment of Trustworthiness in GPT Models.pdf"
-    # pdf_path_2 = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/pipeline/science/features_lab/(Benchmarks and evals, safety vs. capabilities, machine ethics) Do the Rewards Justify the Means Measuring Trade-Offs Between Rewards and Ethical Behavior in the MACHIAVELLI Benchmark.pdf"
-    # pdf_path_3 = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/pipeline/science/features_lab/(Chichi Thesis - Toroidal Half-Wave (λ2) Resonator - 2021 Da An) Electric-field noise scaling and wire-mediated ion-ion energy exchange in a novel elevator surface trap.pdf"
-    pdf_path_4 = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/pipeline/science/features_lab/(Half-wave Resonator - 2017 Gorman) Noise sensing and quantum simulation with trapped atomic ions.pdf"
-    pdf_path_5 = "/Users/bingran_you/Documents/GitHub_MacBook/DeepTutor/pipeline/science/features_lab/(Helical Resonator - 2012 Sussex) On the application of radio frequency voltages to ion traps via helical resonators.pdf"
-
-    workspace = pdfs_to_markdown_workspace([pdf_path_1, pdf_path_2, pdf_path_3, pdf_path_4, pdf_path_5])
-    
-    # 2. Ask Codex -------------------------------------------------------------
-    # question = "review all the papers and give me a comparesion table"
-    question = "review and list all the files in this folder"
-
-    async def _runner() -> None:
-        async for token in stream_codex_answer(workspace, question):
-            print(token, end="", flush=True)
-
-    try:
-        asyncio.run(_runner())
-    except KeyboardInterrupt:
-        print("\nInterrupted by user – exiting.")
-
-
-if __name__ == "__main__":
-    main()

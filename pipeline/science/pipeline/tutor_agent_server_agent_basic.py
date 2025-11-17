@@ -4,7 +4,10 @@ import zipfile
 from pathlib import Path
 from typing import AsyncGenerator, Dict, Optional, Union
 
-from pipeline.science.pipeline.cli_agent_response import stream_codex_answer
+from pipeline.science.pipeline.cli_agent_response import (
+    pdfs_to_markdown_workspace,
+    stream_codex_answer,
+)
 from pipeline.science.pipeline.content_translator import translate_content
 from pipeline.science.pipeline.get_response import generate_follow_up_questions
 from pipeline.science.pipeline.session_manager import ChatSession
@@ -92,6 +95,7 @@ async def tutor_agent_server_agent_basic(
     time_tracking: Optional[Dict[str, float]] = None,
     deep_thinking: bool = True,
     stream: bool = False,
+    pdf_file_paths: Optional[list[str]] = None,
 ) -> AsyncGenerator[StreamChunk, None]:
     """
     Public entry point mirroring other mode implementations. Returns the
@@ -107,6 +111,7 @@ async def tutor_agent_server_agent_basic(
         time_tracking=time_tracking,
         deep_thinking=deep_thinking,
         stream=stream,
+        pdf_file_paths=pdf_file_paths,
     )
 
 
@@ -117,6 +122,7 @@ async def tutor_agent_server_agent_basic_streaming_tracking(
     time_tracking: Optional[Dict[str, float]] = None,
     deep_thinking: bool = True,
     stream: bool = False,
+    pdf_file_paths: Optional[list[str]] = None,
 ) -> AsyncGenerator[StreamChunk, None]:
     """Accumulate Codex output while streaming so session state stays in sync."""
     if time_tracking is None:
@@ -129,6 +135,7 @@ async def tutor_agent_server_agent_basic_streaming_tracking(
         time_tracking=time_tracking,
         deep_thinking=deep_thinking,
         stream=stream,
+        pdf_file_paths=pdf_file_paths,
     ):
         yield chunk
         if isinstance(chunk, str):
@@ -147,6 +154,7 @@ async def tutor_agent_server_agent_basic_streaming(
     time_tracking: Optional[Dict[str, float]] = None,
     deep_thinking: bool = True,
     stream: bool = False,
+    pdf_file_paths: Optional[list[str]] = None,
 ) -> AsyncGenerator[StreamChunk, None]:
     """
     Stream Codex CLI output using the helper defined in cli_agent_response.py.
@@ -173,13 +181,15 @@ async def tutor_agent_server_agent_basic_streaming(
         logger.info("Server Agent Basic time tracking:\n%s", format_time_tracking(time_tracking))
         return
 
-    if not zip_file_path:
-        logger.warning("SERVER_AGENT_BASIC requires a zip workspace but none was provided.")
+    if not zip_file_path and not pdf_file_paths:
+        logger.warning(
+            "SERVER_AGENT_BASIC requires either a Codex workspace zip archive or at least one PDF for workspace generation."
+        )
         yield "</thinking>"
         yield (
             "<response>\n\n"
-            "⚠️ Server Agent Basic mode requires a zip archive containing the Codex workspace. "
-            "Upload a file and try again.\n\n"
+            "⚠️ Server Agent Basic mode requires a Codex workspace zip archive or PDF files that can be converted into a workspace. "
+            "Upload the appropriate files and try again.\n\n"
             "</response>"
         )
         yield "<appendix>\n\n</appendix>"
@@ -204,9 +214,17 @@ async def tutor_agent_server_agent_basic_streaming(
 
     try:
         workspace_start = time.time()
-        workspace_dir = prepare_codex_workspace_from_zip(zip_file_path)
+        if pdf_file_paths:
+            workspace_dir = pdfs_to_markdown_workspace(pdf_file_paths)
+            logger.info(
+                "Server Agent Basic workspace generated from %d PDF(s) at %s",
+                len(pdf_file_paths),
+                workspace_dir,
+            )
+        else:
+            workspace_dir = prepare_codex_workspace_from_zip(zip_file_path)
+            logger.info("Server Agent Basic workspace prepared at %s", workspace_dir)
         time_tracking["workspace_preparation"] = time.time() - workspace_start
-        logger.info("Server Agent Basic workspace prepared at %s", workspace_dir)
     except Exception as exc:
         logger.exception("Failed to prepare Codex workspace: %s", exc)
         yield "</thinking>"

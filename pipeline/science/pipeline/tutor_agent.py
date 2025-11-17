@@ -1,8 +1,10 @@
 import os
 import json
 import time
-from typing import Dict, Generator
+from typing import Dict
 import re
+
+from PyPDF2 import PdfReader
 
 from pipeline.science.pipeline.utils import (
     generate_file_id,
@@ -53,6 +55,26 @@ import logging
 logger = logging.getLogger("tutorpipeline.science.tutor_agent")
 
 
+def _calculate_total_uploaded_pages(file_paths: list[str]) -> int:
+    """Return the combined page count for the provided PDF file paths."""
+    total_pages = 0
+    for file_path in file_paths:
+        if not isinstance(file_path, str):
+            continue
+        if not file_path.lower().endswith(".pdf"):
+            continue
+        if not os.path.exists(file_path):
+            logger.warning(f"Cannot count pages for missing file: {file_path}")
+            continue
+        try:
+            with open(file_path, "rb") as stream:
+                reader = PdfReader(stream)
+                total_pages += len(reader.pages)
+        except Exception as exc:
+            logger.warning(f"Failed to determine page count for {file_path}: {exc}")
+    return total_pages
+
+
 async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, time_tracking=None, deep_thinking=True, stream=False):
     """
     Taking the user input, document, and chat history, generate a response and sources.
@@ -73,6 +95,9 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
         A generator that yields response chunks. The chat_session.current_message will be 
         populated with the complete response once the generator is fully consumed.
     """
+    # Normalize inputs before routing
+    file_path_list = list(file_path_list or [])
+
     # Initialize the current message
     chat_session.current_message = ""
     if time_tracking is None:
@@ -99,6 +124,30 @@ async def tutor_agent(chat_session: ChatSession, file_path_list, user_input, tim
         except Exception as e:
             logger.warning(f"Could not determine page count for document {file_path_list[0]}: {str(e)}")
             # If we can't determine page count, keep the current mode
+
+    # If Lite mode uploads exceed 50 total pages, fall back to server agent logic
+    if chat_session.mode == ChatMode.LITE:
+        lite_pdf_inputs = [
+            path
+            for path in file_path_list
+            if isinstance(path, str) and path.lower().endswith(".pdf") and os.path.exists(path)
+        ]
+        total_uploaded_pages = _calculate_total_uploaded_pages(lite_pdf_inputs) if lite_pdf_inputs else 0
+        if total_uploaded_pages > 50 and lite_pdf_inputs:
+            logger.info(
+                "Total page count %s exceeds Lite mode limit (50 pages). Switching to Server Agent Basic logic.",
+                total_uploaded_pages,
+            )
+            chat_session.mode = ChatMode.SERVER_AGENT_BASIC
+            return await tutor_agent_server_agent_basic(
+                chat_session,
+                zip_file_path=None,
+                user_input=user_input,
+                time_tracking=time_tracking,
+                deep_thinking=deep_thinking,
+                stream=stream,
+                pdf_file_paths=lite_pdf_inputs,
+            )
 
     # Route to appropriate specialized agent based on mode
     if chat_session.mode == ChatMode.LITE:
